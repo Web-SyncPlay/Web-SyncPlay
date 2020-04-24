@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="copyright" content='Leo Jung, 2015-2020'/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, shrink-to-fit=no"/>
+    <meta name="robots" content="noindex, nofollow"/>
+    <meta name="author" content="Leo Jung"/>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+          integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <title>Raum</title>
+    <link rel="stylesheet" href="../index.css">
+    <link rel="stylesheet" href="room.css">
+</head>
+<body>
+<nav class="navbar sticky-top navbar-expand-md navbar-dark bg-dark mb-1">
+    <a class="navbar-brand" href="../">
+        Agent77326
+    </a>
+</nav>
+
+<div class="container-fluid mt-3 mb-5">
+    <div class="card bg-dark">
+        <div class="card-body">
+            <div class="alert alert-primary" role="alert">
+                Lade einfach andere Personen in den Raum ein mit dem Link:
+                <code id="invite-link">
+                    <span class="spinner-border text-danger" role="status" aria-hidden="true"></span>
+                    Loading...
+                </code>
+            </div>
+
+            <div class="d-flex justify-content-center m-5" id="join-loader">
+                <span class="spinner-border text-danger" style="width: 5rem; height: 5rem;" role="status" aria-hidden="true"></span>
+                <span class="m-3 h4">Joining room...</span>
+            </div>
+
+            <div class="row">
+                <div class="col-sm-12 col-md-6 col-lg-8 col-xl-9" id="player">
+                    <div id="video">
+                        <video controls></video>
+                    </div>
+                    <div id="yt-create"></div>
+                </div>
+
+                <div class="col-sm-12 col-md-6 col-lg-4 col-xl-3 p-0" id="chat">
+                    <form action="" class="w-100 bg-secondary p-2 rounded">
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <button class="btn btn-outline-success dropdown-toggle" type="button"
+                                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <img src="" alt="..."/>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <span class="spinner-border text-warning" role="status" aria-hidden="true"></span>
+                                    Loading...
+                                </div>
+                            </div>
+
+                            <input type="text" class="form-control" id="message" placeholder="Chat..."
+                                   style="height: 62px;">
+
+                            <div class="input-group-append">
+                                <button class="btn btn-success" type="submit" id="button-send">
+                                    Send
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <ul id="messages" class="list-unstyled text-dark"></ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="alert alert-primary" role="alert">
+                <h4 class="alert-heading">Befehle</h4>
+                <ul>
+                    <li>
+                        <code>!play [url]</code> spielt die Ressource in <code>[url]</code> ab
+                    </li>
+                </ul>
+                <hr>
+                <h4 class="alert-heading">Unterstützte Formate</h4>
+                <ul>
+                    <li>
+                        Youtube-Videos im Format von <code>https://www.youtube.com/watch?v=[VIDEO_ID]</code> sowie
+                        <code>https://youtu.be/[VIDEO_ID]</code>
+                    </li>
+                    <li>
+                        Direkt verlinkte Audio-Dateien wie beispielsweise
+                        <code>https://example.com/[...]/audio.mp3</code> oder <code>[...]/audio.wav</code>
+                    </li>
+                    <li>
+                        Direkt verlinkte Video-Dateien wie beispielsweise
+                        <code>https://example.com/[...]/video.mp4</code> oder <code>[...]/video.webm</code>
+                    </li>
+                </ul>
+                <hr>
+                <h4 class="alert-heading">Bekannte Probleme</h4>
+                <ul>
+                    <li>
+                        Die Autoplay-Policies der Browser erzwingen meistens eine vorherige Interaktion mit dem Video-Element
+                    </li>
+                    <li>
+                        Bei Youtube wird das Video nicht mehr synchron abgespielt, falls die Abspielrate geändert wird
+                    </li>
+                    <li>
+                        Youtube forciert das Abspielen ab der Stelle deiner History
+                    </li>
+                    <li>
+                        Der Chat ist gefährlich... pass also auf mit wem du in einem Raum bist
+                    </li>
+                    <li>
+                        ... (noch nicht gefunden)
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="nameModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content bg-dark">
+            <div class="modal-body">
+                <h4>
+                    Gebe dir einen würdevollen Namen,<br>
+                    für dieses Gesicht:
+                </h4>
+                <div class="rounded d-table m-auto">
+                    <button class="btn bg-light btn-outline-primary"></button>
+                </div>
+                <form action="" class="form mt-3">
+                    <div class="input-group input-group-lg mb-3">
+                        <input type="text" class="form-control" placeholder="Das wäre ein toller Name es gewesen"
+                               aria-label="Recipient's username" aria-describedby="id-button">
+                        <div class="input-group-append">
+                            <button class="btn btn-primary" type="submit" id="name-button">Join</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="footer bg-dark pb-1 pt-3">
+    <div class="container">
+        <p>
+            Es sollten alle modernen Browser unterstützt sein, welche mindestens <a href="https://caniuse.com/#feat=es6" target="_blank">ECMAScript 2015 (ES6)</a> ausführen können.
+            JavaScript muss zwingend aktiviert sein.
+        </p>
+        <hr>
+        <h3>Impressum</h3>
+        <p>
+            Keine der verwendeten Medien ist in meinem Besitz oder von mir erstellt worden und gehört Ihren respektiven Erstellern.
+            Für eingebundenen Medien und Inhalte, haften jeweils deren Betreiber oder Ersteller.
+            Nachrichten die über die Chat-Funktion versendet werden unterliegen der Verantwortung des Absenders.
+            Keine der versendeten Daten werden von diesem Server aufgezeichnet oder verarbeitet und befinden sich zur Übermittlung an die anderen Teilnehmer lediglich im Cache.
+            Ausgenommen davon sind gesetzlich verpflichtende Daten, wie der Zeitpunkt und IP-Adresse einzelner Webseitenaufrufe.
+            Es findet eine temporäre Identifikation statt, welche serverseitig lediglich im Zwischenspeicher aufbewahrt werden.
+        </p>
+        <ul>
+            <li>
+                Copyright (c) 2020, Leo Jung
+            </li>
+            <li>
+                <a href="https://getbootstrap.com/" target="_blank">Bootstrap 4</a>, Code licensed MIT, docs CC BY 3.0
+            </li>
+            <li>
+                Icons by <a href="https://icons8.com/" target="_blank">Icons8</a>
+            </li>
+            <li>
+                <a href="https://jquery.org/" target="_blank">jQuery</a>, Code licensed MIT
+            </li>
+            <li>
+                <a href="https://popper.js.org/" target="_blank">Popperjs</a>, Code licensed MIT
+            </li>
+            <li>
+                YouTube's <a href="https://developers.google.com/youtube/iframe_api_reference" target="_blank">IFrame Player API</a>, "licensed under the Creative Commons Attribution 4.0 License, and code samples are licensed under the Apache 2.0 License"
+            </li>
+            <li>
+                <a href="https://socket.io/" target="_blank">Socket.IO</a>, Code licensed MIT
+            </li>
+        </ul>
+    </div>
+</footer>
+
+<script src="../socket.io/socket.io.js"></script>
+<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+        integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
+        integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
+        crossorigin="anonymous"></script>
+<script src="room.js"></script>
+<script src="player.js"></script>
+</body>
+</html>

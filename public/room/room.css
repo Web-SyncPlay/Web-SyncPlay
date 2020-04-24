@@ -1,0 +1,61 @@
+#player iframe, #player video {
+    width: 100%!important;
+    min-height: 300px;
+    background-color: black;
+}
+
+#chat {
+    height: 500px;
+}
+#chat form {
+    position: absolute;
+    bottom: 0;
+}
+
+#messages {
+    position: absolute;
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: calc(100% - 80px);
+    width: 100%;
+}
+
+#messages .media .media-body {
+    width: calc(100% - 70px);
+}
+
+@media (min-width: 576px) {
+    #player iframe, #player video {
+        min-height: 400px;
+    }
+}
+
+@media (min-width: 768px) {
+    #player iframe, #player video {
+        min-height: 250px;
+    }
+}
+
+@media (min-width: 992px) {
+    #chat {
+        height: 600px;
+    }
+    #player iframe, #player video {
+        min-height: 600px;
+    }
+}
+
+@media (min-width: 1200px) {
+    #chat {
+        height: 800px;
+    }
+    #player iframe, #player video {
+        min-height: 800px;
+    }
+}
+
+.dropdown-menu {
+    text-align: center;
+    max-height: 350px;
+    overflow-y: auto;
+}
