@@ -17,7 +17,7 @@ Während eines Neustarts können natürlich keine Nachrichten übertragen werden
 - `!play [url]` spielt die Ressource in <code>[url]</code> ab
 
 # Unterstützte Medien-Formate
-- Youtube-Videos im Format von `https://www.youtube.com/watch?v=[VIDEO_ID]` sowie `https://youtu.be/[VIDEO_ID]`
+- Youtube-Videos werden unterstützt, einfach den Link zur Seite einfügen
 - Direkt verlinkte Audio-Dateien wie beispielsweise `https://example.com/[...]/audio.mp3` oder `[...]/audio.wav`
 - Direkt verlinkte Video-Dateien wie beispielsweise `https://example.com/[...]/video.mp4` oder `[...]/video.webm`
 

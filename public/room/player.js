@@ -3,7 +3,15 @@ function isYoutube(url) {
 }
 
 function getYoutubeID(url) {
-    return url.replace(/^https?:\/\/((w{3}.)?youtube.com\/watch\?v=|youtu.be\/)/, "");
+    if (url.match(/(\?|&)v=([^&#]+)/)) {
+        return url.match(/(\?|&)v=([^&#]+)/).pop();
+    } else if (url.match(/(\.be\/)+([^\/]+)/)) {
+        return url.match(/(\.be\/)+([^\/]+)/).pop();
+    } else if (url.match(/(\embed\/)+([^\/]+)/)) {
+        return url.match(/(\embed\/)+([^\/]+)/).pop().replace('?rel=0', '');
+    } else {
+        return url.replace(/^https?:\/\/((w{3}.)?youtube.com\/watch\?v=|youtu.be\/)/, "");
+    }
 }
 
 let videoSrc = "";
