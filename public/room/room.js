@@ -46,15 +46,15 @@ let name;
 let defaultNameList = shuffle([
     "Ein wildes Tier",
     "Rabauken Hamster",
+    "Ein, äh.. Dingens-Bums",
     "Fetter fetter Adler",
     "Mit Eleganz in den Keller",
     "Ein Tier wie jedes Andere",
     "Das etwas Andere",
-    "Mein Name hat Gewicht",
     "Mein Name hat kein Gewicht",
-    "Mein Name hat mehr Gewicht",
-    "ICH!!! bin ein Schwergewicht",
-    "So elegant... wie eine Nuss",
+    "Der Mäuse-Druide",
+    "Eine Trollelfe",
+    "Die zarte Orc-Ballerina",
     "Eine fliegende Maus",
     "Ein fliegendes Zebra",
     "Eine drehende Ananas",
@@ -64,8 +64,11 @@ let defaultNameList = shuffle([
     "Das samte Sandpapier",
     "Der verbrannte Kuchen",
     "Das unsichtbare Unicorn",
+    "Zu Ihren Diensten",
+    "Etwas cooles Dingens",
     "Das vergessene Unicorn",
-    "Das Muffin in der Ecke"
+    "Das Muffin in der Ecke",
+    "Ein unsichtbares Prachtstück"
 ]);
 
 function updateUserIcon(id) {

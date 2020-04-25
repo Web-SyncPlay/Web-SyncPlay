@@ -272,6 +272,8 @@ function join() {
             }).then((data) => {
                 if (!gotStatus) {
                     console.log("Fallback to default");
+                    gotStatus = true;
+                    socket.removeAllListeners('status');
                     $("#chat").show();
                     $("#join-loader").remove();
                     chat({
@@ -284,9 +286,9 @@ function join() {
             }).catch((e) => {
                 console.log("Failed to get default settings");
             });
-        }, 1500);
+        }, 2000);
     } else {
-        console.log("userIcon not recieved");
+        console.log("still waiting for userIcon, retry to join in 100");
         setTimeout(join, 100);
     }
 }
