@@ -11,7 +11,7 @@ fetch("../icons.json").then(data => {
     return data.json();
 }).then(data => {
     userIcons = data;
-    let tmp = $('.input-group-prepend .dropdown-menu')[0];
+    let tmp = document.querySelector('.input-group-prepend .dropdown-menu');
     tmp.innerHTML = "";
     userIcon = Math.round(Math.random() * (userIcons.length - 1));
     userIcons.forEach((item, index) => {
@@ -21,9 +21,10 @@ fetch("../icons.json").then(data => {
             tmp.innerHTML += '<button class="btn btn-outline-primary m-1" type="button" onclick="updateUserIcon(' + index + ')">' + icon(index) + '</button>';
         }
     });
-    $("#nameModal div.d-table>button").html(icon(userIcon));
+    document.querySelector("#nameModal div.d-table>button").innerHTML = icon(userIcon);
     updateUserIcon(userIcon);
 }).catch(e => {
+    console.log(e);
     alert("Raum konnte nicht angefordert werden:\n" + e);
 });
 
@@ -72,22 +73,22 @@ let defaultNameList = shuffle([
 ]);
 
 function updateUserIcon(id) {
-    $('#invite-link').html(window.location.href);
+    document.querySelector('#invite-link').innerHTML = window.location.href;
     console.log("UpdateUserIcon", id);
-    $('.input-group-prepend>button>img').attr('src', "../icons/" + userIcons[id]);
-    $('.input-group-prepend .dropdown-menu button').each((index, item) => {
+    document.querySelector('.input-group-prepend>button>img').src = "../icons/" + userIcons[id];
+    document.querySelectorAll('.input-group-prepend .dropdown-menu button').forEach((item, index) => {
         if (userIcon !== id) {
             if (index === userIcon) {
-                let tmp = $(item);
-                if (tmp.hasClass("btn-success")) {
-                    tmp.removeClass("btn-success").addClass("btn-outline-primary");
-                    tmp.attr("onclick", "updateUserIcon(" + index + ")");
+                if (item.classList.contains("btn-success")) {
+                    item.classList.remove("btn-success")
+                    item.classList.add("btn-outline-primary");
+                    item.setAttribute("onclick", "updateUserIcon(" + index + ")");
                 }
             } else if (index === id) {
-                let tmp = $(item);
-                if (tmp.hasClass("btn-outline-primary")) {
-                    tmp.removeClass("btn-outline-primary").addClass("btn-success");
-                    tmp.attr("onclick", "");
+                if (item.classList.contains("btn-outline-primary")) {
+                    item.classList.remove("btn-outline-primary");
+                    item.classList.add("btn-success");
+                    item.setAttribute("onclick", "");
                 }
             }
         }
@@ -98,3 +99,31 @@ function updateUserIcon(id) {
 function icon(index) {
     return '<img src="../icons/' + userIcons[index] + '" alt="..."/>';
 }
+
+document.querySelector('#chat form').addEventListener("submit", (e) => {
+    e.preventDefault(); // prevents page reloading
+    let tmp = document.querySelector('#message');
+    if (tmp.value !== "") {
+        socket.emit('chat message', {
+            "name": name,
+            "iconId": userIcon,
+            "roomId": roomId,
+            "message": tmp.value
+        });
+    }
+    tmp.value = "";
+    return false;
+});
+
+document.querySelector('#nameModal form').addEventListener("submit", (e) => {
+    e.preventDefault(); // prevents page reloading
+    let tmp = document.querySelector('#nameModal input').value;
+    if (tmp !== "") {
+        name = tmp;
+        join();
+        $("#nameModal").modal('hide');
+    } else {
+        alert("Sei doch etwas kreativer....");
+    }
+    return false;
+});

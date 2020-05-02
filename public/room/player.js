@@ -1,32 +1,14 @@
+let videoSrc, player, playerLoaded = false, isPlaying = false;
+
 function isYoutube(url) {
-    return url.match(/^https?:\/\/((w{3}.)?youtube.com\/watch\?v=|youtu.be\/)[\D\w]+/);
+    return url && url.match(/^https?:\/\/((w{3}.)?youtube.com\/watch\?v=|youtu.be\/)[\D\w]+/);
 }
 
-function getYoutubeID(url) {
-    if (url.match(/(\?|&)v=([^&#]+)/)) {
-        return url.match(/(\?|&)v=([^&#]+)/).pop();
-    } else if (url.match(/(\.be\/)+([^\/]+)/)) {
-        return url.match(/(\.be\/)+([^\/]+)/).pop();
-    } else if (url.match(/(\embed\/)+([^\/]+)/)) {
-        return url.match(/(\embed\/)+([^\/]+)/).pop().replace('?rel=0', '');
-    } else {
-        return url.replace(/^https?:\/\/((w{3}.)?youtube.com\/watch\?v=|youtu.be\/)/, "");
-    }
-}
-
-let videoSrc = "";
-let player = null;
-
-function isAtTime(time) {
-    let t = getTime();
-    return t + 2 > time && time + 2 > t;
-}
-
-let preventTimer;
+let preventTimer, prevent = false;
 
 function preventNextEvent() {
     prevent = true;
-    preventTimer = setTimeout(() => removePreventEvent(), 100);
+    preventTimer = setTimeout(() => removePreventEvent(), 40);
 }
 
 function removePreventEvent() {
@@ -36,19 +18,20 @@ function removePreventEvent() {
     prevent = false;
 }
 
-function playError(event) {
-    if (isYoutube(videoSrc)) {
+function isAtTime(time) {
+    let t = player.currentTime();
+    return t + 2 > time && time + 2 > t;
+}
 
-    } else {
-        removePreventEvent();
-        socket.emit('play failed', {
-            type: 'playbackError',
-            roomId: roomId,
-            name: name,
-            iconId: userIcon,
-            error: e.message
-        });
-    }
+function playError(e) {
+    removePreventEvent();
+    socket.emit('play failed', {
+        "type": 'playbackError',
+        "roomId": roomId,
+        "name": name,
+        "iconId": userIcon,
+        "error": e.message
+    });
 }
 
 function play(time = -1) {
@@ -57,30 +40,15 @@ function play(time = -1) {
         console.log("Not at time, seeking");
         seek(time);
     }
-    if (isPlaying()) {
+    if (isPlaying) {
         console.log("Already playing");
         return;
     }
-    setTimeout(() => {
-        if (isYoutube(videoSrc)) {
-            if (youtubeStarted) {
-                player.playVideo();
-            } else {
-                console.log("YT-player not initialised");
-            }
-        } else {
-            preventNextEvent();
-            $('#video video')[0].play().catch(e => playError(e));
-        }
-    }, 20);
-}
 
-function isPlaying() {
-    if (isYoutube(videoSrc)) {
-        return player.getPlayerState() === YT.PlayerState.PLAYING;
-    } else {
-        return !$('#video video')[0].paused;
-    }
+    setTimeout(() => {
+        preventNextEvent();
+        player.play()
+    }, 20);
 }
 
 function pause(time = -1) {
@@ -89,207 +57,67 @@ function pause(time = -1) {
         console.log("Not at time, seeking");
         seek(time);
     }
-    if (isPaused()) {
+    if (!isPlaying) {
         console.log("Already paused");
         return;
     }
 
     setTimeout(() => {
-        if (isYoutube(videoSrc)) {
-            if (youtubeStarted) {
-                player.pauseVideo();
-            } else {
-                console.log("YT-player not initialised");
-            }
-        } else {
-            preventNextEvent();
-            $('#video video')[0].pause();
-        }
+        preventNextEvent();
+        player.pause()
     }, 20);
-}
-
-function isPaused() {
-    if (isYoutube(videoSrc)) {
-        return player.getPlayerState() === YT.PlayerState.PAUSED;
-    } else {
-        return $('#video video')[0].paused;
-    }
 }
 
 function seek(time) {
     console.log("Seek-Command to ", time);
-    if (isYoutube(videoSrc)) {
-        if (youtubeStarted) {
-            player.seekTo(time, true);
-        } else {
-            console.log("YT-player not initialised");
-        }
-    } else {
-        preventNextEvent();
-        playVideo(videoSrc, time);
-    }
+    player.currentTime(time);
 }
 
-function getTime() {
-    if (isYoutube(videoSrc)) {
-        return player.getCurrentTime();
-    } else {
-        return $('#video video')[0].currentTime;
-    }
+let changeVideoTimer, preventChangeVideoTimeout = false;
+
+function changeVideoTimeout() {
+    preventChangeVideoTimeout = true;
+    changeVideoTimer = setTimeout(removeChangeVideoTimeout, 600);
 }
 
-function playVideo(url, time = 0) {
+function removeChangeVideoTimeout() {
+    if (changeVideoTimer) {
+        clearTimeout(changeVideoTimer);
+    }
+    preventChangeVideoTimeout = false;
+}
+
+function changeVideo(url, time = 0) {
     console.log("Change video to " + url + " at time: ", time);
     if (url === videoSrc && isAtTime(time)) {
         console.log("Already correct video and time");
         return;
     }
-    pause();
-    setTimeout(() => {
+
+    if (playerLoaded) {
+        if (url === videoSrc) {
+            seek(time);
+            return;
+        }
+
+        changeVideoTimeout();
         if (isYoutube(url)) {
-            $("#video").hide();
-            $("#yt-create").show();
-            if (youtubeStarted) {
-                try {
-                    player.cueVideoById({
-                        'videoId': getYoutubeID(url),
-                        'startSeconds': time
-                    });
-                } catch (e) {
-                    alert(e);
-                }
-            } else {
-                setTimeout(() => playVideo(url, time), 200);
-                return;
+            if (!isYoutube(videoSrc)) {
+                player.controlBar.hide();
+                player.bigPlayButton.hide();
             }
+            player.src({type: "video/youtube", src: url});
         } else {
-            $("#yt-create").hide();
-            $("#video").show();
-            preventNextEvent();
-            $('#video video').attr('src', url + "#t=" + time);
+            if (isYoutube(videoSrc)) {
+                player.controlBar.show();
+                player.bigPlayButton.show();
+            }
+            player.src({src: url});
         }
         videoSrc = url;
-    }, 20);
-}
-
-let youtubeStarted = false;
-
-function onYouTubeIframeAPIReady() {
-    console.log("YT-API callback");
-    player = new YT.Player('yt-create', {
-        videoId: getYoutubeID(videoSrc),
-        events: {
-            'onReady': () => {
-                console.log("Player is ready");
-                youtubeStarted = true;
-            },
-            'onError': playError,
-            'onStateChange': stateChangeListener
-        }
-    });
-    console.log("player created");
-}
-
-function stateChangeListener(event) {
-    console.log("YT-Statechange", event);
-    switch (event.data) {
-        case YT.PlayerState.PLAYING:
-            console.log("Started to play at ", getTime());
-            socket.emit('play', {
-                "roomId": roomId,
-                "time": getTime()
-            });
-            break;
-        case YT.PlayerState.PAUSED:
-            console.log("Paused at ", getTime());
-            socket.emit('pause', {
-                "roomId": roomId,
-                "time": getTime()
-            })
-            break;
-        default:
-            break;
-    }
-}
-
-// 2. This code loads the IFrame Player API code asynchronously.
-let tag = document.createElement('script');
-
-tag.src = "https://www.youtube.com/iframe_api";
-let firstScriptTag = document.getElementsByTagName('script')[0];
-firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-let prevent = false;
-let socket = io();
-
-let gotStatus = false;
-
-function join() {
-    if (userIcon) {
-        console.log("Trying to join Room", roomId);
-        socket
-            .on('chat message', chat)
-            .on('play', play)
-            .on('play failed', function (msg) {
-                if (!isPaused()) {
-                    pause();
-                }
-                chat(msg);
-                alert("Wiedergabe bei '" + msg.name + "' fehlgeschlagen. Es kam zu folgendem Fehler:\n" + msg.error);
-            })
-            .on('pause', pause)
-            .on('seek', function (time) {
-                if (!isAtTime(time)) {
-                    seek(time);
-                }
-            })
-            .on('change video', function (msg) {
-                playVideo(msg.src);
-                chat(msg);
-            })
-            .on('join', function (msg) {
-                if (!isPaused()) {
-                    pause();
-                }
-                socket.emit('status', {
-                    roomId: roomId,
-                    src: videoSrc,
-                    time: getTime(),
-                    history: chatHistory
-                });
-                chat(msg);
-            });
-        socket.emit('join', {
-            type: 'join',
-            name: name,
-            iconId: userIcon,
-            roomId: roomId
-        });
-
-        setTimeout(() => {
-            fetch("../default.json").then((result) => {
-                return result.json();
-            }).then((data) => {
-                if (!gotStatus) {
-                    console.log("Fallback to default");
-                    gotStatus = true;
-                    socket.removeAllListeners('status');
-                    $("#chat").show();
-                    $("#join-loader").remove();
-                    chat({
-                        type: 'join',
-                        iconId: userIcon,
-                        name: name
-                    });
-                    playVideo(data.video);
-                }
-            }).catch((e) => {
-                console.log("Failed to get default settings");
-            });
-        }, 2000);
     } else {
-        console.log("still waiting for userIcon, retry to join in 100");
-        setTimeout(join, 100);
+        console.log("Player is not ready, retry");
+        setTimeout(this(url, time), 10);
     }
 }
 
@@ -327,8 +155,8 @@ function chat(msg) {
             }
             break;
     }
-    let tmp = $('#messages');
-    let text = `
+    let tmp = document.querySelector('#messages');
+    tmp.innerHTML += `
         <li class="media ` + msg.color + ` mb-2 rounded">
             <div class="rounded bg-light p-1 m-1 mr-0">
                 ` + icon(msg.iconId) + `
@@ -339,96 +167,150 @@ function chat(msg) {
             </div>
         </li>
     `;
-    tmp.append($(text));
-    tmp.scrollTop(tmp[0].scrollHeight);
+    tmp.scrollTop = tmp.scrollHeight;
 }
 
-$(document).ready(function () {
-    socket.once('status', function (msg) {
-        console.log("Recieved status from remote", msg);
-        msg.history.forEach(item => {
-            chat(item);
+function join() {
+    if (userIcon) {
+        console.log("Trying to join Room", roomId);
+        socket
+            .on('chat message', chat)
+            .on('play', play)
+            .on('play failed', function (msg) {
+                if (isPlaying) {
+                    pause();
+                }
+                chat(msg);
+                alert("Wiedergabe bei '" + msg.name + "' fehlgeschlagen. Es kam zu folgendem Fehler:\n" + msg.error);
+            })
+            .on('pause', pause)
+            .on('change video', function (msg) {
+                changeVideo(msg.src);
+                chat(msg);
+            })
+            .on('join', function (msg) {
+                if (isPlaying) {
+                    pause();
+                }
+                socket.emit('status', {
+                    "roomId": roomId,
+                    "src": videoSrc,
+                    "time": player.currentTime(),
+                    "history": chatHistory
+                });
+                chat(msg);
+            });
+        socket.emit('join', {
+            "type": 'join',
+            "name": name,
+            "iconId": userIcon,
+            "roomId": roomId
         });
-        playVideo(msg.src, msg.time);
 
-        if (!gotStatus) {
-            gotStatus = true;
-            $("#chat").show();
-            $("#join-loader").remove();
-            chat({
-                type: 'join',
-                iconId: userIcon,
-                name: name
+        setTimeout(() => {
+            fetch("../default.json").then((result) => {
+                return result.json();
+            }).then((data) => {
+                if (!gotStatus) {
+                    console.log("Fallback to default");
+                    gotStatus = true;
+                    socket.removeAllListeners('status');
+                    document.querySelector("#chat").style = "";
+                    document.querySelector("#player").style = "";
+                    document.querySelector("#join-loader").remove();
+                    chat({
+                        "type": 'join',
+                        "iconId": userIcon,
+                        "name": name
+                    });
+                    changeVideo(data.video);
+                }
+            }).catch((e) => {
+                console.log("Failed to get default settings", e);
             });
-        }
-    });
+        }, 2000);
+    } else {
+        console.log("still waiting for userIcon, retry to join");
+        setTimeout(join, 50);
+    }
+}
 
-    $('#chat form').submit(function (e) {
-        e.preventDefault(); // prevents page reloading
-        let tmp = $('#message');
-        if (tmp.val() !== "") {
-            socket.emit('chat message', {
-                name: name,
-                iconId: userIcon,
-                roomId: roomId,
-                message: tmp.val()
-            });
-        }
-        tmp.val('');
-        return false;
-    });
+let socket = io(), gotStatus = false;
 
-    $('#nameModal form').submit(function (e) {
-        e.preventDefault(); // prevents page reloading
-        let tmp = $('#nameModal input').val();
-        if (tmp !== "") {
-            name = tmp;
-            join();
-            $("#nameModal").modal('hide');
-        } else {
-            alert("Sei doch etwas kreativer....");
-        }
-        return false;
-    });
-
-    $('#video video').on('pause', function (e) {
-        console.log("paused at ", e.target.currentTime);
-        if (!prevent) {
-            socket.emit('pause', {
-                "roomId": roomId,
-                "time": e.target.currentTime
-            });
-        } else {
-            removePreventEvent();
-        }
-    }).on('play', function (e) {
-        console.log("played at ", e.target.currentTime);
-        if (!prevent) {
-            socket.emit('play', {
-                "roomId": roomId,
-                "time": e.target.currentTime
-            });
-        } else {
-            removePreventEvent();
-        }
-    }).on('seeked', function (e) {
-        console.log("seeked to ", e.target.currentTime);
-        if (!prevent) {
-            socket.emit('seek', {
-                "roomId": roomId,
-                "time": e.target.currentTime
-            });
-        } else {
-            removePreventEvent();
-        }
-    });
-
-    $("#yt-create").hide();
-    $("#video").hide();
-    $("#chat").hide();
-    $("#nameModal input").val(defaultNameList[Math.round(Math.random() * (defaultNameList.length - 1))]);
+window.onload = () => {
+    document.querySelector("#nameModal input").value = defaultNameList[Math.round(Math.random() * (defaultNameList.length - 1))];
     $("#nameModal").modal({
         keyboard: false,
         backdrop: 'static'
     });
-});
+
+    socket.once('status', (msg) => {
+        console.log("Recieved status from remote", msg);
+        msg.history.forEach(item => {
+            chat(item);
+        });
+        changeVideo(msg.src, msg.time);
+
+        if (!gotStatus) {
+            gotStatus = true;
+            document.querySelector("#player").style.display = "block";
+            document.querySelector("#chat").style.display = "block";
+            document.querySelector("#join-loader").remove();
+            chat({
+                "type": 'join',
+                "iconId": userIcon,
+                "name": name
+            });
+        }
+    });
+
+    player = videojs('video-player', {
+        controls: true,
+        fill: true,
+        youtube: {
+            ytControls: 2
+        }
+    }, () => {
+        /*
+        player.on('timeupdate', (event) => {
+            console.log('timeupdate', event);
+        });
+        */
+        player.on('ratechange', (event) => {
+            console.log('ratechange', event);
+        });
+        player.on('play', () => {
+            console.log("played at ", player.currentTime());
+            if (!prevent && !preventChangeVideoTimeout) {
+                socket.emit('play', {
+                    "roomId": roomId,
+                    "time": player.currentTime()
+                });
+            } else if (prevent) {
+                removePreventEvent();
+            }
+        });
+        player.on('pause', () => {
+            console.log("paused at ", player.currentTime());
+            if (!prevent && !preventChangeVideoTimeout) {
+                socket.emit('pause', {
+                    "roomId": roomId,
+                    "time": player.currentTime()
+                });
+            } else if (prevent) {
+                removePreventEvent();
+            }
+        });
+        player.on('error', playError);
+        player.on(['waiting', 'pause'], function () {
+            isPlaying = false;
+        });
+
+        player.on('playing', function () {
+            isPlaying = true;
+        });
+
+        playerLoaded = true;
+        console.log("Video-player is ready");
+    });
+}
