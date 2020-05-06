@@ -3,6 +3,23 @@ function getRoomId() {
     return tmp[tmp.length - 1];
 }
 
+function getRandomIndex(array) {
+    return Math.round(Math.random() * (array.length - 1));
+}
+
+// well i doubt ftp, tel or urn are working video/audio feeds
+function isValidHttpUrl(string) {
+    let url;
+
+    try {
+        url = new URL(string);
+    } catch (_) {
+        return false;
+    }
+
+    return url.protocol === "http:" || url.protocol === "https:";
+}
+
 let roomId = getRoomId();
 document.title = "Raum " + roomId;
 let userIcons;
@@ -13,7 +30,7 @@ fetch("../icons.json").then(data => {
     userIcons = data;
     let tmp = document.querySelector('.input-group-prepend .dropdown-menu');
     tmp.innerHTML = "";
-    userIcon = Math.round(Math.random() * (userIcons.length - 1));
+    userIcon = getRandomIndex(userIcons);
     userIcons.forEach((item, index) => {
         if (index === userIcon) {
             tmp.innerHTML += '<button class="btn btn-success m-1" type="button">' + icon(index) + '</button>';
@@ -73,7 +90,7 @@ let defaultNameList = shuffle([
 ]);
 
 function updateUserIcon(id) {
-    document.querySelector('#invite-link').innerHTML = window.location.href;
+    document.querySelector('#invite-link').innerHTML = '<input type="text" readonly class="form-control-plaintext" value="' + window.location.href + '">';
     console.log("UpdateUserIcon", id);
     document.querySelector('.input-group-prepend>button>img').src = "../icons/" + userIcons[id];
     document.querySelectorAll('.input-group-prepend .dropdown-menu button').forEach((item, index) => {
@@ -100,6 +117,9 @@ function icon(index) {
     return '<img src="../icons/' + userIcons[index] + '" alt="..."/>';
 }
 
+
+// Chat
+let chatHistory = [];
 document.querySelector('#chat form').addEventListener("submit", (e) => {
     e.preventDefault(); // prevents page reloading
     let tmp = document.querySelector('#message');
@@ -107,13 +127,100 @@ document.querySelector('#chat form').addEventListener("submit", (e) => {
         socket.emit('chat message', {
             "name": name,
             "iconId": userIcon,
-            "roomId": roomId,
             "message": tmp.value
         });
     }
     tmp.value = "";
     return false;
 });
+document.querySelector('form#controls').addEventListener("submit", (e) => {
+    e.preventDefault(); // prevents page reloading
+    let tmp = document.querySelector('form#controls input');
+    console.log("Trying to change video to: ", tmp.value);
+    if (tmp.value !== "" && isValidHttpUrl(tmp.value)) {
+        socket.emit('change video', {
+            "name": name,
+            "iconId": userIcon,
+            "src": tmp.value
+        });
+        changeVideo(tmp.value);
+    }
+    tmp.value = "";
+    return false;
+});
+document.querySelector('form#controls button#random-button').addEventListener("click", (e) => {
+    e.preventDefault(); // prevents page reloading
+    console.log("Trying to switch to random video");
+    getRandomTopMusicByCountry("JP").then(data => {
+        socket.emit('change video', {
+            "name": name,
+            "iconId": userIcon,
+            "src": data
+        });
+        changeVideo(data);
+    });
+    return false;
+});
+
+function htmlEncode(input) {
+    let el = document.createElement("div");
+    el.innerText = el.textContent = input;
+    return el.innerHTML;
+}
+
+function chat(msg) {
+    console.log("New Chat-message", msg);
+    chatHistory.push(msg);
+    switch (msg.type) {
+        case 'join':
+            if (!msg.color) {
+                msg.color = "bg-warning";
+            }
+            if (!msg.message) {
+                msg.message = "Trat dem Raum bei";
+            }
+            break;
+        case "quit":
+            if (!msg.color) {
+                msg.color = "bg-warning";
+            }
+            msg.message = 'Hat den Raum verlassen' + msg.reason;
+            break;
+        case "playbackError":
+            if (!msg.color) {
+                msg.color = "bg-danger";
+            }
+            if (!msg.message) {
+                msg.message = "Failed to play video: " + msg.error;
+            }
+            break;
+        case "changeVideo":
+            if (!msg.color) {
+                msg.color = "bg-success";
+            }
+            msg.message = 'Played: <a href="' + msg.src + '" target="_blank">' + msg.src + '</a>';
+            break;
+        default:
+            if (!msg.color) {
+                msg.color = "bg-light";
+            }
+            break;
+    }
+    let tmp = document.querySelector('#messages');
+    tmp.innerHTML += `
+        <li class="media ` + msg.color + ` mb-2 rounded">
+            <div class="rounded bg-light p-1 m-1 mr-0">
+                ` + icon(msg.iconId) + `
+            </div>
+            <div class="media-body">
+              <h5 class="mt-0 mb-1"><small class="text-muted">` + msg.name + `</small></h5>
+              ` + htmlEncode(msg.message) + `
+            </div>
+        </li>
+    `;
+    tmp.scrollTop = tmp.scrollHeight;
+}
+
 
 document.querySelector('#nameModal form').addEventListener("submit", (e) => {
     e.preventDefault(); // prevents page reloading

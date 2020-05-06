@@ -104,13 +104,13 @@ function changeVideo(url, time = 0) {
         if (isYoutube(url)) {
             if (!isYoutube(videoSrc)) {
                 player.controlBar.hide();
-                player.bigPlayButton.hide();
+                //player.bigPlayButton.hide();
             }
             player.src({type: "video/youtube", src: url});
         } else {
             if (isYoutube(videoSrc)) {
                 player.controlBar.show();
-                player.bigPlayButton.show();
+                //player.bigPlayButton.show();
             }
             player.src({src: url});
         }
@@ -121,54 +121,28 @@ function changeVideo(url, time = 0) {
     }
 }
 
-let chatHistory = [];
 
-function chat(msg) {
-    console.log("New Chat-message", msg);
-    chatHistory.push(msg);
-    switch (msg.type) {
-        case 'join':
-            if (!msg.color) {
-                msg.color = "bg-warning";
-            }
-            if (!msg.message) {
-                msg.message = "Trat dem Raum bei";
-            }
-            break;
-        case "playbackError":
-            if (!msg.color) {
-                msg.color = "bg-danger";
-            }
-            if (!msg.message) {
-                msg.message = "Failed to play video: " + msg.error;
-            }
-            break;
-        case "changeVideo":
-            if (!msg.color) {
-                msg.color = "bg-success";
-            }
-            msg.message = 'Played: <a href="' + msg.src + '" target="_blank">' + msg.src + '</a>';
-            break;
-        default:
-            if (!msg.color) {
-                msg.color = "bg-light";
-            }
-            break;
-    }
-    let tmp = document.querySelector('#messages');
-    tmp.innerHTML += `
-        <li class="media ` + msg.color + ` mb-2 rounded">
-            <div class="rounded bg-light p-1 m-1 mr-0">
-                ` + icon(msg.iconId) + `
-            </div>
-            <div class="media-body">
-              <h5 class="mt-0 mb-1"><small class="text-muted">` + msg.name + `</small></h5>
-              ` + msg.message + `
-            </div>
-        </li>
-    `;
-    tmp.scrollTop = tmp.scrollHeight;
+async function getTopMusicListByCountry(countryCode) {
+    return await gapi.client.youtube.videos.list({
+        "part": "id",
+        "chart": "mostPopular",
+        "maxResults": 10,
+        "regionCode": countryCode,
+        "videoCategoryId": "10"
+    }).then(
+        res => res.result.items.map(item => item.id),
+        err => {
+            console.error("Error fetching youtube...", err);
+            return [];
+        }
+    );
 }
+
+async function getRandomTopMusicByCountry(countryCode) {
+    const result = await getTopMusicListByCountry(countryCode);
+    return "https://youtu.be/" + result[getRandomIndex(result)];
+}
+
 
 function join() {
     if (userIcon) {
@@ -189,28 +163,45 @@ function join() {
                 chat(msg);
             })
             .on('join', function (msg) {
-                if (isPlaying) {
-                    pause();
-                }
                 socket.emit('status', {
-                    "roomId": roomId,
                     "src": videoSrc,
                     "time": player.currentTime(),
                     "history": chatHistory
                 });
                 chat(msg);
+            })
+            .on('getStatus', function (id, answer) {
+                console.log("Server requested current status");
+                answer({
+                    "name": name,
+                    "src": videoSrc,
+                    "time": player.currentTime(),
+                    "iconId": userIcon,
+                    "history": chatHistory,
+                    "rate": player.playbackRate()
+                });
+            })
+            .on('ratechange', (data) => {
+                console.log('Changing playback rate', data);
+                preventNextEvent();
+                player.playbackRate(data.rate);
+            })
+            .on('quit', function (msg) {
+                console.log("User disconnected", msg);
+                // TODO: userlist
+                chat(msg);
             });
         socket.emit('join', {
             "type": 'join',
             "name": name,
-            "iconId": userIcon,
-            "roomId": roomId
+            "iconId": userIcon
         });
 
         setTimeout(() => {
-            fetch("../default.json").then((result) => {
-                return result.json();
-            }).then((data) => {
+            if (gotStatus) {
+                return;
+            }
+            getRandomTopMusicByCountry("JP").then(video => {
                 if (!gotStatus) {
                     console.log("Fallback to default");
                     gotStatus = true;
@@ -223,10 +214,10 @@ function join() {
                         "iconId": userIcon,
                         "name": name
                     });
-                    changeVideo(data.video);
+                    changeVideo(video);
                 }
             }).catch((e) => {
-                console.log("Failed to get default settings", e);
+                console.error("Failed to get random youtube video", e);
             });
         }, 2000);
     } else {
@@ -238,7 +229,7 @@ function join() {
 let socket = io(), gotStatus = false;
 
 window.onload = () => {
-    document.querySelector("#nameModal input").value = defaultNameList[Math.round(Math.random() * (defaultNameList.length - 1))];
+    document.querySelector("#nameModal input").value = defaultNameList[getRandomIndex(defaultNameList)];
     $("#nameModal").modal({
         keyboard: false,
         backdrop: 'static'
@@ -267,23 +258,31 @@ window.onload = () => {
     player = videojs('video-player', {
         controls: true,
         fill: true,
+        autoplay: true,
+        muted: true,
         youtube: {
             ytControls: 2
         }
     }, () => {
-        /*
         player.on('timeupdate', (event) => {
-            console.log('timeupdate', event);
+            socket.emit('timeupdate', {
+                "time": player.currentTime()
+            });
         });
-        */
         player.on('ratechange', (event) => {
+            if (!prevent && !preventChangeVideoTimeout) {
+                socket.emit('ratechange', {
+                    "rate": player.playbackRate()
+                });
+            } else if (prevent) {
+                removePreventEvent();
+            }
             console.log('ratechange', event);
         });
         player.on('play', () => {
             console.log("played at ", player.currentTime());
             if (!prevent && !preventChangeVideoTimeout) {
                 socket.emit('play', {
-                    "roomId": roomId,
                     "time": player.currentTime()
                 });
             } else if (prevent) {
@@ -294,7 +293,6 @@ window.onload = () => {
             console.log("paused at ", player.currentTime());
             if (!prevent && !preventChangeVideoTimeout) {
                 socket.emit('pause', {
-                    "roomId": roomId,
                     "time": player.currentTime()
                 });
             } else if (prevent) {
@@ -312,5 +310,17 @@ window.onload = () => {
 
         playerLoaded = true;
         console.log("Video-player is ready");
+    });
+
+    gapi.load("client", function () {
+        gapi.client.init({
+            apiKey: "AIzaSyDU6J3cOuf2HecO99nguAXl41cd4hxYJUs"
+        });
+        return gapi.client.load(
+            "https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest"
+        ).then(
+            () => console.log("GAPI client loaded for API"),
+            err => console.error("Error loading GAPI client for API", err)
+        );
     });
 }

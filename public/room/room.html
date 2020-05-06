@@ -25,14 +25,27 @@
         <div class="card-body">
             <div class="alert alert-primary" role="alert">
                 Lade einfach andere Personen in den Raum ein mit dem Link:
-                <code id="invite-link">
+                <div class="form-group" id="invite-link">
                     <span class="spinner-border text-danger" role="status" aria-hidden="true"></span>
                     Lade...
-                </code>
+                </div>
+                <form id="controls" action="" class="form-inline">
+                    <button type="button" class="btn btn-warning mb-2" id="random-button">Random</button>
+                    <div class="form-group mx-sm-3 mb-2">
+                        <div class="input-group">
+                            <input type="text" class="form-control" placeholder="Video-Link"
+                                   aria-describedby="video-go-button">
+                            <div class="input-group-append">
+                                <button class="btn btn-success" type="submit" id="video-go-button">Watch</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
             </div>
 
             <div class="d-flex justify-content-center m-5" id="join-loader">
-                <span class="spinner-border text-danger" style="width: 5rem; height: 5rem;" role="status" aria-hidden="true"></span>
+                <span class="spinner-border text-danger" style="width: 5rem; height: 5rem;" role="status"
+                      aria-hidden="true"></span>
                 <span class="m-3 h4">Trete Raum bei...</span>
             </div>
 
@@ -73,17 +86,10 @@
 
         <div class="card-body">
             <div class="alert alert-primary" role="alert">
-                <h4 class="alert-heading">Befehle</h4>
-                <ul>
-                    <li>
-                        <code>!play [url]</code> spielt die Ressource in <code>[url]</code> ab
-                    </li>
-                </ul>
-                <hr>
                 <h4 class="alert-heading">Unterstützte Formate</h4>
                 <ul>
                     <li>
-                        Youtube-Videos werden unterstützt, einfach den Link zur Seite einfügen
+                        Youtube-Videos werden unterstützt, einfach den Link zur Seite oben einfügen
                     </li>
                     <li>
                         Direkt verlinkte Audio-Dateien wie beispielsweise
@@ -98,16 +104,7 @@
                 <h4 class="alert-heading">Bekannte Probleme</h4>
                 <ul>
                     <li>
-                        Die Autoplay-Policies der Browser erzwingen meistens eine vorherige Interaktion mit dem Video-Element
-                    </li>
-                    <li>
-                        Bei Youtube wird das Video nicht mehr synchron abgespielt, falls die Abspielrate geändert wird
-                    </li>
-                    <li>
-                        Youtube forciert das Abspielen ab der Stelle deiner History
-                    </li>
-                    <li>
-                        Der Chat ist gefährlich... pass also auf mit wem du in einem Raum bist
+                        Youtube forciert das Abspielen ab der Stelle deiner History oder von ganz vorne (wenn ein neuer Nutzer joint)
                     </li>
                     <li>
                         ... (noch nicht gefunden)
@@ -146,18 +143,24 @@
 <footer class="footer bg-dark pb-1 pt-3">
     <div class="container">
         <p>
-            Es sollten alle modernen Browser unterstützt sein, welche mindestens <a href="https://caniuse.com/#feat=es6" target="_blank">ECMAScript 2015 (ES6)</a> ausführen können.
+            Es sollten alle modernen Browser unterstützt sein, welche mindestens <a href="https://caniuse.com/#feat=es6"
+                                                                                    target="_blank">ECMAScript 2015
+            (ES6)</a> ausführen können.
             JavaScript muss zwingend aktiviert sein.
         </p>
         <hr>
         <h3>Impressum</h3>
         <p>
-            Keine der verwendeten Medien ist in meinem Besitz oder von mir erstellt worden und gehört Ihren respektiven Erstellern.
+            Keine der verwendeten Medien ist in meinem Besitz oder von mir erstellt worden und gehört Ihren respektiven
+            Erstellern.
             Für eingebundenen Medien und Inhalte, haften jeweils deren Betreiber oder Ersteller.
             Nachrichten die über die Chat-Funktion versendet werden unterliegen der Verantwortung des Absenders.
-            Keine der versendeten Daten werden von diesem Server aufgezeichnet oder verarbeitet und befinden sich zur Übermittlung an die anderen Teilnehmer lediglich im Cache.
-            Ausgenommen davon sind gesetzlich verpflichtende Daten, wie der Zeitpunkt und IP-Adresse einzelner Webseitenaufrufe.
-            Es findet eine temporäre Identifikation statt, welche serverseitig lediglich im Zwischenspeicher aufbewahrt werden.
+            Keine der versendeten Daten werden von diesem Server aufgezeichnet oder verarbeitet und befinden sich zur
+            Übermittlung an die anderen Teilnehmer lediglich im Cache.
+            Ausgenommen davon sind gesetzlich verpflichtende Daten, wie der Zeitpunkt und IP-Adresse einzelner
+            Webseitenaufrufe.
+            Es findet eine temporäre Identifikation statt, welche serverseitig lediglich im Zwischenspeicher aufbewahrt
+            werden.
         </p>
         <ul>
             <li>
@@ -176,7 +179,9 @@
                 <a href="https://popper.js.org/" target="_blank">Popperjs</a>, Code licensed MIT
             </li>
             <li>
-                YouTube's <a href="https://developers.google.com/youtube/iframe_api_reference" target="_blank">IFrame Player API</a>, "licensed under the Creative Commons Attribution 4.0 License, and code samples are licensed under the Apache 2.0 License"
+                YouTube's <a href="https://developers.google.com/youtube/iframe_api_reference" target="_blank">IFrame
+                Player API</a>, "licensed under the Creative Commons Attribution 4.0 License, and code samples are
+                licensed under the Apache 2.0 License"
             </li>
             <li>
                 <a href="https://socket.io/" target="_blank">Socket.IO</a>, Code licensed MIT
@@ -195,6 +200,7 @@
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
         integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
         crossorigin="anonymous"></script>
+<script src="https://apis.google.com/js/api.js"></script>
 <script src="room.js"></script>
 <script src="player.js"></script>
 </body>
