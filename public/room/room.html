@@ -25,22 +25,10 @@
         <div class="card-body">
             <div class="alert alert-primary" role="alert">
                 Lade einfach andere Personen in den Raum ein mit dem Link:
-                <div class="form-group" id="invite-link">
+                <div class="form-group mb-0" id="invite-link">
                     <span class="spinner-border text-danger" role="status" aria-hidden="true"></span>
                     Lade...
                 </div>
-                <form id="controls" action="" class="form-inline">
-                    <button type="button" class="btn btn-warning mb-2" id="random-button">Random</button>
-                    <div class="form-group mx-sm-3 mb-2">
-                        <div class="input-group">
-                            <input type="text" class="form-control" placeholder="Video-Link"
-                                   aria-describedby="video-go-button">
-                            <div class="input-group-append">
-                                <button class="btn btn-success" type="submit" id="video-go-button">Watch</button>
-                            </div>
-                        </div>
-                    </div>
-                </form>
             </div>
 
             <div class="d-flex justify-content-center m-5" id="join-loader">
@@ -48,6 +36,19 @@
                       aria-hidden="true"></span>
                 <span class="m-3 h4">Trete Raum bei...</span>
             </div>
+
+            <form id="controls" action="" class="form-inline" style="display: none;">
+                <button type="button" class="btn btn-warning mb-2" id="random-button">Random</button>
+                <div class="form-group mx-sm-3 mb-2">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Video-Link"
+                               aria-describedby="video-go-button">
+                        <div class="input-group-append">
+                            <button class="btn btn-success" type="submit" id="video-go-button">Watch</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
 
             <div class="row">
                 <div class="col-sm-12 col-md-6 col-lg-8 col-xl-9" id="player" style="display: none;">
@@ -203,5 +204,6 @@
 <script src="https://apis.google.com/js/api.js"></script>
 <script src="room.js"></script>
 <script src="player.js"></script>
+<script src="events.js"></script>
 </body>
 </html>

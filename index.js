@@ -1,7 +1,8 @@
 let app = require('express')();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
-    transports: ['polling']
+    transports: ['polling'],
+    pingInterval: 10000
 });
 const fs = require('fs');
 const uniqid = require('uniqid');
@@ -19,6 +20,9 @@ app.get('/room/player.js', (req, res) => {
 });
 app.get('/room/room.js', (req, res) => {
     res.sendFile(__dirname + '/public/room/room.js');
+});
+app.get('/room/events.js', (req, res) => {
+    res.sendFile(__dirname + '/public/room/events.js');
 });
 app.get('/room/:id', (req, res) => {
     res.sendFile(__dirname + '/public/room/room.html');
@@ -47,25 +51,44 @@ app.get('/', (req, res) => {
 // Socket-Communication
 let rooms = [];
 io.on('connection', (socket) => {
-    const updateStatus = (data) => {
+    const getRoom = (room) => {
+        for (let i = 0; i < rooms.length; i++) {
+            if (rooms[i].id === room) {
+                return rooms[i];
+            }
+        }
+    };
+    const updateRoom = (data) => {
         if (!data) {
             return;
         }
-        for (let i = 0; i < rooms.length; i++) {
-            if (rooms[i].id === room) {
-                if (rooms[i].history.length < data.history.length) {
-                    rooms[i].history = data.history;
+
+        let tmp = getRoom(room);
+        if (tmp) {
+            if (data.history && tmp.history.length < data.history.length) {
+                tmp.history = data.history;
+            }
+            if (data.src && tmp.src !== data.src) {
+                tmp.src = data.src;
+            }
+            if (data.rate && tmp.rate !== data.rate) {
+                tmp.rate = data.rate;
+            }
+            if (data.time && tmp.time !== data.time) {
+                tmp.time = data.time;
+            }
+            if (data.playing && tmp.playing !== data.playing) {
+                tmp.playing = data.playing;
+            }
+        }
+    }
+    const getUserInfo = (id) => {
+        let tmp = getRoom(room);
+        if (tmp) {
+            for (let i = 0; i < tmp.users.length; i++) {
+                if (tmp.users[i].id === id) {
+                    return tmp.users[i];
                 }
-                if (rooms[i].src !== data.src) {
-                    rooms[i].src = data.src;
-                }
-                if (rooms[i].rate !== data.rate) {
-                    rooms[i].rate = data.rate;
-                }
-                if (rooms[i].time !== data.time) {
-                    rooms[i].time = data.time;
-                }
-                break;
             }
         }
     }
@@ -73,32 +96,43 @@ io.on('connection', (socket) => {
         if (!user) {
             return;
         }
-        for (let i = 0; i < rooms.length; i++) {
-            if (rooms[i].id === room) {
-                let found = false;
-                for (let j = 0; j < rooms[i].users.length; j++) {
-                    if (rooms[i].users[j].id === socket.id) {
-                        rooms[i].users[j] = {
-                            id: socket.id,
-                            name: user.name,
-                            iconId: user.iconId
-                        }
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (!found) {
-                    rooms[i].users.push({
-                        id: socket.id,
-                        name: user.name,
-                        iconId: user.iconId
-                    });
-                }
-                break;
-            }
+        let data = getUserInfo(socket.id);
+        if (data) {
+            data.name = user.name;
+            data.iconId = user.iconId;
+        } else {
+            getRoom(room).users.push({
+                id: socket.id,
+                name: user.name,
+                iconId: user.iconId
+            });
         }
     }
+    const chat = (msg, sendToAll = true) => {
+        if (!msg) {
+            return;
+        }
+        let tmp = getRoom(room);
+        if (tmp) {
+            let user = getUserInfo(socket.id);
+            let data = {
+                "id": (msg.id ? msg.id : socket.id),
+                "time": Date.now(),
+                "type": (msg.type ? msg.type : "light"),
+                "name": (msg.name ? msg.name : user.name),
+                "iconId": (msg.iconId ? msg.iconId : user.iconId),
+                "message": msg.message
+            };
+            tmp.history.push(data);
+            if (sendToAll) {
+                io.to(room).emit('chat message', data);
+            } else {
+                socket.broadcast.to(room).emit('chat message', data);
+            }
+        }
+
+    }
+
     let tmp = socket.handshake.headers.referer.match(/[\d\w]+/g);
     let room = tmp[tmp.length - 1];
     console.log('a user connected from room', room);
@@ -115,6 +149,7 @@ io.on('connection', (socket) => {
             id: room,
             users: [],
             history: [],
+            playing: false,
             rate: 1,
             src: "",
             time: 0
@@ -122,89 +157,90 @@ io.on('connection', (socket) => {
     }
 
     socket.emit('getStatus', socket.id, (data) => {
-        console.log("Client answered!!!", data);
-        updateStatus(data);
+        updateRoom(data);
         addUser(data);
+    });
+    socket.on('getStatus', (data, callback) => {
+        if (data) {
+            addUser(data);
+        }
+        callback(getRoom(room));
     });
 
     socket.on('disconnect', (data) => {
         console.log('user ' + socket.id + ' disconnected from ' + room + ':\n', data, rooms);
-        for (let i = 0; i < rooms.length; i++) {
-            if (rooms[i].id === room) {
-                if (rooms[i].users.length > 1) {
-                    for (let j = 0; j < rooms[i].users.length; j++) {
-                        socket.broadcast.to(room).emit("quited", {
-                            "type": 'quit',
-                            "name": rooms[i].users[j].name,
-                            "iconId": rooms[i].users[j].name.iconId,
-                            "reason": data
-                        });
-                        rooms[i].users = rooms[i].users.filter(item => item.id !== socket.id);
-                        break;
-                    }
-                } else {
-                    rooms = rooms.filter(item => item.id !== room);
-                }
-                break;
+        let tmp = getRoom(room);
+        if (tmp.users.length > 1) {
+            let user = getUserInfo(socket.id);
+            if (user) {
+                chat({
+                    "type": "warning",
+                    "message": "Hat den Raum verlassen"
+                });
+                tmp.users = tmp.users.filter(item => item.id !== socket.id);
             }
+        } else {
+            rooms = rooms.filter(item => item.id !== room);
         }
         console.log("after:\n", rooms);
     });
-    socket.on('chat message', (msg) => {
-        for (let i = 0; i < rooms.length; i++) {
-            if (rooms[i].id === room) {
-                rooms[i].history.push(msg);
-                break;
-            }
-        }
-        io.to(room).emit('chat message', msg);
-    });
+    socket.on('chat message', chat);
     socket.on('change video', (msg) => {
-        for (let i = 0; i < rooms.length; i++) {
-            if (rooms[i].id === room) {
-                rooms[i].src = msg.src;
-                rooms[i].time = 0;
-                rooms[i].rate = 1;
-                break;
-            }
-        }
+        updateRoom({
+            src: msg.src,
+            time: 0,
+            rate: 1
+        });
         socket.broadcast.to(room).emit('change video', msg);
+        chat({
+            "message": "Wechselt video zu: " + msg.src
+        });
     });
-    socket.on('timeupdate', (msg) => {
-        for (let i = 0; i < rooms.length; i++) {
-            if (rooms[i].id === room) {
-                rooms[i].time = msg.time;
-                break;
-            }
-        }
+    socket.on('timeupdate', (time) => {
+        updateRoom({time: time});
     });
-    socket.once('join', (data) => {
+    socket.once('join', (data, callback) => {
         addUser(data);
-        socket.broadcast.to(room).emit('join', data);
-    });
-    socket.on('status', (msg) => {
-        socket.broadcast.to(room).emit('status', msg);
+        chat({
+            "type": "warning",
+            "message": "Hat den Raum betreten"
+        }, false);
+        callback(getRoom(room));
     });
     socket.on('play failed', (msg) => {
-        io.to(room).emit('play failed', msg);
+        chat({
+            type: "danger",
+            message: "Wiedergabe fehlgeschlagen"
+        });
+        updateRoom({
+            playing: false
+        });
     });
-    socket.on('play', (msg) => {
-        socket.broadcast.to(room).emit('play', msg.time);
+    socket.on('play', (time) => {
+        updateRoom({
+            time: time,
+            playing: true
+        });
+        socket.broadcast.to(room).emit('play', time);
     });
-    socket.on('ratechange', (msg) => {
-        for (let i = 0; i < rooms.length; i++) {
-            if (rooms[i].id === room) {
-                rooms[i].rate = msg.rate;
-                break;
-            }
-        }
-        socket.broadcast.to(room).emit('ratechange', msg);
+    socket.on('ratechange', (rate) => {
+        updateRoom({
+            rate: rate
+        });
+        socket.broadcast.to(room).emit('ratechange', rate);
     });
-    socket.on('pause', (msg) => {
-        socket.broadcast.to(room).emit('pause', msg.time);
+    socket.on('pause', (time) => {
+        updateRoom({
+            time: time,
+            playing: false
+        });
+        socket.broadcast.to(room).emit('pause', time);
     });
-    socket.on('seek', (msg) => {
-        socket.broadcast.to(room).emit('seek', msg.time);
+    socket.on('seek', (time) => {
+        updateRoom({
+            time: time
+        });
+        socket.broadcast.to(room).emit('seek', time);
     });
 });
 

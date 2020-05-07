@@ -153,8 +153,6 @@ document.querySelector('form#controls button#random-button').addEventListener("c
     console.log("Trying to switch to random video");
     getRandomTopMusicByCountry("JP").then(data => {
         socket.emit('change video', {
-            "name": name,
-            "iconId": userIcon,
             "src": data
         });
         changeVideo(data);
@@ -171,44 +169,9 @@ function htmlEncode(input) {
 function chat(msg) {
     console.log("New Chat-message", msg);
     chatHistory.push(msg);
-    switch (msg.type) {
-        case 'join':
-            if (!msg.color) {
-                msg.color = "bg-warning";
-            }
-            if (!msg.message) {
-                msg.message = "Trat dem Raum bei";
-            }
-            break;
-        case "quit":
-            if (!msg.color) {
-                msg.color = "bg-warning";
-            }
-            msg.message = 'Hat den Raum verlassen' + msg.reason;
-            break;
-        case "playbackError":
-            if (!msg.color) {
-                msg.color = "bg-danger";
-            }
-            if (!msg.message) {
-                msg.message = "Failed to play video: " + msg.error;
-            }
-            break;
-        case "changeVideo":
-            if (!msg.color) {
-                msg.color = "bg-success";
-            }
-            msg.message = 'Played: <a href="' + msg.src + '" target="_blank">' + msg.src + '</a>';
-            break;
-        default:
-            if (!msg.color) {
-                msg.color = "bg-light";
-            }
-            break;
-    }
     let tmp = document.querySelector('#messages');
     tmp.innerHTML += `
-        <li class="media ` + msg.color + ` mb-2 rounded">
+        <li class="media bg-` + msg.type + ` mb-2 rounded">
             <div class="rounded bg-light p-1 m-1 mr-0">
                 ` + icon(msg.iconId) + `
             </div>
