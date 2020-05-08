@@ -6,15 +6,12 @@ Teste es doch einfach mal auf [https://watch.agent77326.de/](https://watch.agent
 # Haupt-Features
 - Play-/Pause- und Seek-Events werden mit allen Teilnehmern synchronisiert
 - Chat Funktion mit momentan einer Befehlsfunktion
-- Keine Werbung, kein Tracking, keine Daten auf dem Server (nur temporär die Client-Id)
-Alles wird zwischen den Teilnehmern gesyncht und der Server fungiert als reiner Dummy
+- Keine Werbung, kein Tracking, keine dauerhafte Daten auf dem Server
 - Hot-Swap, Teilnehmer treten automatisch ihrem Raum wieder bei, falls der Server neugestartet wird.
 Während eines Neustarts können natürlich keine Nachrichten übertragen werden
 - 160 verschiendene Icons von [Icons8](https://icons8.com/) für den Chat zur Auswahl
-- Beim Joinen wird von den anderen Teilnehmern automatisch das aktuelle Video, der Fortschritt sowie der Chat-Verlauf geholt
-
-# Chat-Befehle
-- `!play [url]` spielt die Ressource in <code>[url]</code> ab
+- Spiele ein zufälliges Musikvideo mit einem Mausklick ab
+- Beim Joinen wird automatisch das aktuelle Video, der Fortschritt sowie der Chat-Verlauf geholt
 
 # Unterstützte Medien-Formate
 - Youtube-Videos werden unterstützt, einfach den Link zur Seite einfügen
@@ -22,7 +19,4 @@ Während eines Neustarts können natürlich keine Nachrichten übertragen werden
 - Direkt verlinkte Video-Dateien wie beispielsweise `https://example.com/[...]/video.mp4` oder `[...]/video.webm`
 
 # Bekannte Probleme
-- Die Autoplay-Policies der Browser erzwingen meistens eine vorherige Interaktion mit dem Video-Element
-- Bei Youtube wird das Video nicht mehr synchron abgespielt, falls die Abspielrate geändert wird
-- Youtube forciert das Abspielen ab der Stelle deiner History
-- Der Chat ist gefährlich... pass also auf mit wem du in einem Raum bist
+- Youtube forciert das Abspielen ab der Stelle deiner History oder von vorne (wenn ein neuer User joint)

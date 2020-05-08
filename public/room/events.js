@@ -84,8 +84,7 @@ window.onload = () => {
     player = videojs('video-player', {
         controls: true,
         fill: true,
-        autoplay: true,
-        muted: true,
+        autoplay: false,
         youtube: {
             ytControls: 2
         }
