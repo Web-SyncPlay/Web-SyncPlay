@@ -102,13 +102,16 @@ function changeVideo(url, time = 0) {
 
         changeVideoTimeout();
         if (isYoutube(url)) {
+            console.log("New vid is YT");
             if (!isYoutube(videoSrc)) {
                 player.controlBar.hide();
                 //player.bigPlayButton.hide();
             }
             player.src({type: "video/youtube", src: url});
         } else {
+            console.log("new vid is not YT");
             if (isYoutube(videoSrc)) {
+                console.log("old vid is YT");
                 player.controlBar.show();
                 //player.bigPlayButton.show();
             }

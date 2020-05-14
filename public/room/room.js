@@ -14,10 +14,11 @@ function isValidHttpUrl(string) {
     try {
         url = new URL(string);
     } catch (_) {
+        console.log("Given url is not valid!");
         return false;
     }
-
-    return url.protocol === "http:" || url.protocol === "https:";
+    console.log("Valid");
+    return true;
 }
 
 let roomId = getRoomId();
