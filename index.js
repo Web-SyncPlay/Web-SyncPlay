@@ -119,8 +119,8 @@ io.on('connection', (socket) => {
                 "id": (msg.id ? msg.id : socket.id),
                 "time": Date.now(),
                 "type": (msg.type ? msg.type : "light"),
-                "name": (msg.name ? msg.name : user.name),
-                "iconId": (msg.iconId ? msg.iconId : user.iconId),
+                "name": (msg.name ? msg.name : (user ? user.name : "")),
+                "iconId": (msg.iconId ? msg.iconId : (user ? user.iconId : "")),
                 "message": msg.message
             };
             tmp.history.push(data);
