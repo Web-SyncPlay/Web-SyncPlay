@@ -40,6 +40,7 @@ function join() {
             console.log("Recieved status from remote", data);
             if (data.src) {
                 changeVideo(data.src, data.time);
+                play(data.time + 1);
             } else {
                 getRandomTopMusicByCountry("JP").then(video => {
                     if (!videoSrc) {
@@ -50,6 +51,7 @@ function join() {
                             "iconId": userIcon,
                             "src": video
                         });
+                        play();
                     }
                 }).catch((e) => {
                     console.error("Failed to get random youtube video", e);
@@ -84,7 +86,9 @@ window.onload = () => {
     player = videojs('video-player', {
         controls: true,
         fill: true,
-        autoplay: false,
+        muted: true,
+        playbackRates: [0.5, 1, 1.5, 2],
+        suppressNotSupportedError: true,
         youtube: {
             ytControls: 2
         }
