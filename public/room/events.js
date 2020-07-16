@@ -1,17 +1,14 @@
 function updateStatus(data) {
     console.debug("status-update recieved", data);
     if (data.users.length === 1 && data.src === "") {
-        console.log("No Player i guess.... playing https://youtu.be/r5w-C4kOJbg");
-        changeVideo("https://youtu.be/r5w-C4kOJbg");
-        socket.emit('change video', "https://youtu.be/r5w-C4kOJbg");
-        /*
+        console.log("First user, fetching random video");
         getRandomTopMusicByCountry("JP").then(video => {
             console.log("Playing random yt-video", video);
             changeVideo(video);
             socket.emit('change video', video);
         }).catch((e) => {
             console.error("Failed to get random youtube video", e);
-        });*/
+        });
     } else {
         removeClickedEvent();
         if (room.playing !== data.playing || player.playing !== room.playing) {
@@ -169,7 +166,6 @@ let playerReady = false;
             answer(room);
         });
 
-    //document.querySelector("#video-player").style = "";
     document.querySelector("#controls").style = "";
     document.querySelector("#join-loader").remove();
 })();
