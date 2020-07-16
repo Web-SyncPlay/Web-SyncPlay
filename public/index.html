@@ -9,14 +9,16 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
           integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
     <title>Studi-Watch</title>
+    <link href="https://cdn.jsdelivr.net/npm/video.js/dist/video-js.min.css" rel="stylesheet">
     <link rel="stylesheet" href="index.css">
 </head>
 <body>
-<nav class="navbar sticky-top navbar-expand-md navbar-dark bg-dark mb-1">
+<nav class="navbar sticky-top navbar-dark mb-1">
     <a class="navbar-brand" href="../">
         Studi-Watch
     </a>
 </nav>
+<canvas id="background" class="position-fixed vh-100 vw-100" style="top:0; z-index: -1;"></canvas>
 
 <div class="modal-dialog" role="document">
     <div class="modal-content bg-dark">
@@ -43,43 +45,47 @@
     </div>
 </div>
 
-<footer class="footer bg-dark pb-1 pt-3">
+<footer class="footer fixed-bottom bg-dark pb-1 pt-3">
     <div class="container">
         <p>
-            Es sollten alle modernen Browser unterstützt sein, welche mindestens <a href="https://caniuse.com/#feat=es6" target="_blank">ECMAScript 2015 (ES6)</a> ausführen können.
+            Es sollten alle modernen Browser unterstützt sein, welche mindestens <a href="https://caniuse.com/#feat=es6"
+                                                                                    target="_blank">ECMAScript 2015
+            (ES6)</a> ausführen können.
             JavaScript muss zwingend aktiviert sein.
         </p>
         <hr>
-        <h3>Impressum</h3>
+        <h3 id="impressum">Impressum</h3>
         <p>
-            Keine der verwendeten Medien ist in meinem Besitz oder von mir erstellt worden und gehört Ihren respektiven Erstellern.
+            Keine der verwendeten Medien ist in meinem Besitz oder von mir erstellt worden und gehört Ihren respektiven
+            Erstellern.
             Für eingebundenen Medien und Inhalte, haften jeweils deren Betreiber oder Ersteller.
-            Nachrichten die über die Chat-Funktion versendet werden unterliegen der Verantwortung des Absenders.
-            Keine der versendeten Daten werden von diesem Server aufgezeichnet oder verarbeitet und befinden sich zur Übermittlung an die anderen Teilnehmer lediglich im Cache.
-            Ausgenommen davon sind gesetzlich verpflichtende Daten, wie der Zeitpunkt und IP-Adresse einzelner Webseitenaufrufe.
-            Es findet eine temporäre Identifikation statt, welche serverseitig lediglich im Zwischenspeicher aufbewahrt werden.
+            Es werden keine personenbezogenen Daten auf diesem Server aufgezeichnet oder verarbeitet.
+            Ausgenommen davon sind gesetzlich verpflichtende Daten, wie der Zeitpunkt und IP-Adresse einzelner
+            Webseitenaufrufe in den Log-Dateien.
+            Es findet eine temporäre Identifikation statt, welche serverseitig lediglich im Zwischenspeicher aufbewahrt
+            werden.
         </p>
         <ul>
             <li>
                 Copyright (c) 2020, Leo Jung
             </li>
             <li>
-                <a href="https://getbootstrap.com/" target="_blank">Bootstrap 4</a>, Code licensed MIT, docs CC BY 3.0
+                <a href="https://getbootstrap.com/" target="_blank">Bootstrap 4</a>, MIT License, docs CC BY 3.0
             </li>
             <li>
                 Icons by <a href="https://icons8.com/" target="_blank">Icons8</a>
             </li>
             <li>
-                <a href="https://jquery.org/" target="_blank">jQuery</a>, Code licensed MIT
+                <a href="https://jquery.org/" target="_blank">jQuery</a>, MIT License
             </li>
             <li>
-                <a href="https://popper.js.org/" target="_blank">Popperjs</a>, Code licensed MIT
+                <a href="https://popper.js.org/" target="_blank">Popperjs</a>, MIT License
             </li>
             <li>
-                <a href="https://videojs.com/" target="_blank">video.js</a>, Apache License, Version 2.0
+                <a href="https://github.com/sampotts/plyr" target="_blank">Plyr</a>, MIT License
             </li>
             <li>
-                <a href="https://socket.io/" target="_blank">Socket.IO</a>, Code licensed MIT
+                <a href="https://socket.io/" target="_blank">Socket.IO</a>, MIT License
             </li>
         </ul>
     </div>
@@ -106,5 +112,6 @@
         return false;
     });
 </script>
+<script src="background.js"></script>
 </body>
 </html>

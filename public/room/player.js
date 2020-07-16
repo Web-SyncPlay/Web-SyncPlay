@@ -1,37 +1,48 @@
-let videoSrc, player, playerLoaded = false, isPlaying = false;
-
 function isYoutube(url) {
     return url && url.match(/^https?:\/\/((w{3}.)?youtube.com\/watch\?v=|youtu.be\/)[\D\w]+/);
 }
 
-let preventTimer, prevent = false;
+let clickedTimer, clicked = false, seekDrag = false, firstTimeInteracted = true;
 
-function preventNextEvent() {
-    prevent = true;
-    preventTimer = setTimeout(() => removePreventEvent(), 40);
+function removeClickedEvent() {
+    if (clickedTimer) {
+        clearTimeout(clickedTimer);
+    }
+    clicked = false;
 }
 
-function removePreventEvent() {
-    if (preventTimer) {
-        clearTimeout(preventTimer);
+function clickedEvent() {
+    console.log("User-Interaction registered");
+    clicked = true;
+    if (firstTimeInteracted) {
+        console.log("First-Time, disable mute");
+        firstTimeInteracted = false;
+        $(document.querySelector("#mute-info>div.alert")).alert('close');
+        setTimeout(() => {
+            if (player.muted) {
+                player.muted = false;
+            }
+        }, 100);
     }
-    prevent = false;
+    clickedTimer = setTimeout(() => removeClickedEvent(), 200);
+}
+
+function clickedEndedEvent() {
+    console.log("User-Interaction ended");
+    if (seekDrag) {
+        seekDrag = false;
+        console.log("Emitting event seeking to ", player.currentTime);
+        socket.emit('seeking', player.currentTime);
+    }
 }
 
 function isAtTime(time) {
-    let t = player.currentTime();
-    return t + 2 > time && time + 2 > t;
+    return Math.abs(player.currentTime - time) < 2;
 }
 
 function playError(e) {
-    removePreventEvent();
-    socket.emit('play failed', {
-        "type": 'playbackError',
-        "roomId": roomId,
-        "name": name,
-        "iconId": userIcon,
-        "error": e.message
-    });
+    removeClickedEvent();
+    socket.emit('play failed', e.message);
 }
 
 function play(time = -1) {
@@ -40,15 +51,12 @@ function play(time = -1) {
         console.log("Not at time, seeking");
         seek(time);
     }
-    if (isPlaying) {
-        console.log("Already playing");
-        return;
-    }
 
-    setTimeout(() => {
-        preventNextEvent();
+    if (player.playing) {
+        console.log("Already playing");
+    } else {
         player.play()
-    }, 20);
+    }
 }
 
 function pause(time = -1) {
@@ -57,70 +65,53 @@ function pause(time = -1) {
         console.log("Not at time, seeking");
         seek(time);
     }
-    if (!isPlaying) {
-        console.log("Already paused");
-        return;
-    }
 
-    setTimeout(() => {
-        preventNextEvent();
+    if (player.paused) {
+        console.log("Already paused");
+    } else {
         player.pause()
-    }, 20);
+    }
 }
 
 function seek(time) {
     console.log("Seek-Command to ", time);
-    player.currentTime(time);
+    player.currentTime = time;
 }
 
-let changeVideoTimer, preventChangeVideoTimeout = false;
-
-function changeVideoTimeout() {
-    preventChangeVideoTimeout = true;
-    changeVideoTimer = setTimeout(removeChangeVideoTimeout, 600);
+function getFileExtension(url) {
+    return url.slice((url.lastIndexOf(".") - 1 >>> 0) + 2);
 }
 
-function removeChangeVideoTimeout() {
-    if (changeVideoTimer) {
-        clearTimeout(changeVideoTimer);
-    }
-    preventChangeVideoTimeout = false;
-}
-
-function changeVideo(url, time = 0) {
-    console.log("Change video to " + url + " at time: ", time);
-    if (url === videoSrc && isAtTime(time)) {
-        console.log("Already correct video and time");
-        return;
-    }
-
-    if (playerLoaded) {
-        if (url === videoSrc) {
-            seek(time);
-            return;
-        }
-
-        changeVideoTimeout();
+function changeVideo(url) {
+    console.log("Change video to " + url);
+    if (playerReady) {
+        let newSource;
         if (isYoutube(url)) {
             console.log("New vid is YT");
-            if (!isYoutube(videoSrc)) {
-                player.controlBar.hide();
-                //player.bigPlayButton.hide();
-            }
-            player.src({type: "video/youtube", src: url});
+            newSource = {
+                type: 'video',
+                sources: [{
+                    provider: "youtube",
+                    src: url
+                }]
+            };
         } else {
-            console.log("new vid is not YT");
-            if (isYoutube(videoSrc)) {
-                console.log("old vid is YT");
-                player.controlBar.show();
-                //player.bigPlayButton.show();
-            }
-            player.src({src: url});
+            let extension = getFileExtension(url);
+            console.log("new vid is not YT, extension: ", extension);
+            newSource = {
+                type: "video",
+                sources: [{
+                    src: url
+                }]
+            };
         }
-        videoSrc = url;
+        if (newSource === player.source) {
+            console.log("Already correct video");
+        } else {
+            player.source = newSource;
+        }
     } else {
-        console.log("Player is not ready, retry");
-        setTimeout(this(url, time), 10);
+        setTimeout(() => changeVideo(url), 50);
     }
 }
 
@@ -145,3 +136,54 @@ async function getRandomTopMusicByCountry(countryCode) {
     const result = await getTopMusicListByCountry(countryCode);
     return "https://youtu.be/" + result[getRandomIndex(result)];
 }
+
+/*
+let statusUpdateCooldown = false, statusUpdateCooldownTimer, changedVideo = false, changedVideoTimer;
+function enforceStatus() {
+    if (statusUpdateCooldownTimer) {
+        clearTimeout(statusUpdateCooldownTimer);
+    }
+    if (changedVideoTimer) {
+        clearTimeout(changedVideoTimer);
+    }
+
+    if (statusUpdateCooldown) {
+        statusUpdateCooldown = false;
+        statusUpdateCooldownTimer = setTimeout(enforceStatus, 400);
+        return;
+    }
+
+    let requiredForce = false;
+    if (room.rate !== player.playbackRate()) {
+        console.log("force rate ", player.playbackRate(), " -> ", room.rate);
+        player.playbackRate(room.rate);
+        requiredForce = true;
+    }
+    if (room.src !== player.currentSrc()) {
+        console.log("force video ", player.currentSrc(), " -> ", room.src);
+        changeVideo(room.src, room.time);
+        requiredForce = true;
+    }
+    if (!isAtTime(room.time)) {
+        console.log("force time ", player.currentTime(), " -> ", room.time);
+        seek(room.time);
+        requiredForce = true;
+    }
+
+    if (!requiredForce && (room.playing !== isPlaying || isPlaying === player.paused)) {
+        console.log("force playing ", isPlaying, " -> ", room.playing);
+        if (room.playing) {
+            play(room.time);
+        } else {
+            pause(room.time);
+        }
+        statusUpdateCooldownTimer = setTimeout(enforceStatus, 400);
+    } else if (changedVideo) {
+        if (requiredForce) {
+            changedVideoTimer = setTimeout(enforceStatus, 400);
+        } else {
+            console.log("Video safely loaded (propably...)");
+            changedVideo = false;
+        }
+    }
+}*/

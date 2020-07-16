@@ -1,149 +1,175 @@
-
-function join() {
-    if (userIcon) {
-        console.log("Trying to join Room", roomId);
-        socket
-            .on('chat message', chat)
-            .on('play', play)
-            .on('play failed', function (msg) {
-                if (isPlaying) {
-                    pause();
-                }
-                chat(msg);
-            })
-            .on('pause', pause)
-            .on('change video', function (msg) {
-                changeVideo(msg.src);
-            })
-            .on('getStatus', (id, answer) => {
-                console.log("Server requested current status");
-                answer({
-                    "name": name,
-                    "src": videoSrc,
-                    "playing": isPlaying,
-                    "time": player.currentTime(),
-                    "iconId": userIcon,
-                    "history": chatHistory,
-                    "rate": player.playbackRate()
-                });
-            })
-            .on('ratechange', (data) => {
-                console.log('Changing playback rate', data);
-                preventNextEvent();
-                player.playbackRate(data.rate);
-            });
-
-        socket.emit('join', {
-            name: name,
-            iconId: userIcon
-        }, (data) => {
-            console.log("Recieved status from remote", data);
-            if (data.src) {
-                changeVideo(data.src, data.time);
-                play(data.time + 1);
-            } else {
-                getRandomTopMusicByCountry("JP").then(video => {
-                    if (!videoSrc) {
-                        console.log("Playing random yt-video", video);
-                        changeVideo(video);
-                        socket.emit('change video', {
-                            "name": name,
-                            "iconId": userIcon,
-                            "src": video
-                        });
-                        play();
-                    }
-                }).catch((e) => {
-                    console.error("Failed to get random youtube video", e);
-                });
-            }
-            data.history.forEach(item => {
-                chat(item);
-            });
-            document.querySelector("#chat").style = "";
-            document.querySelector("#player").style = "";
-            document.querySelector("#controls").style = "";
-            document.querySelector("#join-loader").remove();
-            if (!data.playing && !isPlaying) {
-                pause();
-            }
-        });
+function updateStatus(data) {
+    console.debug("status-update recieved", data);
+    if (data.users.length === 1 && data.src === "") {
+        console.log("No Player i guess.... playing https://youtu.be/r5w-C4kOJbg");
+        changeVideo("https://youtu.be/r5w-C4kOJbg");
+        socket.emit('change video', "https://youtu.be/r5w-C4kOJbg");
+        /*
+        getRandomTopMusicByCountry("JP").then(video => {
+            console.log("Playing random yt-video", video);
+            changeVideo(video);
+            socket.emit('change video', video);
+        }).catch((e) => {
+            console.error("Failed to get random youtube video", e);
+        });*/
     } else {
-        console.log("still waiting for userIcon, retry to join");
-        setTimeout(join, 50);
-    }
-}
-
-let socket = io();
-
-window.onload = () => {
-    document.querySelector("#nameModal input").value = defaultNameList[getRandomIndex(defaultNameList)];
-    $("#nameModal").modal({
-        keyboard: false,
-        backdrop: 'static'
-    });
-
-    player = videojs('video-player', {
-        controls: true,
-        fill: true,
-        muted: true,
-        playbackRates: [0.5, 1, 1.5, 2],
-        suppressNotSupportedError: true,
-        youtube: {
-            ytControls: 2
-        }
-    }, () => {
-        player.on('timeupdate', (event) => {
-            socket.emit('timeupdate', player.currentTime());
-        });
-        player.on('ratechange', (event) => {
-            if (!prevent && !preventChangeVideoTimeout) {
-                socket.emit('ratechange', {
-                    "rate": player.playbackRate()
+        removeClickedEvent();
+        if (room.playing !== data.playing || player.playing !== room.playing) {
+            console.log("playing changed to ", data.playing);
+            if (data.playing) {
+                play(data.lastSeek);
+                socket.emit('userUpdate', {
+                    playing: true,
+                    time: player.currentTime
                 });
-            } else if (prevent) {
-                removePreventEvent();
+            } else {
+                pause(data.lastSeek);
+                socket.emit('userUpdate', {
+                    playing: false,
+                    time: player.currentTime
+                });
             }
-            console.log('ratechange', event);
-        });
-        player.on('play', () => {
-            console.log("played at ", player.currentTime());
-            if (!prevent && !preventChangeVideoTimeout) {
-                socket.emit('play', player.currentTime());
-            } else if (prevent) {
-                removePreventEvent();
+        }
+        if (room.rate !== data.rate) {
+            console.log("rate changed to ", data.rate);
+            player.speed = data.rate;
+        }
+        if (room.src !== data.src && data.src !== "") {
+            console.log("video changed to ", data.src);
+            changeVideo(data.src);
+        }
+        if (room.lastSeek !== data.lastSeek) {
+            console.log("last seek changed to ", data.lastSeek);
+            if (!isAtTime(data.lastSeek)) {
+                seek(data.lastSeek);
             }
-        });
-        player.on('pause', () => {
-            console.log("paused at ", player.currentTime());
-            if (!prevent && !preventChangeVideoTimeout) {
-                socket.emit('pause', player.currentTime());
-            } else if (prevent) {
-                removePreventEvent();
-            }
-        });
-        player.on('error', playError);
-        player.on(['waiting', 'pause'], function () {
-            isPlaying = false;
-        });
-
-        player.on('playing', function () {
-            isPlaying = true;
-        });
-
-        playerLoaded = true;
-        console.log("Video-player is ready");
-    });
-
-    gapi.load("client", function () {
-        gapi.client.init({
-            apiKey: "AIzaSyDU6J3cOuf2HecO99nguAXl41cd4hxYJUs"
-        });
-        return gapi.client.load(
-            "https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest"
-        ).then(
-            () => console.log("GAPI client loaded for API"),
-            err => console.error("Error loading GAPI client for API", err)
-        );
-    });
+        }
+    }
+    room = data;
+    updateUserTab();
 }
+
+
+gapi.load("client", function () {
+    gapi.client.init({
+        apiKey: "AIzaSyDU6J3cOuf2HecO99nguAXl41cd4hxYJUs"
+    });
+    return gapi.client.load(
+        "https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest"
+    ).then(
+        () => console.log("GAPI client loaded for API"),
+        err => console.error("Error loading GAPI client for API", err)
+    );
+});
+
+let playerReady = false;
+(function () {
+    const player = new Plyr('#video-player', {
+        muted: true,
+        controls: [
+            'play-large', // The large play button in the center
+            'play', // Play/pause playback
+            'progress', // The progress bar and scrubber for playback and buffering
+            'current-time', // The current time of playback
+            'mute', // Toggle mute
+            'volume', // Volume control
+            'captions', // Toggle captions
+            'settings', // Settings menu
+            'pip', // Picture-in-picture (currently Safari only)
+            'airplay', // Airplay (currently Safari only)
+            'download', // Show a download button with a link to either the current source or a custom URL you specify in your options
+            'fullscreen', // Toggle fullscreen
+        ]
+    });
+    window.player = player;
+    player.once('ready', event => {
+        console.log("Player ready", event.detail.plyr);
+        playerReady = true;
+        document.querySelector("div.plyr").addEventListener("mousedown", clickedEvent, true);
+        document.querySelector("div.plyr").addEventListener("touchstart", clickedEvent, true);
+        document.querySelector("div.plyr").addEventListener("mouseup", clickedEndedEvent, true);
+        document.querySelector("div.plyr").addEventListener("touchend", clickedEndedEvent, true);
+    });
+    player.on('ready', event => {
+        if (player.source) {
+            if (room.playing !== player.playing) {
+                let time = firstTimeInteracted ? room.users[0].time : room.lastSeek;
+                if (room.playing) {
+                    play(time);
+                    socket.emit('userUpdate', {
+                        playing: true,
+                        time: time
+                    });
+                } else {
+                    pause(time);
+                    socket.emit('userUpdate', {
+                        playing: false,
+                        time: time
+                    });
+                }
+            }
+        }
+    });
+    player.on('play', () => {
+        console.log("event played at ", player.currentTime);
+        if (clicked) {
+            removeClickedEvent();
+            console.log("Emitting event played at ", player.currentTime);
+            socket.emit('play', player.currentTime);
+        }
+    });
+    player.on('pause', () => {
+        console.log("event paused at ", player.currentTime);
+        if (clicked) {
+            removeClickedEvent();
+            window.pausedForSeek = true;
+            setTimeout(() => {
+                if (window.pausedForSeek) {
+                    console.log("Emitting event paused at ", player.currentTime);
+                    socket.emit('pause', player.currentTime);
+                    window.pausedForSeek = false;
+                }
+            }, 20);
+        }
+    });
+    player.on('seeking', (event) => {
+        console.log("event seeking to ", player.currentTime);
+        if (clicked || window.pausedForSeek) {
+            if (window.pausedForSeek) {
+                window.pausedForSeek = false;
+            }
+            if (clicked) {
+                removeClickedEvent();
+            }
+            seekDrag = true;
+        }
+    });
+    player.on('ratechange', () => {
+        console.log('event ratechange', player.speed);
+        if (clicked) {
+            removeClickedEvent();
+            console.log("Emitting event ratechange", player.speed);
+            socket.emit('ratechange', player.speed);
+        }
+    });
+    player.on('timeupdate', () => socket.emit('timeupdate', player.currentTime));
+    player.on('error', playError);
+
+
+    const socket = io();
+    window.socket = socket;
+    socket
+        .on('status', updateStatus)
+        .on('userStatus', (users) => {
+            room.users = users;
+            updateUserTab();
+        })
+        .on('getStatus', (answer) => {
+            console.log("Server requested current status");
+            answer(room);
+        });
+
+    //document.querySelector("#video-player").style = "";
+    document.querySelector("#controls").style = "";
+    document.querySelector("#join-loader").remove();
+})();

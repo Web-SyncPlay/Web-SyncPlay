@@ -2,15 +2,74 @@ let app = require('express')();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
     transports: ['polling'],
-    pingInterval: 10000
+    pingTimeout: 3000,
+    pingInterval: 5000
 });
 const fs = require('fs');
 const uniqid = require('uniqid');
+const PORT = process.env.PORT || 8081;
 
 
+const getRandomItem = (array) => {
+    return array[Math.round(Math.random() * (array.length - 1))];
+}
+let defaultNameList = [
+    "Ein wildes Tier",
+    "Rabauken Hamster",
+    "Ein, äh.. Dingens-Bums",
+    "Fetter fetter Adler",
+    "Mit Eleganz in den Keller",
+    "Ein Tier wie jedes Andere",
+    "Das etwas Andere",
+    "Mein Name hat kein Gewicht",
+    "Der Mäuse-Druide",
+    "Eine Trollelfe",
+    "Die zarte Orc-Ballerina",
+    "Eine fliegende Maus",
+    "Ein fliegendes Zebra",
+    "Eine drehende Ananas",
+    "Das majestätische Stück Torte",
+    "Ein farbenfrohes Transparent",
+    "Das karierte Zebra",
+    "Die fehlende Lösung",
+    "Das samte Sandpapier",
+    "Der verbrannte Kuchen",
+    "Das unsichtbare Unicorn",
+    "Zu Ihren Diensten",
+    "Etwas cooles Dingens",
+    "Das vergessene Unicorn",
+    "Das Muffin in der Ecke",
+    "Ein unsichtbares Prachtstück"
+];
+
+// Icons
+let userIcons = [];
+fs.readdir('public/icons', (err, files) => {
+    files.forEach(file => {
+        userIcons.push(file);
+    });
+});
+app.get('/icons.json', (req, res) => {
+    res.json(userIcons);
+});
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/public/index.html');
+});
+
+const generateId = (length = 4) => {
+    let result = "", chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.round(Math.random() * (chars.length - 1)))
+    }
+    return result;
+}
 // Rooms
 app.get('/room/generate', (req, res) => {
-    res.status(307).redirect(uniqid());
+    let id;
+    do {
+        id = generateId();
+    } while(rooms.some(room => room.id === id));
+    res.status(307).redirect(id);
 });
 app.get('/room/room.css', (req, res) => {
     res.sendFile(__dirname + '/public/room/room.css');
@@ -27,63 +86,32 @@ app.get('/room/events.js', (req, res) => {
 app.get('/room/:id', (req, res) => {
     res.sendFile(__dirname + '/public/room/room.html');
 });
-app.get('/room/:id/info.json', (req, res) => {
-    res.json({
-        id: req.params.id
-    });
-});
-
-
-// Icons
-let userIcons = [];
-fs.readdir('public/icons', (err, files) => {
-    files.forEach(file => {
-        userIcons.push(file);
-    });
-});
-app.get('/icons.json', (req, res) => {
-    res.json(userIcons);
-});
-app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/public/index.html');
-});
 
 // Socket-Communication
 let rooms = [];
 io.on('connection', (socket) => {
-    const getRoom = (room) => {
+    // room-joining
+    let tmp = socket.handshake.headers.referer.match(/[\d\w]+/g);
+    let room = tmp[tmp.length - 1];
+    const log = (...item) => {
+        let d = new Date();
+        let time = d.getFullYear() + "." + d.getMonth() + "." + d.getDay() + " " + d.getHours() + ":" + d.getMinutes() + ":" + d.getSeconds();
+        console.log(time, "Room", room + ", ", ...item);
+        fs.appendFile('log.txt', time + " Room " + room + ", " + item.join(), function (err) {
+            if (err) throw err;
+        });
+    }
+    socket.join(room);
+
+    const getRoom = (id = room) => {
         for (let i = 0; i < rooms.length; i++) {
-            if (rooms[i].id === room) {
+            if (rooms[i].id === id) {
                 return rooms[i];
             }
         }
     };
-    const updateRoom = (data) => {
-        if (!data) {
-            return;
-        }
-
-        let tmp = getRoom(room);
-        if (tmp) {
-            if (data.history && tmp.history.length < data.history.length) {
-                tmp.history = data.history;
-            }
-            if (data.src && tmp.src !== data.src) {
-                tmp.src = data.src;
-            }
-            if (data.rate && tmp.rate !== data.rate) {
-                tmp.rate = data.rate;
-            }
-            if (data.time && tmp.time !== data.time) {
-                tmp.time = data.time;
-            }
-            if (data.playing && tmp.playing !== data.playing) {
-                tmp.playing = data.playing;
-            }
-        }
-    }
-    const getUserInfo = (id) => {
-        let tmp = getRoom(room);
+    const getUserInfo = (id = socket.id) => {
+        let tmp = getRoom();
         if (tmp) {
             for (let i = 0; i < tmp.users.length; i++) {
                 if (tmp.users[i].id === id) {
@@ -91,167 +119,169 @@ io.on('connection', (socket) => {
                 }
             }
         }
-    }
-    const addUser = (user) => {
-        if (!user) {
-            return;
+    };
+    const updateRoom = (data) => {
+        let tmp = getRoom();
+        if (typeof data.src !== 'undefined' && tmp.src !== data.src) {
+            log("Updated src ", tmp.src, " -> ", data.src);
+            tmp.src = data.src;
         }
-        let data = getUserInfo(socket.id);
-        if (data) {
-            data.name = user.name;
-            data.iconId = user.iconId;
-        } else {
-            getRoom(room).users.push({
-                id: socket.id,
-                name: user.name,
-                iconId: user.iconId
-            });
+        if (typeof data.rate !== 'undefined' && tmp.rate !== data.rate) {
+            log("Updated rate ", tmp.rate, " -> ", data.rate);
+            tmp.rate = data.rate;
         }
-    }
-    const chat = (msg, sendToAll = true) => {
-        if (!msg) {
-            return;
+        if (typeof data.playing !== 'undefined' && tmp.playing !== data.playing) {
+            log("Updated playing ", tmp.playing, " -> ", data.playing);
+            tmp.playing = data.playing;
         }
-        let tmp = getRoom(room);
-        if (tmp) {
-            let user = getUserInfo(socket.id);
-            let data = {
-                "id": (msg.id ? msg.id : socket.id),
-                "time": Date.now(),
-                "type": (msg.type ? msg.type : "light"),
-                "name": (msg.name ? msg.name : (user ? user.name : "")),
-                "iconId": (msg.iconId ? msg.iconId : (user ? user.iconId : "")),
-                "message": msg.message
-            };
-            tmp.history.push(data);
-            if (sendToAll) {
-                io.to(room).emit('chat message', data);
-            } else {
-                socket.broadcast.to(room).emit('chat message', data);
-            }
+        if (typeof data.lastSeek !== 'undefined' && tmp.lastSeek !== data.lastSeek) {
+            log("Updated lastSeek ", tmp.lastSeek, " -> ", data.lastSeek);
+            tmp.lastSeek = data.lastSeek;
         }
 
+        emitStatus();
+    };
+    const emitStatus = () => {
+        io.to(room).emit('status', getRoom());
+    };
+    const emitUserStatus = () => {
+        io.to(room).emit('userStatus', getRoom().users);
     }
 
-    let tmp = socket.handshake.headers.referer.match(/[\d\w]+/g);
-    let room = tmp[tmp.length - 1];
-    console.log('a user connected from room', room);
-    socket.join(room);
-
-    let foundRoom = false;
-    for (let i = 0; i < rooms.length; i++) {
-        if (rooms[i].id === room) {
-            foundRoom = true;
-        }
-    }
-    if (!foundRoom) {
+    if (!getRoom()) {
+        log('creating new room');
         rooms.push({
             id: room,
             users: [],
-            history: [],
             playing: false,
             rate: 1,
+            lastSeek: 0,
             src: "",
-            time: 0
         });
     }
-
-    socket.emit('getStatus', socket.id, (data) => {
-        updateRoom(data);
-        addUser(data);
+    let name = getRandomItem(defaultNameList), icon = getRandomItem(userIcons);
+    while (getRoom().users.some(user => user.name === name)) {
+        name = getRandomItem(defaultNameList);
+    }
+    while (getRoom().users.some(user => user.icon === icon)) {
+        icon = getRandomItem(userIcons);
+    }
+    getRoom().users.push({
+        id: socket.id,
+        name: name,
+        icon: icon,
+        time: 0,
+        playing: false,
+        error: ""
     });
-    socket.on('getStatus', (data, callback) => {
-        if (data) {
-            addUser(data);
-        }
-        callback(getRoom(room));
-    });
+    log('user ' + socket.id + ' joined');
+    log(name, icon);
 
-    socket.on('disconnect', (data) => {
-        console.log('user ' + socket.id + ' disconnected from ' + room + ':\n', data, rooms);
-        let tmp = getRoom(room);
-        if (tmp.users.length > 1) {
-            let user = getUserInfo(socket.id);
-            if (user) {
-                chat({
-                    "type": "warning",
-                    "message": "Hat den Raum verlassen"
-                });
-                tmp.users = tmp.users.filter(item => item.id !== socket.id);
-            }
+    if (getRoom().src === "" && getRoom().users.length === 1) {
+        log("Room seems new, requesting data from ", socket.id);
+        socket.emit('getStatus', (data) => {
+            log("data came from ", socket.id);
+            updateRoom(data);
+        });
+    } else {
+        // TODO: Zeiten abfragen von den Usern
+        emitStatus();
+    }
+
+    socket.on('disconnect', () => {
+        log('user ' + socket.id + ' disconnected');
+
+        let tmp = getRoom();
+        if (tmp.users.length >= 1) {
+            tmp.users = tmp.users.filter(item => {
+                return item.id !== socket.id;
+            });
+            log(tmp.users.length + ' users left');
+            emitStatus();
         } else {
             rooms = rooms.filter(item => item.id !== room);
+            log('no users left, purging room');
         }
-        console.log("after:\n", rooms);
     });
-    socket.on('chat message', chat);
-    socket.on('change video', (msg) => {
+    socket.on('userUpdate', (data) => {
+        let user = getUserInfo();
+        if (typeof data.time !== 'undefined' && user.time !== data.time) {
+            user.time = data.time;
+        }
+        if (typeof data.playing !== 'undefined' && user.playing !== data.playing) {
+            user.playing = data.playing;
+        }
+        emitUserStatus();
+    });
+    socket.on('error', (msg) => {
+        log("User ", socket.id, " has error ", msg);
+        getUserInfo().error = "Wiedergabe fehlgeschlagen: " + msg;
+        getUserInfo().playing = false;
         updateRoom({
-            src: msg.src,
-            time: 0,
-            rate: 1
+            playing: false
         });
-        socket.broadcast.to(room).emit('change video', msg);
-        chat({
-            "message": "Wechselt video zu: " + msg.src
+    });
+    socket.on('error solved', () => {
+        log("User ", socket.id, " solved error");
+        getUserInfo().error = "";
+        emitStatus();
+    });
+    socket.on('change video', (src) => {
+        log("User ", socket.id, " changed video ", src);
+        updateRoom({
+            src: src,
+            speed: 1,
+            playing: true,
+            lastSeek: 0
         });
     });
     socket.on('timeupdate', (time) => {
-        updateRoom({time: time});
-    });
-    socket.once('join', (data, callback) => {
-        addUser(data);
-        chat({
-            "type": "warning",
-            "message": "Hat den Raum betreten"
-        }, false);
-        callback(getRoom(room));
-    });
-    socket.on('play failed', (msg) => {
-        chat({
-            type: "danger",
-            message: "Wiedergabe fehlgeschlagen"
-        });
-        updateRoom({
-            playing: false
-        });
+        getUserInfo().time = time;
+        emitUserStatus();
     });
     socket.on('play', (time) => {
+        log("User ", socket.id, " played at ", time);
+        getUserInfo().time = time;
+        getUserInfo().playing = true;
         updateRoom({
-            time: time,
-            playing: true
+            playing: true,
+            lastSeek: time
         });
-        socket.broadcast.to(room).emit('play', time);
-    });
-    socket.on('ratechange', (rate) => {
-        updateRoom({
-            rate: rate
-        });
-        socket.broadcast.to(room).emit('ratechange', rate);
     });
     socket.on('pause', (time) => {
+        log("User ", socket.id, " paused at ", time);
+        getUserInfo().time = time;
+        getUserInfo().playing = false;
         updateRoom({
-            time: time,
-            playing: false
+            playing: false,
+            lastSeek: time
         });
-        socket.broadcast.to(room).emit('pause', time);
     });
-    socket.on('seek', (time) => {
+    socket.on('seeking', (time) => {
+        log("User ", socket.id, " seeking to ", time);
+        getUserInfo().time = time;
         updateRoom({
-            time: time
+            lastSeek: time
         });
-        socket.broadcast.to(room).emit('seek', time);
     });
+    socket.on('ratechange', (speed) => {
+        log("User ", socket.id, " changed rate ", speed);
+        updateRoom({
+            speed: speed
+        });
+    });
+
 });
 
 // Fallback
 app.get("/*", (req, res) => {
+    // sends file if it exists in /public
     if (fs.existsSync(__dirname + '/public' + req.url) && fs.lstatSync(__dirname + '/public' + req.url).isFile()) {
         res.sendFile(__dirname + '/public' + req.url);
     } else {
         res.status(404).end();
     }
 })
-http.listen(8080, () => {
-    console.log('listening on *:8080');
+http.listen(PORT, () => {
+    console.log('listening on *:' + PORT);
 });
