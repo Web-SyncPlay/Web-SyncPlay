@@ -49,8 +49,14 @@
 
             <form id="controls" style="display: none;">
                 <div class="form-row">
-                    <div class="col-auto">
-                        <button type="button" class="btn btn-warning mb-2" id="random-button">Random</button>
+                    <div class="col-auto mb-2">
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-warning" id="random-button">Random</button>
+                            <div class="btn-group" role="group" id="countryDropdown">
+                                <button id="btnCountryDropdown" type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown"></button>
+                                <div class="dropdown-menu" aria-labelledby="btnCountryDropdown" style="max-height: 500px; overflow-y: scroll;"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-sm-8 col-md-5 col-lg-4 col-xl-auto">
                         <div class="form-group">
@@ -90,12 +96,7 @@
                 Youtube-Videos werden unterstützt, einfach den Link zur Seite oben einfügen
             </li>
             <li>
-                Direkt verlinkte Audio-Dateien wie beispielsweise
-                <code>https://example.com/[...]/audio.mp3</code> oder <code>[...]/audio.wav</code>
-            </li>
-            <li>
-                Direkt verlinkte Video-Dateien wie beispielsweise
-                <code>https://example.com/[...]/video.mp4</code> oder <code>[...]/video.webm</code>
+                Alle Mediendateien, welche direkt im Browser abgespielt werden können (ohne embed)
             </li>
         </ul>
         <hr>

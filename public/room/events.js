@@ -59,7 +59,7 @@ gapi.load("client", function () {
     );
 });
 
-let playerReady = false;
+let playerReady = false, countryCodes;
 (function () {
     const player = new Plyr('#video-player', {
         muted: true,
@@ -166,6 +166,12 @@ let playerReady = false;
             answer(room);
         });
 
+    fetch("/iso-3166.json").then(data => {
+        return data.json();
+    }).then(data => {
+        countryCodes = data;
+        updateCountryCode("JP");
+    });
     document.querySelector("#controls").style = "";
     document.querySelector("#join-loader").remove();
 })();

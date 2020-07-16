@@ -94,6 +94,17 @@ function updateUserTab() {
     }
 }
 
+function updateCountryCode(code) {
+    let tmp = document.querySelector("#countryDropdown> div.dropdown-menu");
+    document.getElementById("btnCountryDropdown").innerHTML = code;
+    tmp.innerHTML = "";
+    countryCodes.forEach(country => {
+        if (country["alpha2"] !== code) {
+            tmp.innerHTML += `<a class="dropdown-item" href="#" onclick="updateCountryCode('` + country["alpha2"] + `')">` + country["name"] + ` (` + country["alpha2"] + `)</a>`;
+        }
+    });
+}
+
 // Chat
 document.querySelector('form#controls').addEventListener("submit", (e) => {
     e.preventDefault(); // prevents page reloading
@@ -111,7 +122,7 @@ document.querySelector('form#controls').addEventListener("submit", (e) => {
 document.querySelector('form#controls button#random-button').addEventListener("click", (e) => {
     e.preventDefault(); // prevents page reloading
     console.log("Trying to switch to random video");
-    getRandomTopMusicByCountry("JP").then(data => {
+    getRandomTopMusicByCountry(document.getElementById("btnCountryDropdown").innerHTML).then(data => {
         socket.emit('change video', data);
         changeVideo(data);
     });

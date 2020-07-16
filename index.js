@@ -2,12 +2,13 @@ let app = require('express')();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
     transports: ['polling'],
-    pingTimeout: 3000,
-    pingInterval: 5000
+    pingTimeout: 2000,
+    pingInterval: 3000
 });
 const fs = require('fs');
 const uniqid = require('uniqid');
 const PORT = process.env.PORT || 8081;
+const iso31881 = require('iso-3166');
 
 
 const getRandomItem = (array) => {
@@ -51,6 +52,9 @@ fs.readdir('public/icons', (err, files) => {
 });
 app.get('/icons.json', (req, res) => {
     res.json(userIcons);
+});
+app.get('/iso-3166.json', (req, res) => {
+    res.json(iso31881);
 });
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/public/index.html');
