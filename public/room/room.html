@@ -51,9 +51,9 @@
                 <div class="form-row">
                     <div class="col-auto mb-2">
                         <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-warning" id="random-button">Random</button>
+                            <button type="button" class="btn btn-success" id="random-button">Random</button>
                             <div class="btn-group" role="group" id="countryDropdown">
-                                <button id="btnCountryDropdown" type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown"></button>
+                                <button id="btnCountryDropdown" type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown"></button>
                                 <div class="dropdown-menu" aria-labelledby="btnCountryDropdown" style="max-height: 500px; overflow-y: scroll;"></div>
                             </div>
                         </div>
@@ -70,8 +70,35 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-auto">
+                        <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseHelp" aria-expanded="false">
+                            Help
+                        </button>
+                    </div>
                 </div>
             </form>
+
+            <div class="collapse" id="collapseHelp">
+                <div class="alert alert-primary" role="alert">
+                    <h4 class="alert-heading">Unterstützte Formate</h4>
+                    <ul>
+                        <li>
+                            Youtube-Videos werden unterstützt, einfach den Link zur Seite oben einfügen
+                        </li>
+                        <li>
+                            Alle Mediendateien, welche direkt im Browser abgespielt werden können (ohne embed)
+                        </li>
+                    </ul>
+                    <hr>
+                    <h4 class="alert-heading">Bekannte Probleme</h4>
+                    <ul>
+                        <li>
+                            Das "Seeken" während der Player pausiert ist, wird nicht korrekt übermittelt. Es ist ein manueller
+                            Play/Pause Befehl erneut nötig.
+                        </li>
+                    </ul>
+                </div>
+            </div>
         </div>
 
         <div class="col-md-8 col-xl-6 mb-2">
@@ -85,28 +112,6 @@
         </div>
 
         <div class="col-md-4 col-xl-3 mb-2" id="user-list"></div>
-    </div>
-</div>
-
-<div class="container mt-3 mb-5">
-    <div class="alert alert-primary" role="alert">
-        <h4 class="alert-heading">Unterstützte Formate</h4>
-        <ul>
-            <li>
-                Youtube-Videos werden unterstützt, einfach den Link zur Seite oben einfügen
-            </li>
-            <li>
-                Alle Mediendateien, welche direkt im Browser abgespielt werden können (ohne embed)
-            </li>
-        </ul>
-        <hr>
-        <h4 class="alert-heading">Bekannte Probleme</h4>
-        <ul>
-            <li>
-                Das "Seeken" während der Player pausiert ist, wird nicht korrekt übermittelt. Es ist ein manueller
-                Play/Pause Befehl erneut nötig.
-            </li>
-        </ul>
     </div>
 </div>
 
