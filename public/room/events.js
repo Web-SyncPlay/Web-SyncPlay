@@ -80,6 +80,9 @@ let playerReady = false, countryCodes;
     });
     window.player = player;
     player.once('ready', event => {
+        if (!player.muted) {
+            player.muted = true;
+        }
         console.log("Player ready", event.detail.plyr);
         playerReady = true;
         document.querySelector("div.plyr").addEventListener("mousedown", clickedEvent, true);
