@@ -1,52 +1,57 @@
 function updateStatus(data) {
     console.debug("status-update recieved", data);
-    if (data.users.length === 1 && data.src === "") {
-        console.log("First user, fetching random video");
-        getRandomTopMusicByCountry("JP").then(video => {
-            console.log("Playing random yt-video", video);
-            changeVideo(video);
-            socket.emit('change video', video);
-        }).catch((e) => {
-            console.error("Failed to get random youtube video", e);
-        });
+    if (playerReady && gapiReady && !gapiFailed) {
+        if (data.users.length === 1 && data.src === "") {
+            console.log("First user, fetching random video");
+            getRandomTopMusicByCountry("JP").then(video => {
+                console.log("Playing random yt-video", video);
+                changeVideo(video);
+                socket.emit('change video', video);
+            }).catch((e) => {
+                console.error("Failed to get random youtube video:", e);
+            });
+        } else {
+            removeClickedEvent();
+            if (room.playing !== data.playing || player.playing !== room.playing) {
+                console.log("playing changed to ", data.playing);
+                if (data.playing) {
+                    play(data.lastSeek);
+                    socket.emit('userUpdate', {
+                        playing: true,
+                        time: player.currentTime
+                    });
+                } else {
+                    pause(data.lastSeek);
+                    socket.emit('userUpdate', {
+                        playing: false,
+                        time: player.currentTime
+                    });
+                }
+            }
+            if (room.rate !== data.rate) {
+                console.log("rate changed to ", data.rate);
+                player.speed = data.rate;
+            }
+            if (room.src !== data.src && data.src !== "") {
+                console.log("video changed to ", data.src);
+                changeVideo(data.src);
+            }
+            if (room.lastSeek !== data.lastSeek) {
+                console.log("last seek changed to ", data.lastSeek);
+                if (!isAtTime(data.lastSeek)) {
+                    seek(data.lastSeek);
+                }
+            }
+        }
+        room = data;
+        updateUserTab();
     } else {
-        removeClickedEvent();
-        if (room.playing !== data.playing || player.playing !== room.playing) {
-            console.log("playing changed to ", data.playing);
-            if (data.playing) {
-                play(data.lastSeek);
-                socket.emit('userUpdate', {
-                    playing: true,
-                    time: player.currentTime
-                });
-            } else {
-                pause(data.lastSeek);
-                socket.emit('userUpdate', {
-                    playing: false,
-                    time: player.currentTime
-                });
-            }
-        }
-        if (room.rate !== data.rate) {
-            console.log("rate changed to ", data.rate);
-            player.speed = data.rate;
-        }
-        if (room.src !== data.src && data.src !== "") {
-            console.log("video changed to ", data.src);
-            changeVideo(data.src);
-        }
-        if (room.lastSeek !== data.lastSeek) {
-            console.log("last seek changed to ", data.lastSeek);
-            if (!isAtTime(data.lastSeek)) {
-                seek(data.lastSeek);
-            }
-        }
+        console.log("Player or gapi not ready yet, waiting 100ms");
+        setTimeout(() => updateStatus(data), 100);
     }
-    room = data;
-    updateUserTab();
 }
 
-let gapiReady = false;
+let gapiReady = false, gapiFailed = false;
 gapi.load("client", function () {
     gapi.client.init({
         apiKey: "AIzaSyDU6J3cOuf2HecO99nguAXl41cd4hxYJUs"
@@ -59,6 +64,8 @@ gapi.load("client", function () {
             console.log("GAPI client loaded for API")
         },
         err => {
+            gapiFailed = true;
+            gapiReady = true;
             console.error("Error loading GAPI client for API", err);
             alert("Die YouTube-API konnte nicht geladen werden. Die Random-Funktion wird deaktiviert");
             document.getElementById("randomGroup").remove();
