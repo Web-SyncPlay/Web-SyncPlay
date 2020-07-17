@@ -19,48 +19,53 @@
     </a>
 </nav>
 <canvas id="background" class="position-fixed vh-100 vw-100" style="top:0; z-index: -1;"></canvas>
-
-<div class="modal-dialog" role="document">
-    <div class="modal-content bg-dark">
-        <div class="modal-body">
-            <h4 class="text-center w-100 d-block">Tritt einem Raum bei</h4>
-            <form action="" class="form">
-                <div class="input-group input-group-lg mb-3">
-                    <input type="text" class="form-control" placeholder="Raum ID"
-                           aria-label="Recipient's username" aria-describedby="id-button">
-                    <div class="input-group-append">
-                        <button class="btn btn-primary" type="submit" id="id-button">Go</button>
-                    </div>
-                </div>
-            </form>
-            <h4 class="text-center w-100 d-block">oder</h4>
-            <a href="room/generate" class="btn btn-lg btn-success m-auto d-table" role="button">
-                Erstelle deinen eigenen Raum
-            </a>
+<noscript>
+    <div class="container">
+        <div class="alert alert-danger">
+            Javascript muss aktiviert sein.
         </div>
+    </div>
+</noscript>
 
-        <div class="modal-footer">
-            Let's watch together
+<div id="root" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content bg-dark">
+            <div class="modal-body">
+                <h4 class="text-center w-100 d-block">Tritt einem Raum bei</h4>
+                <form action="" class="form">
+                    <div class="input-group input-group-lg mb-3">
+                        <input type="text" class="form-control" placeholder="Raum ID"
+                               aria-label="Recipient's username" aria-describedby="id-button">
+                        <div class="input-group-append">
+                            <button class="btn btn-primary" type="submit" id="id-button">Go</button>
+                        </div>
+                    </div>
+                </form>
+                <h4 class="text-center w-100 d-block">oder</h4>
+                <a href="room/generate" class="btn btn-lg btn-success m-auto d-table" role="button">
+                    Erstelle deinen eigenen Raum
+                </a>
+            </div>
+
+            <div class="modal-footer">
+                Let's watch together
+            </div>
         </div>
     </div>
 </div>
 
-<footer class="footer fixed-bottom bg-dark pt-3">
+<footer class="footer fixed-bottom bg-dark py-2">
     <div class="container">
-        <p>
-            Es sollten alle modernen Browser unterstützt sein, welche mindestens <a href="https://caniuse.com/#feat=es6"
-                                                                                    target="_blank">ECMAScript 2015
-            (ES6)</a> ausführen können.
-            JavaScript muss zwingend aktiviert sein.
-        </p>
-        <hr>
-        Copyright (c) 2020, Leo Jung
-        <h3>
-            <a class="" data-toggle="collapse" href="#impressum">
-                Impressum
-            </a>
-        </h3>
+        JavaScript muss zwingend aktiviert sein.
+        Copyright (c) 2020, Leo Jung, <a data-toggle="collapse" href="#impressum">Impressum</a>
         <div class="collapse" id="impressum">
+            <hr>
+            <p>
+                Es sollten alle modernen Browser unterstützt sein, welche mindestens
+                <a href="https://caniuse.com/#feat=es6" target="_blank">
+                    ECMAScript 2015 (ES6)
+                </a> ausführen können.
+            </p>
             <p>
                 Keine der verwendeten Medien ist in meinem Besitz oder von mir erstellt worden und gehört Ihren
                 respektiven

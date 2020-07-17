@@ -1,3 +1,4 @@
+document.getElementById('root').style.display = "";
 let radius = 60;
 let ctx = document.getElementById('background').getContext('2d');
 ctx.canvas.width = window.innerWidth;
@@ -91,3 +92,4 @@ const loop = function () {
 }
 
 loop();
+
