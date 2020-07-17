@@ -30,7 +30,7 @@ let room = {
 }
 room.id = getRoomId();
 document.title = "Raum " + room.id;
-document.querySelector("#invite-link").innerHTML = '<input type="text" readonly class="form-control" value="' + window.location.href + '">';
+document.querySelector("#invite-link").innerHTML = '<input type="text" readonly class="form-control" value="' + window.location.href + '" id="invite-link-input">';
 
 function userPlayStatusHTML(user) {
     let s = Math.round(user.time + Number.EPSILON);
@@ -72,14 +72,14 @@ function updateUserTab() {
             }
         } else {
             let media = `
-        <div class="media p-2 mb-2 bg-` + (room.users[i].id === socket.id ? "warning text-dark" : (room.users[i].error !== "" ? "danger" : "success")) + ` rounded" id="user-` + room.users[i].id + `">
+        <div class="media p-2 mb-2 bg-` + (room.users[i].id === socket.id ? "warning text-dark" : (room.users[i].error !== "" ? "danger" : "dark")) + ` rounded" id="user-` + room.users[i].id + `">
             <div class="rounded bg-light mr-2">
-                <img src="../icons/` + room.users[i].icon + `" alt="icon" data-icon="` + room.users[i].icon + `">
+                <img class="mr-1" src="../icons/` + room.users[i].icon + `" alt="icon" data-icon="` + room.users[i].icon + `">
             </div>
             <div class="media-body">
                 <h5 class="mb-0">` + room.users[i].name + `</h5>
-                ` + (i === 0 ? '<img src="https://img.icons8.com/ios-filled/24/000000/crown.png"/>' : "") + `
-                <small class="text-muted">
+                ` + (i === 0 ? '<img src="https://img.icons8.com/ios-filled/24/000000/crown.png" alt="Ersteller"/>' : "") + `
+                <small>
                     ` + userPlayStatusHTML(room.users[i]) + `
                 </small>
             </div>
