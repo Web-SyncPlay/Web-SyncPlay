@@ -1,5 +1,5 @@
 document.getElementById('root').style.display = "";
-let radius = 60;
+let radius = 20;
 let ctx = document.getElementById('background').getContext('2d');
 ctx.canvas.width = window.innerWidth;
 ctx.canvas.height = window.innerHeight;
@@ -18,7 +18,7 @@ const createOrb = () => {
         dx = window.innerWidth / 2 - mx;
         dy = window.innerHeight / 2 - my;
         dist = Math.sqrt(dx * dx + dy * dy);
-    } while (dist < radius + 10);
+    } while (dist < radius);
     let angle = Math.atan2(dy, dx);
     orbs.push({
         x: mx,
@@ -75,14 +75,6 @@ const loop = function () {
     ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
     // center-circle
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(0,0,0)';
-    ctx.arc(window.innerWidth / 2, window.innerHeight / 2, radius, 0, 2 * Math.PI);
-    ctx.shadowColor = 'hsla(0,0%,100%,0.7)';
-    ctx.shadowBlur = 20;
-    ctx.stroke();
-    ctx.fill();
-    ctx.shadowBlur = 0;
     let i = orbs.length;
     while (i--) {
         orbs[i].update();

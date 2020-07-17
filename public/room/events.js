@@ -1,6 +1,6 @@
 function updateStatus(data) {
     console.debug("status-update recieved", data);
-    if (playerReady && gapiReady && !gapiFailed) {
+    if (playerReady && (gapiReady  || gapiFailed)) {
         if (data.users.length === 1 && data.src === "") {
             console.log("First user, fetching random video");
             getRandomTopMusicByCountry("JP").then(video => {
