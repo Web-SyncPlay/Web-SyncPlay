@@ -100,7 +100,7 @@ function updateCountryCode(code) {
     tmp.innerHTML = "";
     countryCodes.forEach(country => {
         if (country["alpha2"] !== code) {
-            tmp.innerHTML += `<a class="dropdown-item" onclick="updateCountryCode('` + country["alpha2"] + `')">` + country["name"] + ` (` + country["alpha2"] + `)</a>`;
+            tmp.innerHTML += `<a class="dropdown-item" onclick="updateCountryCode('` + country["alpha2"] + `')">[` + country["alpha2"] + `] ` + country["name"] + `</a>`;
         }
     });
 }
