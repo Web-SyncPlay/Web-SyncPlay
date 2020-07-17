@@ -139,7 +139,11 @@ async function getTopMusicListByCountry(countryCode) {
 async function getRandomTopMusicByCountry(countryCode) {
     try {
         const result = await getTopMusicListByCountry(countryCode);
-        return "https://youtu.be/" + result[getRandomIndex(result)];
+        let url;
+        do {
+            url = "https://youtu.be/" + result[getRandomIndex(result)];
+        } while(room.src === url);
+        return url;
     } catch (e) {
         throw e;
     }
