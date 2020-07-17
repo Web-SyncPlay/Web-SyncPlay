@@ -117,6 +117,10 @@ function changeVideo(url) {
 
 
 async function getTopMusicListByCountry(countryCode) {
+    console.log("GAPI is ready:", gapiReady);
+    if (!gapiReady) {
+        throw "gapi not yet ready";
+    }
     return await gapi.client.youtube.videos.list({
         "part": "id",
         "chart": "mostPopular",
@@ -133,8 +137,12 @@ async function getTopMusicListByCountry(countryCode) {
 }
 
 async function getRandomTopMusicByCountry(countryCode) {
-    const result = await getTopMusicListByCountry(countryCode);
-    return "https://youtu.be/" + result[getRandomIndex(result)];
+    try {
+        const result = await getTopMusicListByCountry(countryCode);
+        return "https://youtu.be/" + result[getRandomIndex(result)];
+    } catch (e) {
+        throw e;
+    }
 }
 
 /*

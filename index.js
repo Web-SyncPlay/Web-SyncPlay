@@ -1,7 +1,6 @@
 let app = require('express')();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
-    transports: ['polling'],
     pingTimeout: 2000,
     pingInterval: 3000
 });

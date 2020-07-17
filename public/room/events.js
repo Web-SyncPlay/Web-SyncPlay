@@ -46,7 +46,7 @@ function updateStatus(data) {
     updateUserTab();
 }
 
-
+let gapiReady = false;
 gapi.load("client", function () {
     gapi.client.init({
         apiKey: "AIzaSyDU6J3cOuf2HecO99nguAXl41cd4hxYJUs"
@@ -54,8 +54,15 @@ gapi.load("client", function () {
     return gapi.client.load(
         "https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest"
     ).then(
-        () => console.log("GAPI client loaded for API"),
-        err => console.error("Error loading GAPI client for API", err)
+        () => {
+            gapiReady = true;
+            console.log("GAPI client loaded for API")
+        },
+        err => {
+            console.error("Error loading GAPI client for API", err);
+            alert("Die YouTube-API konnte nicht geladen werden. Die Random-Funktion wird deaktiviert");
+            document.getElementById("randomGroup").remove();
+        }
     );
 });
 
