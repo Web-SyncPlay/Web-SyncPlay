@@ -15,10 +15,16 @@
     <link rel="stylesheet" href="room.css">
 </head>
 <body>
-<nav class="navbar sticky-top navbar-expand-md navbar-dark mb-1">
+<nav class="navbar sticky-top navbar-dark mb-1">
     <a class="navbar-brand" href="../">
         Studi-Watch
     </a>
+    <div class="navbar-nav">
+        <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#invite-modal">
+            <span>Teilen</span>
+            <img src="https://img.icons8.com/ios-filled/30/000000/add-user-group-man-man--v1.png"/>
+        </button>
+    </div>
 </nav>
 <canvas id="background" class="position-fixed vh-100 vw-100" style="top:0; z-index: -1;"
         aria-label="Hintergrundbild"></canvas>
@@ -29,6 +35,35 @@
         </div>
     </div>
 </noscript>
+
+<!-- Modal -->
+<div class="modal fade" id="invite-modal" tabindex="-1" role="dialog" aria-labelledby="modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border-dark">
+            <div class="modal-header">
+                <h5 class="modal-title" id="invite-modal-title">
+                    Lade deine Freunde ein
+                </h5>
+            </div>
+            <div class="modal-body">
+                <label for="invite-link">
+                    Teile den Link, damit noch mehr als <kbd id="user-count">0</kbd> Personen im Raum sein können
+                </label>
+                <div class="input-group">
+                    <input type="text" readonly class="form-control" value="Loading..." aria-describedby="invite-link-button" id="invite-link" autofocus>
+                    <div class="input-group-append">
+                        <button class="btn btn-warning" type="button" id="invite-link-button" onclick="copyLink()">
+                            Copy
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-warning" data-dismiss="modal">Schließen</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div id="root" style="display: none;">
     <div class="container-fluid mt-3 mb-5">
@@ -48,14 +83,6 @@
         </div>
         <div class="row">
             <div class="col-xl-3 mb-2">
-                <div class="alert alert-primary mb-0" role="alert">
-                    <label for="invite-link-input">Lade deine Freunde mit dem Link ein:</label>
-                    <div class="form-group mb-0" id="invite-link">
-                        <span class="spinner-border text-danger" role="status" aria-hidden="true"></span>
-                        Lade...
-                    </div>
-                </div>
-
                 <form id="controls" style="display: none;">
                     <div class="form-row">
                         <div class="col-sm-8 col-md-5 col-lg-4 col-xl-auto">
@@ -65,7 +92,8 @@
                                     <input type="text" class="form-control" placeholder="Video-Link"
                                            aria-describedby="video-go-button" id="video-input">
                                     <div class="input-group-append">
-                                        <button class="btn btn-warning" type="submit" id="video-go-button">Watch
+                                        <button class="btn btn-warning" type="submit" id="video-go-button">
+                                            Watch
                                         </button>
                                     </div>
                                 </div>

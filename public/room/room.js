@@ -27,10 +27,10 @@ let room = {
     rate: 1,
     src: "",
     time: 0
-}
+};
 room.id = getRoomId();
 document.title = "Raum " + room.id;
-document.querySelector("#invite-link").innerHTML = '<input type="text" readonly class="form-control" value="' + window.location.href + '" id="invite-link-input">';
+document.querySelector("#invite-link").value = window.location.href;
 
 function userPlayStatusHTML(user) {
     let s = Math.round(user.time + Number.EPSILON);
@@ -42,20 +42,26 @@ function userPlayStatusHTML(user) {
 function updateUserTab() {
     let body = document.querySelector("#user-list");
     let removed = false;
-    body.querySelectorAll(".media").forEach(item => {
-        if (!room.users.some(user => "user-" + user.id === item.id)) {
+    body.querySelectorAll(".media").forEach(function (item) {
+        if (!room.users.some(function (user) {
+            return "user-" + user.id === item.id;
+        })) {
             item.remove();
             removed = true;
         }
     });
+    let userCount = document.getElementById("user-count");
+    if (userCount.innerHTML !== "" + room.users.length) {
+        userCount.innerHTML = "" + room.users.length;
+    }
     for (let i = 0; i < room.users.length; i++) {
-        let user = document.querySelector("#user-" + room.users[i].id);
+        let user = document.getElementById("user-" + room.users[i].id);
         if (user) {
             if (removed && i === 0) {
                 if (!user.querySelector(".media-body>img")) {
                     let crown = document.createElement("img");
                     crown.src = "https://img.icons8.com/ios-filled/24/000000/crown.png";
-                    user.querySelector(".media-body").insertBefore(crown, user.querySelector(".media-body>small"))
+                    user.querySelector(".media-body").insertBefore(crown, user.querySelector(".media-body>small"));
                 }
             }
             user.querySelector(".media-body>small").innerHTML = userPlayStatusHTML(room.users[i]);
@@ -95,18 +101,24 @@ function updateUserTab() {
 }
 
 function updateCountryCode(code) {
-    let tmp = document.querySelector("#countryDropdown> div.dropdown-menu");
+    let tmp = document.querySelector("#countryDropdown>div.dropdown-menu"), txt = "";
     document.getElementById("btnCountryDropdown").innerHTML = code;
-    tmp.innerHTML = "";
-    countryCodes.forEach(country => {
+    countryCodes.forEach(function (country) {
         if (country["alpha2"] !== code) {
-            tmp.innerHTML += `<a class="dropdown-item" onclick="updateCountryCode('` + country["alpha2"] + `')">[` + country["alpha2"] + `] ` + country["name"] + `</a>`;
+            txt += `<a class="dropdown-item" onclick="updateCountryCode('` + country["alpha2"] + `')">[` + country["alpha2"] + `] ` + country["name"] + `</a>`;
         }
     });
+    tmp.innerHTML = txt;
+}
+
+function copyLink() {
+    const el = document.getElementById('invite-link');
+    el.select();
+    document.execCommand('copy');
 }
 
 // Chat
-document.querySelector('form#controls').addEventListener("submit", (e) => {
+document.querySelector('form#controls').addEventListener("submit", function (e) {
     e.preventDefault(); // prevents page reloading
     let tmp = document.querySelector('form#controls input');
     console.log("Trying to change video to: ", tmp.value);
@@ -119,10 +131,10 @@ document.querySelector('form#controls').addEventListener("submit", (e) => {
     tmp.value = "";
     return false;
 });
-document.querySelector('form#controls button#random-button').addEventListener("click", (e) => {
+document.querySelector('form#controls button#random-button').addEventListener("click", function (e) {
     e.preventDefault(); // prevents page reloading
     console.log("Trying to switch to random video");
-    getRandomTopMusicByCountry(document.getElementById("btnCountryDropdown").innerHTML).then(data => {
+    getRandomTopMusicByCountry(document.getElementById("btnCountryDropdown").innerHTML).then(function (data) {
         socket.emit('change video', data);
         changeVideo(data);
     });

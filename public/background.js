@@ -3,13 +3,14 @@ let radius = 20;
 let ctx = document.getElementById('background').getContext('2d');
 ctx.canvas.width = window.innerWidth;
 ctx.canvas.height = window.innerHeight;
-let rand = function (rMi, rMa) {
-    return ~~((Math.random() * (rMa - rMi + 1)) + rMi);
-}
 ctx.lineCap = 'round';
 let orbs = [];
 
-const createOrb = () => {
+function rand(rMi, rMa) {
+    return ~~((Math.random() * (rMa - rMi + 1)) + rMi);
+}
+
+function createOrb() {
     let mx, my, dx, dy, dist;
     let max = window.innerHeight > window.innerWidth ? window.innerHeight : window.innerWidth;
     do {
@@ -58,14 +59,16 @@ const createOrb = () => {
 for (let i = 0; i < window.innerWidth * window.innerHeight / 5000; i++) {
     createOrb();
 }
-const orbCreator = () => {
+
+function orbCreator() {
     createOrb();
     orbs.shift();
     setTimeout(orbCreator, rand(500, 5000));
 }
+
 orbCreator();
 
-const loop = function () {
+function loop() {
     requestAnimationFrame(loop);
     if (ctx.canvas.width !== window.innerWidth || ctx.canvas.height !== window.innerHeight) {
         ctx.canvas.width = window.innerWidth;

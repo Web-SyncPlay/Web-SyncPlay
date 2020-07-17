@@ -1,13 +1,13 @@
 function updateStatus(data) {
     console.debug("status-update recieved", data);
-    if (playerReady && (gapiReady  || gapiFailed)) {
+    if (playerReady && (gapiReady || gapiFailed)) {
         if (data.users.length === 1 && data.src === "") {
             console.log("First user, fetching random video");
-            getRandomTopMusicByCountry("JP").then(video => {
+            getRandomTopMusicByCountry("JP").then(function (video) {
                 console.log("Playing random yt-video", video);
                 changeVideo(video);
                 socket.emit('change video', video);
-            }).catch((e) => {
+            }).catch(function (e) {
                 console.error("Failed to get random youtube video:", e);
             });
         } else {
@@ -59,11 +59,11 @@ gapi.load("client", function () {
     return gapi.client.load(
         "https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest"
     ).then(
-        () => {
+        function () {
             gapiReady = true;
             console.log("GAPI client loaded for API")
         },
-        err => {
+        function (err) {
             gapiFailed = true;
             gapiReady = true;
             console.error("Error loading GAPI client for API", err);
@@ -93,18 +93,17 @@ let playerReady = false, countryCodes;
         ]
     });
     window.player = player;
-    player.once('ready', event => {
+    player.once('ready', function () {
         if (!player.muted) {
             player.muted = true;
         }
-        console.log("Player ready", event.detail.plyr);
         playerReady = true;
         document.querySelector("div.plyr").addEventListener("mousedown", clickedEvent, true);
         document.querySelector("div.plyr").addEventListener("touchstart", clickedEvent, true);
         document.querySelector("div.plyr").addEventListener("mouseup", clickedEndedEvent, true);
         document.querySelector("div.plyr").addEventListener("touchend", clickedEndedEvent, true);
     });
-    player.on('ready', event => {
+    player.on('ready', function () {
         if (player.source) {
             if (room.playing !== player.playing) {
                 let time = firstTimeInteracted ? room.users[0].time : room.lastSeek;
@@ -124,7 +123,7 @@ let playerReady = false, countryCodes;
             }
         }
     });
-    player.on('play', () => {
+    player.on('play', function () {
         console.log("event played at ", player.currentTime);
         if (clicked) {
             removeClickedEvent();
@@ -132,7 +131,7 @@ let playerReady = false, countryCodes;
             socket.emit('play', player.currentTime);
         }
     });
-    player.on('pause', () => {
+    player.on('pause', function () {
         console.log("event paused at ", player.currentTime);
         if (clicked) {
             removeClickedEvent();
@@ -146,7 +145,7 @@ let playerReady = false, countryCodes;
             }, 20);
         }
     });
-    player.on('seeking', (event) => {
+    player.on('seeking', function () {
         console.log("event seeking to ", player.currentTime);
         if (clicked || window.pausedForSeek) {
             if (window.pausedForSeek) {
@@ -158,7 +157,7 @@ let playerReady = false, countryCodes;
             seekDrag = true;
         }
     });
-    player.on('ratechange', () => {
+    player.on('ratechange', function () {
         console.log('event ratechange', player.speed);
         if (clicked) {
             removeClickedEvent();
@@ -174,18 +173,18 @@ let playerReady = false, countryCodes;
     window.socket = socket;
     socket
         .on('status', updateStatus)
-        .on('userStatus', (users) => {
+        .on('userStatus', function (users) {
             room.users = users;
             updateUserTab();
         })
-        .on('getStatus', (answer) => {
+        .on('getStatus', function (answer) {
             console.log("Server requested current status");
             answer(room);
         });
 
-    fetch("/iso-3166.json").then(data => {
+    fetch("/iso-3166.json").then(function (data) {
         return data.json();
-    }).then(data => {
+    }).then(function (data) {
         countryCodes = data;
         updateCountryCode("JP");
     });

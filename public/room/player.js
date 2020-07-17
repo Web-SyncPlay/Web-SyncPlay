@@ -18,7 +18,7 @@ function clickedEvent() {
         console.log("First-Time, disable mute");
         firstTimeInteracted = false;
         $(document.querySelector("#mute-info>div.alert")).alert('close');
-        setTimeout(() => {
+        setTimeout(function () {
             if (player.muted) {
                 player.muted = false;
             }
@@ -42,6 +42,7 @@ function isAtTime(time) {
 
 function playError(e) {
     removeClickedEvent();
+    console.error("Playback failed due to:", e);
     socket.emit('play failed', e.message);
 }
 
@@ -55,7 +56,7 @@ function play(time = -1) {
     if (player.playing) {
         console.log("Already playing");
     } else {
-        player.play()
+        player.play();
     }
 }
 
@@ -69,7 +70,7 @@ function pause(time = -1) {
     if (player.paused) {
         console.log("Already paused");
     } else {
-        player.pause()
+        player.pause();
     }
 }
 
@@ -108,7 +109,11 @@ function changeVideo(url) {
         if (newSource === player.source) {
             console.log("Already correct video");
         } else {
-            player.source = newSource;
+            try {
+                player.source = newSource;
+            } catch(e) {
+                console.error("Failed to change video to ", url, " due to:", e);
+            }
         }
     } else {
         setTimeout(() => changeVideo(url), 50);
@@ -148,54 +153,3 @@ async function getRandomTopMusicByCountry(countryCode) {
         throw e;
     }
 }
-
-/*
-let statusUpdateCooldown = false, statusUpdateCooldownTimer, changedVideo = false, changedVideoTimer;
-function enforceStatus() {
-    if (statusUpdateCooldownTimer) {
-        clearTimeout(statusUpdateCooldownTimer);
-    }
-    if (changedVideoTimer) {
-        clearTimeout(changedVideoTimer);
-    }
-
-    if (statusUpdateCooldown) {
-        statusUpdateCooldown = false;
-        statusUpdateCooldownTimer = setTimeout(enforceStatus, 400);
-        return;
-    }
-
-    let requiredForce = false;
-    if (room.rate !== player.playbackRate()) {
-        console.log("force rate ", player.playbackRate(), " -> ", room.rate);
-        player.playbackRate(room.rate);
-        requiredForce = true;
-    }
-    if (room.src !== player.currentSrc()) {
-        console.log("force video ", player.currentSrc(), " -> ", room.src);
-        changeVideo(room.src, room.time);
-        requiredForce = true;
-    }
-    if (!isAtTime(room.time)) {
-        console.log("force time ", player.currentTime(), " -> ", room.time);
-        seek(room.time);
-        requiredForce = true;
-    }
-
-    if (!requiredForce && (room.playing !== isPlaying || isPlaying === player.paused)) {
-        console.log("force playing ", isPlaying, " -> ", room.playing);
-        if (room.playing) {
-            play(room.time);
-        } else {
-            pause(room.time);
-        }
-        statusUpdateCooldownTimer = setTimeout(enforceStatus, 400);
-    } else if (changedVideo) {
-        if (requiredForce) {
-            changedVideoTimer = setTimeout(enforceStatus, 400);
-        } else {
-            console.log("Video safely loaded (propably...)");
-            changedVideo = false;
-        }
-    }
-}*/

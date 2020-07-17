@@ -100,7 +100,7 @@ io.on('connection', (socket) => {
         let d = new Date();
         let time = d.getFullYear() + "." + d.getMonth() + "." + d.getDay() + " " + d.getHours() + ":" + d.getMinutes() + ":" + d.getSeconds();
         console.log(time, "Room", room + ", ", ...item);
-        fs.appendFile('log.txt', time + " Room " + room + ", " + item.join(), function (err) {
+        fs.appendFile('log.txt', time + " Room " + room + ", " + item.join() + "\n", function (err) {
             if (err) throw err;
         });
     }
@@ -286,5 +286,5 @@ app.get("/*", (req, res) => {
     }
 })
 http.listen(PORT, () => {
-    console.log('listening on *:' + PORT);
+    log('listening on *:' + PORT);
 });

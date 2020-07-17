@@ -18,7 +18,8 @@
         Studi-Watch
     </a>
 </nav>
-<canvas id="background" class="position-fixed vh-100 vw-100" style="top:0; z-index: -1;" aria-label="Hintergrundbild"></canvas>
+<canvas id="background" class="position-fixed vh-100 vw-100" style="top:0; z-index: -1;"
+        aria-label="Hintergrundbild"></canvas>
 <noscript>
     <div class="container">
         <div class="alert alert-danger">
@@ -80,7 +81,8 @@
             </p>
             <ul>
                 <li>
-                    <a class="text-warning" href="https://getbootstrap.com/" target="_blank">Bootstrap 4</a>, MIT License, docs CC BY 3.0
+                    <a class="text-warning" href="https://getbootstrap.com/" target="_blank">Bootstrap 4</a>, MIT
+                    License, docs CC BY 3.0
                 </li>
                 <li>
                     Icons by <a class="text-warning" href="https://icons8.com/" target="_blank">Icons8</a>
@@ -92,7 +94,8 @@
                     <a class="text-warning" href="https://popper.js.org/" target="_blank">Popperjs</a>, MIT License
                 </li>
                 <li>
-                    <a class="text-warning" href="https://github.com/sampotts/plyr" target="_blank">Plyr</a>, MIT License
+                    <a class="text-warning" href="https://github.com/sampotts/plyr" target="_blank">Plyr</a>, MIT
+                    License
                 </li>
                 <li>
                     <a class="text-warning" href="https://socket.io/" target="_blank">Socket.IO</a>, MIT License
@@ -108,20 +111,22 @@
         integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI"
         crossorigin="anonymous"></script>
 <script>
-    $('form').submit(function (e) {
-        e.preventDefault(); // prevents page reloading
-        let tmp = $('form input').val();
-        if (tmp !== "") {
-            if (tmp.match(/^https?:\/\/(.+)/)) {
-                window.location.href = tmp;
-            } else if (tmp.match(/[\d\w]+/)) {
-                window.location.href += "room/" + tmp;
-            } else {
-                alert("Unbekannter Raum");
+    (function () {
+        $('form').submit(function (e) {
+            e.preventDefault(); // prevents page reloading
+            let tmp = $('form input').val();
+            if (tmp !== "") {
+                if (tmp.match(/^https?:\/\/(.+)/)) {
+                    window.location.href = tmp;
+                } else if (tmp.match(/[\d\w]+/)) {
+                    window.location.href += "room/" + tmp;
+                } else {
+                    alert("Unbekannter Raum");
+                }
             }
-        }
-        return false;
-    });
+            return false;
+        });
+    })();
 </script>
 <script src="background.js"></script>
 </body>
