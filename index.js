@@ -286,5 +286,5 @@ app.get("/*", (req, res) => {
     }
 })
 http.listen(PORT, () => {
-    log('listening on *:' + PORT);
+    console.log('listening on *:' + PORT);
 });
