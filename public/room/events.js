@@ -1,5 +1,4 @@
 function updateStatus(data) {
-    console.debug("status-update recieved", data);
     if (playerReady && (gapiReady || gapiFailed)) {
         if (data.users.length === 1 && data.src === "") {
             console.log("First user, fetching random video");
@@ -77,20 +76,11 @@ let playerReady = false, countryCodes;
 (function () {
     const player = new Plyr('#video-player', {
         muted: true,
-        controls: [
-            'play-large', // The large play button in the center
-            'play', // Play/pause playback
-            'progress', // The progress bar and scrubber for playback and buffering
-            'current-time', // The current time of playback
-            'mute', // Toggle mute
-            'volume', // Volume control
-            'captions', // Toggle captions
-            'settings', // Settings menu
-            'pip', // Picture-in-picture (currently Safari only)
-            'airplay', // Airplay (currently Safari only)
-            'download', // Show a download button with a link to either the current source or a custom URL you specify in your options
-            'fullscreen', // Toggle fullscreen
-        ]
+        debug: true,
+        keyboard: {
+          focused: true,
+          global: true
+        }
     });
     window.player = player;
     player.once('ready', function () {
@@ -172,7 +162,10 @@ let playerReady = false, countryCodes;
     const socket = io();
     window.socket = socket;
     socket
-        .on('status', updateStatus)
+        .on('status', function (data) {
+          console.debug("status-update recieved", data);
+          updateStatus(data);
+        })
         .on('userStatus', function (users) {
             room.users = users;
             updateUserTab();
