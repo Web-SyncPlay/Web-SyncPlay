@@ -1,12 +1,8 @@
 let app = require('express')();
 const http = require('http').createServer(app);
-const io = require('socket.io')(http, {
-    pingTimeout: 2000,
-    pingInterval: 3000
-});
+const io = require('socket.io')(http);
 const fs = require('fs');
-const uniqid = require('uniqid');
-const PORT = process.env.PORT || 8081;
+const PORT = 8881;
 const iso31881 = require('iso-3166');
 
 

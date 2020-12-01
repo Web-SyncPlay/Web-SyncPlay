@@ -17,7 +17,7 @@ function clickedEvent() {
     if (firstTimeInteracted) {
         console.log("First-Time, disable mute");
         firstTimeInteracted = false;
-        $(document.querySelector("#mute-info>div.alert")).alert('close');
+        document.querySelector("#mute-info").remove();
         setTimeout(function () {
             if (player.muted) {
                 player.muted = false;
