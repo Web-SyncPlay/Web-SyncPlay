@@ -1,0 +1,12 @@
+html,
+body {
+    height: 100%;
+    margin: 0;
+    background-color: #121212;
+    color: #fff;
+}
+
+svg {
+    width: 21px;
+    height: 21px;
+}

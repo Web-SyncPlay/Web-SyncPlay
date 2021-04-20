@@ -1,9 +1,15 @@
-let app = require('express')();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
-const fs = require('fs');
-const PORT = 8881;
-const iso31881 = require('iso-3166');
+import {createServer} from "http";
+import {Server} from "socket.io";
+import express from "express";
+import {iso31661} from "iso-3166";
+import fs from "fs";
+import cors from "cors";
+
+const PORT = 8081;
+const app = express();
+app.use(cors());
+const http = createServer(app);
+const io = new Server(http);
 
 
 const getRandomItem = (array) => {
@@ -40,19 +46,18 @@ let defaultNameList = [
 
 // Icons
 let userIcons = [];
-fs.readdir('public/icons', (err, files) => {
-    files.forEach(file => {
-        userIcons.push(file);
-    });
+fs.readdir('icons', (err, files) => {
+    userIcons = files;
 });
+
 app.get('/icons.json', (req, res) => {
     res.json(userIcons);
 });
 app.get('/iso-3166.json', (req, res) => {
-    res.json(iso31881);
+    res.json(iso31661);
 });
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/public/index.html');
+    res.sendFile('/app/public/index.html');
 });
 
 const generateId = (length = 4) => {
@@ -67,23 +72,9 @@ app.get('/room/generate', (req, res) => {
     let id;
     do {
         id = generateId();
-    } while(rooms.some(room => room.id === id));
-    res.status(307).redirect(id);
-});
-app.get('/room/room.css', (req, res) => {
-    res.sendFile(__dirname + '/public/room/room.css');
-});
-app.get('/room/player.js', (req, res) => {
-    res.sendFile(__dirname + '/public/room/player.js');
-});
-app.get('/room/room.js', (req, res) => {
-    res.sendFile(__dirname + '/public/room/room.js');
-});
-app.get('/room/events.js', (req, res) => {
-    res.sendFile(__dirname + '/public/room/events.js');
-});
-app.get('/room/:id', (req, res) => {
-    res.sendFile(__dirname + '/public/room/room.html');
+    } while (rooms.some(room => room.id === id));
+    res.json({id: id});
+    // res.status(307).redirect(id);
 });
 
 // Socket-Communication
@@ -275,8 +266,8 @@ io.on('connection', (socket) => {
 // Fallback
 app.get("/*", (req, res) => {
     // sends file if it exists in /public
-    if (fs.existsSync(__dirname + '/public' + req.url) && fs.lstatSync(__dirname + '/public' + req.url).isFile()) {
-        res.sendFile(__dirname + '/public' + req.url);
+    if (fs.existsSync('/app/public' + req.url) && fs.lstatSync('/app/public' + req.url).isFile()) {
+        res.sendFile('/app/public' + req.url);
     } else {
         res.status(404).end();
     }
