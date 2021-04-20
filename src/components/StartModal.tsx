@@ -14,20 +14,20 @@ import {
 } from "react-bootstrap";
 import "./Modal.css";
 import ModalHeader from "react-bootstrap/ModalHeader";
+import {Helmet} from "react-helmet";
 
-interface StartModalProps {
-    generateRoom: () => void,
-    joinRoom: (id: string) => void
+const debugUrl = "http://localhost:8081";
+
+interface StartModelProps {
+    join: (id: string) => void
 }
 
 interface StartModalState {
     roomId: string
 }
 
-class StartModal extends React.Component<StartModalProps> {
-    state: StartModalState;
-
-    constructor(props: StartModalProps) {
+class StartModal extends React.Component<StartModelProps, StartModalState> {
+    constructor(props: StartModelProps) {
         super(props);
 
         this.state = {
@@ -39,9 +39,19 @@ class StartModal extends React.Component<StartModalProps> {
         this.setState({roomId: roomId});
     }
 
+    generateRoom() {
+        return fetch(debugUrl + "/room/generate")
+            .then(res => res.json())
+            .then(data => this.props.join(data.id));
+    }
+
     render() {
         return (
             <ModalDialog>
+                <Helmet>
+                    <title>Studi-Watch</title>
+                    <link rel="canonical" href="/"/>
+                </Helmet>
                 <ModalHeader>
                     <h4 className={"mb-0"}>
                         Studi-Watch
@@ -50,7 +60,7 @@ class StartModal extends React.Component<StartModalProps> {
                 <ModalBody>
                     <Form onSubmit={(e) => {
                         e.preventDefault();
-                        this.props.joinRoom(this.state.roomId);
+                        this.props.join(this.state.roomId);
                     }}>
                         <FormGroup as={Row}>
                             <FormLabel column xs={"2"}>
@@ -78,7 +88,7 @@ class StartModal extends React.Component<StartModalProps> {
                             Or
                         </FormLabel>
                         <Col xs={"10"}>
-                            <Button variant={"outline-success"} block onClick={this.props.generateRoom}>
+                            <Button variant={"outline-success"} block onClick={() => this.generateRoom()}>
                                 Create a new room
                             </Button>
                         </Col>
@@ -91,5 +101,6 @@ class StartModal extends React.Component<StartModalProps> {
         );
     }
 }
+
 
 export default StartModal;

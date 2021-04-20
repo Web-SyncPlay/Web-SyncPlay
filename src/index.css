@@ -10,3 +10,8 @@ svg {
     width: 21px;
     height: 21px;
 }
+
+div.custom-control.custom-switch {
+    width: 100%;
+    padding: 0;
+}

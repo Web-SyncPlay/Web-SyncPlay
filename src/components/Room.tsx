@@ -4,6 +4,7 @@ import {Button, ButtonGroup, Col, Row} from "react-bootstrap";
 import ReactPlayer from "react-player";
 import "./Room.css";
 import {BsPauseFill, BsPlayFill, FaPlay, FaVolumeMute, FaVolumeUp, ImLoop} from "react-icons/all";
+import {Helmet} from "react-helmet";
 
 const ENDPOINT = "http://localhost:8081";
 
@@ -133,6 +134,12 @@ class Room extends React.Component<RoomProps, RoomState> {
     render() {
         return (
             <Row className={"m-0 mb-2 px-4"}>
+                <Helmet>
+                    <title>
+                        Room {this.props.roomId} | {this.state.url}
+                    </title>
+                    <link rel="canonical" href={"/room/" + this.props.roomId}/>
+                </Helmet>
                 <Col className={"p-0"}>
                     <ReactPlayer
                         style={{

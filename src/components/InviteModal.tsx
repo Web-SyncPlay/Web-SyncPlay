@@ -43,7 +43,6 @@ class InviteModal extends React.Component<InviteModalProps> {
                                          value={window.location.href}
                                          aria-describedby={"inviteRoomAppend"}/>
                             <InputGroup.Append>
-
                                 <OverlayTrigger
                                     trigger="click"
                                     placement="top"

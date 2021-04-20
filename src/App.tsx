@@ -4,11 +4,14 @@ import NavbarHeader from "./components/NavbarHeader";
 import StartModal from "./components/StartModal";
 import Room from "./components/Room";
 import Footer from "./components/Footer";
+import {Route, useHistory} from "react-router-dom";
+import * as H from 'history';
+import Switch from "react-bootstrap/Switch";
 
 const debugUrl = "http://localhost:8081";
 
 interface AppProps {
-
+    history: H.History
 }
 
 interface AppState {
@@ -30,38 +33,43 @@ class App extends React.Component<AppProps> {
         this.roomRef = React.createRef<Room>();
     }
 
-    generateNewRoom() {
-        fetch(debugUrl + "/room/generate")
-            .then(res => res.json())
-            .then(id => {
-                this.setState({
-                    isRoom: true,
-                    roomId: id.id
-                })
-            })
+    joinRoom(id: string) {
+        this.setState({
+            isRoom: true,
+            roomId: id
+        });
+        this.props.history.push("/room/" + id);
     }
 
     playURL(url: string) {
         this.roomRef.current?.changeToURL(url);
     }
 
-    joinRoom(roomId: string) {
-        this.setState({roomId: roomId})
-    }
-
     render() {
         return (
             <div className="App">
-                <NavbarHeader isRoom={this.state.isRoom} roomId={this.state.roomId} playURL={this.playURL.bind(this)}/>
-                {this.state.isRoom ? (
-                    <Room ref={this.roomRef} roomId={this.state.roomId}/>
-                ) : (
-                    <StartModal generateRoom={this.generateNewRoom.bind(this)} joinRoom={this.joinRoom.bind(this)}/>
-                )}
+                <NavbarHeader isRoom={this.state.isRoom}
+                              roomId={this.state.roomId}
+                              playURL={this.playURL.bind(this)}/>
+                <Switch>
+                    <Route exact path={"/"}>
+                        <StartModal join={this.joinRoom.bind(this)}/>
+                    </Route>
+                    <Route path={"/room/:roomId"}>
+                        <Room ref={this.roomRef} roomId={this.state.roomId}/>
+                    </Route>
+                </Switch>
                 <Footer/>
             </div>
         );
     }
+}
+
+export const RouterApp = () => {
+    const history = useHistory();
+    return (
+        <App history={history}/>
+    );
 }
 
 export default App;

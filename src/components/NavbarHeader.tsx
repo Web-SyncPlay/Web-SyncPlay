@@ -3,6 +3,8 @@ import {Button, Form, FormControl, InputGroup, Navbar} from "react-bootstrap";
 import "./NavbarHeader.css";
 import {IoPersonAdd} from "react-icons/all";
 import InviteModal from "./InviteModal";
+import Switch from "react-bootstrap/Switch";
+import {Link, Route} from "react-router-dom";
 
 interface NavbarHeaderProps {
     isRoom: boolean,
@@ -33,11 +35,11 @@ class NavbarHeader extends React.Component<NavbarHeaderProps, NavbarHeaderState>
         return (
             <>
                 <Navbar collapseOnSelect variant="dark" className={"mb-3"}>
-                    <Navbar.Brand href="/">
+                    <Link to={"/"} className={"navbar-brand"}>
                         Studi-Watch
-                    </Navbar.Brand>
-                    {this.props.isRoom ? (
-                        <>
+                    </Link>
+                    <Switch>
+                        <Route path={"/room/:roomId"}>
                             <Navbar.Toggle aria-controls="responsive-navbar-nav"/>
                             <Navbar.Collapse id="responsive-navbar-nav">
                                 <Form className={"w-100"}
@@ -66,13 +68,13 @@ class NavbarHeader extends React.Component<NavbarHeaderProps, NavbarHeaderState>
                                             variant={"success"}>
                                         <IoPersonAdd/>
                                         <span className={"ml-1"}>
-                                Invite
-                            </span>
+                                            Invite
+                                        </span>
                                     </Button>
                                 </Form>
                             </Navbar.Collapse>
-                        </>
-                    ) : (<div/>)}
+                        </Route>
+                    </Switch>
                 </Navbar>
                 <InviteModal roomId={this.props.roomId}
                              show={this.state.inviteModalOpen}
