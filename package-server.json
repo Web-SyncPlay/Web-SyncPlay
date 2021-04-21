@@ -8,7 +8,6 @@
   "dependencies": {
     "express": "^4.17.1",
     "iso-3166": "^4.0.0",
-    "socket.io": "^4.0.1",
-    "typescript": "^4.2.4"
+    "socket.io": "^4.0.1"
   }
 }

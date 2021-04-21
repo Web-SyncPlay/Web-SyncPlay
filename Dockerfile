@@ -5,6 +5,7 @@ FROM node:15.14.0-alpine as react-build
 
 WORKDIR /app
 ENV PATH /app/node_modules/.bin:$PATH
+ENV REACT_APP_DOCKER "true"
 
 # install the dependencies
 COPY package.json .
@@ -21,6 +22,7 @@ RUN npm run build
 FROM node:15.14.0-alpine
 
 WORKDIR /app
+ENV IS_DOCKER "true"
 
 EXPOSE 8081
 HEALTHCHECK CMD curl --fail http://localhost:8081 || exit 1

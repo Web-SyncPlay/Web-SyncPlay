@@ -8,8 +8,6 @@ import {Route, useHistory} from "react-router-dom";
 import * as H from 'history';
 import Switch from "react-bootstrap/Switch";
 
-const debugUrl = "http://localhost:8081";
-
 interface AppProps {
     history: H.History
 }

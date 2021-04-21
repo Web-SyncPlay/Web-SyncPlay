@@ -6,14 +6,13 @@ import "./Room.css";
 import {BsPauseFill, BsPlayFill, FaPlay, FaVolumeMute, FaVolumeUp, ImLoop} from "react-icons/all";
 import {Helmet} from "react-helmet";
 
-const ENDPOINT = "http://localhost:8081";
+const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 
 interface RoomProps {
     roomId: string
 }
 
 interface RoomState {
-    socket: Socket,
     url: string,
     playing: boolean,
     volume: number,
@@ -26,15 +25,27 @@ interface RoomState {
     seeking: boolean
 }
 
+interface UserData extends RoomState {
+    id: string,
+    name: string,
+    icon: string
+}
+
+interface RoomData {
+    id: string,
+    users: UserData[],
+    owner: string
+}
+
 class Room extends React.Component<RoomProps, RoomState> {
     player: React.RefObject<ReactPlayer>;
+    socket?: Socket;
 
     constructor(props: RoomProps) {
         super(props);
         this.player = React.createRef<ReactPlayer>();
 
         this.state = {
-            socket: socketIOClient(ENDPOINT),
             url: "https://youtu.be/Bi11Iid2hmo",
             playing: true,
             volume: 0.3,
@@ -46,10 +57,30 @@ class Room extends React.Component<RoomProps, RoomState> {
             loop: false,
             seeking: false
         };
+    }
 
-        this.state.socket.on("", data => {
-
+    componentDidMount() {
+        this.socket = socketIOClient(ENDPOINT, {
+            query: {
+                roomId: this.props.roomId
+            }
         });
+
+        this.socket.on("update", (data) => {
+            console.log(data);
+
+            this.setState(data);
+        });
+    }
+
+    componentWillUnmount() {
+        if (this.socket!.connected) {
+            this.socket!.disconnect();
+        }
+    }
+
+    updateState(data: any) {
+        this.socket?.emit(data);
     }
 
     changeToURL(url: string) {

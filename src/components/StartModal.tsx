@@ -16,7 +16,7 @@ import "./Modal.css";
 import ModalHeader from "react-bootstrap/ModalHeader";
 import {Helmet} from "react-helmet";
 
-const debugUrl = "http://localhost:8081";
+const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 
 interface StartModelProps {
     join: (id: string) => void
@@ -40,7 +40,7 @@ class StartModal extends React.Component<StartModelProps, StartModalState> {
     }
 
     generateRoom() {
-        return fetch(debugUrl + "/room/generate")
+        return fetch(ENDPOINT + "/room/generate")
             .then(res => res.json())
             .then(data => this.props.join(data.id));
     }
