@@ -1,3 +1,7 @@
 .navbar {
     background-color: #1f1f1f;
 }
+
+.navbar-brand {
+    font-family: 'Zen Dots', cursive;
+}

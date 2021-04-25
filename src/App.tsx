@@ -4,12 +4,13 @@ import NavbarHeader from "./components/NavbarHeader";
 import StartModal from "./components/StartModal";
 import Room from "./components/Room";
 import Footer from "./components/Footer";
-import {Route, useHistory} from "react-router-dom";
+import {Route, useHistory, useLocation} from "react-router-dom";
 import * as H from 'history';
 import Switch from "react-bootstrap/Switch";
 
 interface AppProps {
-    history: H.History
+    history: H.History,
+    location: H.Location
 }
 
 interface AppState {
@@ -25,7 +26,7 @@ class App extends React.Component<AppProps> {
         super(props);
         this.state = {
             isRoom: false,
-            roomId: ""
+            roomId: props.location.pathname.replace("/room/", "")
         }
 
         this.roomRef = React.createRef<Room>();
@@ -65,8 +66,9 @@ class App extends React.Component<AppProps> {
 
 export const RouterApp = () => {
     const history = useHistory();
+    const location = useLocation();
     return (
-        <App history={history}/>
+        <App history={history} location={location}/>
     );
 }
 

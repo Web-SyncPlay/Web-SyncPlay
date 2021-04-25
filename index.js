@@ -104,7 +104,8 @@ io.on("connection", (socket) => {
         rooms.push({
             id: room,
             users: [],
-            owner: socket.id
+            owner: socket.id,
+            anarchy: true
         });
         log("room created");
     }
