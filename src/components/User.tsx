@@ -10,6 +10,10 @@ interface UserProps {
 
 class User extends React.Component<UserProps> {
     secondsToTime(s: number): string {
+        if (isNaN(s)) {
+            return "00:00";
+        }
+
         const hours = Math.floor(s / 3600);
         const minutes = Math.floor((s - (hours * 3600)) / 60);
         const seconds = Math.floor(s - (hours * 3600) - (minutes * 60));
@@ -29,22 +33,23 @@ class User extends React.Component<UserProps> {
 
     render() {
         return (
-            <Col>
-                <Media>
-                    <img
-                        width={48}
-                        height={48}
-                        className="mr-3"
-                        src={ENDPOINT + "/icons/" + this.props.user.icon}
-                        alt="User icon"
-                    />
+            <Col xs={"12"} sm={"6"} md={"4"} lg={"3"} className={"p-2"}>
+                <Media className={"user bg-secondary rounded p-2"}>
+                    <div className={"mr-3 p-1 rounded"}>
+                        <img
+                            width={48}
+                            height={48}
+                            src={ENDPOINT + "/icons/" + this.props.user.icon}
+                            alt={"User icon"}
+                        />
+                    </div>
                     <Media.Body>
-                        <h5>
+                        <h5 className={"mb-0"}>
                             {this.props.user.name}
                         </h5>
-                        <p>
-                            {this.props.user.playing ? "Playing" : "Paused"} at {this.timeProgress()} at {/*this.props.user.playbackRate.toString()*/} speed
-                        </p>
+                        <small>
+                            {this.props.user.playing ? "Playing" : "Paused"} at {this.timeProgress()}
+                        </small>
                     </Media.Body>
                 </Media>
             </Col>

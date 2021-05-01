@@ -1,6 +1,6 @@
 import React from "react";
 import socketIOClient, {Socket} from "socket.io-client";
-import {Button, ButtonGroup, Col, Row} from "react-bootstrap";
+import {Button, ButtonGroup, Col, Row, Spinner} from "react-bootstrap";
 import ReactPlayer from "react-player";
 import "./Room.css";
 import {BsPauseFill, BsPlayFill, FaPlay, FaVolumeMute, FaVolumeUp, ImLoop} from "react-icons/all";
@@ -38,10 +38,16 @@ export interface UserData extends RoomState {
 
 class Room extends React.Component<RoomProps, RoomState> {
     player: React.RefObject<ReactPlayer>;
+    initialStatusReceived: boolean;
+    clickEvent: boolean;
+    clickedTime: number;
     socket?: Socket;
 
     constructor(props: RoomProps) {
         super(props);
+        this.initialStatusReceived = false;
+        this.clickEvent = false;
+        this.clickedTime = 0;
         this.player = React.createRef<ReactPlayer>();
 
         this.state = {
@@ -49,7 +55,7 @@ class Room extends React.Component<RoomProps, RoomState> {
             owner: {
                 name: "loading..."
             } as UserData,
-            url: "https://youtu.be/Bi11Iid2hmo",
+            url: "https://youtu.be/NcBjx_eyvxc",
             playing: true,
             volume: 0.3,
             muted: true,
@@ -71,23 +77,10 @@ class Room extends React.Component<RoomProps, RoomState> {
                 roomId: this.props.roomId
             }
         });
-        this.socket.emit("update", {
-            url: this.state.url,
-            playing: this.state.playing,
-            volume: this.state.volume,
-            muted: this.state.muted,
-            played: this.state.played,
-            loaded: this.state.loaded,
-            duration: this.state.duration,
-            playbackRate: this.state.playbackRate,
-            loop: this.state.loop,
-            ready: this.state.ready,
-            buffering: this.state.buffering,
-            seeking: this.state.seeking,
-        });
 
         this.socket.on("status", (data) => {
             console.debug("Update from server:", data);
+            this.initialStatusReceived = true;
 
             if (data.played) {
                 if (Math.abs(this.state.played - data.played) * this.state.duration > 2) {
@@ -98,6 +91,7 @@ class Room extends React.Component<RoomProps, RoomState> {
         });
     }
 
+
     componentWillUnmount() {
         if (this.socket!.connected) {
             this.socket!.disconnect();
@@ -106,6 +100,7 @@ class Room extends React.Component<RoomProps, RoomState> {
 
     updateState(data: any) {
         if (this.socket) {
+            data.userClicked = this.clickEvent;
             console.debug("Updating to remote:", data);
             this.socket.emit("update", data);
         }
@@ -130,6 +125,18 @@ class Room extends React.Component<RoomProps, RoomState> {
         });
     }
 
+    handleClick(event: any) {
+        console.log("touchy", event);
+        this.clickedTime = new Date().getTime();
+        this.clickEvent = true;
+        console.log("User interaction!", this.clickedTime);
+        setTimeout(() => {
+            if (new Date().getTime() - this.clickedTime > 200) {
+                this.clickEvent = false;
+            }
+        }, 300);
+    }
+
     handleSeekMouseDown(e: any) {
         this.updateState({seeking: true})
     }
@@ -147,7 +154,7 @@ class Room extends React.Component<RoomProps, RoomState> {
     render() {
         return (
             <>
-                <Row className={"m-0 mb-2 px-4"}>
+                <Row className={"m-0 mb-3 px-4"}>
                     <Helmet>
                         <title>
                             Room {this.props.roomId} | {this.state.url}
@@ -155,49 +162,57 @@ class Room extends React.Component<RoomProps, RoomState> {
                         <link rel="canonical" href={"/room/" + this.props.roomId}/>
                     </Helmet>
                     <Col className={"p-0"}>
-                        <ReactPlayer
-                            style={{
-                                maxHeight: "calc(100vh - 169px)",
-                                minHeight: "480px"
-                            }}
-                            ref={this.player}
-                            className='react-player'
-                            width='100%'
-                            height={"calc((9 / 16) * 100vw)"}
-                            url={this.state.url}
-                            pip={true}
-                            playing={this.state.playing}
-                            controls={true}
-                            loop={this.state.loop}
-                            playbackRate={this.state.playbackRate}
-                            volume={this.state.volume}
-                            muted={this.state.muted}
-                            onReady={() => this.updateState({ready: true})}
-                            onStart={() => console.log('onStart')}
-                            onPlay={() => this.updateState({playing: true})}
-                            onPause={() => this.updateState({playing: false})}
-                            onBuffer={() => this.updateState({buffering: true})}
-                            onBufferEnd={() => this.updateState({buffering: false})}
-                            onSeek={e => console.log('onSeek', e)}
-                            onEnded={() => {
-                                if (this.state.loop) {
-                                    this.updateState({
-                                        playing: true,
-                                        played: 0
-                                    })
-                                } else {
-                                    this.updateState({playing: false})
-                                }
-                            }}
-                            onError={e => console.log('onError', e)}
-                            onProgress={progress => {
-                                // We only want to update time slider if we are not currently seeking
-                                if (!this.state.seeking) {
-                                    this.updateState(progress)
-                                }
-                            }}
-                            onDuration={duration => this.updateState({duration: duration})}
-                        />
+                        {this.initialStatusReceived ?
+                            <ReactPlayer
+                                onClick={this.handleClick.bind(this)}
+                                style={{
+                                    maxHeight: "calc(100vh - 169px)",
+                                    minHeight: "480px"
+                                }}
+                                ref={this.player}
+                                className='react-player'
+                                width='100%'
+                                height={"calc((9 / 16) * 100vw)"}
+                                url={this.state.url}
+                                pip={true}
+                                playing={this.state.playing}
+                                controls={true}
+                                loop={this.state.loop}
+                                playbackRate={this.state.playbackRate}
+                                volume={this.state.volume}
+                                muted={this.state.muted}
+                                onReady={() => this.updateState({ready: true})}
+                                onStart={() => console.log('onStart')}
+                                onPlay={() => this.updateState({playing: true})}
+                                onPause={() => this.updateState({playing: false})}
+                                onBuffer={() => this.updateState({buffering: true})}
+                                onBufferEnd={() => this.updateState({buffering: false})}
+                                onSeek={e => console.log('onSeek', e)}
+                                onEnded={() => {
+                                    if (this.state.loop) {
+                                        this.updateState({
+                                            playing: true,
+                                            played: 0
+                                        })
+                                    } else {
+                                        this.updateState({playing: false})
+                                    }
+                                }}
+                                onError={e => console.log('onError', e)}
+                                onProgress={progress => {
+                                    // We only want to update time slider if we are not currently seeking
+                                    if (!this.state.seeking) {
+                                        this.updateState(progress)
+                                    }
+                                }}
+                                onDuration={duration => this.updateState({duration: duration})}
+                            /> :
+                            <div className={"w-100 d-flex align-items-center justify-content-center"}
+                                 style={{height: 300}}>
+                                <Spinner animation={"border"} role={"status"}>
+                                    <span className={"sr-only"}>Loading...</span>
+                                </Spinner>
+                            </div>}
                     </Col>
                     <Col xs={"auto"} className={"p-0"}>
                         <ButtonGroup vertical>
@@ -216,7 +231,7 @@ class Room extends React.Component<RoomProps, RoomState> {
                         </ButtonGroup>
                     </Col>
                 </Row>
-                <Row>
+                <Row className={"m-3 p-0"}>
                     {this.state.users.map(user => <User key={user.id} user={user}/>)}
                 </Row>
             </>
