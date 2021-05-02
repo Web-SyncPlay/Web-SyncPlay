@@ -81,6 +81,7 @@ app.get("/room/generate", (req, res) => {
 
 // Socket-Communication
 let rooms = [];
+let locked = [];
 io.on("connection", (socket) => {
     // room-joining
     let room = socket.handshake.query.roomId;
@@ -117,15 +118,17 @@ io.on("connection", (socket) => {
     };
 
     // update room/user data
-    const _update = (oldData, newData) => {
+    const _update = (oldData, newData, forbiddenKeys = []) => {
         Object.keys(newData).forEach((key) => {
-            oldData[key] = newData[key];
-        })
+            if (!forbiddenKeys.includes(key)) {
+                oldData[key] = newData[key];
+            }
+        });
     }
     const update = (data) => {
-        _update(getUser(), data);
+        _update(getUser(), data, ["queue", "users", "history"]);
         if (data.id === getRoom().owner || getRoom().anarchy) {
-            _update(getRoom(), data);
+            _update(getRoom(), data, ["volume", "muted", "loaded", "ready", "buffering", "seeking"]);
         }
 
         emitStatus();
@@ -147,8 +150,7 @@ io.on("connection", (socket) => {
         name: name,
         icon: icon
     });
-    log("User " + socket.id + " joined");
-    log(name, icon);
+    log("User " + socket.id + " joined, assigned: \"" + name + "\" " + icon);
 
     socket.on("disconnect", () => {
         log("User " + socket.id + " disconnected");
@@ -171,6 +173,15 @@ io.on("connection", (socket) => {
     socket.on("update", (data) => {
         update(data);
     });
+    socket.on("chat", (data) => {
+        io.to(room).emit("chat", {
+            user: getUser(),
+            time: new Date().getTime(),
+            message: data.message
+        });
+    });
+
+    emitStatus();
 });
 
 // ------------------------------------------------------------------------------

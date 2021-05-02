@@ -53,9 +53,9 @@ class NavbarHeader extends React.Component<NavbarHeaderProps, NavbarHeaderState>
                                         <FormControl
                                             value={this.state.url}
                                             onChange={(e) => this.setState({url: e.target.value})}
-                                            placeholder="Link to media file"
-                                            aria-label="Link to media file"
-                                            aria-describedby="urlInput-button"
+                                            placeholder={"Link to media file"}
+                                            aria-label={"Link to media file"}
+                                            aria-describedby={"urlInput-button"}
                                         />
                                         <InputGroup.Append id={"urlInput-button"}>
                                             <Button variant="outline-success" type={"submit"}>

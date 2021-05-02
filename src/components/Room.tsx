@@ -1,11 +1,11 @@
 import React from "react";
 import socketIOClient, {Socket} from "socket.io-client";
-import {Button, ButtonGroup, Col, Row, Spinner} from "react-bootstrap";
+import {Col, Row, Spinner} from "react-bootstrap";
 import ReactPlayer from "react-player";
 import "./Room.css";
-import {BsPauseFill, BsPlayFill, FaPlay, FaVolumeMute, FaVolumeUp, ImLoop} from "react-icons/all";
 import {Helmet} from "react-helmet";
 import User from "./User";
+import Chat from "./Chat";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 
@@ -16,7 +16,8 @@ interface RoomProps {
 interface RoomState {
     id: string,
     url: string,
-    owner: UserData,
+    queue: string[],
+    owner: string,
     playing: boolean,
     volume: number,
     muted: boolean,
@@ -28,12 +29,20 @@ interface RoomState {
     ready: boolean,
     buffering: boolean,
     seeking: boolean,
-    users: UserData[]
+    chatExpanded: boolean,
+    users: UserData[],
+    history: ChatData[]
 }
 
 export interface UserData extends RoomState {
     name: string,
     icon: string
+}
+
+export interface ChatData {
+    user: UserData,
+    time: number,
+    message: string
 }
 
 class Room extends React.Component<RoomProps, RoomState> {
@@ -52,11 +61,10 @@ class Room extends React.Component<RoomProps, RoomState> {
 
         this.state = {
             id: this.props.roomId,
-            owner: {
-                name: "loading..."
-            } as UserData,
+            owner: "loading...",
             url: "https://youtu.be/NcBjx_eyvxc",
-            playing: true,
+            queue: [],
+            playing: false,
             volume: 0.3,
             muted: true,
             played: 0,
@@ -67,7 +75,9 @@ class Room extends React.Component<RoomProps, RoomState> {
             ready: false,
             buffering: false,
             seeking: false,
-            users: [] as UserData[]
+            chatExpanded: true,
+            users: [] as UserData[],
+            history: [] as ChatData[]
         };
     }
 
@@ -79,7 +89,6 @@ class Room extends React.Component<RoomProps, RoomState> {
         });
 
         this.socket.on("status", (data) => {
-            console.debug("Update from server:", data);
             this.initialStatusReceived = true;
 
             if (data.played) {
@@ -88,6 +97,11 @@ class Room extends React.Component<RoomProps, RoomState> {
                 }
             }
             this.setState(data);
+        });
+
+        this.socket.on("chat", (data) => {
+            console.log("chatted", data);
+            this.setState({history: [...this.state.history, data]});
         });
     }
 
@@ -98,10 +112,22 @@ class Room extends React.Component<RoomProps, RoomState> {
         }
     }
 
+    sendChat(message: string) {
+        this.socket?.emit("chat", {
+            message: message
+        });
+    }
+
+    updateUser(name: string, icon: string) {
+        this.updateState({
+            icon: icon,
+            name: name
+        });
+    }
+
     updateState(data: any) {
         if (this.socket) {
             data.userClicked = this.clickEvent;
-            console.debug("Updating to remote:", data);
             this.socket.emit("update", data);
         }
         this.setState(data);
@@ -115,13 +141,31 @@ class Room extends React.Component<RoomProps, RoomState> {
         }
     }
 
-    load(url: string) {
+    load(url: string, queue: string[] = this.state.queue) {
         this.updateState({
             url: url,
+            queue: queue,
             ready: false,
             played: 0,
             loaded: 0,
             playing: true
+        });
+    }
+
+    playFromQueue(index: number) {
+        const next = this.state.queue[index];
+        this.load(next, [...this.state.queue].filter((e, i) => i !== index))
+    }
+
+    addToQueue(url: string) {
+        this.updateState({
+            queue: [...this.state.queue, url]
+        });
+    }
+
+    removeFromQueue(index: number) {
+        this.updateState({
+            queue: [...this.state.queue].filter((e, i) => i !== index)
         });
     }
 
@@ -137,37 +181,21 @@ class Room extends React.Component<RoomProps, RoomState> {
         }, 300);
     }
 
-    handleSeekMouseDown(e: any) {
-        this.updateState({seeking: true})
-    }
-
-    handleSeekChange(e: any) {
-        this.updateState({played: parseFloat(e.target.value)})
-    }
-
-    handleSeekMouseUp(e: any) {
-        this.updateState({seeking: false})
-        this.player.current?.seekTo(parseFloat(e.target.value))
-    }
-
-
     render() {
         return (
             <>
-                <Row className={"m-0 mb-3 px-4"}>
-                    <Helmet>
-                        <title>
-                            Room {this.props.roomId} | {this.state.url}
-                        </title>
-                        <link rel="canonical" href={"/room/" + this.props.roomId}/>
-                    </Helmet>
-                    <Col className={"p-0"}>
+                <Helmet>
+                    <title>
+                        Room {this.props.roomId} | Playing {this.state.url}
+                    </title>
+                    <link rel="canonical" href={"/room/" + this.props.roomId}/>
+                </Helmet>
+                <Row className={"mx-3 p-0"}>
+                    <Col className={"p-2"}>
                         {this.initialStatusReceived ?
                             <ReactPlayer
-                                onClick={this.handleClick.bind(this)}
                                 style={{
-                                    maxHeight: "calc(100vh - 169px)",
-                                    minHeight: "480px"
+                                    maxHeight: "calc(100vh - 169px)"
                                 }}
                                 ref={this.player}
                                 className='react-player'
@@ -214,25 +242,25 @@ class Room extends React.Component<RoomProps, RoomState> {
                                 </Spinner>
                             </div>}
                     </Col>
-                    <Col xs={"auto"} className={"p-0"}>
-                        <ButtonGroup vertical>
-                            <Button onClick={() => this.updateState({playing: !this.state.playing})}
-                                    variant={"outline-secondary"}>
-                                {this.state.playing ? (<BsPauseFill/>) : (<BsPlayFill/>)}
-                            </Button>
-                            <Button onClick={() => this.updateState({muted: !this.state.muted})}
-                                    variant={"outline-secondary"}>
-                                {this.state.muted ? (<FaVolumeMute/>) : (<FaVolumeUp/>)}
-                            </Button>
-                            <Button onClick={() => this.updateState({loop: !this.state.loop})}
-                                    variant={"outline-secondary"}>
-                                {this.state.loop ? (<ImLoop/>) : (<FaPlay/>)}
-                            </Button>
-                        </ButtonGroup>
+                    <Col xs={"12"} md={"auto"} className={"p-2"}>
+                        <Chat you={this.socket?.id || ""}
+                              owner={this.state.owner}
+                              send={this.sendChat.bind(this)}
+                              history={this.state.history}/>
                     </Col>
                 </Row>
-                <Row className={"m-3 p-0"}>
-                    {this.state.users.map(user => <User key={user.id} user={user}/>)}
+                <Row className={"user-list mx-3 mb-3 p-0"}>
+                    {this.state.users.map(user => {
+                            return (
+                                <User key={user.id}
+                                      user={user}
+                                      duration={this.state.duration}
+                                      owner={this.state.owner}
+                                      you={this.socket?.id || ""}
+                                      update={this.updateUser.bind(this)}/>
+                            );
+                        }
+                    )}
                 </Row>
             </>
         );

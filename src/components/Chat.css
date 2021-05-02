@@ -1,0 +1,26 @@
+.chat {
+    min-width: 300px;
+    height: calc((9 / 16) * 100vw);
+    max-height: calc(100vh - 169px);
+    background-color: #1f1f1f;
+    flex-direction: column;
+}
+
+.chat .chat-input {
+    vertical-align: bottom;
+    background-color: #2d2d2d;
+}
+
+.chat .messages {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.chat .messages > div > div {
+    background-color: #2d2d2d;
+}
+
+.chat .messages .media .media-body {
+    flex-direction: column;
+}
