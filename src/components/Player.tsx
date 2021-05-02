@@ -10,7 +10,8 @@ import {
     IoPause,
     IoPlay,
     IoPlaySkipForwardSharp,
-    IoShareOutline
+    IoShareOutline,
+    MdReplay
 } from "react-icons/all";
 import {Form} from "react-bootstrap";
 import screenfull from "screenfull";
@@ -137,11 +138,18 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                         <div className={"px-1 d-flex"}>
                             <div className={"control-button rounded p-1 mx-1"}
                                  onClick={() => {
-                                     this.updateState({
-                                         playing: !this.props.playing
-                                     });
+                                     if (this.state.played === 1) {
+                                         this.updateState({
+                                             playing: true,
+                                             played: 0
+                                         });
+                                     } else {
+                                         this.updateState({
+                                             playing: !this.props.playing
+                                         });
+                                     }
                                  }}>
-                                {this.props.playing ? <IoPause/> : <IoPlay/>}
+                                {this.props.playing ? <IoPause/> : (this.state.played === 1 ? <MdReplay/> : <IoPlay/>)}
                             </div>
                             {this.props.queue.length > 0 ?
                                 <div className={"control-button rounded p-1 mx-1"}

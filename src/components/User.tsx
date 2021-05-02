@@ -1,5 +1,5 @@
 import React from "react";
-import {Col, Form, Media} from "react-bootstrap";
+import {Col, Form, Media, OverlayTrigger, Popover, Row} from "react-bootstrap";
 import {UserData} from "./Room";
 import "./User.css";
 import {BsPauseFill, BsPlayFill, FaCrown} from "react-icons/all";
@@ -14,7 +14,27 @@ interface UserProps {
     update: (name: string, icon: string) => void
 }
 
-class User extends React.Component<UserProps> {
+interface UserState {
+    icons: string[] | null
+}
+
+class User extends React.Component<UserProps, UserState> {
+    constructor(props: UserProps) {
+        super(props);
+
+        this.state = {
+            icons: null
+        };
+
+        if (this.props.user.id === this.props.you) {
+            fetch(ENDPOINT + "/icons.json")
+                .then(res => res.json())
+                .then(icons => {
+                    this.setState({icons: icons});
+                });
+        }
+    }
+
     secondsToTime(s: number): string {
         if (isNaN(s)) {
             return "00:00";
@@ -42,14 +62,53 @@ class User extends React.Component<UserProps> {
         return (
             <Col className={"p-2"} xs={(you ? {order: "first"} : {})}>
                 <Media className={"user rounded p-2 " + (you ? "bg-success you" : "")}>
-                    <div className={"mr-2 rounded"}>
-                        <img
-                            width={48}
-                            height={48}
-                            src={ENDPOINT + "/icons/" + this.props.user.icon}
-                            alt={"User icon"}
-                        />
-                    </div>
+                    {you && this.state.icons !== null ?
+                        <OverlayTrigger
+                            trigger="click"
+                            key={"top"}
+                            placement={"top"}
+                            overlay={
+                                <Popover id={"change-icon-popover"}>
+                                    <Popover.Content>
+                                        <Row>
+                                            {this.state.icons.map(icon =>
+                                                <Col key={icon}
+                                                     className={"m-1 rounded user-icon"}
+                                                     onClick={() => {
+                                                         this.props.update(this.props.user.name, icon);
+                                                     }}
+                                                     xs={"auto"}>
+                                                    <img
+                                                        width={48}
+                                                        height={48}
+                                                        src={ENDPOINT + "/icons/" + icon}
+                                                        alt={"User icon"}
+                                                    />
+                                                </Col>
+                                            )}
+                                        </Row>
+                                    </Popover.Content>
+                                </Popover>
+                            }
+                        >
+                            <div className={"mr-2 rounded user-icon"}>
+                                <img
+                                    width={48}
+                                    height={48}
+                                    src={ENDPOINT + "/icons/" + this.props.user.icon}
+                                    alt={"User icon"}
+                                />
+                            </div>
+                        </OverlayTrigger> :
+                        <div className={"mr-2 rounded user-icon"}>
+                            <img
+                                width={48}
+                                height={48}
+                                src={ENDPOINT + "/icons/" + this.props.user.icon}
+                                alt={"User icon"}
+                            />
+                        </div>
+                    }
                     <Media.Body>
                         {you ?
                             <Form.Control
@@ -63,8 +122,7 @@ class User extends React.Component<UserProps> {
                             <></>
                         }
                         <div className={"user-status"}>
-                            <h6 onClick={() => this.setState({mouse: true})}
-                                className={"mb-0 pb-1 text-truncate"}>
+                            <h6 className={"mb-0 pb-1 text-truncate"}>
                                 {this.props.owner === this.props.user.id ?
                                     <FaCrown size={21} className={"text-warning mr-1"}
                                              style={{marginTop: "-0.5em"}}/>
