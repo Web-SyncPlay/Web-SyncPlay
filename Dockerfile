@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------
 # React Build Stage
 # ------------------------------------------------------------------------------
-FROM node:15.14.0-alpine as react-build
+FROM node:16.0.0-alpine as react-build
 
 WORKDIR /app
 ENV PATH /app/node_modules/.bin:$PATH
@@ -19,7 +19,7 @@ RUN npm run build
 # ------------------------------------------------------------------------------
 # Final Stage
 # ------------------------------------------------------------------------------
-FROM node:15.14.0-alpine
+FROM node:16.0.0-alpine
 
 WORKDIR /app
 ENV IS_DOCKER "true"
