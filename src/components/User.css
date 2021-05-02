@@ -110,7 +110,11 @@
 .popover .popover-body {
     background-color: #1f1f1f;
     max-height: 400px;
-    width: 365px;
     overflow-y: auto;
     overflow-x: hidden;
+}
+
+
+#change-icon-popover.popover .popover-body {
+    width: 365px;
 }
