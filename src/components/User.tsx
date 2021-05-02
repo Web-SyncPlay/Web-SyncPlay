@@ -70,7 +70,7 @@ class User extends React.Component<UserProps, UserState> {
                             overlay={
                                 <Popover id={"change-icon-popover"}>
                                     <Popover.Content>
-                                        <Row>
+                                        <Row className={"pl-1"}>
                                             {this.state.icons.map(icon =>
                                                 <Col key={icon}
                                                      className={"m-1 rounded user-icon"}
