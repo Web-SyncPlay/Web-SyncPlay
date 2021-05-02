@@ -65,6 +65,7 @@ input[type="range"] {
     --upper: rgba(255, 255, 255, 0.2);
     --thumb-size: 10px;
     --thumb-color: #fff;
+
     cursor: pointer;
     background: linear-gradient(to right, var(--lower) 0%, var(--lower) var(--value), var(--upper) var(--value), var(--upper) 100%);
     border-radius: 8px;
@@ -81,6 +82,7 @@ input[type="range"]:focus {
 }
 
 /* thumb */
+
 /* strangely I have to separate them, otherwise non of them recognizes the rule */
 input[type="range"]::-moz-range-thumb {
     width: var(--thumb-size);
@@ -107,8 +109,7 @@ input[type="range"]::-ms-thumb {
     cursor: pointer;
 }
 
-
-/* ie */
+/* edge */
 input[type=range]::-ms-track {
     background: transparent;
     border-color: transparent;
