@@ -1,7 +1,7 @@
 [![Website](https://img.shields.io/website?down_color=red&down_message=offline&label=Studi-Watch&up_color=green&up_message=online&url=https%3A%2F%2Fwatch.agent77326.de)](https://watch.agent77326.de)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/42301623d1514d0dba3264d9b0f48583)](https://www.codacy.com/gh/Yasamato/Studi-Watch/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Yasamato/Studi-Watch&amp;utm_campaign=Badge_Grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/yasamato/studi-watch/badge)](https://www.codefactor.io/repository/github/yasamato/studi-watch)
-[![Docker Image Size (tag)](https://img.shields.io/docker/image-size/ranimepiracy/index/latest?logo=docker)](https://hub.docker.com/r/ranimepiracy/index)
+[![Docker Image Size (tag)](https://img.shields.io/docker/image-size/yasamato/studi-watch/latest?logo=docker)](https://hub.docker.com/r/yasamato/studi-watch)
 
 # Studi-Watch
 
