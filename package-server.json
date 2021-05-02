@@ -1,0 +1,13 @@
+{
+  "name": "studi-watch",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "iso-3166": "^4.0.0",
+    "socket.io": "^4.0.1"
+  }
+}

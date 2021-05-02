@@ -1,0 +1,14 @@
+.modal-content {
+    background-color: inherit;
+}
+
+.modal-header,
+.modal-body,
+.modal-footer {
+    background-color: #2d2d2d;
+    border-color: #e1e1e1;
+}
+
+.modal button.close {
+    color: #fff;
+}

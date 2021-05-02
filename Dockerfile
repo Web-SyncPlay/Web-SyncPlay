@@ -1,6 +1,41 @@
-FROM node:12
+# ------------------------------------------------------------------------------
+# React Build Stage
+# ------------------------------------------------------------------------------
+FROM node:15.14.0-alpine as react-build
+
 WORKDIR /app
+ENV PATH /app/node_modules/.bin:$PATH
+ENV REACT_APP_DOCKER "true"
+
+# install the dependencies
+COPY package.json .
+COPY package-lock.json .
+RUN npm ci --silent
+
+# build the web app
 COPY . .
-RUN npm install
-EXPOSE 8881
+RUN npm run build
+
+# ------------------------------------------------------------------------------
+# Final Stage
+# ------------------------------------------------------------------------------
+FROM node:15.14.0-alpine
+
+WORKDIR /app
+ENV IS_DOCKER "true"
+
+EXPOSE 8081
+HEALTHCHECK CMD curl --fail http://localhost:8081 || exit 1
+
+LABEL org.opencontainers.image.url="https://watch.agent77326.de" \
+      org.opencontainers.image.description="Watch media together" \
+      org.opencontainers.image.title="Studi-Watch" \
+      maintainer="Leo Jung"
+
+COPY --from=react-build /app/build /app/public
+COPY index.js /app
+COPY package-server.json /app/package.json
+
+RUN npm install --silent
+
 CMD ["npm", "run", "start"]

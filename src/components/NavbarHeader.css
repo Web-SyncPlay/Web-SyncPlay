@@ -1,0 +1,21 @@
+.navbar {
+    background-color: #1f1f1f;
+}
+
+.navbar-brand {
+    font-family: 'Zen Dots', cursive;
+}
+
+.navbar .form-inline .input-group {
+    flex-grow: 1;
+    max-width: 500px;
+}
+
+.navbar .custom-control.custom-switch {
+    flex-grow: 1;
+    padding: 0;
+}
+
+.navbar .custom-control.custom-switch > div {
+    flex-direction: column;
+}

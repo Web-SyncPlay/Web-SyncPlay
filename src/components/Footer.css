@@ -1,0 +1,18 @@
+footer {
+    background-color: #1f1f1f;
+    color: rgba(255, 255, 255, .5);
+}
+
+footer .icon svg {
+    height: 21px;
+    width: 21px;
+}
+
+footer a {
+    color: rgba(255, 255, 255, .5);
+}
+
+footer a:hover {
+    text-decoration: none;
+    color: rgba(255, 255, 255, .75);
+}
