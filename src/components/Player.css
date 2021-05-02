@@ -43,7 +43,7 @@
     height: 19px;
     margin: 0;
     padding: 0;
-    transition: box-shadow .3s ease;
+    transition: box-shadow 0.3s ease;
     width: 100%;
     touch-action: manipulation;
 }
@@ -65,7 +65,7 @@
     width: 13px;
     z-index: 10;
     position: relative;
-    transition: all .2s ease;
+    transition: all 0.2s ease;
 }
 
 .player-overlay input[type="range"]::-moz-range-track {

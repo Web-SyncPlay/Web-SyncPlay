@@ -69,7 +69,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
         if (this.props.played) {
             if (Math.abs(prevState.played - this.props.played) * prevState.duration > 2) {
                 console.log("Desynced, seeking to ", this.props.played * prevState.duration);
-                this.player.current?.seekTo(this.props.played, 'fraction');
+                this.player.current?.seekTo(this.props.played, "fraction");
                 this.setState({
                     played: this.props.played
                 });

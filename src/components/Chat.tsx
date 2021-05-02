@@ -23,7 +23,7 @@ class Chat extends React.Component<ChatProps, ChatState> {
 
         this.state = {
             message: ""
-        }
+        };
     }
 
     render() {
@@ -31,7 +31,7 @@ class Chat extends React.Component<ChatProps, ChatState> {
             <div className={"chat w-100 rounded d-flex"}>
                 <div className={"messages flex-grow-1"}>
                     <div className={"d-flex"}>
-                        {this.props.history.map(h => {
+                        {this.props.history.map((h) => {
                             const you = this.props.you === h.user.id;
                             return (
                                 <div className={"rounded mx-2 mb-2 px-2 pb-2 m" + (you ? "l-5" : "r-5")}

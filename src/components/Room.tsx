@@ -2,7 +2,6 @@ import React from "react";
 import socketIOClient, {Socket} from "socket.io-client";
 import {Col, Row, Spinner} from "react-bootstrap";
 import ReactPlayer from "react-player";
-import "./Room.css";
 import {Helmet} from "react-helmet";
 import User from "./User";
 import Chat from "./Chat";

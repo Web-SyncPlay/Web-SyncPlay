@@ -5,7 +5,7 @@ import StartModal from "./components/StartModal";
 import Room from "./components/Room";
 import Footer from "./components/Footer";
 import {Route, useHistory, useLocation} from "react-router-dom";
-import * as H from 'history';
+import * as H from "history";
 import Switch from "react-bootstrap/Switch";
 
 interface AppProps {
@@ -27,7 +27,7 @@ class App extends React.Component<AppProps> {
         this.state = {
             isRoom: false,
             roomId: props.location.pathname.replace("/room/", "")
-        }
+        };
 
         this.roomRef = React.createRef<Room>();
     }

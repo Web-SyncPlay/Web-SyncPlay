@@ -9,7 +9,7 @@
 .chat .chat-input {
     vertical-align: bottom;
     background-color: #2d2d2d;
-    border-radius: 0 0 .25rem .25rem;
+    border-radius: 0 0 0.25rem 0.25rem;
 }
 
 .chat .messages {
