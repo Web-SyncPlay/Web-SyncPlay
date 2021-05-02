@@ -32,65 +32,6 @@
     align-items: center;
 }
 
-.player-overlay input[type="range"] {
-    cursor: pointer;
-    appearance: none;
-    background: 0 0;
-    border: 0;
-    border-radius: 26px;
-    color: #1aafff;
-    display: block;
-    height: 19px;
-    margin: 0;
-    padding: 0;
-    transition: box-shadow 0.3s ease;
-    width: 100%;
-    touch-action: manipulation;
-}
-
-.player-overlay input[type="range"]:focus {
-    outline: none;
-}
-
-.player-overlay input[type="range"]::-moz-range-progress {
-    background: currentColor;
-}
-
-.player-overlay input[type="range"]::-moz-range-thumb {
-    background: #fff;
-    border: 0;
-    border-radius: 100%;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, .15), 0 0 0 1px rgba(47, 52, 61, 0.2);
-    height: 13px;
-    width: 13px;
-    z-index: 10;
-    position: relative;
-    transition: all 0.2s ease;
-}
-
-.player-overlay input[type="range"]::-moz-range-track {
-    background-color: rgba(255, 255, 255, 0.25);
-    border: 0;
-    transition: box-shadow .3s ease;
-    -moz-user-select: none;
-    user-select: none;
-}
-
-.player-overlay input[type="range"]::-moz-range-track,
-.player-overlay input[type="range"]::-moz-range-progress {
-    border-radius: 3px;
-    height: 5px;
-    transform: scaleY(0.6);
-    transition: transform 0.1s cubic-bezier(0.4, 0, 1, 1);
-}
-
-.player-overlay .player-progress:hover input[type="range"]::-moz-range-track,
-.player-overlay .player-progress:hover input[type="range"]::-moz-range-progress,
-.player-overlay .volume-control .volume-slider:hover input[type="range"]::-moz-range-track,
-.player-overlay .volume-control .volume-slider:hover input[type="range"]::-moz-range-progress {
-    transform: scaleY(1);
-}
-
 .player-overlay .player-controls .control-button {
     line-height: 1em;
     cursor: pointer;
@@ -115,4 +56,77 @@
 
 .player-overlay .volume-control:hover {
     width: 8.25em;
+}
+
+/* input range slider */
+input[type="range"] {
+    --value: 0%;
+    --lower: #1aafff;
+    --upper: rgba(255, 255, 255, 0.2);
+    --thumb-size: 10px;
+    --thumb-color: #fff;
+    cursor: pointer;
+    background: linear-gradient(to right, var(--lower) 0%, var(--lower) var(--value), var(--upper) var(--value), var(--upper) 100%);
+    border-radius: 8px;
+    height: 5px;
+    width: 100%;
+    outline: none;
+    touch-action: manipulation;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+input[type="range"]:focus {
+    outline: none;
+}
+
+/* thumb */
+/* strangely I have to separate them, otherwise non of them recognizes the rule */
+input[type="range"]::-moz-range-thumb {
+    width: var(--thumb-size);
+    height: var(--thumb-size);
+    background-color: var(--thumb-color);
+    border-radius: 100%;
+    cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    width: var(--thumb-size);
+    height: var(--thumb-size);
+    background-color: var(--thumb-color);
+    border-radius: 100%;
+    cursor: pointer;
+    -webkit-appearance: none;
+}
+
+input[type="range"]::-ms-thumb {
+    width: var(--thumb-size);
+    height: var(--thumb-size);
+    background-color: var(--thumb-color);
+    border-radius: 100%;
+    cursor: pointer;
+}
+
+
+/* ie */
+input[type=range]::-ms-track {
+    background: transparent;
+    border-color: transparent;
+    border-width: 5px 0;
+    color: transparent;
+    width: 100%;
+    height: 20px;
+    cursor: pointer;
+}
+
+input[type=range]::-ms-fill-lower,
+input[type=range]:focus::-ms-fill-lower {
+    background: var(--lower);
+    border-radius: 3px;
+}
+
+input[type=range]::-ms-fill-upper,
+input[type=range]:focus::-ms-fill-upper {
+    background: var(--upper);
+    border-radius: 3px;
 }

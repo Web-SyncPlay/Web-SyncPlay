@@ -34,7 +34,8 @@ class Chat extends React.Component<ChatProps, ChatState> {
                         {this.props.history.map((h) => {
                             const you = this.props.you === h.user.id;
                             return (
-                                <div className={"rounded mx-2 mb-2 px-2 pb-2 m" + (you ? "l-5" : "r-5")}
+                                <div key={h.time}
+                                     className={"rounded mx-2 mb-2 px-2 pb-2 m" + (you ? "l-5" : "r-5")}
                                      style={{
                                          alignSelf: (you ? "end" : "start")
                                      }}>

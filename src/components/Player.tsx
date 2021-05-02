@@ -128,10 +128,12 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                     this.interact();
                                     const t = parseFloat(e.target.value);
                                     this.player.current?.seekTo(t);
+                                    e.target.style.setProperty("--value", (t * 100) + "%");
                                     this.updateState({
                                         played: t
                                     });
                                 }}
+                                style={{"--value": (this.state.played * 100) + "%"} as React.CSSProperties}
                                 aria-label={"Progress of playback"}
                                 value={this.state.played}/>
                         </div>
@@ -193,7 +195,9 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                                     volume: t
                                                 });
                                             }
+                                            e.target.style.setProperty("--value", (t * 100) + "%");
                                         }}
+                                        style={{"--value": ((this.state.muted ? 0 : this.state.volume) * 100) + "%"} as React.CSSProperties}
                                         aria-label={"Progress of playback"}
                                         value={this.state.muted ? 0 : this.state.volume}/>
                                 </div>
