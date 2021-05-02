@@ -1,3 +1,8 @@
+![Website](https://img.shields.io/website?down_color=red&down_message=offline&label=Studi-Watch&up_color=green&up_message=online&url=https%3A%2F%2Fwatch.agent77326.de)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/42301623d1514d0dba3264d9b0f48583)](https://www.codacy.com/gh/Yasamato/Studi-Watch/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Yasamato/Studi-Watch&amp;utm_campaign=Badge_Grade)
+[![CodeFactor](https://www.codefactor.io/repository/github/ranimepiracy/index/badge)](https://www.codefactor.io/repository/github/ranimepiracy/index)
+[![Docker Image Size (tag)](https://img.shields.io/docker/image-size/ranimepiracy/index/latest?logo=docker)](https://hub.docker.com/r/ranimepiracy/index)
+
 # Studi-Watch
 Schaue Online-Medien wie Videos, YouTube oder Audio gemeinsam mit deinen Freunden in privaten Räumen.
 Generiere dazu einfach einen eigenen Raum und lade deine Freunde mit dem Link zum Raum ein.
