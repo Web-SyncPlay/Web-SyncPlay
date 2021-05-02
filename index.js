@@ -81,7 +81,6 @@ app.get("/room/generate", (req, res) => {
 
 // Socket-Communication
 let rooms = [];
-let locked = [];
 io.on("connection", (socket) => {
     // room-joining
     let room = socket.handshake.query.roomId;

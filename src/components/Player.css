@@ -32,16 +32,12 @@
     align-items: center;
 }
 
-.player-overlay input[type="range"] {
-    appearance: none;
-    cursor: pointer;
-}
-
 .player-overlay input[type="range"]:focus {
     outline: none;
 }
 
 .player-overlay input[type="range"] {
+    cursor: pointer;
     appearance: none;
     background: 0 0;
     border: 0;
@@ -49,7 +45,7 @@
     color: #1aafff;
     display: block;
     height: 19px;
-    margin: 0 0px;
+    margin: 0;
     padding: 0;
     transition: box-shadow .3s ease;
     width: 100%;
