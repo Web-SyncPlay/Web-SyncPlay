@@ -15,6 +15,7 @@ import {
 import "./Modal.css";
 import ModalHeader from "react-bootstrap/ModalHeader";
 import {Helmet} from "react-helmet";
+import {IoEnter} from "react-icons/all";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 
@@ -75,8 +76,10 @@ class StartModal extends React.Component<StartModelProps, StartModalState> {
                                                  required
                                                  aria-describedby={"joinRoomAppend"}/>
                                     <InputGroup.Append>
-                                        <Button type={"submit"} id={"joinRoomAppend"} variant={"primary"}>
-                                            Go
+                                        <Button type={"submit"} id={"joinRoomAppend"} variant={"outline-success"}>
+                                            <IoEnter style={{
+                                                marginTop: "-0.2em"
+                                            }}/>
                                         </Button>
                                     </InputGroup.Append>
                                 </InputGroup>
@@ -88,7 +91,7 @@ class StartModal extends React.Component<StartModelProps, StartModalState> {
                             Or
                         </FormLabel>
                         <Col xs={"10"}>
-                            <Button variant={"outline-success"} block onClick={() => this.generateRoom()}>
+                            <Button variant={"success"} block onClick={() => this.generateRoom()}>
                                 Create a new room
                             </Button>
                         </Col>
