@@ -4,49 +4,28 @@
 [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/ranimepiracy/index/latest?logo=docker)](https://hub.docker.com/r/ranimepiracy/index)
 
 # Studi-Watch
-Schaue Online-Medien wie Videos, YouTube oder Audio gemeinsam mit deinen Freunden in privaten Räumen.
-Generiere dazu einfach einen eigenen Raum und lade deine Freunde mit dem Link zum Raum ein.
-Teste es doch einfach mal auf [https://watch.agent77326.de/](https://watch.agent77326.de/).
+Watch videos, listen to music or tune in for a live stream and all that with your friends. Studi-Watch is a software that let's you synchronise your playback with all your friends with a clean modern Web-UI written in [React](https://reactjs.org/) and designed using [Bootstrap 4](https://getbootstrap.com/).
 
-# Haupt-Features
-- Play-/Pause- und Seek-Events werden mit allen Teilnehmern synchronisiert
-- Hot-Swap, Teilnehmer treten automatisch ihrem Raum wieder bei, falls der Server neugestartet wird.
-Während eines Neustarts können natürlich keine Nachrichten übertragen werden
-- 160 verschiedene Icons von [Icons8](https://icons8.com/) zur Auswahl
-- Spiele ein zufälliges Musikvideo mit einem Mausklick ab
-- Beim Joinen wird automatisch das aktuelle Video, der Fortschritt sowie der Chat-Verlauf geholt
+## Supported formats
+- YouTube videos
+- Facebook videos
+- SoundCloud tracks
+- Streamable videos
+- Vimeo videos
+- Wistia videos
+- Twitch videos
+- DailyMotion videos
+- Vidyard videos
+- Kaltura videos
+- Files playable via `<video>` or `<audio>` element as well as:
+  - HLS streams
+  - DASH streams
 
-# Unterstützte Medien-Formate
-- Youtube-/Vimeo-Videos werden unterstützt, einfach den Link zur Seite einfügen
-- Alle Mediendateien, welche direkt im Browser abgespielt werden können (ohne embed)
+## Known limitations
+I would have loved to keep the original Player-UIs for ease of use, but they are usually being embeded as an iframe, as such the software would be limited to the included API of the vendors. This is sadly not an option if you want to make sure that everyone stays synchronised and there is no feedback loop of commands.
 
-# Bekannte Probleme
-- Das "Seeken" während der Player pausiert ist, wird nicht korrekt übermittelt/ausgeführt.
-Es ist ein manueller Play/Pause Befehl erneut nötig (von dem Teilnehmer, welcher die Zeit festlegen will).
-- Wenn der Tab nicht mehr im Vordergrund ist, verhindern einige Browser den Autoplay, wenn der Ton aktiviert ist und ein neues Video abgespielt wird.
-
-# Setup
-Am Einfachsten ist die Ausführung mit docker via `docker run -p 8881:8881 yasamato/studi-watch`.
-
-## Manueller Start
-Zum Starten reicht es einmal `npm run install` sowie `npm run start` auszuführen.
-Es empfiehlt sich das Programm, als service zu registrieren oder beispielsweise via
-`screen -S watch npm run start` im Hintergrund laufen zu lassen.
-
-Standardmäßig wird der Port 8081 verwendet.
-
-Wenn der Server hinter einem Reverse-Proxy-Server laufen soll, empfiehlt sich für Apache folgende Mindestkonfiguration:
+## Getting started
+To run this software on your own hardware, you will need to have [Docker](https://www.docker.com/) or any other container engine installed and simply run:
+```bash
+docker run -d -p 8081:8081 yasamato/studi-watch
 ```
-<VirtualHost *:80>
-    ServerName watch.example.com
-    ProxyPass / http://localhost:8881/
-    ProxyPassReverse / http://localhost:8881/
-
-    # Enable websocket-support
-    RewriteEngine on
-    RewriteCond %{REQUEST_URI}  ^/socket.io [NC]
-    RewriteCond %{QUERY_STRING} transport=websocket [NC]
-    RewriteRule /(.*) "ws://localhost:8081/$1" [P,L]
-</VirtualHost>
-```
-Hierbei wird ein https-Betrieb dringend empfohlen.
