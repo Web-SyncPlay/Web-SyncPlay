@@ -28,9 +28,9 @@ class User extends React.Component<UserProps, UserState> {
 
         if (this.props.user.id === this.props.you) {
             fetch(ENDPOINT + "/icons.json")
-                .then(res => res.json())
-                .then(icons => {
-                    this.setState({icons: icons});
+                .then((res) => res.json())
+                .then((icons) => {
+                    this.setState({icons});
                 });
         }
     }
@@ -44,11 +44,11 @@ class User extends React.Component<UserProps, UserState> {
         const minutes = Math.floor((s - (hours * 3600)) / 60);
         const seconds = Math.floor(s - (hours * 3600) - (minutes * 60));
         if (hours === 0) {
-            return (minutes > 9 ? minutes.toString() : "0" + minutes.toString()) + ':' +
+            return (minutes > 9 ? minutes.toString() : "0" + minutes.toString()) + ":" +
                 (seconds > 9 ? seconds.toString() : "0" + seconds.toString());
         }
-        return (hours > 9 ? hours.toString() : "0" + hours.toString()) + ':' +
-            (minutes > 9 ? minutes.toString() : "0" + minutes.toString()) + ':' +
+        return (hours > 9 ? hours.toString() : "0" + hours.toString()) + ":" +
+            (minutes > 9 ? minutes.toString() : "0" + minutes.toString()) + ":" +
             (seconds > 9 ? seconds.toString() : "0" + seconds.toString());
     }
 
@@ -71,7 +71,7 @@ class User extends React.Component<UserProps, UserState> {
                                 <Popover id={"change-icon-popover"}>
                                     <Popover.Content>
                                         <Row className={"pl-1"}>
-                                            {this.state.icons.map(icon =>
+                                            {this.state.icons.map((icon) =>
                                                 <Col key={icon}
                                                      className={"m-1 rounded user-icon"}
                                                      onClick={() => {

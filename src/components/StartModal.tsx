@@ -37,13 +37,13 @@ class StartModal extends React.Component<StartModelProps, StartModalState> {
     }
 
     updateRoomId(roomId: string) {
-        this.setState({roomId: roomId});
+        this.setState({roomId});
     }
 
     generateRoom() {
         return fetch(ENDPOINT + "/room/generate")
-            .then(res => res.json())
-            .then(data => this.props.join(data.id));
+            .then((res) => res.json())
+            .then((data) => this.props.join(data.id));
     }
 
     render() {

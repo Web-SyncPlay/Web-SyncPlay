@@ -62,7 +62,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
             buffering: false,
             seeking: false,
             fullscreen: false
-        }
+        };
     }
 
     componentDidUpdate(prevProps: Readonly<PlayerProps>, prevState: Readonly<PlayerState>) {
@@ -98,12 +98,12 @@ class Player extends React.Component<PlayerProps, PlayerState> {
 
     render() {
         return (
-            <div ref={node => this.fullscreenNode = node || undefined}>
+            <div ref={(node) => this.fullscreenNode = node || undefined}>
                 <div className={"player-overlay p-2"}>
                     <div className={"player-center flex-grow-1"}
                          onClick={() => {
                              if (this.interaction) {
-                                 this.interaction = false
+                                 this.interaction = false;
                                  if (screenfull.isEnabled) {
                                      screenfull.toggle(this.fullscreenNode);
                                      this.setState({fullscreen: !this.state.fullscreen});
@@ -112,7 +112,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                  this.interact();
                                  setTimeout(() => {
                                      if (this.interaction) {
-                                         this.updateState({playing: !this.props.playing})
+                                         this.updateState({playing: !this.props.playing});
                                      }
                                  }, 250);
                              }
@@ -187,7 +187,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                                 this.setState({
                                                     volume: t,
                                                     muted: false
-                                                })
+                                                });
                                             } else {
                                                 this.setState({
                                                     volume: t
@@ -252,7 +252,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                     onPause={() => this.updateState({playing: false})}
                     onBuffer={() => this.updateState({buffering: true})}
                     onBufferEnd={() => this.updateState({buffering: false})}
-                    onSeek={e => console.log("onSeek", e)}
+                    onSeek={(e) => console.log("onSeek", e)}
                     onEnded={() => {
                         if (this.props.loop) {
                             this.updateState({
@@ -263,14 +263,14 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                             this.updateState({playing: false});
                         }
                     }}
-                    onError={e => console.log("onError", e)}
-                    onProgress={progress => {
+                    onError={(e) => console.log("onError", e)}
+                    onProgress={(progress) => {
                         // We only want to update time slider if we are not currently seeking
                         if (!this.state.seeking) {
                             this.updateState(progress);
                         }
                     }}
-                    onDuration={duration => this.updateState({duration: duration})}
+                    onDuration={(duration) => this.updateState({duration})}
                 />
             </div>
         );

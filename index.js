@@ -19,7 +19,7 @@ const ROOT = process.env.IS_DOCKER ? "/app" : path.resolve();
 
 const getRandomItem = (array) => {
     return array[Math.round(Math.random() * (array.length - 1))];
-}
+};
 let defaultNameList = [
     "Ein wildes Tier",
     "Rabauken Hamster",
@@ -65,7 +65,7 @@ app.get("/iso-3166.json", (req, res) => {
 const generateId = (length = 4) => {
     let result = "", chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     for (let i = 0; i < length; i++) {
-        result += chars.charAt(Math.round(Math.random() * (chars.length - 1)))
+        result += chars.charAt(Math.round(Math.random() * (chars.length - 1)));
     }
     return result;
 }
@@ -74,8 +74,8 @@ app.get("/room/generate", (req, res) => {
     let id;
     do {
         id = generateId();
-    } while (rooms.some(room => room.id === id));
-    res.json({id: id});
+    } while (rooms.some((room) => room.id === id));
+    res.json({id});
     // res.status(307).redirect(id);
 });
 
@@ -89,7 +89,9 @@ io.on("connection", (socket) => {
         let time = "[" + d.toUTCString() + "] [" + room + "]: ";
         console.log(time, ...item);
         fs.appendFile("log.txt", time + item.join() + "\n", function (err) {
-            if (err) throw err;
+            if (err) {
+                throw err;
+            }
         });
     }
     socket.join(room);
@@ -98,7 +100,7 @@ io.on("connection", (socket) => {
     // Room management
     // ------------------------------------------------------------------------------
     const getRoom = (id = room) => {
-        return rooms.find(r => r.id === id);
+        return rooms.find((r) => r.id === id);
     };
     if (!getRoom()) {
         rooms.push({
@@ -112,18 +114,21 @@ io.on("connection", (socket) => {
     const getUser = (id = socket.id) => {
         let tmp = getRoom();
         if (tmp) {
-            return tmp.users.find(u => u.id === id);
+            return tmp.users.find((u) => u.id === id);
         }
     };
 
     // update room/user data
+    const emitStatus = () => {
+        io.to(room).emit("status", getRoom());
+    };
     const _update = (oldData, newData, forbiddenKeys = []) => {
         Object.keys(newData).forEach((key) => {
             if (!forbiddenKeys.includes(key)) {
                 oldData[key] = newData[key];
             }
         });
-    }
+    };
     const update = (data) => {
         _update(getUser(), data, ["queue", "users", "history", "interaction"]);
         if (socket.id === getRoom().owner || getRoom().anarchy) {
@@ -155,23 +160,20 @@ io.on("connection", (socket) => {
         }
 
         emitStatus();
-    }
-    const emitStatus = () => {
-        io.to(room).emit("status", getRoom());
     };
 
     // find icon and user name that hasn't been taken yet
     let name = getRandomItem(defaultNameList), icon = getRandomItem(userIcons);
-    while (getRoom().users.some(user => user.name === name)) {
+    while (getRoom().users.some((user) => user.name === name)) {
         name = getRandomItem(defaultNameList);
     }
-    while (getRoom().users.some(user => user.icon === icon)) {
+    while (getRoom().users.some((user) => user.icon === icon)) {
         icon = getRandomItem(userIcons);
     }
     getRoom().users.push({
         id: socket.id,
-        name: name,
-        icon: icon
+        name,
+        icon
     });
     log("User " + socket.id + " joined, assigned: \"" + name + "\" " + icon);
 
@@ -180,7 +182,7 @@ io.on("connection", (socket) => {
 
         let tmp = getRoom();
         if (tmp.users.length > 1) {
-            tmp.users = tmp.users.filter(u => {
+            tmp.users = tmp.users.filter((u) => {
                 return u.id !== socket.id;
             });
             if (tmp.owner === socket.id) {
@@ -189,7 +191,7 @@ io.on("connection", (socket) => {
             log(tmp.users.length + " users left");
             emitStatus();
         } else {
-            rooms = rooms.filter(item => item.id !== room);
+            rooms = rooms.filter((item) => item.id !== room);
             log("no users left, purging room");
         }
     });
@@ -220,7 +222,7 @@ app.get("/*", (req, res) => {
     } else {
         res.sendFile("public/index.html", {root: ROOT});
     }
-})
+});
 http.listen(PORT, () => {
     console.log("listening on *:" + PORT);
 });

@@ -32,10 +32,6 @@
     align-items: center;
 }
 
-.player-overlay input[type="range"]:focus {
-    outline: none;
-}
-
 .player-overlay input[type="range"] {
     cursor: pointer;
     appearance: none;
@@ -52,6 +48,10 @@
     touch-action: manipulation;
 }
 
+.player-overlay input[type="range"]:focus {
+    outline: none;
+}
+
 .player-overlay input[type="range"]::-moz-range-progress {
     background: currentColor;
 }
@@ -60,7 +60,7 @@
     background: #fff;
     border: 0;
     border-radius: 100%;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, .15), 0 0 0 1px rgba(47, 52, 61, .2);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .15), 0 0 0 1px rgba(47, 52, 61, 0.2);
     height: 13px;
     width: 13px;
     z-index: 10;
@@ -69,7 +69,7 @@
 }
 
 .player-overlay input[type="range"]::-moz-range-track {
-    background-color: rgba(255, 255, 255, .25);
+    background-color: rgba(255, 255, 255, 0.25);
     border: 0;
     transition: box-shadow .3s ease;
     -moz-user-select: none;

@@ -14,6 +14,17 @@ interface RoomProps {
     roomId: string
 }
 
+export interface UserData extends RoomState {
+    name: string,
+    icon: string
+}
+
+export interface ChatData {
+    user: UserData,
+    time: number,
+    message: string
+}
+
 interface RoomState {
     id: string,
     url: string,
@@ -27,17 +38,6 @@ interface RoomState {
     chatExpanded: boolean,
     users: UserData[],
     history: ChatData[]
-}
-
-export interface UserData extends RoomState {
-    name: string,
-    icon: string
-}
-
-export interface ChatData {
-    user: UserData,
-    time: number,
-    message: string
 }
 
 class Room extends React.Component<RoomProps, RoomState> {
@@ -91,15 +91,13 @@ class Room extends React.Component<RoomProps, RoomState> {
     }
 
     sendChat(message: string) {
-        this.socket?.emit("chat", {
-            message: message
-        });
+        this.socket?.emit("chat", {message});
     }
 
     updateUser(name: string, icon: string) {
         this.updateState({
-            icon: icon,
-            name: name
+            icon,
+            name
         });
     }
 
@@ -120,8 +118,8 @@ class Room extends React.Component<RoomProps, RoomState> {
 
     load(url: string, queue: string[] = this.state.queue) {
         this.updateState({
-            url: url,
-            queue: queue,
+            url,
+            queue,
             played: 0,
             playing: true
         });
@@ -129,7 +127,7 @@ class Room extends React.Component<RoomProps, RoomState> {
 
     playFromQueue(index: number) {
         const next = this.state.queue[index];
-        this.load(next, [...this.state.queue].filter((e, i) => i !== index))
+        this.load(next, [...this.state.queue].filter((e, i) => i !== index));
     }
 
     addToQueue(url: string) {
@@ -181,7 +179,7 @@ class Room extends React.Component<RoomProps, RoomState> {
                     </Col>
                 </Row>
                 <Row className={"user-list mx-3 mb-3 p-0"}>
-                    {this.state.users.map(user => {
+                    {this.state.users.map((user) => {
                             return (
                                 <User key={user.id}
                                       user={user}
