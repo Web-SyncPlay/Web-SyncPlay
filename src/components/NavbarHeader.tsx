@@ -32,47 +32,52 @@ class NavbarHeader extends React.Component<NavbarHeaderProps, NavbarHeaderState>
     }
 
     render() {
+        // TODO: this is not very ideal...
         return (
             <>
-                <Navbar collapseOnSelect variant="dark" className={"mb-3"}>
+                <Navbar collapseOnSelect expand={"md"} variant="dark" className={"mb-3"}>
                     <Link to={"/"} className={"navbar-brand"}>
                         Studi-Watch
                     </Link>
                     <Switch>
                         <Route path={"/room/:roomId"}>
-                            <Navbar.Toggle aria-controls="responsive-navbar-nav"/>
-                            <Navbar.Collapse id="responsive-navbar-nav">
-                                <Form className={"w-100"}
-                                      onSubmit={(e) => {
-                                          e.preventDefault();
-                                          this.props.playURL(this.state.url);
-                                          this.setState({url: ""});
-                                      }}
-                                      inline>
-                                    <InputGroup>
-                                        <FormControl
-                                            value={this.state.url}
-                                            onChange={(e) => this.setState({url: e.target.value})}
-                                            placeholder={"Link to media file"}
-                                            aria-label={"Link to media file"}
-                                            aria-describedby={"urlInput-button"}
-                                        />
-                                        <InputGroup.Append id={"urlInput-button"}>
-                                            <Button variant="outline-success" type={"submit"}>
-                                                Play
-                                            </Button>
-                                        </InputGroup.Append>
-                                    </InputGroup>
-                                    <Button className={"ml-auto"}
-                                            onClick={() => this.setState({inviteModalOpen: true})}
-                                            variant={"success"}>
-                                        <IoPersonAdd/>
-                                        <span className={"ml-1"}>
+                            <div className={"d-flex"}>
+                                <Navbar.Toggle className={"ml-auto"} aria-controls="responsive-navbar-nav"/>
+                                <Navbar.Collapse id="responsive-navbar-nav">
+                                    <Form className={"w-100"}
+                                          onSubmit={(e) => {
+                                              e.preventDefault();
+                                              if (this.state.url !== "") {
+                                                  this.props.playURL(this.state.url);
+                                                  this.setState({url: ""});
+                                              }
+                                          }}
+                                          inline>
+                                        <InputGroup className={"mr-2"}>
+                                            <FormControl
+                                                value={this.state.url}
+                                                onChange={(e) => this.setState({url: e.target.value})}
+                                                placeholder={"Link to media file"}
+                                                aria-label={"Link to media file"}
+                                                aria-describedby={"urlInput-button"}
+                                            />
+                                            <InputGroup.Append id={"urlInput-button"}>
+                                                <Button variant="outline-success" type={"submit"}>
+                                                    Play
+                                                </Button>
+                                            </InputGroup.Append>
+                                        </InputGroup>
+                                        <Button className={"ml-auto"}
+                                                onClick={() => this.setState({inviteModalOpen: true})}
+                                                variant={"success"}>
+                                            <IoPersonAdd/>
+                                            <span className={"ml-1"}>
                                             Invite
                                         </span>
-                                    </Button>
-                                </Form>
-                            </Navbar.Collapse>
+                                        </Button>
+                                    </Form>
+                                </Navbar.Collapse>
+                            </div>
                         </Route>
                     </Switch>
                 </Navbar>

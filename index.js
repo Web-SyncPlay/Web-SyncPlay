@@ -126,9 +126,33 @@ io.on("connection", (socket) => {
         });
     }
     const update = (data) => {
-        _update(getUser(), data, ["queue", "users", "history"]);
-        if (data.id === getRoom().owner || getRoom().anarchy) {
-            _update(getRoom(), data, ["volume", "muted", "loaded", "ready", "buffering", "seeking"]);
+        _update(getUser(), data, ["queue", "users", "history", "interaction"]);
+        if (socket.id === getRoom().owner || getRoom().anarchy) {
+            let forbidden = [
+                "volume",
+                "muted",
+                "loaded",
+                "ready",
+                "buffering",
+                "seeking",
+                "interaction",
+                "fullscreen"
+            ];
+
+            if (!data.interaction) {
+                forbidden = forbidden.concat([
+                    "playbackRate",
+                    "loop"
+                ]);
+
+                if (socket.id !== getRoom().owner) {
+                    forbidden = forbidden.concat([
+                        "played"
+                    ]);
+                }
+            }
+
+            _update(getRoom(), data, forbidden);
         }
 
         emitStatus();
@@ -195,7 +219,7 @@ app.get("/*", (req, res) => {
     if (fs.existsSync("public" + req.url) && fs.lstatSync("public" + req.url).isFile()) {
         res.sendFile("public" + req.url, {root: ROOT});
     } else {
-        res.status(404).end();
+        res.sendFile("public/index.html", {root: ROOT});
     }
 })
 http.listen(PORT, () => {

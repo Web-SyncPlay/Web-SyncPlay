@@ -6,12 +6,20 @@ body {
     color: #fff;
 }
 
+html {
+    overflow: hidden;
+}
+
+body {
+    overflow: auto;
+}
+
 svg {
     width: 21px;
     height: 21px;
 }
 
 div.custom-control.custom-switch {
-    width: 100%;
+    flex-grow: 1;
     padding: 0;
 }

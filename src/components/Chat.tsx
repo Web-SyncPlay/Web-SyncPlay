@@ -30,11 +30,14 @@ class Chat extends React.Component<ChatProps, ChatState> {
         return (
             <div className={"chat w-100 rounded d-flex"}>
                 <div className={"messages flex-grow-1"}>
-                    <div>
+                    <div className={"d-flex"}>
                         {this.props.history.map(h => {
                             const you = this.props.you === h.user.id;
                             return (
-                                <div className={"rounded m-2 px-2 pb-2 m" + (you ? "l-5" : "r-5")}>
+                                <div className={"rounded mx-2 mb-2 px-2 pb-2 m" + (you ? "l-5" : "r-5")}
+                                     style={{
+                                         alignSelf: (you ? "end" : "start")
+                                     }}>
                                     <small className={"mb-0 pb-1 text-muted text-truncate"}>
                                         {h.user.name}
                                     </small>

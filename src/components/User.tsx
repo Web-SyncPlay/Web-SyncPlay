@@ -14,19 +14,7 @@ interface UserProps {
     update: (name: string, icon: string) => void
 }
 
-interface UserState {
-    mouse: boolean
-}
-
-class User extends React.Component<UserProps, UserState> {
-    constructor(props: UserProps) {
-        super(props);
-
-        this.state = {
-            mouse: false
-        }
-    }
-
+class User extends React.Component<UserProps> {
     secondsToTime(s: number): string {
         if (isNaN(s)) {
             return "00:00";
@@ -52,11 +40,8 @@ class User extends React.Component<UserProps, UserState> {
     render() {
         const you = this.props.you === this.props.user.id;
         return (
-            <Col className={"p-2"}>
-                <Media
-                    className={"user rounded p-2 " + (you ? "bg-success" : "")}
-                    onMouseEnter={() => this.setState({mouse: true})}
-                    onMouseLeave={() => this.setState({mouse: false})}>
+            <Col className={"p-2"} xs={(you ? {order: "first"} : {})}>
+                <Media className={"user rounded p-2 " + (you ? "bg-success you" : "")}>
                     <div className={"mr-2 rounded"}>
                         <img
                             width={48}
@@ -66,30 +51,33 @@ class User extends React.Component<UserProps, UserState> {
                         />
                     </div>
                     <Media.Body>
-                        {you && this.state.mouse ?
+                        {you ?
                             <Form.Control
+                                className={"user-edit"}
                                 placeholder={"Your name"}
                                 value={this.props.user.name}
                                 onChange={(e) => {
                                     this.props.update(e.target.value, this.props.user.icon);
                                 }}
                                 type={"text"}/> :
-                            <>
-                                <h6 onClick={() => this.setState({mouse: true})}
-                                    className={"mb-0 pb-1 text-truncate"}>
-                                    {this.props.owner === this.props.user.id ?
-                                        <FaCrown size={21} className={"text-warning mr-1"}
-                                                 style={{marginTop: "-0.5em"}}/>
-                                        : <></>}
-                                    {this.props.user.name}
-                                </h6>
-                                <small>
-                                    {this.props.user.playing ?
-                                        <BsPlayFill style={{marginTop: "-0.2em"}}/> :
-                                        <BsPauseFill style={{marginTop: "-0.2em"}}/>}{this.timeProgress()}
-                                </small>
-                            </>
+                            <></>
                         }
+                        <div className={"user-status"}>
+                            <h6 onClick={() => this.setState({mouse: true})}
+                                className={"mb-0 pb-1 text-truncate"}>
+                                {this.props.owner === this.props.user.id ?
+                                    <FaCrown size={21} className={"text-warning mr-1"}
+                                             style={{marginTop: "-0.5em"}}/>
+                                    : <></>}
+                                {this.props.user.name}
+                            </h6>
+                            <small>
+                                {this.props.user.playing ?
+                                    <BsPlayFill style={{marginTop: "-0.2em"}}/> :
+                                    <BsPauseFill style={{marginTop: "-0.2em"}}/>}
+                                {this.timeProgress()}
+                            </small>
+                        </div>
                     </Media.Body>
                 </Media>
             </Col>
