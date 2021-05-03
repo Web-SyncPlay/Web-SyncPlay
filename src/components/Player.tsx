@@ -144,7 +144,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                          this.mouseMoved();
                      }}>
                     <div className={"player-center flex-grow-1"}
-                         onTouchEnd={e => {
+                         onTouchEnd={(e) => {
                              e.preventDefault();
                              if (this.interaction) {
                                  this.interaction = false;
@@ -448,8 +448,8 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                     onEnded={() => {
                         if (this.props.loop) {
                             this.updateState({
-                                playing: true,
-                                played: 0
+                                played: 0,
+                                playing: true
                             });
                         } else if (this.props.queueIndex + 1 < this.props.queue.length) {
                             this.props.playFromQueue(this.props.queueIndex + 1);

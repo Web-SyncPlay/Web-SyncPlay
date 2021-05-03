@@ -95,8 +95,8 @@ class AddItemModel extends React.Component<AddItemModalProps, AddItemModalState>
                                     <Button type={"submit"}
                                             id={"addItemQueue-modal-append"}
                                             style={{
-                                                borderTopRightRadius: "0.25rem",
-                                                borderBottomRightRadius: "0.25rem"
+                                                borderBottomRightRadius: "0.25rem",
+                                                borderTopRightRadius: "0.25rem"
                                             }}
                                             variant={"outline-success"}>
                                         Add
