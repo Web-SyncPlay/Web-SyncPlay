@@ -60,7 +60,7 @@ class InviteModal extends React.Component<InviteModalProps> {
                                     trigger="click"
                                     placement="top"
                                     overlay={
-                                        <Popover id={`inviteModal-successMsg-popover`}>
+                                        <Popover id={"inviteModal-successMsg-popover"}>
                                             <Popover.Content className={"text-success"}>
                                                 Copied!
                                             </Popover.Content>

@@ -70,6 +70,6 @@ export const RouterApp = () => {
     return (
         <App history={history} location={location}/>
     );
-}
+};
 
 export default App;

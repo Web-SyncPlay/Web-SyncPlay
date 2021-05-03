@@ -23,7 +23,7 @@ class QueueItem extends React.Component<QueueItemProps> {
 
     cssSafe(url: string) {
         return url.replace(/[^a-z0-9]/g, (s) => {
-            let c = s.charCodeAt(0);
+            const c = s.charCodeAt(0);
             if (c === 32) {
                 return "-";
             } else if (c >= 65 && c <= 90) {
@@ -34,7 +34,7 @@ class QueueItem extends React.Component<QueueItemProps> {
     }
 
     copyToClipboard() {
-        let tempInput = document.createElement("input");
+        const tempInput = document.createElement("input");
         tempInput.value = this.props.queue[this.props.index];
         document.body.appendChild(tempInput);
         tempInput.select();

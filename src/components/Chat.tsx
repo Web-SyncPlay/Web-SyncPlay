@@ -27,8 +27,8 @@ class Chat extends React.Component<ChatProps, ChatState> {
         super(props);
 
         this.state = {
-            message: "",
-            helpDismissed: true
+            helpDismissed: true,
+            message: ""
         };
     }
 

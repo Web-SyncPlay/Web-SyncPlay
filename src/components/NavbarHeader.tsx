@@ -22,13 +22,15 @@ class NavbarHeader extends React.Component<NavbarHeaderProps, NavbarHeaderState>
         super(props);
 
         this.state = {
-            url: "",
-            inviteModalOpen: false
+            inviteModalOpen: false,
+            url: ""
         };
     }
 
     closeInviteModal() {
-        this.setState({inviteModalOpen: false})
+        this.setState({
+            inviteModalOpen: false
+        });
     }
 
     render() {

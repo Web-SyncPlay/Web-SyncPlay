@@ -128,7 +128,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
             <div ref={(node) => this.fullscreenNode = node || undefined}
                  className={"shadow"}>
                 <div className={"player-overlay p-2" + (this.state.controlsHidden ? " hide" : "")}
-                     onTouchEnd={e => {
+                     onTouchEnd={(e) => {
                          e.preventDefault();
                          this.mouseMoved();
                      }}
@@ -228,8 +228,8 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                          if (!this.state.controlsHidden) {
                                              if (this.playEnded()) {
                                                  this.updateState({
-                                                     playing: true,
-                                                     played: 0
+                                                     played: 0,
+                                                     playing: true
                                                  });
                                              } else {
                                                  this.updateState({
@@ -324,8 +324,8 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                             const t = parseFloat(e.target.value);
                                             if (this.state.muted && t > 0) {
                                                 this.setState({
-                                                    volume: t,
-                                                    muted: false
+                                                    muted: false,
+                                                    volume: t
                                                 });
                                             } else {
                                                 this.setState({

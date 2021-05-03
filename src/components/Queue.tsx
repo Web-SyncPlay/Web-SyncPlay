@@ -1,6 +1,5 @@
 import React from "react";
 import "./Queue.css";
-import {Row} from "react-bootstrap";
 import {BiAddToQueue} from "react-icons/all";
 import AddItemModal from "./AddItemModal";
 import QueueItem from "./QueueItem";
@@ -47,7 +46,7 @@ class Queue extends React.Component<QueueProps, QueueState> {
                             play={this.props.play}
                             playFromQueue={this.props.playFromQueue}
                             deleteFromQueue={this.props.deleteFromQueue}
-                            swapQueueItems={this.props.deleteFromQueue}
+                            swapQueueItems={this.props.swapQueueItems}
                         />)}
                     <div className={"queue-item rounded shadow my-2 mx-1 p-3 add-notice text-muted"}
                          onClick={() => {

@@ -26,20 +26,20 @@ export interface ChatData {
 }
 
 interface RoomState {
-    id: string,
-    url: string,
-    owner: string,
-    playing: boolean,
-    played: number,
-    duration: number,
-    playbackRate: number,
-    loop: boolean,
     chatExpanded: boolean,
-    queueIndex: number,
     deleteQueueOnPlay: boolean,
+    duration: number,
+    history: ChatData[],
+    id: string,
+    loop: boolean,
+    owner: string,
+    playbackRate: number,
+    played: number,
+    playing: boolean,
     queue: string[],
-    users: UserData[],
-    history: ChatData[]
+    queueIndex: number,
+    url: string,
+    users: UserData[]
 }
 
 class Room extends React.Component<RoomProps, RoomState> {
@@ -52,25 +52,25 @@ class Room extends React.Component<RoomProps, RoomState> {
         this.initialStatusReceived = false;
 
         this.state = {
-            id: this.props.roomId,
-            owner: "loading...",
-            url: "https://youtu.be/NcBjx_eyvxc",
-            playing: false,
-            played: 0,
-            duration: 0,
-            playbackRate: 1,
-            loop: false,
             chatExpanded: true,
-            queueIndex: 0,
             deleteQueueOnPlay: false,
+            duration: 0,
+            history: [] as ChatData[],
+            id: this.props.roomId,
+            loop: false,
+            owner: "loading...",
+            playbackRate: 1,
+            played: 0,
+            playing: false,
             queue: [
                 "https://youtu.be/NcBjx_eyvxc",
                 "https://youtu.be/uD4izuDMUQA",
                 "https://youtu.be/UjtOGPJ0URM",
                 "https://youtu.be/GfO-3Oir-qM?list=PLvahqwMqN4M0GRkZY8WkLZMb6Z-W7qbLA"
             ],
+            queueIndex: 0,
+            url: "https://youtu.be/NcBjx_eyvxc",
             users: [] as UserData[],
-            history: [] as ChatData[]
         };
     }
 
@@ -129,9 +129,9 @@ class Room extends React.Component<RoomProps, RoomState> {
 
     load(url: string) {
         this.updateState({
-            url,
             played: 0,
-            playing: true
+            playing: true,
+            url
         });
     }
 
@@ -169,15 +169,15 @@ class Room extends React.Component<RoomProps, RoomState> {
     }
 
     swapQueueItems(oldIndex: number, newIndex: number) {
-        const queue = [...this.state.queue];
+        let queue = [...this.state.queue];
         const old = queue[oldIndex];
         queue[oldIndex] = queue[newIndex];
         queue[newIndex] = old;
 
         if ([oldIndex, newIndex].includes(this.state.queueIndex)) {
             this.updateState({
-                queueIndex: this.state.queueIndex === newIndex ? oldIndex : newIndex,
-                queue
+                queue,
+                queueIndex: this.state.queueIndex === newIndex ? oldIndex : newIndex
             });
         } else {
             this.updateState({
