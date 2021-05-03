@@ -35,7 +35,7 @@ class NavbarHeader extends React.Component<NavbarHeaderProps, NavbarHeaderState>
         // TODO: this is not very ideal...
         return (
             <>
-                <Navbar collapseOnSelect expand={"md"} variant="dark" className={"mb-2"}>
+                <Navbar collapseOnSelect expand={"md"} variant="dark" className={"mb-1"}>
                     <Link to={"/"} className={"navbar-brand"}>
                         Studi-Watch
                     </Link>

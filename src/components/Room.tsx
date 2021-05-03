@@ -1,6 +1,6 @@
 import React from "react";
 import socketIOClient, {Socket} from "socket.io-client";
-import {Col, Row, Spinner} from "react-bootstrap";
+import {Col, Container, Row, Spinner} from "react-bootstrap";
 import ReactPlayer from "react-player";
 import {Helmet} from "react-helmet";
 import User from "./User";
@@ -61,9 +61,14 @@ class Room extends React.Component<RoomProps, RoomState> {
             playbackRate: 1,
             loop: false,
             chatExpanded: true,
-            queueIndex: -1,
+            queueIndex: 0,
             deleteQueueOnPlay: false,
-            queue: [],
+            queue: [
+                "https://youtu.be/NcBjx_eyvxc",
+                "https://youtu.be/uD4izuDMUQA",
+                "https://youtu.be/UjtOGPJ0URM",
+                "https://youtu.be/GfO-3Oir-qM?list=PLvahqwMqN4M0GRkZY8WkLZMb6Z-W7qbLA"
+            ],
             users: [] as UserData[],
             history: [] as ChatData[]
         };
@@ -209,44 +214,46 @@ class Room extends React.Component<RoomProps, RoomState> {
 
     render() {
         return (
-            <>
+            <Container fluid={true}>
                 <Helmet>
                     <title>
                         Room {this.props.roomId} | Playing {this.state.url}
                     </title>
                     <link rel="canonical" href={"/room/" + this.props.roomId}/>
                 </Helmet>
-                <Row className={"mx-3 p-0"}>
-                    <Col className={"p-2"}>
-                        {this.initialStatusReceived ?
-                            <Player
-                                socket={this.socket}
-                                url={this.state.url}
-                                playing={this.state.playing}
-                                played={this.state.played}
-                                playbackRate={this.state.playbackRate}
-                                loop={this.state.loop}
-                                queueIndex={this.state.queueIndex}
-                                queue={this.state.queue}
-                                playFromQueue={this.playFromQueue.bind(this)}
-                            /> :
-                            <div className={"w-100 d-flex align-items-center justify-content-center"}
-                                 style={{height: 300}}>
-                                <Spinner animation={"border"} role={"status"}>
-                                    <span className={"sr-only"}>Loading...</span>
-                                </Spinner>
-                            </div>}
-                    </Col>
-                    <Col xs={"12"} md={"auto"} className={"p-2"}>
-                        <Chat you={this.socket?.id || ""}
-                              owner={this.state.owner}
-                              send={this.sendChat.bind(this)}
-                              play={this.changeToURL.bind(this)}
-                              addQueue={this.addToQueue.bind(this)}
-                              playNext={this.playNext.bind(this)}
-                              history={this.state.history}/>
-                    </Col>
-                </Row>
+                <div className={"px-2"}>
+                    <Row className={"p-0"}>
+                        <Col className={"p-2"}>
+                            {this.initialStatusReceived ?
+                                <Player
+                                    socket={this.socket}
+                                    url={this.state.url}
+                                    playing={this.state.playing}
+                                    played={this.state.played}
+                                    playbackRate={this.state.playbackRate}
+                                    loop={this.state.loop}
+                                    queueIndex={this.state.queueIndex}
+                                    queue={this.state.queue}
+                                    playFromQueue={this.playFromQueue.bind(this)}
+                                /> :
+                                <div className={"w-100 d-flex align-items-center justify-content-center"}
+                                     style={{height: 300}}>
+                                    <Spinner animation={"border"} role={"status"}>
+                                        <span className={"sr-only"}>Loading...</span>
+                                    </Spinner>
+                                </div>}
+                        </Col>
+                        <Col xs={"12"} md={"auto"} className={"p-2"}>
+                            <Chat you={this.socket?.id || ""}
+                                  owner={this.state.owner}
+                                  send={this.sendChat.bind(this)}
+                                  play={this.changeToURL.bind(this)}
+                                  addQueue={this.addToQueue.bind(this)}
+                                  playNext={this.playNext.bind(this)}
+                                  history={this.state.history}/>
+                        </Col>
+                    </Row>
+                </div>
                 <Queue queueIndex={this.state.queueIndex}
                        queue={this.state.queue}
                        play={this.changeToURL.bind(this)}
@@ -254,20 +261,22 @@ class Room extends React.Component<RoomProps, RoomState> {
                        deleteFromQueue={this.deleteFromQueue.bind(this)}
                        swapQueueItems={this.swapQueueItems.bind(this)}
                        addToQueue={this.addToQueue.bind(this)}/>
-                <Row className={"user-list mx-3 mb-3 p-0"}>
-                    {this.state.users.map((user) => {
-                            return (
-                                <User key={user.id}
-                                      user={user}
-                                      duration={this.state.duration}
-                                      owner={this.state.owner}
-                                      you={this.socket?.id || ""}
-                                      update={this.updateUser.bind(this)}/>
-                            );
-                        }
-                    )}
-                </Row>
-            </>
+                <div className={"px-2"}>
+                    <Row className={"user-list"}>
+                        {this.state.users.map((user) => {
+                                return (
+                                    <User key={user.id}
+                                          user={user}
+                                          duration={this.state.duration}
+                                          owner={this.state.owner}
+                                          you={this.socket?.id || ""}
+                                          update={this.updateUser.bind(this)}/>
+                                );
+                            }
+                        )}
+                    </Row>
+                </div>
+            </Container>
         );
     }
 }

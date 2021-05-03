@@ -37,7 +37,7 @@ class Queue extends React.Component<QueueProps, QueueState> {
     render() {
         return (
             <>
-                <Row className={"queue rounded shadow mx-4 px-1"}>
+                <div className={"queue rounded shadow p-1"}>
                     {this.props.queue.map((q, index) =>
                         <QueueItem
                             key={q + index}
@@ -58,7 +58,7 @@ class Queue extends React.Component<QueueProps, QueueState> {
                         <span>Add item</span>
                         <BiAddToQueue/>
                     </div>
-                </Row>
+                </div>
                 <AddItemModal show={this.state.showAddItemModel}
                               closeModal={this.closeAddItemModal.bind(this)}
                               add={this.props.addToQueue}/>
