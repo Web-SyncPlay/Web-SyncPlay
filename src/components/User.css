@@ -78,18 +78,21 @@
 
 .user.you .media-body .user-status,
 .user.you .media-body .user-edit {
+    height: 48px;
     flex-direction: column;
     flex-grow: 1;
     transition: opacity 0.2s ease-in-out;
 }
 
 .user.you .media-body .user-edit {
+    justify-content: center;
     display: none;
     opacity: 0;
 }
 
 .user.you .media-body .user-status {
     display: flex;
+    justify-content: space-between;
     opacity: 1;
 }
 

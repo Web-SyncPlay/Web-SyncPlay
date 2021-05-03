@@ -14,17 +14,6 @@ interface RoomProps {
     roomId: string
 }
 
-export interface UserData extends RoomState {
-    name: string,
-    icon: string
-}
-
-export interface ChatData {
-    user: UserData,
-    time: number,
-    message: string
-}
-
 interface RoomState {
     chatExpanded: boolean,
     deleteQueueOnPlay: boolean,
@@ -40,6 +29,19 @@ interface RoomState {
     queueIndex: number,
     url: string,
     users: UserData[]
+}
+
+export interface UserData extends RoomState {
+    name: string,
+    muted: boolean,
+    icon: string,
+    volume: number
+}
+
+export interface ChatData {
+    user: UserData,
+    time: number,
+    message: string
 }
 
 class Room extends React.Component<RoomProps, RoomState> {
@@ -121,6 +123,9 @@ class Room extends React.Component<RoomProps, RoomState> {
 
     changeToURL(url: string) {
         if (ReactPlayer.canPlay(url)) {
+            this.updateState({
+                queueIndex: -1
+            });
             this.load(url);
         } else {
             console.log("Error, cannot play url:", url);

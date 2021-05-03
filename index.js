@@ -121,7 +121,14 @@ io.on("connection", (socket) => {
         });
     };
     const update = (data) => {
-        _update(getUser(), data, ["queue", "users", "history", "interaction"]);
+        _update(getUser(), data, [
+            "queue",
+            "users",
+            "history",
+            "interaction",
+            "showTimePlayed",
+            "controlsHidden"
+        ]);
         if (socket.id === getRoom().owner || getRoom().anarchy) {
             let forbidden = [
                 "volume",
@@ -131,6 +138,8 @@ io.on("connection", (socket) => {
                 "buffering",
                 "seeking",
                 "interaction",
+                "showTimePlayed",
+                "controlsHidden",
                 "fullscreen",
                 "loadedSeconds",
                 "playedSeconds"

@@ -72,6 +72,11 @@ class Player extends React.Component<PlayerProps, PlayerState> {
             showTimePlayed: true,
             controlsHidden: false
         };
+
+        this.props.socket?.emit("update", {
+            muted: true,
+            volume: 0.3
+        });
     }
 
     componentDidUpdate(prevProps: Readonly<PlayerProps>, prevState: Readonly<PlayerState>) {
@@ -287,12 +292,12 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                              e.preventDefault();
                                              if (!this.state.controlsHidden) {
                                                  if (this.state.volume === 0) {
-                                                     this.setState({
+                                                     this.updateState({
                                                          muted: false,
                                                          volume: 0.3
                                                      });
                                                  } else {
-                                                     this.setState({
+                                                     this.updateState({
                                                          muted: !this.state.muted
                                                      });
                                                  }
@@ -300,12 +305,12 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                          }}
                                          onMouseUp={() => {
                                              if (this.state.volume === 0) {
-                                                 this.setState({
+                                                 this.updateState({
                                                      muted: false,
                                                      volume: 0.3
                                                  });
                                              } else {
-                                                 this.setState({
+                                                 this.updateState({
                                                      muted: !this.state.muted
                                                  });
                                              }

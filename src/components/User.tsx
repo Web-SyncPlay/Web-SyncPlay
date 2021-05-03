@@ -2,7 +2,7 @@ import React from "react";
 import {Col, Form, Media, Overlay, Popover, Row} from "react-bootstrap";
 import {UserData} from "./Room";
 import "./User.css";
-import {BsPauseFill, BsPlayFill, FaCrown} from "react-icons/all";
+import {BsPauseFill, BsPlayFill, FaCrown, FaVolumeMute} from "react-icons/all";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 
@@ -135,12 +135,19 @@ class User extends React.Component<UserProps, UserState> {
                                     : <></>}
                                 {this.props.user.name}
                             </h6>
-                            <small>
-                                {this.props.user.playing ?
-                                    <BsPlayFill style={{marginTop: "-0.2em"}}/> :
-                                    <BsPauseFill style={{marginTop: "-0.2em"}}/>}
-                                {this.timeProgress()}
-                            </small>
+                            <div className={"d-flex"}>
+                                <small>
+                                    {this.props.user.playing ?
+                                        <BsPlayFill style={{marginTop: "-0.2em"}}/> :
+                                        <BsPauseFill style={{marginTop: "-0.2em"}}/>}
+                                    {this.timeProgress()}
+                                </small>
+                                <small className={"ml-auto"}>
+                                    {this.props.user.muted || this.props.user.volume === 0 ?
+                                        <FaVolumeMute style={{marginTop: "-0.2em"}}/> : <></>
+                                    }
+                                </small>
+                            </div>
                         </div>
                     </Media.Body>
                 </Media>
