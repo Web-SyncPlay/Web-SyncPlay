@@ -60,17 +60,17 @@ class Player extends React.Component<PlayerProps, PlayerState> {
         this.lastMouseMove = 0;
 
         this.state = {
-            volume: 0.3,
+            buffering: false,
+            controlsHidden: false,
+            duration: 0,
+            fullscreen: false,
+            loaded: 0,
             muted: true,
             played: 0,
-            loaded: 0,
-            duration: 0,
             ready: false,
-            buffering: false,
             seeking: false,
-            fullscreen: false,
             showTimePlayed: true,
-            controlsHidden: false
+            volume: 0.3
         };
 
         this.props.socket?.emit("update", {
