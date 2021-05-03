@@ -24,8 +24,8 @@ div.custom-control.custom-switch {
     line-height: 1em;
     cursor: pointer;
     transition: background-color 0.1s ease-in-out;
-    border-radius: .25rem;
-    padding: .5rem;
+    border-radius: 0.25rem;
+    padding: 0.5rem;
 }
 
 .control-button:hover {
