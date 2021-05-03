@@ -68,7 +68,7 @@ class User extends React.Component<UserProps, UserState> {
         const you = this.props.you === this.props.user.id;
         return (
             <Col className={"p-2"} xs={(you ? {order: "first"} : {})}>
-                <Media className={"user rounded p-2 " + (you ? "bg-success you" : "")}>
+                <Media className={"user shadow rounded p-2 " + (you ? "bg-success you" : "")}>
                     {you && this.state.icons !== null ?
                         <Overlay
                             show={this.state.popoverExpanded}

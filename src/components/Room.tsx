@@ -115,10 +115,9 @@ class Room extends React.Component<RoomProps, RoomState> {
         }
     }
 
-    load(url: string, queue: string[] = this.state.queue) {
+    load(url: string) {
         this.updateState({
             url,
-            queue,
             played: 0,
             playing: true
         });
@@ -126,7 +125,13 @@ class Room extends React.Component<RoomProps, RoomState> {
 
     playFromQueue(index: number) {
         const next = this.state.queue[index];
-        this.load(next, [...this.state.queue].filter((e, i) => i !== index));
+        this.load(next);
+    }
+
+    playNext(url: string) {
+        this.updateState({
+            queue: [url, ...this.state.queue]
+        });
     }
 
     addToQueue(url: string) {
@@ -174,6 +179,9 @@ class Room extends React.Component<RoomProps, RoomState> {
                         <Chat you={this.socket?.id || ""}
                               owner={this.state.owner}
                               send={this.sendChat.bind(this)}
+                              play={this.changeToURL.bind(this)}
+                              addQueue={this.addToQueue.bind(this)}
+                              playNext={this.playNext.bind(this)}
                               history={this.state.history}/>
                     </Col>
                 </Row>

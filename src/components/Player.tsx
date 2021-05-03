@@ -13,7 +13,7 @@ import {
     IoShareOutline,
     MdReplay
 } from "react-icons/all";
-import {Form} from "react-bootstrap";
+import {Form, OverlayTrigger, Tooltip} from "react-bootstrap";
 import screenfull from "screenfull";
 import "./Player.css";
 import User from "./User";
@@ -127,7 +127,8 @@ class Player extends React.Component<PlayerProps, PlayerState> {
 
     render() {
         return (
-            <div ref={(node) => this.fullscreenNode = node || undefined}>
+            <div ref={(node) => this.fullscreenNode = node || undefined}
+                 className={"shadow"}>
                 <div className={"player-overlay p-2" + (this.state.controlsHidden ? " hide" : "")}
                      onMouseEnter={() => {
                          this.mouseInside = true;
@@ -174,45 +175,70 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                 value={this.state.played}/>
                         </div>
                         <div className={"px-1 pb-1 d-flex"}>
-                            <div className={"control-button rounded p-1 mx-1"}
-                                 onClick={() => {
-                                     if (this.playEnded()) {
-                                         this.updateState({
-                                             playing: true,
-                                             played: 0
-                                         });
-                                     } else {
-                                         this.updateState({
-                                             playing: !this.props.playing
-                                         });
-                                     }
-                                 }}>
-                                {this.props.playing ? <IoPause/> : (this.playEnded() ? <MdReplay/> : <IoPlay/>)}
-                            </div>
-                            {this.props.queue.length > 0 ?
+                            <OverlayTrigger
+                                placement={"top"}
+                                overlay={
+                                    <Tooltip id={"playerControl-play"}>
+                                        {this.props.playing ? "Pause playback" :
+                                            (this.playEnded() ? "Restart" : "Continue playback")}
+                                    </Tooltip>
+                                }>
                                 <div className={"control-button rounded p-1 mx-1"}
                                      onClick={() => {
-                                         this.props.playFromQueue(0);
-                                     }}>
-                                    <IoPlaySkipForwardSharp/>
-                                </div> : <></>}
-                            <div className={"volume-control d-flex"}>
-                                <div className={"control-button rounded p-1 mx-1"}
-                                     onClick={() => {
-                                         if (this.state.volume === 0) {
-                                             this.setState({
-                                                 muted: false,
-                                                 volume: 0.3
+                                         if (this.playEnded()) {
+                                             this.updateState({
+                                                 playing: true,
+                                                 played: 0
                                              });
                                          } else {
-                                             this.setState({
-                                                 muted: !this.state.muted
+                                             this.updateState({
+                                                 playing: !this.props.playing
                                              });
                                          }
                                      }}>
-                                    {this.state.muted || this.state.volume === 0 ? <FaVolumeMute/> :
-                                        (this.state.volume > 0.6 ? <FaVolumeUp/> : <FaVolumeDown/>)}
+                                    {this.props.playing ? <IoPause/> : (this.playEnded() ? <MdReplay/> : <IoPlay/>)}
                                 </div>
+                            </OverlayTrigger>
+                            {this.props.queue.length > 0 ?
+                                <OverlayTrigger
+                                    placement={"top"}
+                                    overlay={
+                                        <Tooltip id={"playerControl-next"}>
+                                            Play next video in queue
+                                        </Tooltip>
+                                    }>
+                                    <div className={"control-button rounded p-1 mx-1"}
+                                         onClick={() => {
+                                             this.props.playFromQueue(0);
+                                         }}>
+                                        <IoPlaySkipForwardSharp/>
+                                    </div>
+                                </OverlayTrigger> : <></>}
+                            <div className={"volume-control d-flex"}>
+                                <OverlayTrigger
+                                    placement={"top"}
+                                    overlay={
+                                        <Tooltip id={"playerControl-volume"}>
+                                            {this.state.muted || this.state.volume === 0 ? "Unmute" : "Mute"}
+                                        </Tooltip>
+                                    }>
+                                    <div className={"control-button rounded p-1 mx-1"}
+                                         onClick={() => {
+                                             if (this.state.volume === 0) {
+                                                 this.setState({
+                                                     muted: false,
+                                                     volume: 0.3
+                                                 });
+                                             } else {
+                                                 this.setState({
+                                                     muted: !this.state.muted
+                                                 });
+                                             }
+                                         }}>
+                                        {this.state.muted || this.state.volume === 0 ? <FaVolumeMute/> :
+                                            (this.state.volume > 0.6 ? <FaVolumeUp/> : <FaVolumeDown/>)}
+                                    </div>
+                                </OverlayTrigger>
                                 <div className={"volume-slider"}>
                                     <Form.Control
                                         type={"range"}
@@ -248,22 +274,38 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                             </div>
 
                             <div className={"ml-auto d-flex"}>
-                                <div className={"control-button rounded p-1 mx-1"}
-                                     onClick={() => {
-                                         window.open(this.props.url, "_blank");
-                                     }}>
-                                    <IoShareOutline/>
-                                </div>
-                                {screenfull.isEnabled ?
+                                <OverlayTrigger
+                                    placement={"top"}
+                                    overlay={
+                                        <Tooltip id={"playerControl-volume"}>
+                                            Open source in new tab
+                                        </Tooltip>
+                                    }>
                                     <div className={"control-button rounded p-1 mx-1"}
                                          onClick={() => {
-                                             if (screenfull.isEnabled) {
-                                                 screenfull.toggle(this.fullscreenNode);
-                                                 this.setState({fullscreen: !this.state.fullscreen});
-                                             }
+                                             window.open(this.props.url, "_blank");
                                          }}>
-                                        {this.state.fullscreen ? <BiExitFullscreen/> : <BiFullscreen/>}
-                                    </div> : <></>
+                                        <IoShareOutline/>
+                                    </div>
+                                </OverlayTrigger>
+                                {screenfull.isEnabled ?
+                                    <OverlayTrigger
+                                        placement={"top"}
+                                        overlay={
+                                            <Tooltip id={"playerControl-volume"}>
+                                                {this.state.fullscreen ? "Exit" : "Enter"} fullscreen
+                                            </Tooltip>
+                                        }>
+                                        <div className={"control-button rounded p-1 mx-1"}
+                                             onClick={() => {
+                                                 if (screenfull.isEnabled) {
+                                                     screenfull.toggle(this.fullscreenNode);
+                                                     this.setState({fullscreen: !this.state.fullscreen});
+                                                 }
+                                             }}>
+                                            {this.state.fullscreen ? <BiExitFullscreen/> : <BiFullscreen/>}
+                                        </div>
+                                    </OverlayTrigger> : <></>
                                 }
                             </div>
                         </div>
