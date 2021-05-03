@@ -194,12 +194,25 @@ class Room extends React.Component<RoomProps, RoomState> {
     deleteFromQueue(index: number) {
         if (this.state.queueIndex >= index) {
             this.updateState({
-                queueIndex: this.state.queueIndex - 1,
-                queue: [...this.state.queue].filter((e, i) => i !== index)
+                queue: [...this.state.queue].filter((e, i) => i !== index),
+                queueIndex: this.state.queueIndex - 1
             });
         } else {
             this.updateState({
                 queue: [...this.state.queue].filter((e, i) => i !== index)
+            });
+        }
+    }
+
+    clearQueue() {
+        if (this.state.deleteQueueOnPlay) {
+            this.updateState({
+                queue: [],
+            });
+        } else {
+            this.updateState({
+                queue: [this.state.queue[this.state.queueIndex]],
+                queueIndex: 0
             });
         }
     }
@@ -265,6 +278,7 @@ class Room extends React.Component<RoomProps, RoomState> {
                        playFromQueue={this.playFromQueue.bind(this)}
                        deleteFromQueue={this.deleteFromQueue.bind(this)}
                        swapQueueItems={this.swapQueueItems.bind(this)}
+                       clearQueue={this.clearQueue.bind(this)}
                        addToQueue={this.addToQueue.bind(this)}/>
                 <div className={"px-2"}>
                     <Row className={"user-list"}>

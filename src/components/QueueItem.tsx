@@ -57,13 +57,11 @@ class QueueItem extends React.Component<QueueItemProps> {
                                         Move up
                                     </Tooltip>
                                 }>
-                                <div className={"canPlay-message d-inline-flex"}>
-                                    <div className={"control-button rounded p-1 mr-1"}
-                                         onClick={() => {
-                                             this.props.swapQueueItems(this.props.index, this.props.index - 1);
-                                         }}>
-                                        <MdNavigateBefore/>
-                                    </div>
+                                <div className={"control-button mr-1"}
+                                     onClick={() => {
+                                         this.props.swapQueueItems(this.props.index, this.props.index - 1);
+                                     }}>
+                                    <MdNavigateBefore/>
                                 </div>
                             </OverlayTrigger> :
                             <></>
@@ -76,13 +74,11 @@ class QueueItem extends React.Component<QueueItemProps> {
                                         Move down
                                     </Tooltip>
                                 }>
-                                <div className={"canPlay-message d-inline-flex"}>
-                                    <div className={"control-button rounded p-1 mr-1"}
-                                         onClick={() => {
-                                             this.props.swapQueueItems(this.props.index, this.props.index + 1);
-                                         }}>
-                                        <MdNavigateNext/>
-                                    </div>
+                                <div className={"control-button mr-1"}
+                                     onClick={() => {
+                                         this.props.swapQueueItems(this.props.index, this.props.index + 1);
+                                     }}>
+                                    <MdNavigateNext/>
                                 </div>
                             </OverlayTrigger> :
                             <></>
@@ -96,11 +92,9 @@ class QueueItem extends React.Component<QueueItemProps> {
                                     Copy source to clipboard
                                 </Tooltip>
                             }>
-                            <div className={"canPlay-message d-inline-flex"}>
-                                <div className={"control-button rounded p-1 mr-1"}
-                                     onClick={this.copyToClipboard.bind(this)}>
-                                    <IoMdCopy/>
-                                </div>
+                            <div className={"control-button mx-1"}
+                                 onClick={this.copyToClipboard.bind(this)}>
+                                <IoMdCopy/>
                             </div>
                         </OverlayTrigger>
                         {playing ?
@@ -111,10 +105,8 @@ class QueueItem extends React.Component<QueueItemProps> {
                                         Currently playing
                                     </Tooltip>
                                 }>
-                                <div className={"canPlay-message d-inline-flex"}>
-                                    <div className={"control-button rounded p-1 mr-1"}>
-                                        <BsMusicNoteBeamed className={"blink"}/>
-                                    </div>
+                                <div className={"control-button ml-1"}>
+                                    <BsMusicNoteBeamed className={"blink"}/>
                                 </div>
                             </OverlayTrigger> :
                             <>
@@ -125,13 +117,11 @@ class QueueItem extends React.Component<QueueItemProps> {
                                             Play
                                         </Tooltip>
                                     }>
-                                    <div className={"canPlay-message d-inline-flex"}>
-                                        <div className={"control-button rounded p-1 mr-1"}
-                                             onClick={() => {
-                                                 this.props.playFromQueue(this.props.index);
-                                             }}>
-                                            <IoPlay/>
-                                        </div>
+                                    <div className={"control-button mx-1"}
+                                         onClick={() => {
+                                             this.props.playFromQueue(this.props.index);
+                                         }}>
+                                        <IoPlay/>
                                     </div>
                                 </OverlayTrigger>
                                 <OverlayTrigger
@@ -141,13 +131,11 @@ class QueueItem extends React.Component<QueueItemProps> {
                                             Delete from queue
                                         </Tooltip>
                                     }>
-                                    <div className={"canPlay-message d-inline-flex"}>
-                                        <div className={"control-button rounded p-1 mr-1 text-danger"}
-                                             onClick={() => {
-                                                 this.props.deleteFromQueue(this.props.index);
-                                             }}>
-                                            <RiDeleteBinLine/>
-                                        </div>
+                                    <div className={"control-button ml-1 text-danger"}
+                                         onClick={() => {
+                                             this.props.deleteFromQueue(this.props.index);
+                                         }}>
+                                        <RiDeleteBinLine/>
                                     </div>
                                 </OverlayTrigger>
                             </>

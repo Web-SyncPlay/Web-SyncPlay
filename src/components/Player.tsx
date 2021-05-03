@@ -206,7 +206,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                             Play previous
                                         </Tooltip>
                                     }>
-                                    <div className={"control-button rounded p-1 mx-1"}
+                                    <div className={"control-button mx-1"}
                                          onTouchEnd={(e) => {
                                              e.preventDefault();
                                              if (!this.state.controlsHidden) {
@@ -227,7 +227,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                             (this.playEnded() ? "Restart" : "Play")}
                                     </Tooltip>
                                 }>
-                                <div className={"control-button rounded p-1 mx-1"}
+                                <div className={"control-button mx-1"}
                                      onTouchEnd={(e) => {
                                          e.preventDefault();
                                          if (!this.state.controlsHidden) {
@@ -266,7 +266,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                             Play next
                                         </Tooltip>
                                     }>
-                                    <div className={"control-button rounded p-1 mx-1"}
+                                    <div className={"control-button mx-1"}
                                          onTouchEnd={(e) => {
                                              e.preventDefault();
                                              if (!this.state.controlsHidden) {
@@ -287,7 +287,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                             {this.state.muted || this.state.volume === 0 ? "Unmute" : "Mute"}
                                         </Tooltip>
                                     }>
-                                    <div className={"control-button rounded p-1 mx-1"}
+                                    <div className={"control-button mx-1"}
                                          onTouchEnd={(e) => {
                                              e.preventDefault();
                                              if (!this.state.controlsHidden) {
@@ -344,7 +344,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                         value={this.state.muted ? 0 : this.state.volume}/>
                                 </div>
                             </div>
-                            <div className={"control-button rounded p-1 mx-1"}
+                            <div className={"control-button mx-1"}
                                  style={{
                                      alignSelf: "center"
                                  }}
@@ -370,7 +370,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                             Open source in new tab
                                         </Tooltip>
                                     }>
-                                    <div className={"control-button rounded p-1 mx-1"}
+                                    <div className={"control-button mx-1"}
                                          onTouchEnd={(e) => {
                                              e.preventDefault();
                                              if (!this.state.controlsHidden) {
@@ -391,7 +391,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                                 {this.state.fullscreen ? "Exit" : "Enter"} fullscreen
                                             </Tooltip>
                                         }>
-                                        <div className={"control-button rounded p-1 mx-1"}
+                                        <div className={"control-button mx-1"}
                                              onTouchEnd={(e) => {
                                                  e.preventDefault();
                                                  if (screenfull.isEnabled) {

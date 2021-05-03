@@ -136,17 +136,17 @@ class User extends React.Component<UserProps, UserState> {
                                 {this.props.user.name}
                             </h6>
                             <div className={"d-flex"}>
-                                <small>
+                                <span>
                                     {this.props.user.playing ?
                                         <BsPlayFill style={{marginTop: "-0.2em"}}/> :
                                         <BsPauseFill style={{marginTop: "-0.2em"}}/>}
                                     {this.timeProgress()}
-                                </small>
-                                <small className={"ml-auto"}>
+                                </span>
+                                <span className={"ml-auto"}>
                                     {this.props.user.muted || this.props.user.volume === 0 ?
                                         <FaVolumeMute style={{marginTop: "-0.2em"}}/> : <></>
                                     }
-                                </small>
+                                </span>
                             </div>
                         </div>
                     </Media.Body>

@@ -1,6 +1,12 @@
 .queue {
     background-color: #1f1f1f;
     display: flex;
+    flex-direction: column;
+}
+
+.queue .queue-header {
+    background-color: #2d2d2d;
+    display: flex;
     flex-direction: row;
 }
 

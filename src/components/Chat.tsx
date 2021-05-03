@@ -120,13 +120,11 @@ class Chat extends React.Component<ChatProps, ChatState> {
                                                         Play now
                                                     </Tooltip>
                                                 }>
-                                                <div className={"canPlay-message d-inline-flex"}>
-                                                    <div className={"control-button rounded p-1 mr-1"}
-                                                         onClick={() => {
-                                                             this.props.play(h.message);
-                                                         }}>
-                                                        <IoPlay/>
-                                                    </div>
+                                                <div className={"control-button mr-1"}
+                                                     onClick={() => {
+                                                         this.props.play(h.message);
+                                                     }}>
+                                                    <IoPlay/>
                                                 </div>
                                             </OverlayTrigger>
                                             <OverlayTrigger
@@ -136,13 +134,11 @@ class Chat extends React.Component<ChatProps, ChatState> {
                                                         Play next
                                                     </Tooltip>
                                                 }>
-                                                <div className={"canPlay-message d-inline-flex"}>
-                                                    <div className={"control-button rounded p-1 mr-1"}
-                                                         onClick={() => {
-                                                             this.props.playNext(h.message);
-                                                         }}>
-                                                        <IoPlaySkipForwardSharp/>
-                                                    </div>
+                                                <div className={"control-button mr-1"}
+                                                     onClick={() => {
+                                                         this.props.playNext(h.message);
+                                                     }}>
+                                                    <IoPlaySkipForwardSharp/>
                                                 </div>
                                             </OverlayTrigger>
                                             <OverlayTrigger
@@ -152,13 +148,11 @@ class Chat extends React.Component<ChatProps, ChatState> {
                                                         Add to playback queue
                                                     </Tooltip>
                                                 }>
-                                                <div className={"canPlay-message d-inline-flex"}>
-                                                    <div className={"control-button rounded p-1 mr-1 text-success"}
-                                                         onClick={() => {
-                                                             this.props.addQueue(h.message);
-                                                         }}>
-                                                        <BiAddToQueue/>
-                                                    </div>
+                                                <div className={"control-button mr-1 text-success"}
+                                                     onClick={() => {
+                                                         this.props.addQueue(h.message);
+                                                     }}>
+                                                    <BiAddToQueue/>
                                                 </div>
                                             </OverlayTrigger>
                                         </> :
