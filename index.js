@@ -51,7 +51,7 @@ const generateId = (length = 4) => {
         result += chars.charAt(Math.round(Math.random() * (chars.length - 1)));
     }
     return result;
-}
+};
 // Rooms
 app.get("/room/generate", (req, res) => {
     let id;

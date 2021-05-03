@@ -143,8 +143,8 @@ class Room extends React.Component<RoomProps, RoomState> {
     playNext(url: string) {
         if (this.state.queueIndex >= 0) {
             this.updateState({
-                queueIndex: this.state.queueIndex + 1,
-                queue: [...this.state.queue].splice(this.state.queueIndex, 0, url)
+                queue: [...this.state.queue].splice(this.state.queueIndex, 0, url),
+                queueIndex: this.state.queueIndex + 1
             });
         } else {
             this.updateState({
@@ -174,7 +174,7 @@ class Room extends React.Component<RoomProps, RoomState> {
     }
 
     swapQueueItems(oldIndex: number, newIndex: number) {
-        let queue = [...this.state.queue];
+        const queue = [...this.state.queue];
         const old = queue[oldIndex];
         queue[oldIndex] = queue[newIndex];
         queue[newIndex] = old;
@@ -220,8 +220,8 @@ class Room extends React.Component<RoomProps, RoomState> {
     setQueueMode(deleteQueueOnPlay: boolean) {
         if (deleteQueueOnPlay) {
             this.updateState({
-                queueIndex: -1,
-                deleteQueueOnPlay
+                deleteQueueOnPlay,
+                queueIndex: -1
             });
         } else {
             this.updateState({

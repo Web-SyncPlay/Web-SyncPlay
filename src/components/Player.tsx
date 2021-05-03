@@ -246,8 +246,8 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                      onMouseUp={() => {
                                          if (this.playEnded()) {
                                              this.updateState({
-                                                 playing: true,
-                                                 played: 0
+                                                 played: 0,
+                                                 playing: true
                                              });
                                          } else {
                                              this.updateState({
@@ -415,8 +415,8 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                 </div>
                 <ReactPlayer
                     style={{
-                        maxHeight: this.state.fullscreen ? "100%" : "calc(100vh - 169px)",
-                        backgroundColor: "#000000"
+                        backgroundColor: "#000000",
+                        maxHeight: this.state.fullscreen ? "100%" : "calc(100vh - 169px)"
                     }}
                     ref={this.player}
                     width={"100%"}
