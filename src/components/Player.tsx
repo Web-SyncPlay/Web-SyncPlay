@@ -134,6 +134,9 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                      }}
                      onMouseMove={() => {
                          this.mouseMoved();
+                     }}
+                     onMouseUp={() => {
+                         this.mouseMoved();
                      }}>
                     <div className={"player-center flex-grow-1"}
                          onTouchEnd={e => {
