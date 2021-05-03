@@ -137,7 +137,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                 aria-label={"Progress of playback"}
                                 value={this.state.played}/>
                         </div>
-                        <div className={"px-1 d-flex"}>
+                        <div className={"px-1 pb-1 d-flex"}>
                             <div className={"control-button rounded p-1 mx-1"}
                                  onClick={() => {
                                      if (this.state.played === 1) {

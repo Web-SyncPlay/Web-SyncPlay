@@ -27,9 +27,12 @@
 
 .player-overlay .player-progress,
 .player-overlay .volume-control {
-    height: min(1em, 100%);
     display: flex;
     align-items: center;
+}
+
+.player-overlay .player-progress {
+    height: 1em;
 }
 
 .player-overlay .player-controls .control-button {
