@@ -16,14 +16,30 @@ interface AddItemModalState {
 }
 
 class AddItemModel extends React.Component<AddItemModalProps, AddItemModalState> {
+    urlInputRef: HTMLInputElement | null;
+
     constructor(props: AddItemModalProps) {
         super(props);
+        this.urlInputRef = null;
 
         this.state = {
             url: "",
             valid: false,
             validated: false
         };
+    }
+
+    componentDidUpdate(prevProps: Readonly<AddItemModalProps>, prevState: Readonly<AddItemModalState>) {
+        if (prevProps.show !== this.props.show) {
+            if (this.props.show) {
+                setTimeout(() => {
+                    if (this.urlInputRef) {
+                        this.urlInputRef.focus();
+                        this.urlInputRef.select();
+                    }
+                }, 200);
+            }
+        }
     }
 
     render() {
@@ -56,7 +72,7 @@ class AddItemModel extends React.Component<AddItemModalProps, AddItemModalState>
                                              value={this.state.url}
                                              placeholder={"URL to media"}
                                              required
-                                             autoFocus={true} // TODO: doesn't seem to work :/
+                                             ref={(input: HTMLInputElement) => this.urlInputRef = input}
                                              onChange={(e) => {
                                                  if (e.target.value === "") {
                                                      this.setState({

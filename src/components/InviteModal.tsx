@@ -17,6 +17,19 @@ class InviteModal extends React.Component<InviteModalProps> {
         this.inviteLinkRef = null;
     }
 
+    componentDidUpdate(prevProps: Readonly<InviteModalProps>) {
+        if (prevProps.show !== this.props.show) {
+            if (this.props.show) {
+                setTimeout(() => {
+                    if (this.inviteLinkRef) {
+                        this.inviteLinkRef.focus();
+                        this.inviteLinkRef.select();
+                    }
+                }, 200);
+            }
+        }
+    }
+
     copyToClipboard() {
         this.inviteLinkRef?.select();
         document.execCommand("copy");
@@ -41,7 +54,6 @@ class InviteModal extends React.Component<InviteModalProps> {
                                          ref={(input: HTMLInputElement) => this.inviteLinkRef = input}
                                          placeholder={"Room ID"}
                                          value={window.location.href}
-                                         autoFocus={true}  // TODO: doesn't seem to work :/
                                          aria-describedby={"inviteRoomAppend"}/>
                             <InputGroup.Append>
                                 <OverlayTrigger

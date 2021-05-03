@@ -1,9 +1,9 @@
 import React from "react";
 import {ChatData} from "./Room";
 import "./Chat.css";
-import {Button, Form, InputGroup, Media, OverlayTrigger, Tooltip} from "react-bootstrap";
+import {Alert, Button, Form, InputGroup, Media, OverlayTrigger, Tooltip} from "react-bootstrap";
 import ReactPlayer from "react-player";
-import {BiAddToQueue, FiSend, IoPlay, IoPlaySkipForwardSharp} from "react-icons/all";
+import {BiAddToQueue, FiHelpCircle, FiSend, IoPlay, IoPlaySkipForwardSharp} from "react-icons/all";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 
@@ -18,7 +18,8 @@ interface ChatProps {
 }
 
 interface ChatState {
-    message: string
+    message: string,
+    helpDismissed: boolean
 }
 
 class Chat extends React.Component<ChatProps, ChatState> {
@@ -26,13 +27,59 @@ class Chat extends React.Component<ChatProps, ChatState> {
         super(props);
 
         this.state = {
-            message: ""
+            message: "",
+            helpDismissed: true
         };
     }
 
     render() {
         return (
             <div className={"chat w-100 shadow rounded d-flex"}>
+                {this.state.helpDismissed ?
+                    <div style={{
+                        position: "absolute",
+                        right: "14px",
+                        top: "14px"
+                    }}>
+                        <OverlayTrigger
+                            placement={"top"}
+                            overlay={
+                                <Tooltip id={"tooltip-chat-help"}>
+                                    Need help?
+                                </Tooltip>
+                            }>
+                            <div className={"canPlay-message d-inline-flex"}>
+                                <div className={"control-button rounded p-1 text-muted"}
+                                     onClick={() => {
+                                         this.setState({
+                                             helpDismissed: false
+                                         });
+                                     }}>
+                                    <FiHelpCircle/>
+                                </div>
+                            </div>
+                        </OverlayTrigger>
+                    </div> :
+                    <Alert variant={"primary"}
+                           className={"mb-0"}
+                           onClose={() => this.setState({
+                               helpDismissed: true
+                           })}
+                           dismissible>
+                        Visit the
+
+                        <OverlayTrigger
+                            placement={"bottom"}
+                            overlay={
+                                <Tooltip id={"tooltip-chat-helppage-tba"}>
+                                    Sorry, still work in progress :/
+                                </Tooltip>
+                            }>
+                            <a href={"#"} className={"mx-1"}>help page</a>
+                        </OverlayTrigger>
+                        for help.
+                    </Alert>
+                }
                 <div className={"messages flex-grow-1"}>
                     <div className={"d-flex"}>
                         {this.props.history.map((h) => {
@@ -161,6 +208,7 @@ class Chat extends React.Component<ChatProps, ChatState> {
             </div>
         );
     }
+
 }
 
 export default Chat;
