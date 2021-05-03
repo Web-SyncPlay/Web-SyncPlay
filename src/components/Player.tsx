@@ -265,6 +265,9 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                 </div>
                             </div>
                             <div className={"control-button rounded p-1 mx-1"}
+                                 style={{
+                                     alignSelf: "center"
+                                 }}
                                  onClick={() => {
                                      this.setState({showTimePlayed: !this.state.showTimePlayed});
                                  }}>
