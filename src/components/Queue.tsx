@@ -3,6 +3,7 @@ import "./Queue.css";
 import {BiAddToQueue} from "react-icons/all";
 import AddItemModal from "./AddItemModal";
 import QueueItem from "./QueueItem";
+import {Row} from "react-bootstrap";
 
 interface QueueProps {
     queueIndex: number,
@@ -35,8 +36,8 @@ class Queue extends React.Component<QueueProps, QueueState> {
 
     render() {
         return (
-            <>
-                <div className={"queue rounded shadow p-1"}>
+            <div>
+                <Row className={"queue rounded shadow m-0"}>
                     {this.props.queue.map((q, index) =>
                         <QueueItem
                             key={q + index}
@@ -57,11 +58,11 @@ class Queue extends React.Component<QueueProps, QueueState> {
                         <span>Add item</span>
                         <BiAddToQueue/>
                     </div>
-                </div>
+                </Row>
                 <AddItemModal show={this.state.showAddItemModel}
                               closeModal={this.closeAddItemModal.bind(this)}
                               add={this.props.addToQueue}/>
-            </>
+            </div>
         );
     }
 

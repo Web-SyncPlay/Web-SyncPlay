@@ -25,6 +25,7 @@
 .chat .messages > div > div {
     background-color: #2d2d2d;
     width: calc(100% - 3rem - 0.5rem);
+    overflow-x: hidden;
 }
 
 @media (min-width: 768px) {
