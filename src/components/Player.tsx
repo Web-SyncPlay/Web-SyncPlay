@@ -206,7 +206,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                             Play previous
                                         </Tooltip>
                                     }>
-                                    <div className={"control-button mx-1"}
+                                    <div className={"d-none d-md-flex control-button mx-1"}
                                          onTouchEnd={(e) => {
                                              e.preventDefault();
                                              if (!this.state.controlsHidden) {
@@ -319,7 +319,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                             (this.state.volume > 0.6 ? <FaVolumeUp/> : <FaVolumeDown/>)}
                                     </div>
                                 </OverlayTrigger>
-                                <div className={"volume-slider"}>
+                                <div className={"d-none d-sm-flex volume-slider"}>
                                     <Form.Control
                                         type={"range"}
                                         min={0}
@@ -344,7 +344,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                         value={this.state.muted ? 0 : this.state.volume}/>
                                 </div>
                             </div>
-                            <div className={"control-button mx-1"}
+                            <div className={"d-none d-sm-flex control-button mx-1"}
                                  style={{
                                      alignSelf: "center"
                                  }}
@@ -370,7 +370,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                             Open source in new tab
                                         </Tooltip>
                                     }>
-                                    <div className={"control-button mx-1"}
+                                    <div className={"d-none d-sm-flex control-button mx-1"}
                                          onTouchEnd={(e) => {
                                              e.preventDefault();
                                              if (!this.state.controlsHidden) {
