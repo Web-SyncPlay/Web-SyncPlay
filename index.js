@@ -1,10 +1,10 @@
 import {createServer} from "http";
 import {Server} from "socket.io";
 import express from "express";
-import {iso31661} from "iso-3166";
 import fs from "fs";
 import cors from "cors";
 import path from "path";
+import {adjectives, animals, colors, names, starWars, uniqueNamesGenerator} from "unique-names-generator";
 
 const PORT = 8081;
 const app = express();
@@ -17,37 +17,23 @@ const io = new Server(http, {
 });
 const ROOT = process.env.IS_DOCKER ? "/app" : path.resolve();
 
+const nameLists = [adjectives, animals, colors, starWars, names];
+
 const getRandomItem = (array) => {
     return array[Math.round(Math.random() * (array.length - 1))];
 };
-let defaultNameList = [
-    "Ein wildes Tier",
-    "Rabauken Hamster",
-    "Ein, äh.. Dingens-Bums",
-    "Fetter fetter Adler",
-    "Mit Eleganz in den Keller",
-    "Ein Tier wie jedes Andere",
-    "Das etwas Andere",
-    "Mein Name hat kein Gewicht",
-    "Der Mäuse-Druide",
-    "Eine Trollelfe",
-    "Die zarte Orc-Ballerina",
-    "Eine fliegende Maus",
-    "Ein fliegendes Zebra",
-    "Eine drehende Ananas",
-    "Das majestätische Stück Torte",
-    "Ein farbenfrohes Transparent",
-    "Das karierte Zebra",
-    "Die fehlende Lösung",
-    "Das samte Sandpapier",
-    "Der verbrannte Kuchen",
-    "Das unsichtbare Unicorn",
-    "Zu Ihren Diensten",
-    "Etwas cooles Dingens",
-    "Das vergessene Unicorn",
-    "Das Muffin in der Ecke",
-    "Ein unsichtbares Prachtstück"
-];
+const getRandomName = (words = 2) => {
+    let lists = [];
+    for (let i = 0; i < words; i++) {
+        lists.push(Math.round(Math.random() * (nameLists.length - 1)));
+    }
+
+    return uniqueNamesGenerator({
+        dictionaries: lists.map((i) => nameLists[i]),
+        length: words,
+        style: "capital"
+    }).replace("_", " ");
+};
 
 // Icons
 let userIcons = [];
@@ -57,9 +43,6 @@ fs.readdir("public/icons", (err, files) => {
 
 app.get("/icons.json", (req, res) => {
     res.json(userIcons);
-});
-app.get("/iso-3166.json", (req, res) => {
-    res.json(iso31661);
 });
 
 const generateId = (length = 4) => {
@@ -118,6 +101,14 @@ io.on("connection", (socket) => {
         }
     };
 
+    let name = getRandomName(), icon = getRandomItem(userIcons);
+    getRoom().users.push({
+        id: socket.id,
+        name,
+        icon
+    });
+    log("User " + socket.id + " joined, assigned: \"" + name + "\" " + icon);
+
     // update room/user data
     const emitStatus = () => {
         io.to(room).emit("status", getRoom());
@@ -161,21 +152,6 @@ io.on("connection", (socket) => {
 
         emitStatus();
     };
-
-    // find icon and user name that hasn't been taken yet
-    let name = getRandomItem(defaultNameList), icon = getRandomItem(userIcons);
-    while (getRoom().users.some((user) => user.name === name)) {
-        name = getRandomItem(defaultNameList);
-    }
-    while (getRoom().users.some((user) => user.icon === icon)) {
-        icon = getRandomItem(userIcons);
-    }
-    getRoom().users.push({
-        id: socket.id,
-        name,
-        icon
-    });
-    log("User " + socket.id + " joined, assigned: \"" + name + "\" " + icon);
 
     socket.on("disconnect", () => {
         log("User " + socket.id + " disconnected");
