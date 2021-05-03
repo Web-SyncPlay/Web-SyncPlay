@@ -9,6 +9,7 @@ import {
     FaVolumeUp,
     IoPause,
     IoPlay,
+    IoPlaySkipBackSharp,
     IoPlaySkipForwardSharp,
     IoShareOutline,
     MdReplay
@@ -25,6 +26,7 @@ interface PlayerProps {
     played: number,
     playbackRate: number,
     loop: boolean,
+    queueIndex: number,
     queue: string[],
     playFromQueue: (index: number) => void
 }
@@ -75,14 +77,12 @@ class Player extends React.Component<PlayerProps, PlayerState> {
     }
 
     componentDidUpdate(prevProps: Readonly<PlayerProps>, prevState: Readonly<PlayerState>) {
-        if (this.props.played) {
-            if (Math.abs(prevState.played - this.props.played) * prevState.duration > 2) {
-                console.log("Desynced, seeking to ", this.props.played * prevState.duration);
-                this.player.current?.seekTo(this.props.played, "fraction");
-                this.setState({
-                    played: this.props.played
-                });
-            }
+        if (Math.abs(prevState.played - this.props.played) * prevState.duration > 2) {
+            console.log("Desynced, seeking to ", this.props.played * prevState.duration);
+            this.player.current?.seekTo(this.props.played, "fraction");
+            this.setState({
+                played: this.props.played
+            });
         }
     }
 
@@ -175,12 +175,27 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                 value={this.state.played}/>
                         </div>
                         <div className={"px-1 pb-1 d-flex"}>
+                            {0 < this.props.queueIndex ?
+                                <OverlayTrigger
+                                    placement={"top"}
+                                    overlay={
+                                        <Tooltip id={"playerControl-previous"}>
+                                            Play previous
+                                        </Tooltip>
+                                    }>
+                                    <div className={"control-button rounded p-1 mx-1"}
+                                         onClick={() => {
+                                             this.props.playFromQueue(this.props.queueIndex - 1);
+                                         }}>
+                                        <IoPlaySkipBackSharp/>
+                                    </div>
+                                </OverlayTrigger> : <></>}
                             <OverlayTrigger
                                 placement={"top"}
                                 overlay={
                                     <Tooltip id={"playerControl-play"}>
-                                        {this.props.playing ? "Pause playback" :
-                                            (this.playEnded() ? "Restart" : "Continue playback")}
+                                        {this.props.playing ? "Pause" :
+                                            (this.playEnded() ? "Restart" : "Play")}
                                     </Tooltip>
                                 }>
                                 <div className={"control-button rounded p-1 mx-1"}
@@ -199,17 +214,17 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                     {this.props.playing ? <IoPause/> : (this.playEnded() ? <MdReplay/> : <IoPlay/>)}
                                 </div>
                             </OverlayTrigger>
-                            {this.props.queue.length > 0 ?
+                            {this.props.queue.length > this.props.queueIndex + 1 && this.props.queueIndex > -1 ?
                                 <OverlayTrigger
                                     placement={"top"}
                                     overlay={
                                         <Tooltip id={"playerControl-next"}>
-                                            Play next video in queue
+                                            Play next
                                         </Tooltip>
                                     }>
                                     <div className={"control-button rounded p-1 mx-1"}
                                          onClick={() => {
-                                             this.props.playFromQueue(0);
+                                             this.props.playFromQueue(this.props.queueIndex + 1);
                                          }}>
                                         <IoPlaySkipForwardSharp/>
                                     </div>
@@ -352,6 +367,8 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                 playing: true,
                                 played: 0
                             });
+                        } else if (this.props.queueIndex + 1 < this.props.queue.length) {
+                            this.props.playFromQueue(this.props.queueIndex + 1);
                         } else {
                             this.updateState({playing: false});
                         }

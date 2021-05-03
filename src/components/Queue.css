@@ -6,6 +6,7 @@
     display: inline-block;
     background-color: #2d2d2d;
     word-break: break-all;
+    min-width: 200px;
     max-width: 230px;
 }
 

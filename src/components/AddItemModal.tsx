@@ -56,6 +56,7 @@ class AddItemModel extends React.Component<AddItemModalProps, AddItemModalState>
                                              value={this.state.url}
                                              placeholder={"URL to media"}
                                              required
+                                             autoFocus={true} // TODO: doesn't seem to work :/
                                              onChange={(e) => {
                                                  if (e.target.value === "") {
                                                      this.setState({

@@ -41,6 +41,7 @@ class InviteModal extends React.Component<InviteModalProps> {
                                          ref={(input: HTMLInputElement) => this.inviteLinkRef = input}
                                          placeholder={"Room ID"}
                                          value={window.location.href}
+                                         autoFocus={true}  // TODO: doesn't seem to work :/
                                          aria-describedby={"inviteRoomAppend"}/>
                             <InputGroup.Append>
                                 <OverlayTrigger

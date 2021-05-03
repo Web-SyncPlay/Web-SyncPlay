@@ -226,6 +226,7 @@ class Room extends React.Component<RoomProps, RoomState> {
                                 played={this.state.played}
                                 playbackRate={this.state.playbackRate}
                                 loop={this.state.loop}
+                                queueIndex={this.state.queueIndex}
                                 queue={this.state.queue}
                                 playFromQueue={this.playFromQueue.bind(this)}
                             /> :

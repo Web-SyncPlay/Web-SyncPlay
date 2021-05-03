@@ -131,7 +131,9 @@ io.on("connection", (socket) => {
                 "buffering",
                 "seeking",
                 "interaction",
-                "fullscreen"
+                "fullscreen",
+                "loadedSeconds",
+                "playedSeconds"
             ];
 
             if (!data.interaction) {
