@@ -47,8 +47,6 @@
 
 .player-overlay .volume-control .volume-slider {
     width: 6em;
-    min-width: 6em;
-    max-width: 6em;
 }
 
 .player-overlay .volume-control {
@@ -58,7 +56,7 @@
 }
 
 .player-overlay .volume-control:hover {
-    width: 8.25em;
+    width: 8.5em;
 }
 
 /* input range slider */
@@ -66,7 +64,7 @@ input[type="range"] {
     --value: 0%;
     --lower: #1aafff;
     --upper: rgba(255, 255, 255, 0.2);
-    --thumb-size: 10px;
+    --thumb-size: 12px;
     --thumb-color: #fff;
 
     cursor: pointer;
