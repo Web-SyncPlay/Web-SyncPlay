@@ -35,18 +35,8 @@
     height: 1em;
 }
 
-.player-overlay .player-controls .control-button {
-    line-height: 1em;
-    cursor: pointer;
-    transition: background-color 0.1s ease-in-out;
-}
-
-.player-overlay .player-controls .control-button:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
 .player-overlay .volume-control .volume-slider {
-    width: 6em;
+    width: 4.5em;
 }
 
 .player-overlay .volume-control {
@@ -56,7 +46,7 @@
 }
 
 .player-overlay .volume-control:hover {
-    width: 8.5em;
+    width: 7.5em;
 }
 
 /* input range slider */
@@ -117,7 +107,7 @@ input[type=range]::-ms-track {
     border-width: 5px 0;
     color: transparent;
     width: 100%;
-    height: 20px;
+    height: 5px;
     cursor: pointer;
 }
 
