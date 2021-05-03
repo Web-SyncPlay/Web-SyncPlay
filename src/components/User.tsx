@@ -42,7 +42,7 @@ class User extends React.Component<UserProps, UserState> {
         }
     }
 
-    secondsToTime(s: number): string {
+    static secondsToTime(s: number): string {
         if (isNaN(s)) {
             return "00:00";
         }
@@ -60,8 +60,8 @@ class User extends React.Component<UserProps, UserState> {
     }
 
     timeProgress(): string {
-        return this.secondsToTime(this.props.user.played * this.props.duration) + " / " +
-            this.secondsToTime(this.props.duration);
+        return User.secondsToTime(this.props.user.played * this.props.duration) + " / " +
+            User.secondsToTime(this.props.duration);
     }
 
     render() {

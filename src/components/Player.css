@@ -25,6 +25,11 @@
     opacity: 1;
 }
 
+.player-overlay.hide .player-center,
+.player-overlay.hide .player-controls {
+    opacity: 0;
+}
+
 .player-overlay .player-progress,
 .player-overlay .volume-control {
     display: flex;

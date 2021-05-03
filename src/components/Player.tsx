@@ -16,6 +16,7 @@ import {
 import {Form} from "react-bootstrap";
 import screenfull from "screenfull";
 import "./Player.css";
+import User from "./User";
 
 interface PlayerProps {
     socket: Socket | null,
@@ -37,13 +38,17 @@ interface PlayerState {
     ready: boolean,
     buffering: boolean,
     seeking: boolean,
-    fullscreen: boolean
+    fullscreen: boolean,
+    showTimePlayed: boolean,
+    controlsHidden: boolean,
 }
 
 class Player extends React.Component<PlayerProps, PlayerState> {
     player: React.RefObject<ReactPlayer>;
     interaction: boolean;
     interactionTime: number;
+    mouseInside: boolean;
+    lastMouseMove: number;
     private fullscreenNode: HTMLDivElement | undefined;
 
     constructor(props: PlayerProps) {
@@ -51,6 +56,8 @@ class Player extends React.Component<PlayerProps, PlayerState> {
         this.player = React.createRef();
         this.interaction = false;
         this.interactionTime = 0;
+        this.mouseInside = false;
+        this.lastMouseMove = 0;
 
         this.state = {
             volume: 0.3,
@@ -61,7 +68,9 @@ class Player extends React.Component<PlayerProps, PlayerState> {
             ready: false,
             buffering: false,
             seeking: false,
-            fullscreen: false
+            fullscreen: false,
+            showTimePlayed: true,
+            controlsHidden: false
         };
     }
 
@@ -96,10 +105,37 @@ class Player extends React.Component<PlayerProps, PlayerState> {
         this.setState(data);
     }
 
+    playEnded() {
+        return !this.props.playing && ((1 - this.state.played) * this.state.duration < 1);
+    }
+
+    mouseMoved() {
+        this.lastMouseMove = new Date().getTime();
+        if (this.state.controlsHidden) {
+            this.setState({
+                controlsHidden: false
+            });
+        }
+        setTimeout(() => {
+            if (new Date().getTime() - this.lastMouseMove > 1150) {
+                this.setState({
+                    controlsHidden: true
+                });
+            }
+        }, 1200);
+    }
+
     render() {
         return (
             <div ref={(node) => this.fullscreenNode = node || undefined}>
-                <div className={"player-overlay p-2"}>
+                <div className={"player-overlay p-2" + (this.state.controlsHidden ? " hide" : "")}
+                     onMouseEnter={() => {
+                         this.mouseInside = true;
+                     }}
+                     onMouseLeave={() => {
+                         this.mouseInside = false;
+                     }}
+                     onMouseMove={this.mouseMoved.bind(this)}>
                     <div className={"player-center flex-grow-1"}
                          onClick={() => {
                              if (this.interaction) {
@@ -140,7 +176,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                         <div className={"px-1 pb-1 d-flex"}>
                             <div className={"control-button rounded p-1 mx-1"}
                                  onClick={() => {
-                                     if (this.state.played === 1) {
+                                     if (this.playEnded()) {
                                          this.updateState({
                                              playing: true,
                                              played: 0
@@ -151,7 +187,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                          });
                                      }
                                  }}>
-                                {this.props.playing ? <IoPause/> : (this.state.played === 1 ? <MdReplay/> : <IoPlay/>)}
+                                {this.props.playing ? <IoPause/> : (this.playEnded() ? <MdReplay/> : <IoPlay/>)}
                             </div>
                             {this.props.queue.length > 0 ?
                                 <div className={"control-button rounded p-1 mx-1"}
@@ -202,6 +238,15 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                         value={this.state.muted ? 0 : this.state.volume}/>
                                 </div>
                             </div>
+                            <div className={"control-button rounded p-1 mx-1"}
+                                 onClick={() => {
+                                     this.setState({showTimePlayed: !this.state.showTimePlayed});
+                                 }}>
+                                {(this.state.showTimePlayed ? User.secondsToTime(this.state.played * this.state.duration) :
+                                    "-" + User.secondsToTime((1 - this.state.played) * this.state.duration)) + " / " +
+                                User.secondsToTime(this.state.duration)}
+                            </div>
+
                             <div className={"ml-auto d-flex"}>
                                 <div className={"control-button rounded p-1 mx-1"}
                                      onClick={() => {
@@ -225,7 +270,6 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                     </div>
                 </div>
                 <ReactPlayer
-                    className={"rounded"}
                     style={{
                         maxHeight: this.state.fullscreen ? "100%" : "calc(100vh - 169px)",
                         backgroundColor: "#000000"
