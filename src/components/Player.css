@@ -16,13 +16,8 @@
 
 .player-overlay .player-center,
 .player-overlay .player-controls {
-    opacity: 0;
-    transition: opacity 0.2s ease-in-out;
-}
-
-.player-overlay:hover .player-center,
-.player-overlay:hover .player-controls {
     opacity: 1;
+    transition: opacity 0.2s ease-in-out;
 }
 
 .player-overlay.hide .player-center,

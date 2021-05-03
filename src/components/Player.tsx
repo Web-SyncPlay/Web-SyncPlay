@@ -49,7 +49,6 @@ class Player extends React.Component<PlayerProps, PlayerState> {
     player: React.RefObject<ReactPlayer>;
     interaction: boolean;
     interactionTime: number;
-    mouseInside: boolean;
     lastMouseMove: number;
     private fullscreenNode: HTMLDivElement | undefined;
 
@@ -58,7 +57,6 @@ class Player extends React.Component<PlayerProps, PlayerState> {
         this.player = React.createRef();
         this.interaction = false;
         this.interactionTime = 0;
-        this.mouseInside = false;
         this.lastMouseMove = 0;
 
         this.state = {
@@ -130,15 +128,32 @@ class Player extends React.Component<PlayerProps, PlayerState> {
             <div ref={(node) => this.fullscreenNode = node || undefined}
                  className={"shadow"}>
                 <div className={"player-overlay p-2" + (this.state.controlsHidden ? " hide" : "")}
-                     onMouseEnter={() => {
-                         this.mouseInside = true;
+                     onTouchEnd={e => {
+                         e.preventDefault();
+                         this.mouseMoved();
                      }}
-                     onMouseLeave={() => {
-                         this.mouseInside = false;
-                     }}
-                     onMouseMove={this.mouseMoved.bind(this)}>
+                     onMouseMove={() => {
+                         this.mouseMoved();
+                     }}>
                     <div className={"player-center flex-grow-1"}
-                         onClick={() => {
+                         onTouchEnd={e => {
+                             e.preventDefault();
+                             if (this.interaction) {
+                                 this.interaction = false;
+                                 if (screenfull.isEnabled) {
+                                     screenfull.toggle(this.fullscreenNode);
+                                     this.setState({fullscreen: !this.state.fullscreen});
+                                 }
+                             } else if (!this.state.controlsHidden) {
+                                 this.interact();
+                                 setTimeout(() => {
+                                     if (this.interaction) {
+                                         this.updateState({playing: !this.props.playing});
+                                     }
+                                 }, 250);
+                             }
+                         }}
+                         onMouseUp={() => {
                              if (this.interaction) {
                                  this.interaction = false;
                                  if (screenfull.isEnabled) {
@@ -184,7 +199,13 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                         </Tooltip>
                                     }>
                                     <div className={"control-button rounded p-1 mx-1"}
-                                         onClick={() => {
+                                         onTouchEnd={(e) => {
+                                             e.preventDefault();
+                                             if (!this.state.controlsHidden) {
+                                                 this.props.playFromQueue(this.props.queueIndex - 1);
+                                             }
+                                         }}
+                                         onMouseUp={() => {
                                              this.props.playFromQueue(this.props.queueIndex - 1);
                                          }}>
                                         <IoPlaySkipBackSharp/>
@@ -199,7 +220,22 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                     </Tooltip>
                                 }>
                                 <div className={"control-button rounded p-1 mx-1"}
-                                     onClick={() => {
+                                     onTouchEnd={(e) => {
+                                         e.preventDefault();
+                                         if (!this.state.controlsHidden) {
+                                             if (this.playEnded()) {
+                                                 this.updateState({
+                                                     playing: true,
+                                                     played: 0
+                                                 });
+                                             } else {
+                                                 this.updateState({
+                                                     playing: !this.props.playing
+                                                 });
+                                             }
+                                         }
+                                     }}
+                                     onMouseUp={() => {
                                          if (this.playEnded()) {
                                              this.updateState({
                                                  playing: true,
@@ -223,7 +259,13 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                         </Tooltip>
                                     }>
                                     <div className={"control-button rounded p-1 mx-1"}
-                                         onClick={() => {
+                                         onTouchEnd={(e) => {
+                                             e.preventDefault();
+                                             if (!this.state.controlsHidden) {
+                                                 this.props.playFromQueue(this.props.queueIndex + 1);
+                                             }
+                                         }}
+                                         onMouseUp={() => {
                                              this.props.playFromQueue(this.props.queueIndex + 1);
                                          }}>
                                         <IoPlaySkipForwardSharp/>
@@ -238,7 +280,22 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                         </Tooltip>
                                     }>
                                     <div className={"control-button rounded p-1 mx-1"}
-                                         onClick={() => {
+                                         onTouchEnd={(e) => {
+                                             e.preventDefault();
+                                             if (!this.state.controlsHidden) {
+                                                 if (this.state.volume === 0) {
+                                                     this.setState({
+                                                         muted: false,
+                                                         volume: 0.3
+                                                     });
+                                                 } else {
+                                                     this.setState({
+                                                         muted: !this.state.muted
+                                                     });
+                                                 }
+                                             }
+                                         }}
+                                         onMouseUp={() => {
                                              if (this.state.volume === 0) {
                                                  this.setState({
                                                      muted: false,
@@ -283,7 +340,13 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                  style={{
                                      alignSelf: "center"
                                  }}
-                                 onClick={() => {
+                                 onTouchEnd={(e) => {
+                                     e.preventDefault();
+                                     if (!this.state.controlsHidden) {
+                                         this.setState({showTimePlayed: !this.state.showTimePlayed});
+                                     }
+                                 }}
+                                 onMouseUp={() => {
                                      this.setState({showTimePlayed: !this.state.showTimePlayed});
                                  }}>
                                 {(this.state.showTimePlayed ? User.secondsToTime(this.state.played * this.state.duration) :
@@ -300,7 +363,13 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                         </Tooltip>
                                     }>
                                     <div className={"control-button rounded p-1 mx-1"}
-                                         onClick={() => {
+                                         onTouchEnd={(e) => {
+                                             e.preventDefault();
+                                             if (!this.state.controlsHidden) {
+                                                 window.open(this.props.url, "_blank");
+                                             }
+                                         }}
+                                         onMouseUp={() => {
                                              window.open(this.props.url, "_blank");
                                          }}>
                                         <IoShareOutline/>
@@ -315,7 +384,14 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                             </Tooltip>
                                         }>
                                         <div className={"control-button rounded p-1 mx-1"}
-                                             onClick={() => {
+                                             onTouchEnd={(e) => {
+                                                 e.preventDefault();
+                                                 if (screenfull.isEnabled) {
+                                                     screenfull.toggle(this.fullscreenNode);
+                                                     this.setState({fullscreen: !this.state.fullscreen});
+                                                 }
+                                             }}
+                                             onMouseUp={() => {
                                                  if (screenfull.isEnabled) {
                                                      screenfull.toggle(this.fullscreenNode);
                                                      this.setState({fullscreen: !this.state.fullscreen});

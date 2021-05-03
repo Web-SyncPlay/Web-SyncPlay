@@ -1,6 +1,6 @@
 .chat {
     min-width: 300px;
-    height: calc((9 / 16) * 100vw);
+    height: max(calc((9 / 16) * 100vw), 400px);
     max-height: calc(100vh - 169px);
     background-color: #1f1f1f;
     flex-direction: column;
