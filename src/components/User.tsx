@@ -1,5 +1,5 @@
 import React from "react";
-import {Col, Form, Media, OverlayTrigger, Popover, Row} from "react-bootstrap";
+import {Col, Form, Media, Overlay, Popover, Row} from "react-bootstrap";
 import {UserData} from "./Room";
 import "./User.css";
 import {BsPauseFill, BsPlayFill, FaCrown} from "react-icons/all";
@@ -15,15 +15,22 @@ interface UserProps {
 }
 
 interface UserState {
-    icons: string[] | null
+    icons: string[] | null,
+    popoverExpanded: boolean,
+    target: HTMLDivElement | null
 }
 
 class User extends React.Component<UserProps, UserState> {
+    popoverRef: React.RefObject<HTMLDivElement>;
+
     constructor(props: UserProps) {
         super(props);
+        this.popoverRef = React.createRef();
 
         this.state = {
-            icons: null
+            icons: null,
+            popoverExpanded: false,
+            target: null
         };
 
         if (this.props.user.id === this.props.you) {
@@ -63,52 +70,51 @@ class User extends React.Component<UserProps, UserState> {
             <Col className={"p-2"} xs={(you ? {order: "first"} : {})}>
                 <Media className={"user rounded p-2 " + (you ? "bg-success you" : "")}>
                     {you && this.state.icons !== null ?
-                        <OverlayTrigger
-                            trigger="click"
-                            key={"top"}
+                        <Overlay
+                            show={this.state.popoverExpanded}
                             placement={"top"}
-                            overlay={
-                                <Popover id={"change-icon-popover"}>
-                                    <Popover.Content>
-                                        <Row className={"pl-1"}>
-                                            {this.state.icons.map((icon) =>
-                                                <Col key={icon}
-                                                     className={"m-1 rounded user-icon"}
-                                                     onClick={() => {
-                                                         this.props.update(this.props.user.name, icon);
-                                                     }}
-                                                     xs={"auto"}>
-                                                    <img
-                                                        width={48}
-                                                        height={48}
-                                                        src={ENDPOINT + "/icons/" + icon}
-                                                        alt={"User icon"}
-                                                    />
-                                                </Col>
-                                            )}
-                                        </Row>
-                                    </Popover.Content>
-                                </Popover>
-                            }
-                        >
-                            <div className={"mr-2 rounded user-icon"}>
-                                <img
-                                    width={48}
-                                    height={48}
-                                    src={ENDPOINT + "/icons/" + this.props.user.icon}
-                                    alt={"User icon"}
-                                />
-                            </div>
-                        </OverlayTrigger> :
-                        <div className={"mr-2 rounded user-icon"}>
-                            <img
-                                width={48}
-                                height={48}
-                                src={ENDPOINT + "/icons/" + this.props.user.icon}
-                                alt={"User icon"}
-                            />
-                        </div>
+                            container={this.popoverRef}
+                            target={this.popoverRef.current}>
+                            <Popover id={"change-icon-popover"}>
+                                <Popover.Content>
+                                    <Row className={"pl-1"}>
+                                        {this.state.icons.map((icon) =>
+                                            <Col key={icon}
+                                                 className={"m-1 rounded user-icon"}
+                                                 onClick={() => {
+                                                     this.props.update(this.props.user.name, icon);
+                                                     this.setState({
+                                                         popoverExpanded: !this.state.popoverExpanded
+                                                     });
+                                                 }}
+                                                 xs={"auto"}>
+                                                <img
+                                                    width={48}
+                                                    height={48}
+                                                    src={ENDPOINT + "/icons/" + icon}
+                                                    alt={"User icon"}
+                                                />
+                                            </Col>
+                                        )}
+                                    </Row>
+                                </Popover.Content>
+                            </Popover>
+                        </Overlay> : <></>
                     }
+                    <div ref={this.popoverRef}
+                         onClick={() => {
+                             this.setState({
+                                 popoverExpanded: !this.state.popoverExpanded
+                             });
+                         }}
+                         className={"mr-2 rounded user-icon"}>
+                        <img
+                            width={48}
+                            height={48}
+                            src={ENDPOINT + "/icons/" + this.props.user.icon}
+                            alt={"User icon"}
+                        />
+                    </div>
                     <Media.Body>
                         {you ?
                             <Form.Control
