@@ -3,7 +3,7 @@ import {ChatData} from "./Room";
 import "./Chat.css";
 import {Button, Form, InputGroup, Media, OverlayTrigger, Tooltip} from "react-bootstrap";
 import ReactPlayer from "react-player";
-import {FiSend, IoPlay, IoPlaySkipForwardSharp} from "react-icons/all";
+import {BiAddToQueue, FiSend, IoPlay, IoPlaySkipForwardSharp} from "react-icons/all";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 
@@ -95,6 +95,22 @@ class Chat extends React.Component<ChatProps, ChatState> {
                                                              this.props.playNext(h.message);
                                                          }}>
                                                         <IoPlaySkipForwardSharp/>
+                                                    </div>
+                                                </div>
+                                            </OverlayTrigger>
+                                            <OverlayTrigger
+                                                placement={"top"}
+                                                overlay={
+                                                    <Tooltip id={"tooltip-chat-" + h.time + "-addQueue"}>
+                                                        Add to playback queue
+                                                    </Tooltip>
+                                                }>
+                                                <div className={"canPlay-message d-inline-flex"}>
+                                                    <div className={"control-button rounded p-1 mr-1 text-success"}
+                                                         onClick={() => {
+                                                             this.props.addQueue(h.message);
+                                                         }}>
+                                                        <BiAddToQueue/>
                                                     </div>
                                                 </div>
                                             </OverlayTrigger>

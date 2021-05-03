@@ -6,6 +6,7 @@ import {Helmet} from "react-helmet";
 import User from "./User";
 import Chat from "./Chat";
 import Player from "./Player";
+import Queue from "./Queue";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 
@@ -27,7 +28,6 @@ export interface ChatData {
 interface RoomState {
     id: string,
     url: string,
-    queue: string[],
     owner: string,
     playing: boolean,
     played: number,
@@ -35,6 +35,9 @@ interface RoomState {
     playbackRate: number,
     loop: boolean,
     chatExpanded: boolean,
+    queueIndex: number,
+    deleteQueueOnPlay: boolean,
+    queue: string[],
     users: UserData[],
     history: ChatData[]
 }
@@ -52,13 +55,15 @@ class Room extends React.Component<RoomProps, RoomState> {
             id: this.props.roomId,
             owner: "loading...",
             url: "https://youtu.be/NcBjx_eyvxc",
-            queue: [],
             playing: false,
             played: 0,
             duration: 0,
             playbackRate: 1,
             loop: false,
             chatExpanded: true,
+            queueIndex: -1,
+            deleteQueueOnPlay: false,
+            queue: [],
             users: [] as UserData[],
             history: [] as ChatData[]
         };
@@ -94,10 +99,12 @@ class Room extends React.Component<RoomProps, RoomState> {
     }
 
     updateUser(name: string, icon: string) {
-        this.updateState({
-            icon,
-            name
-        });
+        if (this.socket) {
+            this.socket.emit("update", {
+                icon,
+                name
+            });
+        }
     }
 
     updateState(data: any) {
@@ -123,15 +130,17 @@ class Room extends React.Component<RoomProps, RoomState> {
         });
     }
 
-    playFromQueue(index: number) {
-        const next = this.state.queue[index];
-        this.load(next);
-    }
-
     playNext(url: string) {
-        this.updateState({
-            queue: [url, ...this.state.queue]
-        });
+        if (this.state.queueIndex >= 0) {
+            this.updateState({
+                queueIndex: this.state.queueIndex + 1,
+                queue: [...this.state.queue].splice(this.state.queueIndex, 0, url)
+            });
+        } else {
+            this.updateState({
+                queue: [url, ...this.state.queue]
+            });
+        }
     }
 
     addToQueue(url: string) {
@@ -140,10 +149,62 @@ class Room extends React.Component<RoomProps, RoomState> {
         });
     }
 
-    removeFromQueue(index: number) {
-        this.updateState({
-            queue: [...this.state.queue].filter((e, i) => i !== index)
-        });
+    playFromQueue(index: number) {
+        this.load(this.state.queue[index]);
+
+        if (this.state.deleteQueueOnPlay) {
+            this.updateState({
+                queue: [...this.state.queue].filter((e, i) => i !== index)
+            });
+        } else {
+            this.updateState({
+                queueIndex: index
+            });
+        }
+    }
+
+    swapQueueItems(oldIndex: number, newIndex: number) {
+        const queue = [...this.state.queue];
+        const old = queue[oldIndex];
+        queue[oldIndex] = queue[newIndex];
+        queue[newIndex] = old;
+
+        if ([oldIndex, newIndex].includes(this.state.queueIndex)) {
+            this.updateState({
+                queueIndex: this.state.queueIndex === newIndex ? oldIndex : newIndex,
+                queue
+            });
+        } else {
+            this.updateState({
+                queue
+            });
+        }
+    }
+
+    deleteFromQueue(index: number) {
+        if (this.state.queueIndex >= index) {
+            this.updateState({
+                queueIndex: this.state.queueIndex - 1,
+                queue: [...this.state.queue].filter((e, i) => i !== index)
+            });
+        } else {
+            this.updateState({
+                queue: [...this.state.queue].filter((e, i) => i !== index)
+            });
+        }
+    }
+
+    setQueueMode(deleteQueueOnPlay: boolean) {
+        if (deleteQueueOnPlay) {
+            this.updateState({
+                queueIndex: -1,
+                deleteQueueOnPlay
+            });
+        } else {
+            this.updateState({
+                deleteQueueOnPlay
+            });
+        }
     }
 
     render() {
@@ -185,6 +246,13 @@ class Room extends React.Component<RoomProps, RoomState> {
                               history={this.state.history}/>
                     </Col>
                 </Row>
+                <Queue queueIndex={this.state.queueIndex}
+                       queue={this.state.queue}
+                       play={this.changeToURL.bind(this)}
+                       playFromQueue={this.playFromQueue.bind(this)}
+                       deleteFromQueue={this.deleteFromQueue.bind(this)}
+                       swapQueueItems={this.swapQueueItems.bind(this)}
+                       addToQueue={this.addToQueue.bind(this)}/>
                 <Row className={"user-list mx-3 mb-3 p-0"}>
                     {this.state.users.map((user) => {
                             return (

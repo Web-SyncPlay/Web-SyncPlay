@@ -5,8 +5,8 @@
 .modal-header,
 .modal-body,
 .modal-footer {
-    background-color: #2d2d2d;
-    border-color: #e1e1e1;
+    background-color: #1f1f1f;
+    border-color: #121212;
 }
 
 .modal button.close {

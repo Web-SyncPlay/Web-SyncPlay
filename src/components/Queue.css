@@ -1,0 +1,53 @@
+.queue {
+    background-color: #1f1f1f;
+}
+
+.queue .queue-item {
+    display: inline-block;
+    background-color: #2d2d2d;
+    word-break: break-all;
+    max-width: 230px;
+}
+
+.queue .queue-item.add-notice {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    cursor: pointer;
+}
+
+.queue .queue-item.add-notice:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #28a745 !important;
+}
+
+.blink {
+    -webkit-animation: blink 1s ease-in-out infinite both;
+    animation: blink 1s ease-in-out infinite both;
+}
+
+@-webkit-keyframes blink {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.2;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes blink {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.2;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
