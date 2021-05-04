@@ -4,9 +4,9 @@ import NavbarHeader from "./components/NavbarHeader";
 import StartModal from "./components/StartModal";
 import Room from "./components/Room";
 import Footer from "./components/Footer";
-import {Route, useHistory, useLocation} from "react-router-dom";
+import {Redirect, Route, Switch, useHistory, useLocation} from "react-router-dom";
 import * as H from "history";
-import Switch from "react-bootstrap/Switch";
+import PlayerEmbed from "./components/PlayerEmbed";
 
 interface AppProps {
     history: H.History,
@@ -26,7 +26,11 @@ class App extends React.Component<AppProps> {
         super(props);
         this.state = {
             isRoom: false,
-            roomId: props.location.pathname.replace("/room/", "")
+            roomId: props.location.pathname
+                .replace("/room/", "")
+                .replace("/embed/player/", "")
+                .replace("/embed/chat/", "")
+                .replace("/embed/queue/", "")
         };
 
         this.roomRef = React.createRef<Room>();
@@ -47,18 +51,30 @@ class App extends React.Component<AppProps> {
     render() {
         return (
             <div className="App">
-                <NavbarHeader isRoom={this.state.isRoom}
-                              roomId={this.state.roomId}
-                              playURL={this.playURL.bind(this)}/>
                 <Switch>
-                    <Route exact path={"/"}>
-                        <StartModal join={this.joinRoom.bind(this)}/>
-                    </Route>
-                    <Route path={"/room/:roomId"}>
-                        <Room ref={this.roomRef} roomId={this.state.roomId}/>
+                    <Route path={"/embed/player/:roomId"} render={(routerProps) => {
+                        return (
+                            <PlayerEmbed roomId={this.state.roomId} query={routerProps.location.search}/>
+                        );
+                    }}/>
+                    <Route path={"/*"}>
+                        <NavbarHeader isRoom={this.state.isRoom}
+                                      roomId={this.state.roomId}
+                                      playURL={this.playURL.bind(this)}/>
+                        <Switch>
+                            <Route exact path={"/"}>
+                                <StartModal join={this.joinRoom.bind(this)}/>
+                            </Route>
+                            <Route exact path={"/room/:roomId"}>
+                                <Room ref={this.roomRef} roomId={this.state.roomId}/>
+                            </Route>
+                            <Route>
+                                <Redirect to={"/"}/>
+                            </Route>
+                        </Switch>
+                        <Footer/>
                     </Route>
                 </Switch>
-                <Footer/>
             </div>
         );
     }

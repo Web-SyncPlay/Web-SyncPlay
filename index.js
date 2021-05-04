@@ -67,6 +67,7 @@ let rooms = [];
 io.on("connection", (socket) => {
     // room-joining
     let room = socket.handshake.query.roomId;
+    let embed = socket.handshake.query.isEmbed;
     const log = (...item) => {
         let d = new Date();
         let time = "[" + d.toUTCString() + "] [" + room + "]: ";
@@ -104,7 +105,8 @@ io.on("connection", (socket) => {
     let name = getRandomName(), icon = getRandomItem(userIcons);
     getRoom().users.push({
         id: socket.id,
-        name,
+        embed: embed === "true",
+        name: (embed === "true" ? "embed_" : "") + name,
         icon
     });
     log("User " + socket.id + " joined, assigned: \"" + name + "\" " + icon);
@@ -180,6 +182,11 @@ io.on("connection", (socket) => {
         } else {
             rooms = rooms.filter((item) => item.id !== room);
             log("no users left, purging room");
+        }
+    });
+    socket.on("initialState", (data) => {
+        if (socket.id === getRoom().owner) {
+            update(data);
         }
     });
     socket.on("update", (data) => {

@@ -1,26 +1,30 @@
 import React from "react";
 import "./Queue.css";
-import {BiAddToQueue, RiDeleteBinLine} from "react-icons/all";
+import {BiAddToQueue, ImEmbed2, RiDeleteBinLine} from "react-icons/all";
 import AddItemModal from "./AddItemModal";
 import QueueItem from "./QueueItem";
 import {Accordion, OverlayTrigger, Row, Tooltip} from "react-bootstrap";
 import ConfirmClearModal from "./ConfirmClearModal";
 import QueueExpandToggle from "./QueueExpandToggle";
+import CreateEmbedModal from "./CreateEmbedModal";
 
 interface QueueProps {
-    queueIndex: number,
-    queue: string[],
+    addToQueue: (url: string) => void,
+    clearQueue: () => void,
+    deleteFromQueue: (index: number) => void,
     play: (url: string) => void,
     playFromQueue: (index: number) => void,
-    deleteFromQueue: (index: number) => void,
+    queue: string[],
+    queueIndex: number,
+    roomId: string,
     swapQueueItems: (oldIndex: number, newIndex: number) => void,
-    clearQueue: () => void,
-    addToQueue: (url: string) => void
+    url: string
 }
 
 interface QueueState {
     showAddItemModal: boolean,
-    showConfirmClearModal: boolean
+    showConfirmClearModal: boolean,
+    showCreateEmbedModal: boolean
 }
 
 class Queue extends React.Component<QueueProps, QueueState> {
@@ -29,7 +33,8 @@ class Queue extends React.Component<QueueProps, QueueState> {
 
         this.state = {
             showAddItemModal: false,
-            showConfirmClearModal: false
+            showConfirmClearModal: false,
+            showCreateEmbedModal: false
         };
     }
 
@@ -54,6 +59,22 @@ class Queue extends React.Component<QueueProps, QueueState> {
                             placement={"top"}
                             overlay={
                                 <Tooltip id={"tooltip-queue-expand"}>
+                                    Create embed
+                                </Tooltip>
+                            }>
+                            <div className={"control-button text-warning mx-1"}
+                                 onClick={() => {
+                                     this.setState({
+                                         showCreateEmbedModal: true
+                                     });
+                                 }}>
+                                <ImEmbed2/>
+                            </div>
+                        </OverlayTrigger>
+                        <OverlayTrigger
+                            placement={"top"}
+                            overlay={
+                                <Tooltip id={"tooltip-queue-expand"}>
                                     Clear queue
                                 </Tooltip>
                             }>
@@ -69,14 +90,27 @@ class Queue extends React.Component<QueueProps, QueueState> {
                         <QueueExpandToggle eventKey={"queue-expand"}/>
                     </div>
                 </div>
-                <ConfirmClearModal show={this.state.showConfirmClearModal}
+                <ConfirmClearModal
+                    clear={this.props.clearQueue}
                                    onHide={() => {
                                        this.setState({
                                            showConfirmClearModal: false
                                        });
                                    }}
                                    queueLength={this.props.queue.length}
-                                   clear={this.props.clearQueue}/>
+                    show={this.state.showConfirmClearModal}/>
+                <CreateEmbedModal
+                    roomId={this.props.roomId}
+                                  onHide={() => {
+                                      this.setState({
+                                          showCreateEmbedModal: false
+                                      });
+                                  }}
+                                  queue={this.props.queue}
+                                  queueIndex={this.props.queueIndex}
+                                  show={this.state.showCreateEmbedModal}
+                                  url={this.props.url}
+                />
                 <Accordion.Collapse eventKey={"queue-expand"}>
                     <Row className={"m-0"}
                          id={"queue-collapse"}>

@@ -1,6 +1,7 @@
 import React from "react";
 import {Button, Form, FormControl, InputGroup, Modal, OverlayTrigger, Popover} from "react-bootstrap";
 import "./Modal.css";
+import {IoMdCopy} from "react-icons/all";
 
 interface InviteModalProps {
     roomId: string,
@@ -70,7 +71,9 @@ class InviteModal extends React.Component<InviteModalProps> {
                                             id={"inviteRoomAppend"}
                                             onClick={this.copyToClipboard.bind(this)}
                                             variant={"primary"}>
-                                        Copy
+                                        <IoMdCopy style={{
+                                            marginTop: "-0.25em"
+                                        }}/> Copy
                                     </Button>
                                 </OverlayTrigger>
                             </InputGroup.Append>
