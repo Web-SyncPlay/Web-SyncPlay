@@ -32,6 +32,16 @@
     opacity: 0;
 }
 
+.player-overlay .player-controls .time-progress {
+    display: none;
+}
+
+@media (min-width: 360px) {
+    .player-overlay .player-controls .time-progress {
+        display: flex;
+    }
+}
+
 .player-overlay .player-progress,
 .player-overlay .volume-control {
     display: flex;

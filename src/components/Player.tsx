@@ -371,7 +371,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                         </div>
 
                                         <div className={"ml-auto d-flex"}>
-                                            <div className={"control-button mx-1"}
+                                            <div className={"time-progress control-button mx-1"}
                                                  style={{
                                                      alignSelf: "center"
                                                  }}
@@ -453,11 +453,11 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                 <ReactPlayer
                     style={{
                         backgroundColor: "#000000",
-                        maxHeight: this.state.fullscreen || this.props.isEmbed ? "100%" : "calc(100vh - 169px)"
+                        maxHeight: this.state.fullscreen || this.props.isEmbed ? "100vh" : "calc(100vh - 169px)"
                     }}
                     ref={this.player}
                     width={"100%"}
-                    height={this.state.fullscreen || this.props.isEmbed ? "100%" : "calc((9 / 16) * 100vw)"}
+                    height={this.state.fullscreen || this.props.isEmbed ? "100vh" : "calc((9 / 16) * 100vw)"}
                     config={{
                         youtube: {
                             playerVars: {
