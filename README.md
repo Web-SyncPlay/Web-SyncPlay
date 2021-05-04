@@ -61,7 +61,8 @@ recommended putting a reverse proxy using TLS/SSL in front of this service.
 ## Adding synchronised playback to your website
 
 A necessary prerequisite is to make your video files available to this service as e.g. HLS/DASH streams or as a simple
-natively playable file via an endpoint publicly accessible via a URL.
+natively playable file via an endpoint publicly accessible via a URL. Make sure your CORS setting allow content to be
+fetched from this service.
 
 Having started the service on one of your servers you can then embed the included embed into your website. You don't
 have to manually update the iframe when playing a playlist, as this is already handled automatically.

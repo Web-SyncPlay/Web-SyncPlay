@@ -87,7 +87,9 @@ class Player extends React.Component<PlayerProps, PlayerState> {
     componentDidUpdate(prevProps: Readonly<PlayerProps>, prevState: Readonly<PlayerState>) {
         if (Math.abs(prevState.played - this.props.played) * prevState.duration > 2) {
             console.log("Desynced, seeking to ", this.props.played * prevState.duration);
-            this.player.current?.seekTo(this.props.played, "fraction");
+            if (this.player.current) {
+                this.player.current.seekTo(this.props.played, "fraction");
+            }
             this.setState({
                 played: this.props.played
             });
@@ -110,6 +112,10 @@ class Player extends React.Component<PlayerProps, PlayerState> {
             data.interaction = this.interaction;
             this.props.socket.emit("update", data);
         }
+        window.parent.postMessage({
+            type: "sync-player",
+            data
+        }, "*");
         this.setState(data);
     }
 

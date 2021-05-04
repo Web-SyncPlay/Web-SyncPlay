@@ -1,7 +1,7 @@
 import React from "react";
 import {Button, Form, FormControl, InputGroup, Navbar} from "react-bootstrap";
 import "./NavbarHeader.css";
-import {IoPersonAdd} from "react-icons/all";
+import {IoShareSocial} from "react-icons/all";
 import InviteModal from "./InviteModal";
 import Switch from "react-bootstrap/Switch";
 import {Link, Route} from "react-router-dom";
@@ -72,9 +72,11 @@ class NavbarHeader extends React.Component<NavbarHeaderProps, NavbarHeaderState>
                                         <Button className={"ml-auto"}
                                                 onClick={() => this.setState({inviteModalOpen: true})}
                                                 variant={"success"}>
-                                            <IoPersonAdd/>
+                                            <IoShareSocial style={{
+                                                marginTop: "-0.25em"
+                                            }}/>
                                             <span className={"ml-1"}>
-                                            Invite
+                                            Share
                                         </span>
                                         </Button>
                                     </Form>

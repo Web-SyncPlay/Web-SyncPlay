@@ -67,7 +67,6 @@ class Room extends React.Component<RoomProps, RoomState> {
                 "https://youtu.be/NcBjx_eyvxc",
                 "https://youtu.be/uD4izuDMUQA",
                 "https://youtu.be/UjtOGPJ0URM",
-                "https://youtu.be/GfO-3Oir-qM?list=PLvahqwMqN4M0GRkZY8WkLZMb6Z-W7qbLA"
             ],
             queueIndex: 0,
             url: "https://youtu.be/NcBjx_eyvxc",
@@ -205,8 +204,8 @@ class Room extends React.Component<RoomProps, RoomState> {
 
     clearQueue() {
         this.updateState({
-            queue: [this.state.queue[this.state.queueIndex]],
-            queueIndex: 0
+            queue: [],
+            queueIndex: -1
         });
     }
 
