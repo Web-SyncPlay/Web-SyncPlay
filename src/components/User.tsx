@@ -32,7 +32,9 @@ class User extends React.Component<UserProps, UserState> {
             popoverExpanded: false,
             target: null
         };
+    }
 
+    componentDidMount() {
         if (this.props.user.id === this.props.you) {
             fetch(ENDPOINT + "/icons.json")
                 .then((res) => res.json())

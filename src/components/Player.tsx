@@ -4,6 +4,8 @@ import {Socket} from "socket.io-client";
 import {
     BiExitFullscreen,
     BiFullscreen,
+    BiWindowClose,
+    BiWindowOpen,
     FaVolumeDown,
     FaVolumeMute,
     FaVolumeUp,
@@ -24,6 +26,7 @@ const LEFT_MOUSE_CLICK = 0;
 interface PlayerProps {
     controlsHidden: boolean,
     showRootPlayer: boolean,
+    id: string,
     isEmbed: boolean,
     socket: Socket | null,
     url: string,
@@ -37,17 +40,18 @@ interface PlayerProps {
 }
 
 interface PlayerState {
-    volume: number,
+    buffering: boolean,
+    controlsHidden: boolean,
+    duration: number,
+    fullscreen: boolean,
+    loaded: number,
     muted: boolean,
     played: number,
-    loaded: number,
-    duration: number,
+    playerPoppedOut: boolean,
     ready: boolean,
-    buffering: boolean,
     seeking: boolean,
-    fullscreen: boolean,
     showTimePlayed: boolean,
-    controlsHidden: boolean,
+    volume: number
 }
 
 class Player extends React.Component<PlayerProps, PlayerState> {
@@ -56,6 +60,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
     interactionTime: number;
     lastMouseMove: number;
     private fullscreenNode: HTMLDivElement | undefined;
+    private playerPopup: Window | null;
 
     constructor(props: PlayerProps) {
         super(props);
@@ -63,6 +68,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
         this.interaction = false;
         this.interactionTime = 0;
         this.lastMouseMove = 0;
+        this.playerPopup = null;
 
         this.state = {
             buffering: false,
@@ -72,6 +78,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
             loaded: 0,
             muted: true,
             played: 0,
+            playerPoppedOut: false,
             ready: false,
             seeking: false,
             showTimePlayed: true,
@@ -397,29 +404,80 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                                                     "-" + User.secondsToTime((1 - this.state.played) * this.state.duration)) + " / " +
                                                 User.secondsToTime(this.state.duration)}
                                             </div>
-                                            <OverlayTrigger
-                                                placement={"top"}
-                                                overlay={
-                                                    <Tooltip id={"playerControl-volume"}>
-                                                        Open source in new tab
-                                                    </Tooltip>
-                                                }>
-                                                <div className={"d-none d-sm-flex control-button mx-1"}
-                                                     onTouchEnd={(e) => {
-                                                         e.preventDefault();
-                                                         if (!this.state.controlsHidden) {
-                                                             window.open(this.props.url, "_blank");
-                                                         }
-                                                     }}
-                                                     onMouseUp={(e) => {
-                                                         if (e.button !== LEFT_MOUSE_CLICK) {
-                                                             return;
-                                                         }
-                                                         window.open(this.props.url, "_blank");
-                                                     }}>
-                                                    <IoShareOutline/>
-                                                </div>
-                                            </OverlayTrigger>
+                                            {!this.props.isEmbed ?
+                                                <>
+                                                    <OverlayTrigger
+                                                        placement={"top"}
+                                                        overlay={
+                                                            <Tooltip id={"playerControl-volume"}>
+                                                                Open source in new tab
+                                                            </Tooltip>
+                                                        }>
+                                                        <div className={"d-none d-sm-flex control-button mx-1"}
+                                                             onTouchEnd={(e) => {
+                                                                 e.preventDefault();
+                                                                 if (!this.state.controlsHidden) {
+                                                                     window.open(this.props.url, "_blank");
+                                                                 }
+                                                             }}
+                                                             onMouseUp={(e) => {
+                                                                 if (e.button !== LEFT_MOUSE_CLICK) {
+                                                                     return;
+                                                                 }
+                                                                 window.open(this.props.url, "_blank");
+                                                             }}>
+                                                            <IoShareOutline/>
+                                                        </div>
+                                                    </OverlayTrigger>
+                                                    <OverlayTrigger
+                                                        placement={"top"}
+                                                        overlay={
+                                                            <Tooltip id={"playerControl-pop-out"}>
+                                                                {this.state.playerPoppedOut ?
+                                                                    "Close popup" : "Open in popup"}
+                                                            </Tooltip>
+                                                        }>
+                                                        <div className={"d-none d-lg-flex control-button mx-1"}
+                                                             onTouchEnd={(e) => {
+                                                                 e.preventDefault();
+                                                             }}
+                                                             onMouseUp={(e) => {
+                                                                 if (e.button !== LEFT_MOUSE_CLICK) {
+                                                                     return;
+                                                                 }
+                                                                 if (!this.state.playerPoppedOut) {
+                                                                     this.playerPopup = window.open("/embed/player/" + this.props.id,
+                                                                         "Room " + this.props.id + " Popout",
+                                                                         "width=854,height=480," +
+                                                                         "toolbar=false,location=false," +
+                                                                         "status=false,menubar=false," +
+                                                                         "dependent=true,resizable=true");
+                                                                     this.playerPopup?.addEventListener("unload", (e) => {
+                                                                         if (this.playerPopup?.closed) {
+                                                                             this.setState({
+                                                                                 playerPoppedOut: false
+                                                                             });
+                                                                         }
+                                                                     });
+                                                                     this.setState({
+                                                                         muted: true,
+                                                                         playerPoppedOut: !this.state.playerPoppedOut
+                                                                     });
+                                                                 } else {
+                                                                     if (this.playerPopup) {
+                                                                         this.playerPopup.close();
+                                                                     }
+                                                                     this.setState({
+                                                                         playerPoppedOut: !this.state.playerPoppedOut
+                                                                     });
+                                                                 }
+                                                             }}>
+                                                            {this.state.playerPoppedOut ?
+                                                                <BiWindowClose/> : <BiWindowOpen/>}
+                                                        </div>
+                                                    </OverlayTrigger>
+                                                </> : <></>
+                                            }
                                             {screenfull.isEnabled ?
                                                 <OverlayTrigger
                                                     placement={"top"}
@@ -459,7 +517,9 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                 <ReactPlayer
                     style={{
                         backgroundColor: "#000000",
-                        maxHeight: this.state.fullscreen || this.props.isEmbed ? "100vh" : "calc(100vh - 169px)"
+                        overflow: "hidden",
+                        maxHeight: this.state.fullscreen || this.props.isEmbed ? "100vh" : "calc(100vh - 169px)",
+                        visibility: this.state.playerPoppedOut ? "hidden" : "visible"
                     }}
                     ref={this.player}
                     width={"100%"}

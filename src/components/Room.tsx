@@ -225,6 +225,7 @@ class Room extends React.Component<RoomProps, RoomState> {
                                 <Player
                                     controlsHidden={false}
                                     showRootPlayer={false}
+                                    id={this.state.id}
                                     isEmbed={false}
                                     socket={this.socket}
                                     url={this.state.url}

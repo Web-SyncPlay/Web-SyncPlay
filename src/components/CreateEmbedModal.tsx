@@ -187,7 +187,7 @@ class CreateEmbedModal extends React.Component<CreateEmbedModalProps, CreateEmbe
                                         value={this.state.queue}>
                                         {this.props.queue.map((q, index) => {
                                             return (
-                                                <option value={index.toString()}>{q}</option>
+                                                <option key={q} value={index.toString()}>{q}</option>
                                             );
                                         })}
                                     </Form.Control>
@@ -209,7 +209,7 @@ class CreateEmbedModal extends React.Component<CreateEmbedModalProps, CreateEmbe
                                         value={this.state.queueIndex}>
                                         {this.state.queue.map((q) => {
                                             return (
-                                                <option value={q}>{this.props.queue[parseInt(q)]}</option>
+                                                <option key={q} value={q}>{this.props.queue[parseInt(q)]}</option>
                                             );
                                         })}
                                     </Form.Control>
