@@ -2,7 +2,7 @@ import React from "react";
 import {Col, Form, Media, Overlay, Popover, Row} from "react-bootstrap";
 import {UserData} from "./Room";
 import "./User.css";
-import {BsPauseFill, BsPlayFill, FaCrown, FaVolumeMute} from "react-icons/all";
+import {FaCrown, FaVolumeMute, IoPause, IoPlay} from "react-icons/all";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 
@@ -139,9 +139,11 @@ class User extends React.Component<UserProps, UserState> {
                             </h6>
                             <div className={"d-flex"}>
                                 <span>
+                                    <span style={{marginRight: "0.2em"}}>
                                     {this.props.user.playing ?
-                                        <BsPlayFill style={{marginTop: "-0.2em"}}/> :
-                                        <BsPauseFill style={{marginTop: "-0.2em"}}/>}
+                                        <IoPlay style={{marginTop: "-0.2em"}}/> :
+                                        <IoPause style={{marginTop: "-0.2em"}}/>}
+                                    </span>
                                     {this.timeProgress()}
                                 </span>
                                 <span className={"ml-auto"}>

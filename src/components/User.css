@@ -106,17 +106,9 @@
     opacity: 0;
 }
 
-.popover .arrow::after {
-    border-top-color: #1f1f1f;
-}
-
-.popover .popover-body {
-    background-color: #1f1f1f;
+#change-icon-popover.popover .popover-body {
+    width: 365px;
     max-height: 400px;
     overflow-y: auto;
     overflow-x: hidden;
-}
-
-#change-icon-popover.popover .popover-body {
-    width: 365px;
 }

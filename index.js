@@ -148,11 +148,6 @@ io.on("connection", (socket) => {
             ];
 
             if (!data.interaction) {
-                forbidden = forbidden.concat([
-                    "playbackRate",
-                    "loop"
-                ]);
-
                 if (socket.id !== getRoom().owner) {
                     forbidden = forbidden.concat([
                         "played"

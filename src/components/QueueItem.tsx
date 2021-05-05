@@ -1,6 +1,7 @@
 import React from "react";
-import {Col, OverlayTrigger, Tooltip} from "react-bootstrap";
+import {Col} from "react-bootstrap";
 import {BsMusicNoteBeamed, IoMdCopy, IoPlay, MdNavigateBefore, MdNavigateNext, RiDeleteBinLine} from "react-icons/all";
+import ControlButtonOverlay from "./player/ControlButtonOverlay";
 
 interface QueueItemProps {
     index: number,
@@ -50,94 +51,59 @@ class QueueItem extends React.Component<QueueItemProps> {
                 <div className={"d-flex w-100"}>
                     <div>
                         {this.props.index > 0 ?
-                            <OverlayTrigger
-                                placement={"top"}
-                                overlay={
-                                    <Tooltip id={"tooltip-queue-" + css + "-before"}>
-                                        Move up
-                                    </Tooltip>
-                                }>
-                                <div className={"control-button mr-1"}
-                                     onClick={() => {
-                                         this.props.swapQueueItems(this.props.index, this.props.index - 1);
-                                     }}>
-                                    <MdNavigateBefore/>
-                                </div>
-                            </OverlayTrigger> :
+                            <ControlButtonOverlay
+                                id={"tooltip-queue-" + css + "-before"}
+                                onClick={() => {
+                                    this.props.swapQueueItems(this.props.index, this.props.index - 1);
+                                }}
+                                tooltip={"Move up"}>
+                                <MdNavigateBefore/>
+                            </ControlButtonOverlay> :
                             <></>
                         }
                         {this.props.index < this.props.queue.length - 1 ?
-                            <OverlayTrigger
-                                placement={"top"}
-                                overlay={
-                                    <Tooltip id={"tooltip-queue-" + css + "-after"}>
-                                        Move down
-                                    </Tooltip>
-                                }>
-                                <div className={"control-button mr-1"}
-                                     onClick={() => {
-                                         this.props.swapQueueItems(this.props.index, this.props.index + 1);
-                                     }}>
-                                    <MdNavigateNext/>
-                                </div>
-                            </OverlayTrigger> :
+                            <ControlButtonOverlay
+                                id={"tooltip-queue-" + css + "-after"}
+                                onClick={() => {
+                                    this.props.swapQueueItems(this.props.index, this.props.index + 1);
+                                }}
+                                tooltip={"Move down"}>
+                                <MdNavigateNext/>
+                            </ControlButtonOverlay> :
                             <></>
                         }
                     </div>
                     <div className={"ml-auto"}>
-                        <OverlayTrigger
-                            placement={"top"}
-                            overlay={
-                                <Tooltip id={"tooltip-queue-" + css + "-copy"}>
-                                    Copy source to clipboard
-                                </Tooltip>
-                            }>
-                            <div className={"control-button mx-1"}
-                                 onClick={this.copyToClipboard.bind(this)}>
-                                <IoMdCopy/>
-                            </div>
-                        </OverlayTrigger>
+                        <ControlButtonOverlay
+                            id={"tooltip-queue-" + css + "-copy"}
+                            onClick={this.copyToClipboard.bind(this)}
+                            tooltip={"Copy source to clipboard"}>
+                            <IoMdCopy/>
+                        </ControlButtonOverlay>
                         {playing ?
-                            <OverlayTrigger
-                                placement={"top"}
-                                overlay={
-                                    <Tooltip id={"tooltip-queue-" + css + "-playing"}>
-                                        Currently playing
-                                    </Tooltip>
-                                }>
-                                <div className={"control-button ml-1"}>
-                                    <BsMusicNoteBeamed className={"blink"}/>
-                                </div>
-                            </OverlayTrigger> :
+                            <ControlButtonOverlay
+                                id={"tooltip-queue-" + css + "-playing"}
+                                tooltip={"Currently playing"}>
+                                <BsMusicNoteBeamed className={"blink"}/>
+                            </ControlButtonOverlay> :
                             <>
-                                <OverlayTrigger
-                                    placement={"top"}
-                                    overlay={
-                                        <Tooltip id={"tooltip-queue-" + css + "-playFromQueue"}>
-                                            Play
-                                        </Tooltip>
-                                    }>
-                                    <div className={"control-button mx-1"}
-                                         onClick={() => {
-                                             this.props.playFromQueue(this.props.index);
-                                         }}>
-                                        <IoPlay/>
-                                    </div>
-                                </OverlayTrigger>
-                                <OverlayTrigger
-                                    placement={"top"}
-                                    overlay={
-                                        <Tooltip id={"tooltip-queue-" + css + "-delete"}>
-                                            Delete from queue
-                                        </Tooltip>
-                                    }>
-                                    <div className={"control-button ml-1 text-danger"}
-                                         onClick={() => {
-                                             this.props.deleteFromQueue(this.props.index);
-                                         }}>
-                                        <RiDeleteBinLine/>
-                                    </div>
-                                </OverlayTrigger>
+                                <ControlButtonOverlay
+                                    id={"tooltip-queue-" + css + "-playFromQueue"}
+                                    onClick={() => {
+                                        this.props.playFromQueue(this.props.index);
+                                    }}
+                                    tooltip={"Play"}>
+                                    <IoPlay/>
+                                </ControlButtonOverlay>
+                                <ControlButtonOverlay
+                                    className={"text-danger"}
+                                    id={"tooltip-queue-" + css + "-delete"}
+                                    onClick={() => {
+                                        this.props.deleteFromQueue(this.props.index);
+                                    }}
+                                    tooltip={"Delete item"}>
+                                    <RiDeleteBinLine/>
+                                </ControlButtonOverlay>
                             </>
                         }
                     </div>

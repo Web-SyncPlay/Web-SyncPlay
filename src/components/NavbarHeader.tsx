@@ -2,7 +2,7 @@ import React from "react";
 import {Button, Form, FormControl, InputGroup, Navbar} from "react-bootstrap";
 import "./NavbarHeader.css";
 import {IoShareSocial} from "react-icons/all";
-import InviteModal from "./InviteModal";
+import InviteModal from "./modal/InviteModal";
 import Switch from "react-bootstrap/Switch";
 import {Link, Route} from "react-router-dom";
 

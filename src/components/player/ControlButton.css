@@ -1,0 +1,12 @@
+.control-button {
+    alignSelf: center;
+    line-height: 1em;
+    cursor: pointer;
+    transition: background-color 0.1s ease-in-out;
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+}
+
+.control-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}

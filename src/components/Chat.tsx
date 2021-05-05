@@ -4,6 +4,7 @@ import "./Chat.css";
 import {Alert, Button, Form, InputGroup, Media, OverlayTrigger, Tooltip} from "react-bootstrap";
 import ReactPlayer from "react-player";
 import {BiAddToQueue, FiHelpCircle, FiSend, IoPlay, IoPlaySkipForwardSharp} from "react-icons/all";
+import ControlButtonOverlay from "./player/ControlButtonOverlay";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 
@@ -67,16 +68,11 @@ class Chat extends React.Component<ChatProps, ChatState> {
                            })}
                            dismissible>
                         Visit the
-
-                        <OverlayTrigger
-                            placement={"bottom"}
-                            overlay={
-                                <Tooltip id={"tooltip-chat-helppage-tba"}>
-                                    Sorry, still work in progress :/
-                                </Tooltip>
-                            }>
+                        <ControlButtonOverlay
+                            id={"tooltip-chat-help-page-tba"}
+                            tooltip={"Sorry, still work in progress :/"}>
                             <a href={"#"} className={"mx-1"}>help page</a>
-                        </OverlayTrigger>
+                        </ControlButtonOverlay>
                         for help.
                     </Alert>
                 }
@@ -113,48 +109,31 @@ class Chat extends React.Component<ChatProps, ChatState> {
                                     </Media>
                                     {canPlay ?
                                         <>
-                                            <OverlayTrigger
-                                                placement={"top"}
-                                                overlay={
-                                                    <Tooltip id={"tooltip-chat-" + h.time + "-play"}>
-                                                        Play now
-                                                    </Tooltip>
-                                                }>
-                                                <div className={"control-button mr-1"}
-                                                     onClick={() => {
-                                                         this.props.play(h.message);
-                                                     }}>
-                                                    <IoPlay/>
-                                                </div>
-                                            </OverlayTrigger>
-                                            <OverlayTrigger
-                                                placement={"top"}
-                                                overlay={
-                                                    <Tooltip id={"tooltip-chat-" + h.time + "-playNext"}>
-                                                        Play next
-                                                    </Tooltip>
-                                                }>
-                                                <div className={"control-button mr-1"}
-                                                     onClick={() => {
-                                                         this.props.playNext(h.message);
-                                                     }}>
-                                                    <IoPlaySkipForwardSharp/>
-                                                </div>
-                                            </OverlayTrigger>
-                                            <OverlayTrigger
-                                                placement={"top"}
-                                                overlay={
-                                                    <Tooltip id={"tooltip-chat-" + h.time + "-addQueue"}>
-                                                        Add to playback queue
-                                                    </Tooltip>
-                                                }>
-                                                <div className={"control-button mr-1 text-success"}
-                                                     onClick={() => {
-                                                         this.props.addQueue(h.message);
-                                                     }}>
-                                                    <BiAddToQueue/>
-                                                </div>
-                                            </OverlayTrigger>
+                                            <ControlButtonOverlay
+                                                id={"tooltip-chat-" + h.time + "-play"}
+                                                onClick={() => {
+                                                    this.props.play(h.message);
+                                                }}
+                                                tooltip={"Play now"}>
+                                                <IoPlay/>
+                                            </ControlButtonOverlay>
+                                            <ControlButtonOverlay
+                                                id={"tooltip-chat-" + h.time + "-playNext"}
+                                                onClick={() => {
+                                                    this.props.playNext(h.message);
+                                                }}
+                                                tooltip={"Play next"}>
+                                                <IoPlaySkipForwardSharp/>
+                                            </ControlButtonOverlay>
+                                            <ControlButtonOverlay
+                                                className={"text-success"}
+                                                id={"tooltip-chat-" + h.time + "-addQueue"}
+                                                onClick={() => {
+                                                    this.props.addQueue(h.message);
+                                                }}
+                                                tooltip={"Add to playback queue"}>
+                                                <BiAddToQueue/>
+                                            </ControlButtonOverlay>
                                         </> :
                                         <></>
                                     }

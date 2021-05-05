@@ -1,7 +1,7 @@
 import React from "react";
 import "./App.css";
 import NavbarHeader from "./components/NavbarHeader";
-import StartModal from "./components/StartModal";
+import StartModal from "./components/modal/StartModal";
 import Room from "./components/Room";
 import Footer from "./components/Footer";
 import {Redirect, Route, Switch, useHistory, useLocation} from "react-router-dom";

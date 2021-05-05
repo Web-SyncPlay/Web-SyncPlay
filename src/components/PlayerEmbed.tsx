@@ -1,6 +1,6 @@
 import React from "react";
 import socketIOClient, {Socket} from "socket.io-client";
-import Player from "./Player";
+import Player from "./player/Player";
 import {Spinner} from "react-bootstrap";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";

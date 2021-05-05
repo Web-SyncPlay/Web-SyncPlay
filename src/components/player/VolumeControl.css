@@ -1,0 +1,15 @@
+.volume-control {
+    overflow: hidden;
+    width: 2.25em;
+    transition: width 0.2s ease-in-out;
+}
+
+.volume-control .volume-slider {
+    width: 4.5em;
+}
+
+@media (min-width: 576px) {
+    .volume-control:hover {
+        width: 7.5em;
+    }
+}

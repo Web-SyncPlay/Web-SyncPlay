@@ -1,0 +1,43 @@
+.player {
+    align-items: center;
+    background-color: #000;
+    display: flex;
+    flex-grow: 1;
+}
+
+.player-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.player-overlay .player-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.player-overlay .player-center,
+.player-overlay .player-controls {
+    opacity: 1;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.player-overlay.hide .player-center,
+.player-overlay.hide .player-controls {
+    opacity: 0;
+}
+
+.player-overlay .player-progress,
+.player-overlay .volume-control {
+    display: flex;
+    align-items: center;
+}
+
+.player-overlay .player-progress {
+    height: 1em;
+}
