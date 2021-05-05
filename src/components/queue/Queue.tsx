@@ -1,13 +1,13 @@
 import React from "react";
 import "./Queue.css";
 import {BiAddToQueue, ImEmbed2, RiDeleteBinLine} from "react-icons/all";
-import AddItemModal from "./modal/AddItemModal";
+import AddItemModal from "../modal/AddItemModal";
 import QueueItem from "./QueueItem";
 import {Accordion, Row} from "react-bootstrap";
-import ConfirmClearModal from "./modal/ConfirmClearModal";
+import ConfirmClearModal from "../modal/ConfirmClearModal";
 import QueueExpandToggle from "./QueueExpandToggle";
-import CreateEmbedModal from "./modal/CreateEmbedModal";
-import ControlButtonOverlay from "./player/ControlButtonOverlay";
+import CreateEmbedModal from "../modal/CreateEmbedModal";
+import ControlButtonOverlay from "../player/ControlButtonOverlay";
 
 interface QueueProps {
     addToQueue: (url: string) => void,

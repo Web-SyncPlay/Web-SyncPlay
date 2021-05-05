@@ -4,9 +4,9 @@ import {Col, Container, Row, Spinner} from "react-bootstrap";
 import ReactPlayer from "react-player";
 import {Helmet} from "react-helmet";
 import User from "./User";
-import Chat from "./Chat";
+import Chat from "./chat/Chat";
 import Player from "./player/Player";
-import Queue from "./Queue";
+import Queue from "./queue/Queue";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 

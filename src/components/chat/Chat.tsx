@@ -1,10 +1,10 @@
 import React from "react";
-import {ChatData} from "./Room";
+import {ChatData} from "../Room";
 import "./Chat.css";
 import {Alert, Button, Form, InputGroup, Media, OverlayTrigger, Tooltip} from "react-bootstrap";
 import ReactPlayer from "react-player";
 import {BiAddToQueue, FiHelpCircle, FiSend, IoPlay, IoPlaySkipForwardSharp} from "react-icons/all";
-import ControlButtonOverlay from "./player/ControlButtonOverlay";
+import ControlButtonOverlay from "../player/ControlButtonOverlay";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 

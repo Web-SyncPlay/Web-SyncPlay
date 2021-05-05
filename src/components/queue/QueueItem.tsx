@@ -1,7 +1,7 @@
 import React from "react";
 import {Col} from "react-bootstrap";
 import {BsMusicNoteBeamed, IoMdCopy, IoPlay, MdNavigateBefore, MdNavigateNext, RiDeleteBinLine} from "react-icons/all";
-import ControlButtonOverlay from "./player/ControlButtonOverlay";
+import ControlButtonOverlay from "../player/ControlButtonOverlay";
 
 interface QueueItemProps {
     index: number,
@@ -75,6 +75,7 @@ class QueueItem extends React.Component<QueueItemProps> {
                     </div>
                     <div className={"ml-auto"}>
                         <ControlButtonOverlay
+                            className={"text-secondary"}
                             id={"tooltip-queue-" + css + "-copy"}
                             onClick={this.copyToClipboard.bind(this)}
                             tooltip={"Copy source to clipboard"}>
@@ -84,10 +85,11 @@ class QueueItem extends React.Component<QueueItemProps> {
                             <ControlButtonOverlay
                                 id={"tooltip-queue-" + css + "-playing"}
                                 tooltip={"Currently playing"}>
-                                <BsMusicNoteBeamed className={"blink"}/>
+                                <BsMusicNoteBeamed className={"text-warning blink"}/>
                             </ControlButtonOverlay> :
                             <>
                                 <ControlButtonOverlay
+                                    className={"text-success"}
                                     id={"tooltip-queue-" + css + "-playFromQueue"}
                                     onClick={() => {
                                         this.props.playFromQueue(this.props.index);

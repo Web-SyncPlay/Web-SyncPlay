@@ -1,8 +1,8 @@
 import React, {useContext} from "react";
 import {AccordionContext, OverlayTrigger, Tooltip, useAccordionToggle} from "react-bootstrap";
 import {MdExpandLess, MdExpandMore} from "react-icons/all";
-import {LEFT_MOUSE_CLICK} from "./player/ControlButton";
-import "./player/ControlButton.css";
+import {LEFT_MOUSE_CLICK} from "../player/ControlButton";
+import "../player/ControlButton.css";
 
 
 interface QueueExpandToggleProps {
