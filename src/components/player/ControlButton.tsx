@@ -12,7 +12,7 @@ interface ControlButtonProps {
 class ControlButton extends React.Component<ControlButtonProps> {
     render() {
         return (
-            <div className={(this.props.className || "") + " control-button mx-1"}
+            <div className={"control-button mx-1 " + (this.props.className || "")}
                  onTouchEnd={(e) => {
                      e.preventDefault();
                      if (this.props.onClick) {

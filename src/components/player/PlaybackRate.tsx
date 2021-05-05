@@ -28,7 +28,6 @@ class PlaybackRate extends React.Component<PlaybackRateProps, PlaybackRateState>
         return (
             <Form.Check
                 checked={this.props.speed.toString() === speed}
-                className={"my-1 w-100"}
                 id={"playerControl-playbackRate-" + speed}
                 key={speed}
                 label={speed}
@@ -59,7 +58,12 @@ class PlaybackRate extends React.Component<PlaybackRateProps, PlaybackRateState>
                                         expanded: !this.state.expanded
                                     });
                                 }}>
-                                <div className="close text-white">
+                                <div className={"text-white"}
+                                     style={{
+                                         textShadow: "0 1px 0 #fff",
+                                         opacity: 0.5,
+                                         fontWeight: 700
+                                     }}>
                                     <span aria-hidden="true">×</span>
                                     <span className="sr-only">Close</span>
                                 </div>
