@@ -276,18 +276,15 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                                                     });
                                                                 }
                                                             });
-                                                            this.updateState({
-                                                                muted: true,
-                                                                playerPoppedOut: !this.state.playerPoppedOut
-                                                            });
                                                         } else {
                                                             if (this.playerPopup) {
                                                                 this.playerPopup.close();
                                                             }
-                                                            this.setState({
-                                                                playerPoppedOut: !this.state.playerPoppedOut
-                                                            });
                                                         }
+
+                                                        this.setState({
+                                                            playerPoppedOut: !this.state.playerPoppedOut
+                                                        });
                                                     }
                                                 }}
                                                 tooltip={this.state.playerPoppedOut ?
