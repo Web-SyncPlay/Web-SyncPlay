@@ -4,8 +4,6 @@ import {Socket} from "socket.io-client";
 import "./Player.css";
 import PlayerControls from "./PlayerControls";
 
-const LEFT_MOUSE_CLICK = 0;
-
 interface PlayerProps {
     controlsHidden: boolean,
     showRootPlayer: boolean,
@@ -67,7 +65,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
     }
 
     componentDidUpdate(prevProps: Readonly<PlayerProps>, prevState: Readonly<PlayerState>) {
-        if (Math.abs(prevState.played - this.props.played) * prevState.duration > 2) {
+        if (Math.abs(prevState.played - this.props.played) * prevState.duration * prevState.playbackRate > 2) {
             console.log("Desynced, seeking to ", this.props.played * prevState.duration);
             if (this.player.current) {
                 this.player.current.seekTo(this.props.played * prevState.duration, "seconds");

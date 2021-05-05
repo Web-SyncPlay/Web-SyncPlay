@@ -45,6 +45,7 @@ interface PlayerControlsProps {
 
 interface PlayerControlsState {
     controlsHidden: boolean,
+    menuExpanded: boolean,
     showTimePlayed: boolean,
     playerPoppedOut: boolean
 }
@@ -64,6 +65,7 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
 
         this.state = {
             controlsHidden: false,
+            menuExpanded: false,
             showTimePlayed: true,
             playerPoppedOut: false
         };
@@ -109,17 +111,19 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
 
     render() {
         return (
-            <div className={"player-overlay p-2" + (this.state.controlsHidden ? " hide" : "")}
-                 onTouchEnd={(e) => {
-                     e.preventDefault();
-                     this.mouseMoved();
-                 }}
-                 onMouseMove={() => {
-                     this.mouseMoved();
-                 }}
-                 onMouseUp={() => {
-                     this.mouseMoved();
-                 }}>
+            <div
+                className={"player-overlay p-2" + (this.state.controlsHidden && !this.state.menuExpanded ?
+                    " hide" : "")}
+                onTouchEnd={(e) => {
+                    e.preventDefault();
+                    this.mouseMoved();
+                }}
+                onMouseMove={() => {
+                    this.mouseMoved();
+                }}
+                onMouseUp={() => {
+                    this.mouseMoved();
+                }}>
                 {this.props.controlsHidden ? <></> :
                     <>
                         <div className={"player-center flex-grow-1"}
@@ -298,12 +302,18 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                             </ControlButtonOverlay>
                                         </> : <></>
                                     }
-                                    <PlaybackRate speed={this.props.playbackRate}
-                                                  onChange={(speed) => {
-                                                      this.updateState({
-                                                          playbackRate: speed
-                                                      })
-                                                  }}/>
+                                    <PlaybackRate
+                                        menuExpanded={(expanded) => {
+                                            this.setState({
+                                                menuExpanded: expanded
+                                            });
+                                        }}
+                                        onChange={(speed) => {
+                                            this.updateState({
+                                                playbackRate: speed
+                                            })
+                                        }}
+                                        speed={this.props.playbackRate}/>
                                     {screenfull.isEnabled ?
                                         <ControlButtonOverlay
                                             id={"playerControl-fullscreen"}
