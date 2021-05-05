@@ -62,7 +62,7 @@ class Room extends React.Component<RoomProps, RoomState> {
             owner: "loading...",
             playbackRate: 1,
             played: 0,
-            playing: false,
+            playing: true,
             queue: [
                 "https://youtu.be/NcBjx_eyvxc",
                 "https://youtu.be/uD4izuDMUQA",
@@ -94,7 +94,7 @@ class Room extends React.Component<RoomProps, RoomState> {
         });
 
         this.socket.on("chat", (data) => {
-            console.log("chatted", data);
+            console.log("chat message received", data);
             this.setState({history: [...this.state.history, data]});
         });
     }
@@ -132,7 +132,7 @@ class Room extends React.Component<RoomProps, RoomState> {
             });
             this.load(url);
         } else {
-            console.log("Error, cannot play url:", url);
+            console.error("unable to play", url);
         }
     }
 

@@ -24,6 +24,7 @@ import "./Slider.css";
 interface PlayerControlsProps {
     controlsHidden: boolean,
     duration: number,
+    endInteract: () => void,
     fullscreen: boolean,
     fullscreenNode: HTMLDivElement | undefined,
     isEmbed: boolean,
@@ -36,6 +37,7 @@ interface PlayerControlsProps {
     queue: string[],
     queueIndex: number,
     roomId: string,
+    startInteract: () => void,
     updateState: (data: any) => void,
     url: string,
     volume: number
@@ -56,7 +58,7 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
     constructor(props: PlayerControlsProps) {
         super(props);
         this.lastMouseMove = 0;
-        this.interaction = true;
+        this.interaction = false;
         this.interactionTime = new Date().getTime();
         this.playerPopup = null;
 
@@ -78,11 +80,13 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
 
     interact() {
         this.interaction = true;
+        this.props.startInteract();
         this.interactionTime = new Date().getTime();
-        console.log("User interaction!", this.interactionTime);
+        console.debug("user interaction happened at time", this.interactionTime);
         setTimeout(() => {
             if (new Date().getTime() - this.interactionTime > 250) {
                 this.interaction = false;
+                this.props.endInteract();
             }
         }, 300);
     }

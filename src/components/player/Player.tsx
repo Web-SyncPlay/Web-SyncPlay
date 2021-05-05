@@ -37,11 +37,13 @@ interface PlayerState {
 }
 
 class Player extends React.Component<PlayerProps, PlayerState> {
+    fullscreenNode: HTMLDivElement | undefined;
+    interaction: boolean;
     player: React.RefObject<ReactPlayer>;
-    private fullscreenNode: HTMLDivElement | undefined;
 
     constructor(props: PlayerProps) {
         super(props);
+        this.interaction = false;
         this.player = React.createRef();
 
         this.state = {
@@ -68,7 +70,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
         if (Math.abs(prevState.played - this.props.played) * prevState.duration > 2) {
             console.log("Desynced, seeking to ", this.props.played * prevState.duration);
             if (this.player.current) {
-                this.player.current.seekTo(this.props.played, "fraction");
+                this.player.current.seekTo(this.props.played * prevState.duration, "seconds");
             }
             this.setState({
                 played: this.props.played
@@ -81,7 +83,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
             this.props.socket.emit("update", data);
         }
         window.parent.postMessage({
-            type: "sync-player",
+            vendor: "Web-SyncPlay",
             data
         }, "*");
         this.setState(data);
@@ -95,6 +97,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                     <PlayerControls
                         controlsHidden={this.props.controlsHidden}
                         duration={this.state.duration}
+                        endInteract={() => this.interaction = false}
                         fullscreen={this.state.fullscreen}
                         fullscreenNode={this.fullscreenNode}
                         isEmbed={this.props.isEmbed}
@@ -107,6 +110,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                         queue={this.props.queue}
                         queueIndex={this.props.queueIndex}
                         roomId={this.props.id}
+                        startInteract={() => this.interaction = true}
                         updateState={this.updateState.bind(this)}
                         url={this.props.url}
                         volume={this.state.volume}/>
@@ -139,12 +143,10 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                     volume={this.state.volume}
                     muted={this.state.muted}
                     onReady={() => this.updateState({ready: true})}
-                    onStart={() => console.log("onStart")}
                     onPlay={() => this.updateState({playing: true})}
                     onPause={() => this.updateState({playing: false})}
                     onBuffer={() => this.updateState({buffering: true})}
                     onBufferEnd={() => this.updateState({buffering: false})}
-                    onSeek={(e) => console.log("onSeek", e)}
                     onEnded={() => {
                         if (this.props.loop) {
                             this.updateState({
@@ -157,7 +159,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                             this.updateState({playing: false});
                         }
                     }}
-                    onError={(e) => console.log("onError", e)}
+                    onError={(e) => console.error("playback error", e)}
                     onProgress={(progress) => {
                         // We only want to update time slider if we are not currently seeking
                         if (!this.state.seeking) {

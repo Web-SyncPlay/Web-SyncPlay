@@ -56,7 +56,7 @@ class PlayerEmbed extends React.Component<PlayerEmbedProps, PlayerEmbedState> {
             loop: false,
             playbackRate: 1,
             played: 0,
-            playing: false,
+            playing: true,
             queue: query.has("queue") ? query.getAll("queue") : [],
             queueIndex: query.has("queueIndex") ? parseInt(query.get("queueIndex") as string) : -1,
             url: url
