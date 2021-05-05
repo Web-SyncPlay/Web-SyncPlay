@@ -54,14 +54,15 @@ class PlaybackRate extends React.Component<PlaybackRateProps, PlaybackRateState>
                             <ControlButton
                                 className={"ml-auto"}
                                 onClick={() => {
+                                    this.props.menuExpanded(!this.state.expanded);
                                     this.setState({
                                         expanded: !this.state.expanded
                                     });
                                 }}>
-                                <button type="button" className="close text-white">
+                                <div className="close text-white">
                                     <span aria-hidden="true">×</span>
                                     <span className="sr-only">Close</span>
-                                </button>
+                                </div>
                             </ControlButton>
                         </div>
                         <Form className={"playbackRate-body p-2"}>
