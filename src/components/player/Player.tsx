@@ -64,15 +64,37 @@ class Player extends React.Component<PlayerProps, PlayerState> {
         });
     }
 
+    unloadCaptionsYT() {
+        const player = this.player.current?.getInternalPlayer();
+        console.log("Internal player:", player);
+        if (player && player.unloadModule) {
+            console.log("Unloading cc of youtube player");
+            player.unloadModule("cc");  // Works for AS3 ignored by html5
+            player.unloadModule("captions");  // Works for html5 ignored by AS3
+        }
+    }
+
     componentDidUpdate(prevProps: Readonly<PlayerProps>, prevState: Readonly<PlayerState>) {
-        if (Math.abs(prevState.played - this.props.played) * prevState.duration * prevState.playbackRate > 2) {
-            console.log("Desynced, seeking to ", this.props.played * prevState.duration);
-            if (this.player.current) {
-                this.player.current.seekTo(this.props.played * prevState.duration, "seconds");
-            }
+        if (prevProps.url !== this.props.url) {
+            console.log("Url changed, setting state to unready");
             this.setState({
-                played: this.props.played
+                ready: false
             });
+        }
+
+        if (Math.abs(prevState.played - this.props.played) * prevState.duration * prevState.playbackRate > 2) {
+            console.log("Desynced, currently at", prevState.played * prevState.duration,
+                "should seek to", this.props.played * prevState.duration);
+            if (this.interaction) {
+                console.log("Not seeking, interaction has happened");
+            } else {
+                if (this.player.current) {
+                    this.player.current.seekTo(this.props.played * prevState.duration, "seconds");
+                }
+                this.setState({
+                    played: this.props.played
+                });
+            }
         }
     }
 
@@ -140,7 +162,12 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                     playbackRate={this.props.playbackRate}
                     volume={this.state.volume}
                     muted={this.state.muted}
-                    onReady={() => this.updateState({ready: true})}
+                    onReady={() => {
+                        console.log("Player ready");
+                        this.updateState({ready: true});
+                        // need "long" timeout for yt to be ready
+                        setTimeout(this.unloadCaptionsYT.bind(this), 1000);
+                    }}
                     onPlay={() => this.updateState({playing: true})}
                     onPause={() => this.updateState({playing: false})}
                     onBuffer={() => this.updateState({buffering: true})}
