@@ -3,6 +3,7 @@ import ReactPlayer from "react-player";
 import {Socket} from "socket.io-client";
 import "./Player.css";
 import PlayerControls from "./PlayerControls";
+import {getUrl, PlayURL} from "../queue/QueueItem";
 
 interface PlayerProps {
     controlsHidden: boolean,
@@ -10,13 +11,13 @@ interface PlayerProps {
     id: string,
     isEmbed: boolean,
     socket: Socket | null,
-    url: string,
+    url: string | PlayURL,
     playing: boolean,
     played: number,
     playbackRate: number,
     loop: boolean,
     queueIndex: number,
-    queue: string[],
+    queue: string[] | PlayURL[],
     playFromQueue: (index: number) => void
 }
 
@@ -31,6 +32,8 @@ interface PlayerState {
     playerPoppedOut: boolean,
     ready: boolean,
     seeking: boolean,
+    selectedQuality: string,
+    selectedURL: string,
     volume: number
 }
 
@@ -55,6 +58,8 @@ class Player extends React.Component<PlayerProps, PlayerState> {
             playerPoppedOut: false,
             ready: false,
             seeking: false,
+            selectedQuality: this.defaultQuality(),
+            selectedURL: getUrl(this.props.url),
             volume: 0.3
         };
 
@@ -62,6 +67,15 @@ class Player extends React.Component<PlayerProps, PlayerState> {
             muted: true,
             volume: 0.3
         });
+    }
+
+    defaultQuality() {
+        if (typeof this.props.url === "string") {
+            return "";
+        } else if (typeof this.props.url.quality[0] === "string") {
+            return this.props.url.quality[0];
+        }
+        return this.props.url.quality[0].quality;
     }
 
     unloadCaptionsYT() {
@@ -76,9 +90,11 @@ class Player extends React.Component<PlayerProps, PlayerState> {
 
     componentDidUpdate(prevProps: Readonly<PlayerProps>, prevState: Readonly<PlayerState>) {
         if (prevProps.url !== this.props.url) {
-            console.log("Url changed, setting state to unready");
+            console.log("Url changed, from", prevProps.url, "to", this.props.url);
             this.setState({
-                ready: false
+                ready: false,
+                selectedQuality: this.defaultQuality(),
+                selectedURL: getUrl(this.props.url)
             });
         }
 
@@ -154,7 +170,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                             }
                         }
                     }}
-                    url={this.props.url}
+                    url={this.state.selectedURL}
                     pip={true}
                     playing={this.props.playing}
                     controls={this.props.showRootPlayer}

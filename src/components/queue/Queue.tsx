@@ -2,7 +2,7 @@ import React from "react";
 import "./Queue.css";
 import {BiAddToQueue, ImEmbed2, RiDeleteBinLine} from "react-icons/all";
 import AddItemModal from "../modal/AddItemModal";
-import QueueItem from "./QueueItem";
+import QueueItem, {getUrl, PlayURL} from "./QueueItem";
 import {Accordion, Row} from "react-bootstrap";
 import ConfirmClearModal from "../modal/ConfirmClearModal";
 import QueueExpandToggle from "./QueueExpandToggle";
@@ -13,13 +13,13 @@ interface QueueProps {
     addToQueue: (url: string) => void,
     clearQueue: () => void,
     deleteFromQueue: (index: number) => void,
-    play: (url: string) => void,
+    play: (url: string | PlayURL) => void,
     playFromQueue: (index: number) => void,
-    queue: string[],
+    queue: string[] | PlayURL[],
     queueIndex: number,
     roomId: string,
     swapQueueItems: (oldIndex: number, newIndex: number) => void,
-    url: string
+    url: string | PlayURL
 }
 
 interface QueueState {
@@ -105,9 +105,9 @@ class Queue extends React.Component<QueueProps, QueueState> {
                 <Accordion.Collapse eventKey={"queue-expand"}>
                     <Row className={"m-0"}
                          id={"queue-collapse"}>
-                        {this.props.queue.map((q, index) =>
+                        {this.props.queue.map((q: string | PlayURL, index: number) =>
                             <QueueItem
-                                key={q + index}
+                                key={getUrl(q) + index}
                                 index={index}
                                 queueIndex={this.props.queueIndex}
                                 queue={this.props.queue}

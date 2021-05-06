@@ -7,6 +7,7 @@ import User from "./User";
 import Chat from "./chat/Chat";
 import Player from "./player/Player";
 import Queue from "./queue/Queue";
+import {getUrl, PlayURL} from "./queue/QueueItem";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 
@@ -24,9 +25,9 @@ interface RoomState {
     playbackRate: number,
     played: number,
     playing: boolean,
-    queue: string[],
+    queue: string[] | PlayURL[],
     queueIndex: number,
-    url: string,
+    url: string | PlayURL,
     users: UserData[]
 }
 
@@ -125,8 +126,8 @@ class Room extends React.Component<RoomProps, RoomState> {
         this.setState(data);
     }
 
-    changeToURL(url: string) {
-        if (ReactPlayer.canPlay(url)) {
+    changeToURL(url: string | PlayURL) {
+        if (ReactPlayer.canPlay(getUrl(url))) {
             this.updateState({
                 queueIndex: -1
             });
@@ -136,7 +137,7 @@ class Room extends React.Component<RoomProps, RoomState> {
         }
     }
 
-    load(url: string) {
+    load(url: string | PlayURL) {
         this.updateState({
             played: 0,
             playing: true,

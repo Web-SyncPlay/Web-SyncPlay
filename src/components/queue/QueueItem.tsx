@@ -3,11 +3,35 @@ import {Col} from "react-bootstrap";
 import {BsMusicNoteBeamed, IoMdCopy, IoPlay, MdNavigateBefore, MdNavigateNext, RiDeleteBinLine} from "react-icons/all";
 import ControlButtonOverlay from "../player/ControlButtonOverlay";
 
+export interface QualityURL {
+    quality: string,
+    url: string
+}
+
+export interface CaptionURL {
+    caption: string,
+    url: string
+}
+
+export interface PlayURL {
+    caption?: string | CaptionURL[],
+    quality: string | QualityURL[]
+}
+
+export const getUrl = (url: string | PlayURL) => {
+    if (typeof url === "string") {
+        return url;
+    } else if (typeof url.quality === "string") {
+        return url.quality;
+    }
+    return url.quality[0].url;
+}
+
 interface QueueItemProps {
     index: number,
     queueIndex: number,
-    queue: string[],
-    play: (url: string) => void,
+    queue: string[] | PlayURL[],
+    play: (url: string | PlayURL) => void,
     playFromQueue: (index: number) => void,
     deleteFromQueue: (index: number) => void,
     swapQueueItems: (oldIndex: number, newIndex: number) => void
@@ -22,8 +46,8 @@ class QueueItem extends React.Component<QueueItemProps> {
         this.urlInputRef = null;
     }
 
-    cssSafe(url: string) {
-        return url.replace(/[^a-z0-9]/g, (s) => {
+    cssSafe(url: string | PlayURL) {
+        return getUrl(url).replace(/[^a-z0-9]/g, (s) => {
             const c = s.charCodeAt(0);
             if (c === 32) {
                 return "-";
@@ -36,7 +60,7 @@ class QueueItem extends React.Component<QueueItemProps> {
 
     copyToClipboard() {
         const tempInput = document.createElement("input");
-        tempInput.value = this.props.queue[this.props.index];
+        tempInput.value = getUrl(this.props.queue[this.props.index]);
         document.body.appendChild(tempInput);
         tempInput.select();
         document.execCommand("copy");
@@ -110,7 +134,7 @@ class QueueItem extends React.Component<QueueItemProps> {
                         }
                     </div>
                 </div>
-                <a href={this.props.queue[this.props.index]} target={"_blank"}>
+                <a href={getUrl(this.props.queue[this.props.index])} target={"_blank"}>
                     {this.props.queue[this.props.index]}
                 </a>
             </Col>

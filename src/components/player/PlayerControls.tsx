@@ -20,6 +20,7 @@ import User from "../User";
 import PlaybackRate from "./PlaybackRate";
 import ReactPlayer from "react-player";
 import "./Slider.css";
+import {getUrl, PlayURL} from "../queue/QueueItem";
 
 interface PlayerControlsProps {
     controlsHidden: boolean,
@@ -34,12 +35,12 @@ interface PlayerControlsProps {
     player: React.RefObject<ReactPlayer>,
     playFromQueue: (index: number) => void,
     playing: boolean,
-    queue: string[],
+    queue: string[] | PlayURL[],
     queueIndex: number,
     roomId: string,
     startInteract: () => void,
     updateState: (data: any) => void,
-    url: string,
+    url: string | PlayURL,
     volume: number
 }
 
@@ -259,7 +260,7 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                                 id={"playerControl-share"}
                                                 onClick={() => {
                                                     if (!this.state.controlsHidden) {
-                                                        window.open(this.props.url, "_blank");
+                                                        window.open(getUrl(this.props.url), "_blank");
                                                     }
                                                 }}
                                                 tooltip={"Open source in new tab"}>

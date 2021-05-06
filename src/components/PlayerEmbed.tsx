@@ -2,6 +2,7 @@ import React from "react";
 import socketIOClient, {Socket} from "socket.io-client";
 import Player from "./player/Player";
 import {Spinner} from "react-bootstrap";
+import {PlayURL} from "./queue/QueueItem";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 
@@ -25,9 +26,9 @@ interface PlayerEmbedState {
     playbackRate: number,
     played: number,
     playing: boolean,
-    queue: string[],
+    queue: string[] | PlayURL[],
     queueIndex: number,
-    url: string
+    url: string | PlayURL
 }
 
 class PlayerEmbed extends React.Component<PlayerEmbedProps, PlayerEmbedState> {
@@ -96,7 +97,7 @@ class PlayerEmbed extends React.Component<PlayerEmbedProps, PlayerEmbedState> {
         this.setState(data);
     }
 
-    load(url: string) {
+    load(url: string | PlayURL) {
         this.updateState({
             played: 0,
             playing: true,

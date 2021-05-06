@@ -2,22 +2,23 @@ import React, {ChangeEvent} from "react";
 import {Button, Col, Form, InputGroup, Modal, OverlayTrigger, Popover, Row} from "react-bootstrap";
 import {ImEmbed2, IoMdCopy} from "react-icons/all";
 import ReactPlayer from "react-player";
+import {getUrl, PlayURL} from "../queue/QueueItem";
 
 interface CreateEmbedModalProps {
     roomId: string,
     onHide: () => void,
     show: boolean,
-    queue: string[],
+    queue: string[] | PlayURL[],
     queueIndex: number,
-    url: string
+    url: string | PlayURL
 }
 
 interface CreateEmbedModalState {
     controlsOption: string,
     includeQueue: boolean,
     url: string,
-    queue: string[],
-    queueIndex: string,
+    queue: number[],
+    queueIndex: number,
     result: string,
     valid: boolean,
     validated: boolean
@@ -33,9 +34,9 @@ class CreateEmbedModal extends React.Component<CreateEmbedModalProps, CreateEmbe
         this.state = {
             controlsOption: "show",
             includeQueue: true,
-            url: this.props.url,
-            queue: this.props.queue.map((q, i) => i.toString()),
-            queueIndex: this.props.queueIndex.toString(),
+            url: getUrl(this.props.url),
+            queue: this.props.queue.map((q: string | PlayURL, i: number) => i),
+            queueIndex: this.props.queueIndex,
             result: "",
             valid: false,
             validated: false
@@ -52,7 +53,7 @@ class CreateEmbedModal extends React.Component<CreateEmbedModalProps, CreateEmbe
         if (prevProps.show !== this.props.show) {
             if (this.props.show) {
                 this.updateState({
-                    queue: this.props.queue.map((q, i) => i.toString()),
+                    queue: this.props.queue.map((q: string | PlayURL, i: number) => i),
                     queueIndex: this.props.queueIndex.toString()
                 });
 
@@ -89,15 +90,15 @@ class CreateEmbedModal extends React.Component<CreateEmbedModalProps, CreateEmbe
             let currentIndex = 0;
 
             this.state.queue.forEach((i) => {
-                if (parseInt(i) < parseInt(this.state.queueIndex)) {
+                if (i < this.state.queueIndex) {
                     currentIndex += 1;
                 }
-                params.append("queue", this.props.queue[parseInt(i)]);
+                params.append("queue", getUrl(this.props.queue[i]));
             });
 
             params.append("queueIndex", currentIndex.toString());
         } else {
-            params.append("url", this.state.url);
+            params.append("url", getUrl(this.state.url));
         }
 
         if (state.controlsOption !== "show") {
@@ -172,7 +173,7 @@ class CreateEmbedModal extends React.Component<CreateEmbedModalProps, CreateEmbe
                                         as={"select"}
                                         multiple
                                         onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-                                            const newQueue = Array.from(e.target.selectedOptions, option => option.value);
+                                            const newQueue = Array.from(e.target.selectedOptions, option => parseInt(option.value));
                                             if (!newQueue.includes(this.state.queueIndex)) {
                                                 this.updateState({
                                                     queue: newQueue,
@@ -184,10 +185,10 @@ class CreateEmbedModal extends React.Component<CreateEmbedModalProps, CreateEmbe
                                                 });
                                             }
                                         }}
-                                        value={this.state.queue}>
-                                        {this.props.queue.map((q, index) => {
+                                        value={this.state.queue.map((q) => q.toString())}>
+                                        {this.props.queue.map((q: string | PlayURL, index: number) => {
                                             return (
-                                                <option key={q} value={index.toString()}>{q}</option>
+                                                <option key={getUrl(q)} value={index.toString()}>{q}</option>
                                             );
                                         })}
                                     </Form.Control>
@@ -203,13 +204,13 @@ class CreateEmbedModal extends React.Component<CreateEmbedModalProps, CreateEmbe
                                         as={"select"}
                                         onChange={(e) => {
                                             this.updateState({
-                                                queueIndex: e.target.value
+                                                queueIndex: parseInt(e.target.value)
                                             });
                                         }}
                                         value={this.state.queueIndex}>
                                         {this.state.queue.map((q) => {
                                             return (
-                                                <option key={q} value={q}>{this.props.queue[parseInt(q)]}</option>
+                                                <option key={q} value={q}>{this.props.queue[q]}</option>
                                             );
                                         })}
                                     </Form.Control>
