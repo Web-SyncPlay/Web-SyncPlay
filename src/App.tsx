@@ -6,7 +6,7 @@ import Room from "./components/Room";
 import Footer from "./components/Footer";
 import {Redirect, Route, Switch, useHistory, useLocation} from "react-router-dom";
 import * as H from "history";
-import PlayerEmbed from "./components/PlayerEmbed";
+import PlayerEmbed from "./embed/PlayerEmbed";
 
 interface AppProps {
     history: H.History,
