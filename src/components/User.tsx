@@ -4,7 +4,7 @@ import {UserData} from "./Room";
 import "./User.css";
 import {FaCrown, FaVolumeMute, IoPause, IoPlay} from "react-icons/all";
 
-const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
+const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://192.168.178.57:8081";
 
 interface UserProps {
     user: UserData,
@@ -15,7 +15,7 @@ interface UserProps {
 }
 
 interface UserState {
-    icons: string[] | null,
+    icons: string[],
     popoverExpanded: boolean,
     target: HTMLDivElement | null
 }
@@ -28,7 +28,7 @@ class User extends React.Component<UserProps, UserState> {
         this.popoverRef = React.createRef();
 
         this.state = {
-            icons: null,
+            icons: [],
             popoverExpanded: false,
             target: null
         };
@@ -113,7 +113,7 @@ class User extends React.Component<UserProps, UserState> {
                         <img
                             width={48}
                             height={48}
-                            src={ENDPOINT + "/icons/" + this.props.user.icon}
+                            src={this.props.user.icon}
                             alt={"User icon"}
                         />
                     </div>

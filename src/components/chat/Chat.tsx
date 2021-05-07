@@ -6,7 +6,6 @@ import ReactPlayer from "react-player";
 import {BiAddToQueue, FiHelpCircle, FiSend, IoPlay, IoPlaySkipForwardSharp} from "react-icons/all";
 import ControlButtonOverlay from "../player/ControlButtonOverlay";
 
-const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 
 interface ChatProps {
     you: string,
@@ -82,7 +81,7 @@ class Chat extends React.Component<ChatProps, ChatState> {
                             const you = this.props.you === h.user.id;
                             const canPlay = ReactPlayer.canPlay(h.message);
                             return (
-                                <div key={h.time}
+                                <div key={h.time + h.message}
                                      className={"rounded mx-2 mb-2 px-2 pb-2 m" + (you ? "l-5" : "r-5")}
                                      style={{
                                          alignSelf: (you ? "end" : "start")
@@ -95,7 +94,7 @@ class Chat extends React.Component<ChatProps, ChatState> {
                                             <img
                                                 width={24}
                                                 height={24}
-                                                src={ENDPOINT + "/icons/" + h.user.icon}
+                                                src={h.user.icon}
                                                 alt={"User icon"}
                                             />
                                         </div>

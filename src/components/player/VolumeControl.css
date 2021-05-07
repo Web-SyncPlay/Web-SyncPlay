@@ -12,4 +12,8 @@
     .volume-control:hover {
         width: 7.5em;
     }
+
+    .touch .volume-control {
+        width: 7.5em;
+    }
 }

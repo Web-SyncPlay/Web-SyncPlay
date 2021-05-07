@@ -38,7 +38,7 @@ const getRandomName = (words = 2) => {
 // Icons
 let userIcons = [];
 fs.readdir("public/icons", (err, files) => {
-    userIcons = files;
+    userIcons = files.map((f) => "/icons/" + f);
 });
 
 app.get("/icons.json", (req, res) => {
@@ -128,10 +128,8 @@ io.on("connection", (socket) => {
             "users",
             "history",
             "interaction",
-            "showTimePlayed",
-            "controlsHidden"
         ]);
-        if (socket.id === getRoom().owner || getRoom().anarchy) {
+        if (data.interaction && (socket.id === getRoom().owner || getRoom().anarchy)) {
             let forbidden = [
                 "volume",
                 "muted",
@@ -140,22 +138,21 @@ io.on("connection", (socket) => {
                 "buffering",
                 "seeking",
                 "interaction",
-                "showTimePlayed",
-                "controlsHidden",
                 "fullscreen",
                 "loadedSeconds",
                 "playedSeconds"
             ];
 
-            if (!data.interaction) {
-                if (socket.id !== getRoom().owner) {
-                    forbidden = forbidden.concat([
-                        "played"
-                    ]);
-                }
-            }
-
             _update(getRoom(), data, forbidden);
+        } else if (socket.id === getRoom().owner) {
+            let d = {};
+            if (data.played) {
+                d.played = data.played;
+            }
+            if (data.duration) {
+                d.duration = data.duration;
+            }
+            _update(getRoom(), d);
         }
 
         emitStatus();
@@ -180,8 +177,10 @@ io.on("connection", (socket) => {
         }
     });
     socket.on("initialState", (data) => {
+        log("initial state received");
         if (socket.id === getRoom().owner) {
-            update(data);
+            log("is owner setting data");
+            update({...data, interaction: true});
         }
     });
     socket.on("update", (data) => {

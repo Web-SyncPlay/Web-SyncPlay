@@ -21,6 +21,19 @@
     align-items: center;
 }
 
+.player-overlay .player-center .big-play-button {
+    cursor: pointer;
+    line-height: 1em;
+    font-size: 5em;
+    margin-bottom: -0.5em;
+}
+
+.player-overlay .player-center .big-play-button:hover {
+    color: #28a745;
+    font-size: 5em;
+    margin-bottom: -0.5em;
+}
+
 .player-overlay .player-center,
 .player-overlay .player-controls {
     opacity: 1;

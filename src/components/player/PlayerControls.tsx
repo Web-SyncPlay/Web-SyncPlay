@@ -1,6 +1,5 @@
 import React from "react";
 import screenfull from "screenfull";
-import {Form} from "react-bootstrap";
 import ControlButtonOverlay from "./ControlButtonOverlay";
 import {
     BiExitFullscreen,
@@ -8,19 +7,22 @@ import {
     BiWindowClose,
     BiWindowOpen,
     IoPause,
+    IoPauseCircleOutline,
     IoPlay,
+    IoPlayCircleOutline,
     IoPlaySkipBackSharp,
     IoPlaySkipForwardSharp,
     IoShareOutline,
     MdReplay
 } from "react-icons/all";
 import VolumeControl from "./VolumeControl";
-import ControlButton, {LEFT_MOUSE_CLICK} from "./ControlButton";
+import ControlButton from "./ControlButton";
 import User from "../User";
 import PlaybackRate from "./PlaybackRate";
 import ReactPlayer from "react-player";
-import "./Slider.css";
 import {getUrl, PlayURL} from "../queue/QueueItem";
+import InteractionHandler from "./InteractionHandler";
+import Slider from "./Slider";
 
 interface PlayerControlsProps {
     controlsHidden: boolean,
@@ -39,13 +41,14 @@ interface PlayerControlsProps {
     queueIndex: number,
     roomId: string,
     startInteract: () => void,
-    updateState: (data: any) => void,
+    updateState: (data: any, interaction?: boolean) => void,
     url: string | PlayURL,
     volume: number
 }
 
 interface PlayerControlsState {
     controlsHidden: boolean,
+    isTouch: boolean,
     menuExpanded: boolean,
     showTimePlayed: boolean,
     playerPoppedOut: boolean
@@ -66,15 +69,15 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
 
         this.state = {
             controlsHidden: false,
+            isTouch: false,
             menuExpanded: false,
             showTimePlayed: true,
             playerPoppedOut: false
         };
     }
 
-    updateState(data: any) {
-        data.interaction = this.interaction;
-        this.props.updateState(data);
+    updateState(data: any, interaction: boolean = false) {
+        this.props.updateState(data, interaction);
     }
 
     playEnded() {
@@ -94,103 +97,86 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
         }, 300);
     }
 
-    mouseMoved() {
+    mouseMoved(touch: boolean | null = null) {
         this.lastMouseMove = new Date().getTime();
-        if (this.state.controlsHidden) {
+        if (touch !== null) {
             this.setState({
-                controlsHidden: false
+                isTouch: touch
             });
         }
+
         setTimeout(() => {
-            if (new Date().getTime() - this.lastMouseMove > 1150) {
+            if (new Date().getTime() - this.lastMouseMove > (touch ? 3150 : 1550)) {
                 this.setState({
                     controlsHidden: true
                 });
             }
-        }, 1200);
+        }, touch ? 3200 : 1600);
+    }
+
+    showControlsAction(touch: boolean | null = null) {
+        if (this.state.controlsHidden) {
+            this.setState({controlsHidden: false});
+        }
+        this.mouseMoved(touch);
     }
 
     render() {
         return (
-            <div
-                className={"player-overlay p-2" + (this.state.controlsHidden && !this.state.menuExpanded ?
-                    " hide" : "")}
-                onTouchEnd={(e) => {
-                    e.preventDefault();
-                    this.mouseMoved();
-                }}
-                onMouseMove={() => {
-                    this.mouseMoved();
-                }}
-                onMouseUp={() => {
-                    this.mouseMoved();
-                }}>
+            <div className={"player-overlay p-2" + (this.state.controlsHidden && !this.state.menuExpanded ?
+                " hide" : "") + (this.state.isTouch ? " touch" : "")}>
                 {this.props.controlsHidden ? <></> :
                     <>
-                        <div className={"player-center flex-grow-1"}
-                             onTouchEnd={(e) => {
-                                 e.preventDefault();
-                                 if (this.interaction) {
-                                     this.interaction = false;
-                                     if (screenfull.isEnabled) {
-                                         screenfull.toggle(this.props.fullscreenNode);
-                                         this.updateState({fullscreen: !this.props.fullscreen});
-                                     }
-                                 } else if (!this.state.controlsHidden) {
-                                     this.interact();
-                                     setTimeout(() => {
-                                         if (this.interaction) {
-                                             this.updateState({playing: !this.props.playing});
-                                         }
-                                     }, 250);
-                                 }
-                             }}
-                             onMouseUp={(e) => {
-                                 if (e.button !== LEFT_MOUSE_CLICK) {
-                                     return;
-                                 }
-
-                                 if (this.interaction) {
-                                     this.interaction = false;
-                                     if (screenfull.isEnabled) {
-                                         screenfull.toggle(this.props.fullscreenNode);
-                                         this.updateState({fullscreen: !this.props.fullscreen});
-                                     }
-                                 } else {
-                                     this.interact();
-                                     setTimeout(() => {
-                                         if (this.interaction) {
-                                             this.updateState({playing: !this.props.playing});
-                                         }
-                                     }, 250);
-                                 }
-                             }}/>
-                        <div className={"player-controls px-2"}>
-                            <div className={"player-progress"}>
-                                <Form.Control
-                                    type={"range"}
-                                    min={0}
-                                    max={1}
-                                    step={0.001}
-                                    onChange={(e) => {
-                                        this.interact();
-                                        const t = parseFloat(e.target.value);
-                                        this.props.player.current?.seekTo(t);
-                                        e.target.style.setProperty("--value", (t * 100) + "%");
-                                        this.updateState({
-                                            played: t
-                                        });
-                                    }}
-                                    style={{"--value": (this.props.played * 100) + "%"} as React.CSSProperties}
-                                    aria-label={"Progress of playback"}
-                                    value={this.props.played}/>
+                        <InteractionHandler
+                            className={"player-center flex-grow-1"}
+                            onClick={(e, touch) => {
+                                console.log("player center");
+                                if (this.interaction) {
+                                    this.interaction = false;
+                                    if (screenfull.isEnabled) {
+                                        screenfull.toggle(this.props.fullscreenNode);
+                                        this.updateState({fullscreen: !this.props.fullscreen});
+                                    }
+                                } else {
+                                    this.setState({controlsHidden: !this.state.controlsHidden});
+                                    this.interact();
+                                    setTimeout(() => {
+                                        if (this.interaction) {
+                                            this.updateState({playing: !this.props.playing});
+                                        }
+                                    }, 250);
+                                }
+                                this.mouseMoved(touch);
+                            }}
+                            onMove={(e, touch) => {
+                                this.showControlsAction(touch);
+                            }}>
+                            <div className={"big-play-button"}>
+                                {this.props.playing ?
+                                    <IoPauseCircleOutline/> :
+                                    <IoPlayCircleOutline/>}
                             </div>
+                        </InteractionHandler>
+                        <div className={"player-controls px-2"}>
+                            <Slider
+                                ariaLabel={"Progress of playback"}
+                                className={"player-progress"}
+                                played={this.props.played}
+                                updateSeek={(t) => {
+                                    this.props.player.current?.seekTo(t);
+                                    this.updateState({
+                                        interaction: true,
+                                        played: t
+                                    });
+                                    this.mouseMoved();
+                                }}/>
                             <div className={"px-1 pb-1 d-flex"}>
                                 {0 < this.props.queueIndex ?
                                     <ControlButtonOverlay
                                         className={"d-none d-sm-block"}
                                         id={"playerControl-previous"}
-                                        onClick={() => {
+                                        onClick={(e, touch) => {
+                                            this.showControlsAction(touch);
                                             if (!this.state.controlsHidden) {
                                                 this.props.playFromQueue(this.props.queueIndex - 1);
                                             }
@@ -200,17 +186,18 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                     </ControlButtonOverlay> : <></>}
                                 <ControlButtonOverlay
                                     id={"playerControl-play"}
-                                    onClick={() => {
+                                    onClick={(e, touch) => {
+                                        this.showControlsAction(touch);
                                         if (!this.state.controlsHidden) {
                                             if (this.playEnded()) {
                                                 this.updateState({
                                                     played: 0,
                                                     playing: true
-                                                });
+                                                }, true);
                                             } else {
                                                 this.updateState({
                                                     playing: !this.props.playing
-                                                });
+                                                }, true);
                                             }
                                         }
                                     }}
@@ -222,7 +209,8 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                 {this.props.queue.length > this.props.queueIndex + 1 && this.props.queueIndex > -1 ?
                                     <ControlButtonOverlay
                                         id={"playerControl-next"}
-                                        onClick={() => {
+                                        onClick={(e, touch) => {
+                                            this.showControlsAction(touch);
                                             if (!this.state.controlsHidden) {
                                                 this.props.playFromQueue(this.props.queueIndex + 1);
                                             }
@@ -234,6 +222,7 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                     controlsHidden={this.state.controlsHidden}
                                     muted={this.props.muted}
                                     update={(muted, volume) => {
+                                        this.showControlsAction();
                                         this.updateState({
                                             muted,
                                             volume
@@ -244,7 +233,8 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
 
                                 <div className={"ml-auto d-flex"}>
                                     <ControlButton
-                                        onClick={() => {
+                                        onClick={(e, touch) => {
+                                            this.showControlsAction(touch);
                                             if (!this.state.controlsHidden) {
                                                 this.setState({showTimePlayed: !this.state.showTimePlayed});
                                             }
@@ -258,7 +248,8 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                             <ControlButtonOverlay
                                                 className={"d-none d-sm-block"}
                                                 id={"playerControl-share"}
-                                                onClick={() => {
+                                                onClick={(e, touch) => {
+                                                    this.showControlsAction(touch);
                                                     if (!this.state.controlsHidden) {
                                                         window.open(getUrl(this.props.url), "_blank");
                                                     }
@@ -266,41 +257,44 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                                 tooltip={"Open source in new tab"}>
                                                 <IoShareOutline/>
                                             </ControlButtonOverlay>
-                                            <ControlButtonOverlay
-                                                className={"d-none d-lg-block"}
-                                                id={"playerControl-pop-out"}
-                                                onClick={() => {
-                                                    if (!this.state.controlsHidden) {
-                                                        if (!this.state.playerPoppedOut) {
-                                                            this.playerPopup = window.open("/embed/player/" + this.props.roomId,
-                                                                "Room " + this.props.roomId + " Popout",
-                                                                "width=854,height=480," +
-                                                                "toolbar=false,location=false," +
-                                                                "status=false,menubar=false," +
-                                                                "dependent=true,resizable=true");
-                                                            this.playerPopup?.addEventListener("unload", (e) => {
-                                                                if (this.playerPopup?.closed) {
-                                                                    this.setState({
-                                                                        playerPoppedOut: false
-                                                                    });
+                                            {this.state.isTouch ? <></> :
+                                                <ControlButtonOverlay
+                                                    className={"d-none d-lg-block"}
+                                                    id={"playerControl-pop-out"}
+                                                    onClick={(e, touch) => {
+                                                        this.showControlsAction(touch);
+                                                        if (!this.state.controlsHidden) {
+                                                            if (!this.state.playerPoppedOut) {
+                                                                this.playerPopup = window.open("/embed/player/" + this.props.roomId,
+                                                                    "Room " + this.props.roomId + " Popout",
+                                                                    "width=854,height=480," +
+                                                                    "toolbar=false,location=false," +
+                                                                    "status=false,menubar=false," +
+                                                                    "dependent=true,resizable=true");
+                                                                this.playerPopup?.addEventListener("unload", (e) => {
+                                                                    if (this.playerPopup?.closed) {
+                                                                        this.setState({
+                                                                            playerPoppedOut: false
+                                                                        });
+                                                                    }
+                                                                });
+                                                            } else {
+                                                                if (this.playerPopup) {
+                                                                    this.playerPopup.close();
                                                                 }
-                                                            });
-                                                        } else {
-                                                            if (this.playerPopup) {
-                                                                this.playerPopup.close();
                                                             }
-                                                        }
 
-                                                        this.setState({
-                                                            playerPoppedOut: !this.state.playerPoppedOut
-                                                        });
-                                                    }
-                                                }}
-                                                tooltip={this.state.playerPoppedOut ?
-                                                    "Close popup" : "Open in popup"}>
-                                                {this.state.playerPoppedOut ?
-                                                    <BiWindowClose/> : <BiWindowOpen/>}
-                                            </ControlButtonOverlay>
+                                                            this.setState({
+                                                                playerPoppedOut: !this.state.playerPoppedOut
+                                                            });
+                                                        }
+                                                    }}
+                                                    tooltip={this.state.playerPoppedOut ?
+                                                        "Close popup" : "Open in popup"}>
+                                                    {this.state.playerPoppedOut ?
+                                                        <BiWindowClose/> : <BiWindowOpen/>}
+                                                </ControlButtonOverlay>
+                                            }
                                         </> : <></>
                                     }
                                     <PlaybackRate
@@ -310,6 +304,7 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                             });
                                         }}
                                         onChange={(speed) => {
+                                            this.showControlsAction();
                                             this.updateState({
                                                 playbackRate: speed
                                             })
@@ -318,7 +313,8 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                     {screenfull.isEnabled ?
                                         <ControlButtonOverlay
                                             id={"playerControl-fullscreen"}
-                                            onClick={() => {
+                                            onClick={(e, touch) => {
+                                                this.showControlsAction(touch);
                                                 if (screenfull.isEnabled) {
                                                     screenfull.toggle(this.props.fullscreenNode);
                                                     this.updateState({fullscreen: !this.props.fullscreen});

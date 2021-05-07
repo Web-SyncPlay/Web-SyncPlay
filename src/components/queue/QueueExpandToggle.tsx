@@ -1,7 +1,7 @@
 import React, {useContext} from "react";
 import {AccordionContext, OverlayTrigger, Tooltip, useAccordionToggle} from "react-bootstrap";
 import {MdExpandLess, MdExpandMore} from "react-icons/all";
-import {LEFT_MOUSE_CLICK} from "../player/ControlButton";
+import InteractionHandler from "../player/InteractionHandler";
 import "../player/ControlButton.css";
 
 
@@ -23,22 +23,16 @@ const QueueExpandToggle = (props: QueueExpandToggleProps) => {
                 </Tooltip>
             }>
             <div style={{display: "inline-flex"}}>
-                <div className={"control-button ml-1"}
-                     onTouchEnd={(e) => {
-                         e.preventDefault();
-                         decoratedOnClick(e);
-                     }}
-                     onMouseUp={(e) => {
-                         if (e.button !== LEFT_MOUSE_CLICK) {
-                             return;
-                         }
-                         decoratedOnClick(e);
-                     }}>
+                <InteractionHandler
+                    className={"control-button ml-1"}
+                    onClick={(e, touch) => {
+                        decoratedOnClick(e);
+                    }}>
                     {isCurrentEventKey ?
                         <MdExpandLess/> :
                         <MdExpandMore/>
                     }
-                </div>
+                </InteractionHandler>
             </div>
         </OverlayTrigger>
     );

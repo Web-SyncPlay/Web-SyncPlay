@@ -6,7 +6,7 @@ interface ControlButtonOverlayProps {
     children: JSX.Element | JSX.Element[] | string,
     className?: string,
     id: string,
-    onClick?: () => void,
+    onClick?: (e: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>, touch: boolean) => void,
     tooltip: JSX.Element | JSX.Element[] | string
 }
 

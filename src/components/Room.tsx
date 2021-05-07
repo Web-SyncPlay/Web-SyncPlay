@@ -9,7 +9,7 @@ import Player from "./player/Player";
 import Queue from "./queue/Queue";
 import {getUrl, PlayURL} from "./queue/QueueItem";
 
-const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
+const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://192.168.178.57:8081";
 
 interface RoomProps {
     roomId: string
@@ -95,7 +95,6 @@ class Room extends React.Component<RoomProps, RoomState> {
         });
 
         this.socket.on("chat", (data) => {
-            console.log("chat message received", data);
             this.setState({history: [...this.state.history, data]});
         });
     }
@@ -133,12 +132,14 @@ class Room extends React.Component<RoomProps, RoomState> {
             });
             this.load(url);
         } else {
+            this.sendChat("unable to play" + url);
             console.error("unable to play", url);
         }
     }
 
     load(url: string | PlayURL) {
         this.updateState({
+            interaction: true,
             played: 0,
             playing: true,
             url
@@ -148,11 +149,13 @@ class Room extends React.Component<RoomProps, RoomState> {
     playNext(url: string) {
         if (this.state.queueIndex >= 0) {
             this.updateState({
+                interaction: true,
                 queue: [...this.state.queue].splice(this.state.queueIndex, 0, url),
                 queueIndex: this.state.queueIndex + 1
             });
         } else {
             this.updateState({
+                interaction: true,
                 queue: [url, ...this.state.queue]
             });
         }
@@ -160,6 +163,7 @@ class Room extends React.Component<RoomProps, RoomState> {
 
     addToQueue(url: string) {
         this.updateState({
+            interaction: true,
             queue: [...this.state.queue, url]
         });
     }
@@ -168,6 +172,7 @@ class Room extends React.Component<RoomProps, RoomState> {
         this.load(this.state.queue[index]);
 
         this.updateState({
+            interaction: true,
             queueIndex: index
         });
     }
@@ -180,11 +185,13 @@ class Room extends React.Component<RoomProps, RoomState> {
 
         if ([oldIndex, newIndex].includes(this.state.queueIndex)) {
             this.updateState({
+                interaction: true,
                 queue,
                 queueIndex: this.state.queueIndex === newIndex ? oldIndex : newIndex
             });
         } else {
             this.updateState({
+                interaction: true,
                 queue
             });
         }
@@ -193,11 +200,13 @@ class Room extends React.Component<RoomProps, RoomState> {
     deleteFromQueue(index: number) {
         if (this.state.queueIndex >= index) {
             this.updateState({
+                interaction: true,
                 queue: [...this.state.queue].filter((e, i) => i !== index),
                 queueIndex: this.state.queueIndex - 1
             });
         } else {
             this.updateState({
+                interaction: true,
                 queue: [...this.state.queue].filter((e, i) => i !== index)
             });
         }
@@ -205,6 +214,7 @@ class Room extends React.Component<RoomProps, RoomState> {
 
     clearQueue() {
         this.updateState({
+            interaction: true,
             queue: [],
             queueIndex: -1
         });

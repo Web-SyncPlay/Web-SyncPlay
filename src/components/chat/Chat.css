@@ -28,6 +28,11 @@
     overflow-x: hidden;
 }
 
+.chat .messages > div > div .media-body {
+    width: calc(100% - 3rem - 0.5rem);
+    overflow-wrap: break-word;
+}
+
 @media (min-width: 768px) {
     .chat .messages > div > div {
         width: calc(300px - 3rem - 0.5rem);

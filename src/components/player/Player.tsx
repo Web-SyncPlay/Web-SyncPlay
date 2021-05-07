@@ -60,12 +60,25 @@ class Player extends React.Component<PlayerProps, PlayerState> {
             seeking: false,
             selectedQuality: this.defaultQuality(),
             selectedURL: getUrl(this.props.url),
-            volume: 0.3
+            volume: 1
         };
 
         this.props.socket?.emit("update", {
+            interaction: true,
             muted: true,
-            volume: 0.3
+            volume: 1
+        });
+    }
+
+    componentDidMount() {
+        window.addEventListener("message", (e) => {
+            const data = e.data;
+            if (data.vendor && data.vendor === "Web-SyncPlay") {
+                console.log("Received message from parent window:", e);
+                if (data.data) {
+
+                }
+            }
         });
     }
 
@@ -104,8 +117,10 @@ class Player extends React.Component<PlayerProps, PlayerState> {
             if (this.interaction) {
                 console.log("Not seeking, interaction has happened");
             } else {
-                if (this.player.current) {
-                    this.player.current.seekTo(this.props.played * prevState.duration, "seconds");
+                if (this.player) {
+                    if (this.player.current) {
+                        this.player.current.seekTo(this.props.played * prevState.duration, "seconds");
+                    }
                 }
                 this.setState({
                     played: this.props.played
@@ -114,14 +129,18 @@ class Player extends React.Component<PlayerProps, PlayerState> {
         }
     }
 
-    updateState(data: any) {
+    updateState(data: any, interaction: boolean = false) {
         if (this.props.socket) {
-            this.props.socket.emit("update", data);
+            const d = {...data, interaction: interaction};
+            this.props.socket.emit("update", d);
         }
-        window.parent.postMessage({
-            vendor: "Web-SyncPlay",
-            data
-        }, "*");
+
+        if (window.parent !== window) {
+            window.parent.postMessage({
+                vendor: "Web-SyncPlay",
+                data
+            }, "*");
+        }
         this.setState(data);
     }
 
