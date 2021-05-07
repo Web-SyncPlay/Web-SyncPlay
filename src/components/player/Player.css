@@ -23,15 +23,16 @@
 
 .player-overlay .player-center .big-play-button {
     cursor: pointer;
-    line-height: 1em;
-    font-size: 5em;
-    margin-bottom: -0.5em;
+    font-size: 3em;
+    margin-bottom: -0.75em;
+}
+
+.player-overlay svg {
+    filter: drop-shadow(0 0 4px #2d2d2d);
 }
 
 .player-overlay .player-center .big-play-button:hover {
     color: #28a745;
-    font-size: 5em;
-    margin-bottom: -0.5em;
 }
 
 .player-overlay .player-center,

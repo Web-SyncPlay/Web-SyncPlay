@@ -123,14 +123,17 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
 
     render() {
         return (
-            <div className={"player-overlay p-2" + (this.state.controlsHidden && !this.state.menuExpanded ?
-                " hide" : "") + (this.state.isTouch ? " touch" : "")}>
+            <InteractionHandler
+                className={"player-overlay p-2" + (this.state.controlsHidden && !this.state.menuExpanded ?
+                    " hide" : "") + (this.state.isTouch ? " touch" : "")}
+                onMove={(e, touch) => {
+                    this.showControlsAction(touch);
+                }}>
                 {this.props.controlsHidden ? <></> :
                     <>
                         <InteractionHandler
                             className={"player-center flex-grow-1"}
                             onClick={(e, touch) => {
-                                console.log("player center");
                                 if (this.interaction) {
                                     this.interaction = false;
                                     if (screenfull.isEnabled) {
@@ -147,15 +150,21 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                     }, 250);
                                 }
                                 this.mouseMoved(touch);
-                            }}
-                            onMove={(e, touch) => {
-                                this.showControlsAction(touch);
                             }}>
-                            <div className={"big-play-button"}>
+                            <InteractionHandler
+                                className={"big-play-button"}
+                                onClick={(e, touch) => {
+                                    if (!this.state.controlsHidden) {
+                                        this.updateState({
+                                            playing: !this.props.playing
+                                        }, true);
+                                    }
+                                    this.showControlsAction(touch);
+                                }}>
                                 {this.props.playing ?
                                     <IoPauseCircleOutline/> :
                                     <IoPlayCircleOutline/>}
-                            </div>
+                            </InteractionHandler>
                         </InteractionHandler>
                         <div className={"player-controls px-2"}>
                             <Slider
@@ -176,10 +185,10 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                         className={"d-none d-sm-block"}
                                         id={"playerControl-previous"}
                                         onClick={(e, touch) => {
-                                            this.showControlsAction(touch);
                                             if (!this.state.controlsHidden) {
                                                 this.props.playFromQueue(this.props.queueIndex - 1);
                                             }
+                                            this.showControlsAction(touch);
                                         }}
                                         tooltip={"Play previous"}>
                                         <IoPlaySkipBackSharp/>
@@ -187,7 +196,6 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                 <ControlButtonOverlay
                                     id={"playerControl-play"}
                                     onClick={(e, touch) => {
-                                        this.showControlsAction(touch);
                                         if (!this.state.controlsHidden) {
                                             if (this.playEnded()) {
                                                 this.updateState({
@@ -200,6 +208,7 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                                 }, true);
                                             }
                                         }
+                                        this.showControlsAction(touch);
                                     }}
                                     tooltip={this.props.playing ? "Pause" :
                                         (this.playEnded() ? "Restart" : "Play")}>
@@ -210,10 +219,10 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                     <ControlButtonOverlay
                                         id={"playerControl-next"}
                                         onClick={(e, touch) => {
-                                            this.showControlsAction(touch);
                                             if (!this.state.controlsHidden) {
                                                 this.props.playFromQueue(this.props.queueIndex + 1);
                                             }
+                                            this.showControlsAction(touch);
                                         }}
                                         tooltip={"Play next"}>
                                         <IoPlaySkipForwardSharp/>
@@ -234,10 +243,10 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                 <div className={"ml-auto d-flex"}>
                                     <ControlButton
                                         onClick={(e, touch) => {
-                                            this.showControlsAction(touch);
                                             if (!this.state.controlsHidden) {
                                                 this.setState({showTimePlayed: !this.state.showTimePlayed});
                                             }
+                                            this.showControlsAction(touch);
                                         }}>
                                         {(this.state.showTimePlayed ? User.secondsToTime(this.props.played * this.props.duration) :
                                             "-" + User.secondsToTime((1 - this.props.played) * this.props.duration)) + " / " +
@@ -249,10 +258,10 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                                 className={"d-none d-sm-block"}
                                                 id={"playerControl-share"}
                                                 onClick={(e, touch) => {
-                                                    this.showControlsAction(touch);
                                                     if (!this.state.controlsHidden) {
                                                         window.open(getUrl(this.props.url), "_blank");
                                                     }
+                                                    this.showControlsAction(touch);
                                                 }}
                                                 tooltip={"Open source in new tab"}>
                                                 <IoShareOutline/>
@@ -262,7 +271,6 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                                     className={"d-none d-lg-block"}
                                                     id={"playerControl-pop-out"}
                                                     onClick={(e, touch) => {
-                                                        this.showControlsAction(touch);
                                                         if (!this.state.controlsHidden) {
                                                             if (!this.state.playerPoppedOut) {
                                                                 this.playerPopup = window.open("/embed/player/" + this.props.roomId,
@@ -288,6 +296,7 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                                                 playerPoppedOut: !this.state.playerPoppedOut
                                                             });
                                                         }
+                                                        this.showControlsAction(touch);
                                                     }}
                                                     tooltip={this.state.playerPoppedOut ?
                                                         "Close popup" : "Open in popup"}>
@@ -304,21 +313,21 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                             });
                                         }}
                                         onChange={(speed) => {
-                                            this.showControlsAction();
                                             this.updateState({
                                                 playbackRate: speed
-                                            })
+                                            });
+                                            this.showControlsAction();
                                         }}
                                         speed={this.props.playbackRate}/>
                                     {screenfull.isEnabled ?
                                         <ControlButtonOverlay
                                             id={"playerControl-fullscreen"}
                                             onClick={(e, touch) => {
-                                                this.showControlsAction(touch);
                                                 if (screenfull.isEnabled) {
                                                     screenfull.toggle(this.props.fullscreenNode);
                                                     this.updateState({fullscreen: !this.props.fullscreen});
                                                 }
+                                                this.showControlsAction(touch);
                                             }}
                                             tooltip={(this.props.fullscreen ? "Exit" : "Enter") + " fullscreen"}>
                                             {this.props.fullscreen ? <BiExitFullscreen/> : <BiFullscreen/>}
@@ -329,7 +338,7 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                         </div>
                     </>
                 }
-            </div>
+            </InteractionHandler>
         );
     }
 }
