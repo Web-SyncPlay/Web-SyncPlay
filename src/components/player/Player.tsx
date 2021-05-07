@@ -212,11 +212,11 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                             this.updateState({
                                 played: 0,
                                 playing: true
-                            });
+                            }, true);
                         } else if (this.props.queueIndex + 1 < this.props.queue.length) {
                             this.props.playFromQueue(this.props.queueIndex + 1);
                         } else {
-                            this.updateState({playing: false});
+                            this.updateState({playing: false}, true);
                         }
                     }}
                     onError={(e) => console.error("playback error", e)}
