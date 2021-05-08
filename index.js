@@ -67,7 +67,8 @@ let rooms = [];
 io.on("connection", (socket) => {
     // room-joining
     let room = socket.handshake.query.roomId;
-    let embed = socket.handshake.query.isEmbed;
+    let embed = socket.handshake.query.isEmbed === "true";
+    let controller = socket.handshake.query.isController === "true" || false;
     const log = (...item) => {
         let d = new Date();
         let time = "[" + d.toUTCString() + "] [" + room + "]: ";
@@ -102,21 +103,27 @@ io.on("connection", (socket) => {
         }
     };
 
-    if (embed === "true") {
+    if (controller) {
         getRoom().users.push({
             id: socket.id,
-            embed: embed === "true"
+            embed,
+            controller
+        });
+    } else if (embed) {
+        getRoom().users.push({
+            id: socket.id,
+            embed
         });
     } else {
         let name = getRandomName(), icon = getRandomItem(userIcons);
         getRoom().users.push({
             id: socket.id,
-            embed: embed === "true",
-            name: (embed === "true" ? "embed_" : "") + name,
+            embed,
+            name: name,
             icon
         });
     }
-    log("User " + socket.id + " joined");
+    log("User " + socket.id + " joined" + (embed ? ", is embed" : "") + (controller ? ", is controller" : ""));
 
     // update room/user data
     const emitStatus = () => {

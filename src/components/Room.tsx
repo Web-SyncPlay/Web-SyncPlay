@@ -33,6 +33,7 @@ interface RoomState {
 
 export interface UserData extends RoomState {
     embed: boolean,
+    controller?: boolean,
     name?: string,
     muted: boolean,
     icon?: string,

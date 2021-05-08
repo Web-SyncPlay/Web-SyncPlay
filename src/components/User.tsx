@@ -2,7 +2,7 @@ import React from "react";
 import {Col, Form, Media, Overlay, Popover, Row} from "react-bootstrap";
 import {UserData} from "./Room";
 import "./User.css";
-import {FaCrown, FaVolumeMute, ImEmbed2, IoPause, IoPlay} from "react-icons/all";
+import {FaCrown, FaVolumeMute, GiTvRemote, ImEmbed2, IoGameController, IoPause, IoPlay} from "react-icons/all";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://192.168.178.57:8081";
 
@@ -105,12 +105,15 @@ class User extends React.Component<UserProps, UserState> {
 
     render() {
         const you = this.props.you === this.props.user.id;
+        const embed = this.props.user.embed;
+        const controller = this.props.user.controller || false;
+        // @ts-ignore
         return (
             <Col className={"p-2"} xs={(you ? {order: "first"} : {})}>
                 <Media className={"user shadow rounded p-2 " +
                 (you ? "bg-success you" : "") +
-                (this.props.user.embed ? "bg-dark" : "")}>
-                    {!this.props.user.embed ?
+                (embed || controller ? "bg-dark" : "")}>
+                    {!embed ?
                         <>
                             {you && this.state.icons !== null ?
                                 this.renderChangeIcon() : <></>}
@@ -125,8 +128,7 @@ class User extends React.Component<UserProps, UserState> {
                                     width={48}
                                     height={48}
                                     src={this.props.user.icon}
-                                    alt={"User icon"}
-                                />
+                                    alt={"User icon"}/>
                             </div>
                             <Media.Body>
                                 {you ?
@@ -151,19 +153,19 @@ class User extends React.Component<UserProps, UserState> {
                                         {this.props.user.name}
                                     </h6>
                                     <div className={"d-flex"}>
-                                <span>
-                                    <span style={{marginRight: "0.2em"}}>
-                                    {this.props.user.playing ?
-                                        <IoPlay style={{marginTop: "-0.2em"}}/> :
-                                        <IoPause style={{marginTop: "-0.2em"}}/>}
-                                    </span>
-                                    {this.timeProgress()}
-                                </span>
+                                        <span>
+                                            <span style={{marginRight: "0.2em"}}>
+                                            {this.props.user.playing ?
+                                                <IoPlay style={{marginTop: "-0.2em"}}/> :
+                                                <IoPause style={{marginTop: "-0.2em"}}/>}
+                                            </span>
+                                            {this.timeProgress()}
+                                        </span>
                                         <span className={"ml-auto"}>
-                                    {this.props.user.muted || this.props.user.volume === 0 ?
-                                        <FaVolumeMute style={{marginTop: "-0.2em"}}/> : <></>
-                                    }
-                                </span>
+                                            {this.props.user.muted || this.props.user.volume === 0 ?
+                                                <FaVolumeMute style={{marginTop: "-0.2em"}}/> : <></>
+                                            }
+                                        </span>
                                     </div>
                                 </div>
                             </Media.Body>
@@ -176,23 +178,44 @@ class User extends React.Component<UserProps, UserState> {
                                         <FaCrown size={21} className={"text-warning mr-1"}
                                                  style={{marginTop: "-0.5em"}}/>
                                         : <></>}
-                                    <ImEmbed2 className={"text-warning"}/> Embedded player <ImEmbed2
-                                    className={"text-warning"}/>
+                                    {controller ? <>
+                                            <GiTvRemote className={"text-warning"}
+                                                        style={{marginTop: "-0.25em"}}/>
+                                            <span className={"mx-1"}>Controller embed</span>
+                                            <GiTvRemote className={"text-warning"}
+                                                        style={{marginTop: "-0.25em"}}/>
+                                        </> :
+                                        <>
+                                            <ImEmbed2 className={"text-warning"}
+                                                      style={{marginTop: "-0.25em"}}/>
+                                            <span className={"mx-1"}>Embedded player</span>
+                                            <ImEmbed2 className={"text-warning"}
+                                                      style={{marginTop: "-0.25em"}}/>
+                                        </>
+                                    }
                                 </h6>
                                 <div className={"d-flex"}>
-                                <span>
-                                    <span style={{marginRight: "0.2em"}}>
-                                    {this.props.user.playing ?
-                                        <IoPlay style={{marginTop: "-0.2em"}}/> :
-                                        <IoPause style={{marginTop: "-0.2em"}}/>}
-                                    </span>
-                                    {this.timeProgress()}
-                                </span>
-                                    <span className={"ml-auto"}>
-                                    {this.props.user.muted || this.props.user.volume === 0 ?
-                                        <FaVolumeMute style={{marginTop: "-0.2em"}}/> : <></>
+                                    {controller ?
+                                        <div>
+                                            Remote controlling <IoGameController
+                                            className={"text-secondary"}/> this room
+                                        </div> :
+                                        <>
+                                            <span>
+                                                <span style={{marginRight: "0.2em"}}>
+                                                {this.props.user.playing ?
+                                                    <IoPlay style={{marginTop: "-0.2em"}}/> :
+                                                    <IoPause style={{marginTop: "-0.2em"}}/>}
+                                                </span>
+                                                {this.timeProgress()}
+                                            </span>
+                                            <span className={"ml-auto"}>
+                                                {this.props.user.muted || this.props.user.volume === 0 ?
+                                                    <FaVolumeMute style={{marginTop: "-0.2em"}}/> : <></>
+                                                }
+                                            </span>
+                                        </>
                                     }
-                                </span>
                                 </div>
                             </div>
                         </Media.Body>
@@ -201,6 +224,7 @@ class User extends React.Component<UserProps, UserState> {
             </Col>
         );
     }
+
 }
 
 export default User;

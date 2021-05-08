@@ -1,6 +1,6 @@
 import React from "react";
 import "./Queue.css";
-import {BiAddToQueue, ImEmbed2, RiDeleteBinLine} from "react-icons/all";
+import {BiAddToQueue, GiTvRemote, ImEmbed2, RiDeleteBinLine} from "react-icons/all";
 import AddItemModal from "../modal/AddItemModal";
 import QueueItem, {getUrl, PlayURL} from "./QueueItem";
 import {Accordion, Row} from "react-bootstrap";
@@ -56,6 +56,20 @@ class Queue extends React.Component<QueueProps, QueueState> {
                         </h5>
                     </div>
                     <div className={"ml-auto"}>
+                        <ControlButtonOverlay
+                            className={"text-secondary"}
+                            id={"tooltip-queue-expand"}
+                            onClick={() => {
+                                window.open("/embed/controller/" + this.props.roomId,
+                                    "Room " + this.props.roomId + " Controller",
+                                    "width=854,height=480," +
+                                    "toolbar=false,location=false," +
+                                    "status=false,menubar=false," +
+                                    "dependent=true,resizable=true");
+                            }}
+                            tooltip={"Open controller"}>
+                            <GiTvRemote/>
+                        </ControlButtonOverlay>
                         <ControlButtonOverlay
                             className={"text-warning"}
                             id={"tooltip-queue-expand"}

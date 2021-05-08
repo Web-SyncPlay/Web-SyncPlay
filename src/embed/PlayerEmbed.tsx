@@ -42,7 +42,6 @@ class PlayerEmbed extends React.Component<PlayerEmbedProps, PlayerEmbedState> {
 
         let query = new URLSearchParams(this.props.query);
 
-        console.log("is iframe:", window.parent !== window, document.referrer);
         let url;
         if (query.has("queue") && query.has("queueIndex")) {
             url = query.getAll("queue")[parseInt(query.get("queueIndex") as string)];

@@ -7,6 +7,7 @@ import Footer from "./components/Footer";
 import {Redirect, Route, Switch, useHistory, useLocation} from "react-router-dom";
 import * as H from "history";
 import PlayerEmbed from "./embed/PlayerEmbed";
+import ControlEmbed from "./embed/ControlEmbed";
 
 interface AppProps {
     history: H.History,
@@ -29,8 +30,7 @@ class App extends React.Component<AppProps> {
             roomId: props.location.pathname
                 .replace("/room/", "")
                 .replace("/embed/player/", "")
-                .replace("/embed/chat/", "")
-                .replace("/embed/queue/", "")
+                .replace("/embed/controller/", "")
         };
 
         this.roomRef = React.createRef<Room>();
@@ -55,6 +55,11 @@ class App extends React.Component<AppProps> {
                     <Route path={"/embed/player/:roomId"} render={(routerProps) => {
                         return (
                             <PlayerEmbed roomId={this.state.roomId} query={routerProps.location.search}/>
+                        );
+                    }}/>
+                    <Route path={"/embed/controller/:roomId"} render={(routerProps) => {
+                        return (
+                            <ControlEmbed roomId={this.state.roomId} query={routerProps.location.search}/>
                         );
                     }}/>
                     <Route path={"/*"}>
