@@ -1,0 +1,12 @@
+.controller-embed .controller-card {
+    background-color: #1f1f1f;
+}
+
+.controller-embed .divider {
+    border-left: solid 2px rgba(255, 255, 255, 0.2);
+}
+
+.controller-embed .controller-panel .control-button > svg {
+    height: 2em;
+    width: 2em;
+}

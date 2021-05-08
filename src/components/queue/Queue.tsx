@@ -10,15 +10,11 @@ import CreateEmbedModal from "../modal/CreateEmbedModal";
 import ControlButtonOverlay from "../player/ControlButtonOverlay";
 
 interface QueueProps {
-    addToQueue: (url: string) => void,
-    clearQueue: () => void,
-    deleteFromQueue: (index: number) => void,
-    play: (url: string | PlayURL) => void,
-    playFromQueue: (index: number) => void,
+    isEmbed: boolean,
     queue: string[] | PlayURL[],
     queueIndex: number,
     roomId: string,
-    swapQueueItems: (oldIndex: number, newIndex: number) => void,
+    updateState: (data: any) => void,
     url: string | PlayURL
 }
 
@@ -45,6 +41,66 @@ class Queue extends React.Component<QueueProps, QueueState> {
         });
     }
 
+    addToQueue(url: string) {
+        this.props.updateState({
+            interaction: true,
+            queue: [...this.props.queue, url]
+        });
+    }
+
+    playFromQueue(index: number) {
+        this.props.updateState({
+            interaction: true,
+            played: 0,
+            playing: true,
+            queueIndex: index,
+            url: this.props.queue[index]
+        });
+    }
+
+    swapQueueItems(oldIndex: number, newIndex: number) {
+        const queue = [...this.props.queue];
+        const old = queue[oldIndex];
+        queue[oldIndex] = queue[newIndex];
+        queue[newIndex] = old;
+
+        if ([oldIndex, newIndex].includes(this.props.queueIndex)) {
+            this.props.updateState({
+                interaction: true,
+                queue,
+                queueIndex: this.props.queueIndex === newIndex ? oldIndex : newIndex
+            });
+        } else {
+            this.props.updateState({
+                interaction: true,
+                queue
+            });
+        }
+    }
+
+    deleteFromQueue(index: number) {
+        if (this.props.queueIndex >= index) {
+            this.props.updateState({
+                interaction: true,
+                queue: [...this.props.queue].filter((e, i) => i !== index),
+                queueIndex: this.props.queueIndex - 1
+            });
+        } else {
+            this.props.updateState({
+                interaction: true,
+                queue: [...this.props.queue].filter((e, i) => i !== index)
+            });
+        }
+    }
+
+    clearQueue() {
+        this.props.updateState({
+            interaction: true,
+            queue: [],
+            queueIndex: -1
+        });
+    }
+
     render() {
         return (
             <Accordion className={"queue rounded shadow"}
@@ -56,31 +112,35 @@ class Queue extends React.Component<QueueProps, QueueState> {
                         </h5>
                     </div>
                     <div className={"ml-auto"}>
-                        <ControlButtonOverlay
-                            className={"text-secondary"}
-                            id={"tooltip-queue-expand"}
-                            onClick={() => {
-                                window.open("/embed/controller/" + this.props.roomId,
-                                    "Room " + this.props.roomId + " Controller",
-                                    "width=854,height=480," +
-                                    "toolbar=false,location=false," +
-                                    "status=false,menubar=false," +
-                                    "dependent=true,resizable=true");
-                            }}
-                            tooltip={"Open controller"}>
-                            <GiTvRemote/>
-                        </ControlButtonOverlay>
-                        <ControlButtonOverlay
-                            className={"text-warning"}
-                            id={"tooltip-queue-expand"}
-                            onClick={() => {
-                                this.setState({
-                                    showCreateEmbedModal: true
-                                });
-                            }}
-                            tooltip={"Create embed"}>
-                            <ImEmbed2/>
-                        </ControlButtonOverlay>
+                        {this.props.isEmbed ? <></> :
+                            <>
+                                <ControlButtonOverlay
+                                    className={"text-secondary"}
+                                    id={"tooltip-queue-expand"}
+                                    onClick={() => {
+                                        window.open("/embed/controller/" + this.props.roomId,
+                                            "Room " + this.props.roomId + " Controller",
+                                            "width=350,height=600," +
+                                            "toolbar=false,location=false," +
+                                            "status=false,menubar=false," +
+                                            "dependent=true,resizable=true");
+                                    }}
+                                    tooltip={"Open controller"}>
+                                    <GiTvRemote/>
+                                </ControlButtonOverlay>
+                                <ControlButtonOverlay
+                                    className={"text-warning"}
+                                    id={"tooltip-queue-expand"}
+                                    onClick={() => {
+                                        this.setState({
+                                            showCreateEmbedModal: true
+                                        });
+                                    }}
+                                    tooltip={"Create embed"}>
+                                    <ImEmbed2/>
+                                </ControlButtonOverlay>
+                            </>
+                        }
                         <ControlButtonOverlay
                             className={"text-danger"}
                             id={"tooltip-queue-clear"}
@@ -96,7 +156,7 @@ class Queue extends React.Component<QueueProps, QueueState> {
                     </div>
                 </div>
                 <ConfirmClearModal
-                    clear={this.props.clearQueue}
+                    clear={this.clearQueue.bind(this)}
                     onHide={() => {
                         this.setState({
                             showConfirmClearModal: false
@@ -117,7 +177,7 @@ class Queue extends React.Component<QueueProps, QueueState> {
                     url={this.props.url}
                 />
                 <Accordion.Collapse eventKey={"queue-expand"}>
-                    <Row className={"m-0"}
+                    <Row className={"queue-items-list p-1"}
                          id={"queue-collapse"}>
                         {this.props.queue.map((q: string | PlayURL, index: number) =>
                             <QueueItem
@@ -125,25 +185,27 @@ class Queue extends React.Component<QueueProps, QueueState> {
                                 index={index}
                                 queueIndex={this.props.queueIndex}
                                 queue={this.props.queue}
-                                play={this.props.play}
-                                playFromQueue={this.props.playFromQueue}
-                                deleteFromQueue={this.props.deleteFromQueue}
-                                swapQueueItems={this.props.swapQueueItems}
+                                playFromQueue={this.playFromQueue.bind(this)}
+                                deleteFromQueue={this.deleteFromQueue.bind(this)}
+                                swapQueueItems={this.swapQueueItems.bind(this)}
                             />)}
-                        <div className={"queue-item rounded shadow my-2 mx-1 p-3 add-notice text-muted"}
-                             onClick={() => {
-                                 this.setState({
-                                     showAddItemModal: true
-                                 });
-                             }}>
-                            <span>Add item</span>
-                            <BiAddToQueue/>
+                        <div className={"col queue-item p-1 add-notice"}>
+                            <div className={"rounded shadow p-3 text-muted"}
+                                 onClick={() => {
+                                     this.setState({
+                                         showAddItemModal: true
+                                     });
+                                 }}>
+                                <span>Add item</span>
+                                <BiAddToQueue/>
+                            </div>
                         </div>
                     </Row>
                 </Accordion.Collapse>
-                <AddItemModal show={this.state.showAddItemModal}
-                              closeModal={this.closeAddItemModal.bind(this)}
-                              add={this.props.addToQueue}/>
+                <AddItemModal
+                    show={this.state.showAddItemModal}
+                    closeModal={this.closeAddItemModal.bind(this)}
+                    add={this.addToQueue.bind(this)}/>
             </Accordion>
         );
     }

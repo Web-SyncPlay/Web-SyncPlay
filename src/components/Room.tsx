@@ -126,7 +126,7 @@ class Room extends React.Component<RoomProps, RoomState> {
         this.setState(data);
     }
 
-    changeToURL(url: string | PlayURL) {
+    play(url: string | PlayURL) {
         if (ReactPlayer.canPlay(getUrl(url))) {
             this.updateState({
                 queueIndex: -1
@@ -178,49 +178,6 @@ class Room extends React.Component<RoomProps, RoomState> {
         });
     }
 
-    swapQueueItems(oldIndex: number, newIndex: number) {
-        const queue = [...this.state.queue];
-        const old = queue[oldIndex];
-        queue[oldIndex] = queue[newIndex];
-        queue[newIndex] = old;
-
-        if ([oldIndex, newIndex].includes(this.state.queueIndex)) {
-            this.updateState({
-                interaction: true,
-                queue,
-                queueIndex: this.state.queueIndex === newIndex ? oldIndex : newIndex
-            });
-        } else {
-            this.updateState({
-                interaction: true,
-                queue
-            });
-        }
-    }
-
-    deleteFromQueue(index: number) {
-        if (this.state.queueIndex >= index) {
-            this.updateState({
-                interaction: true,
-                queue: [...this.state.queue].filter((e, i) => i !== index),
-                queueIndex: this.state.queueIndex - 1
-            });
-        } else {
-            this.updateState({
-                interaction: true,
-                queue: [...this.state.queue].filter((e, i) => i !== index)
-            });
-        }
-    }
-
-    clearQueue() {
-        this.updateState({
-            interaction: true,
-            queue: [],
-            queueIndex: -1
-        });
-    }
-
     render() {
         return (
             <Container fluid={true}>
@@ -260,22 +217,18 @@ class Room extends React.Component<RoomProps, RoomState> {
                             <Chat addQueue={this.addToQueue.bind(this)}
                                   history={this.state.history}
                                   owner={this.state.owner}
-                                  play={this.changeToURL.bind(this)}
+                                  play={this.play.bind(this)}
                                   playNext={this.playNext.bind(this)}
                                   send={this.sendChat.bind(this)}
                                   you={this.socket?.id || ""}/>
                         </Col>
                     </Row>
                 </div>
-                <Queue addToQueue={this.addToQueue.bind(this)}
-                       clearQueue={this.clearQueue.bind(this)}
-                       deleteFromQueue={this.deleteFromQueue.bind(this)}
-                       play={this.changeToURL.bind(this)}
-                       playFromQueue={this.playFromQueue.bind(this)}
+                <Queue isEmbed={false}
                        queue={this.state.queue}
                        queueIndex={this.state.queueIndex}
                        roomId={this.state.id}
-                       swapQueueItems={this.swapQueueItems.bind(this)}
+                       updateState={this.updateState.bind(this)}
                        url={this.state.url}/>
                 <div className={"px-2"}>
                     <Row className={"user-list"}>

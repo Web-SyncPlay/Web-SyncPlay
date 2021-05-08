@@ -38,12 +38,15 @@ interface PlayerState {
 }
 
 class Player extends React.Component<PlayerProps, PlayerState> {
+    // ignore played state once
+    didJustSeek: boolean;
     fullscreenNode: HTMLDivElement | undefined;
     interaction: boolean;
     player: React.RefObject<ReactPlayer>;
 
     constructor(props: PlayerProps) {
         super(props);
+        this.didJustSeek = false;
         this.interaction = false;
         this.player = React.createRef();
 
@@ -111,7 +114,8 @@ class Player extends React.Component<PlayerProps, PlayerState> {
             });
         }
 
-        if (Math.abs(prevState.played - this.props.played) * prevState.duration * prevState.playbackRate > 2) {
+        if (!this.didJustSeek &&
+            Math.abs(prevState.played - this.props.played) * prevState.duration * prevState.playbackRate > 2) {
             console.log("Desynced, currently at", prevState.played * prevState.duration,
                 "should seek to", this.props.played * prevState.duration);
             if (this.interaction) {
@@ -131,6 +135,9 @@ class Player extends React.Component<PlayerProps, PlayerState> {
 
     updateState(data: any, interaction: boolean = false) {
         if (this.props.socket) {
+            if (data.played && (data.interaction || interaction)) {
+                this.didJustSeek = true;
+            }
             const d = {...data, interaction: interaction};
             this.props.socket.emit("update", d);
         }

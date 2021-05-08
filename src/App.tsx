@@ -7,7 +7,7 @@ import Footer from "./components/Footer";
 import {Redirect, Route, Switch, useHistory, useLocation} from "react-router-dom";
 import * as H from "history";
 import PlayerEmbed from "./embed/PlayerEmbed";
-import ControlEmbed from "./embed/ControlEmbed";
+import ControllerEmbed from "./embed/ControllerEmbed";
 
 interface AppProps {
     history: H.History,
@@ -45,7 +45,7 @@ class App extends React.Component<AppProps> {
     }
 
     playURL(url: string) {
-        this.roomRef.current?.changeToURL(url);
+        this.roomRef.current?.play(url);
     }
 
     render() {
@@ -59,7 +59,7 @@ class App extends React.Component<AppProps> {
                     }}/>
                     <Route path={"/embed/controller/:roomId"} render={(routerProps) => {
                         return (
-                            <ControlEmbed roomId={this.state.roomId} query={routerProps.location.search}/>
+                            <ControllerEmbed roomId={this.state.roomId}/>
                         );
                     }}/>
                     <Route path={"/*"}>

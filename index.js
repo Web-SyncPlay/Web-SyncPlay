@@ -91,11 +91,14 @@ io.on("connection", (socket) => {
         rooms.push({
             id: room,
             users: [],
-            owner: socket.id,
+            owner: (controller ? "" : socket.id),
             anarchy: true
         });
         log("room created");
+    } else if (getRoom().owner === "") {
+        getRoom().owner = socket.id;
     }
+
     const getUser = (id = socket.id) => {
         let tmp = getRoom();
         if (tmp) {
@@ -181,7 +184,20 @@ io.on("connection", (socket) => {
                 return u.id !== socket.id;
             });
             if (tmp.owner === socket.id) {
-                tmp.owner = tmp.users[0].id;
+                let found = false;
+                for (let i = 0; i < tmp.users.length; i++) {
+                    if (tmp.users[i].controller) {
+                        continue;
+                    }
+
+                    tmp.owner = tmp.users[i].id;
+                    found = true;
+                    break;
+                }
+
+                if (!found) {
+                    tmp.owner = "";
+                }
             }
             log(tmp.users.length + " users left");
             emitStatus();

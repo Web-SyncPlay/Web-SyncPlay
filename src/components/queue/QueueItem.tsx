@@ -31,7 +31,6 @@ interface QueueItemProps {
     index: number,
     queueIndex: number,
     queue: string[] | PlayURL[],
-    play: (url: string | PlayURL) => void,
     playFromQueue: (index: number) => void,
     deleteFromQueue: (index: number) => void,
     swapQueueItems: (oldIndex: number, newIndex: number) => void
@@ -71,72 +70,74 @@ class QueueItem extends React.Component<QueueItemProps> {
         const css = this.cssSafe(this.props.queue[this.props.index]);
         const playing = this.props.queueIndex === this.props.index;
         return (
-            <Col className={"queue-item rounded shadow my-2 mx-1 p-1" + (playing ? " bg-dark" : "")}>
-                <div className={"d-flex w-100"}>
-                    <div>
-                        {this.props.index > 0 ?
-                            <ControlButtonOverlay
-                                id={"tooltip-queue-" + css + "-before"}
-                                onClick={() => {
-                                    this.props.swapQueueItems(this.props.index, this.props.index - 1);
-                                }}
-                                tooltip={"Move up"}>
-                                <MdNavigateBefore/>
-                            </ControlButtonOverlay> :
-                            <></>
-                        }
-                        {this.props.index < this.props.queue.length - 1 ?
-                            <ControlButtonOverlay
-                                id={"tooltip-queue-" + css + "-after"}
-                                onClick={() => {
-                                    this.props.swapQueueItems(this.props.index, this.props.index + 1);
-                                }}
-                                tooltip={"Move down"}>
-                                <MdNavigateNext/>
-                            </ControlButtonOverlay> :
-                            <></>
-                        }
-                    </div>
-                    <div className={"ml-auto"}>
-                        <ControlButtonOverlay
-                            className={"text-secondary"}
-                            id={"tooltip-queue-" + css + "-copy"}
-                            onClick={this.copyToClipboard.bind(this)}
-                            tooltip={"Copy source to clipboard"}>
-                            <IoMdCopy/>
-                        </ControlButtonOverlay>
-                        {playing ?
-                            <ControlButtonOverlay
-                                id={"tooltip-queue-" + css + "-playing"}
-                                tooltip={"Currently playing"}>
-                                <BsMusicNoteBeamed className={"text-warning blink"}/>
-                            </ControlButtonOverlay> :
-                            <>
+            <Col className={"col queue-item p-1"}>
+                <div className={"rounded shadow p-1" + (playing ? " bg-dark" : "")}>
+                    <div className={"d-flex w-100"}>
+                        <div>
+                            {this.props.index > 0 ?
                                 <ControlButtonOverlay
-                                    className={"text-success"}
-                                    id={"tooltip-queue-" + css + "-playFromQueue"}
+                                    id={"tooltip-queue-" + css + "-before"}
                                     onClick={() => {
-                                        this.props.playFromQueue(this.props.index);
+                                        this.props.swapQueueItems(this.props.index, this.props.index - 1);
                                     }}
-                                    tooltip={"Play"}>
-                                    <IoPlay/>
-                                </ControlButtonOverlay>
+                                    tooltip={"Move up"}>
+                                    <MdNavigateBefore/>
+                                </ControlButtonOverlay> :
+                                <></>
+                            }
+                            {this.props.index < this.props.queue.length - 1 ?
                                 <ControlButtonOverlay
-                                    className={"text-danger"}
-                                    id={"tooltip-queue-" + css + "-delete"}
+                                    id={"tooltip-queue-" + css + "-after"}
                                     onClick={() => {
-                                        this.props.deleteFromQueue(this.props.index);
+                                        this.props.swapQueueItems(this.props.index, this.props.index + 1);
                                     }}
-                                    tooltip={"Delete item"}>
-                                    <RiDeleteBinLine/>
-                                </ControlButtonOverlay>
-                            </>
-                        }
+                                    tooltip={"Move down"}>
+                                    <MdNavigateNext/>
+                                </ControlButtonOverlay> :
+                                <></>
+                            }
+                        </div>
+                        <div className={"ml-auto"}>
+                            <ControlButtonOverlay
+                                className={"text-secondary"}
+                                id={"tooltip-queue-" + css + "-copy"}
+                                onClick={this.copyToClipboard.bind(this)}
+                                tooltip={"Copy source to clipboard"}>
+                                <IoMdCopy/>
+                            </ControlButtonOverlay>
+                            {playing ?
+                                <ControlButtonOverlay
+                                    id={"tooltip-queue-" + css + "-playing"}
+                                    tooltip={"Currently playing"}>
+                                    <BsMusicNoteBeamed className={"text-warning blink"}/>
+                                </ControlButtonOverlay> :
+                                <>
+                                    <ControlButtonOverlay
+                                        className={"text-success"}
+                                        id={"tooltip-queue-" + css + "-playFromQueue"}
+                                        onClick={() => {
+                                            this.props.playFromQueue(this.props.index);
+                                        }}
+                                        tooltip={"Play"}>
+                                        <IoPlay/>
+                                    </ControlButtonOverlay>
+                                    <ControlButtonOverlay
+                                        className={"text-danger"}
+                                        id={"tooltip-queue-" + css + "-delete"}
+                                        onClick={() => {
+                                            this.props.deleteFromQueue(this.props.index);
+                                        }}
+                                        tooltip={"Delete item"}>
+                                        <RiDeleteBinLine/>
+                                    </ControlButtonOverlay>
+                                </>
+                            }
+                        </div>
                     </div>
+                    <a href={getUrl(this.props.queue[this.props.index])} target={"_blank"}>
+                        {this.props.queue[this.props.index]}
+                    </a>
                 </div>
-                <a href={getUrl(this.props.queue[this.props.index])} target={"_blank"}>
-                    {this.props.queue[this.props.index]}
-                </a>
             </Col>
         );
     }

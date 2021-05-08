@@ -54,7 +54,8 @@ class InviteModal extends React.Component<InviteModalProps> {
                                          readOnly
                                          ref={(input: HTMLInputElement) => this.inviteLinkRef = input}
                                          placeholder={"Room ID"}
-                                         value={window.location.href}
+                                         value={window.location.protocol + "//" +
+                                         window.location.host + "/room/" + this.props.roomId}
                                          aria-describedby={"inviteRoomAppend"}/>
                             <InputGroup.Append>
                                 <OverlayTrigger
