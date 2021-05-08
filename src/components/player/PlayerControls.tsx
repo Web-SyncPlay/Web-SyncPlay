@@ -153,15 +153,10 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                         screenfull.toggle(this.props.fullscreenNode);
                                         this.updateState({fullscreen: !this.props.fullscreen});
                                     }
-                                } else {
+                                } else if (touch) {
                                     this.setState({controlsHidden: !this.state.controlsHidden});
-                                    this.interact();
-                                    setTimeout(() => {
-                                        if (this.interaction) {
-                                            this.updateState({playing: !this.props.playing});
-                                        }
-                                    }, 250);
                                 }
+                                this.interact();
                                 this.mouseMoved(touch);
                             }}>
                             <InteractionHandler
