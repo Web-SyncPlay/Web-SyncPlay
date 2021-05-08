@@ -2,7 +2,7 @@ import React from "react";
 import {Col, Form, Media, Overlay, Popover, Row} from "react-bootstrap";
 import {UserData} from "./Room";
 import "./User.css";
-import {FaCrown, FaVolumeMute, IoPause, IoPlay} from "react-icons/all";
+import {FaCrown, FaVolumeMute, ImEmbed2, IoPause, IoPlay} from "react-icons/all";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://192.168.178.57:8081";
 
@@ -66,78 +66,91 @@ class User extends React.Component<UserProps, UserState> {
             User.secondsToTime(this.props.duration);
     }
 
+    renderChangeIcon() {
+        return (
+            <Overlay
+                show={this.state.popoverExpanded}
+                placement={"top"}
+                container={this.popoverRef}
+                target={this.popoverRef.current}>
+                <Popover id={"change-icon-popover"}>
+                    <Popover.Content>
+                        <Row className={"pl-1"}>
+                            {this.state.icons.map((icon) =>
+                                <Col key={icon}
+                                     className={"m-1 rounded user-icon"}
+                                     onClick={() => {
+                                         if (this.props.user.name) {
+                                             this.props.update(this.props.user.name, icon);
+                                         }
+                                         this.setState({
+                                             popoverExpanded: !this.state.popoverExpanded
+                                         });
+                                     }}
+                                     xs={"auto"}>
+                                    <img
+                                        width={48}
+                                        height={48}
+                                        src={ENDPOINT + icon}
+                                        alt={"User icon"}
+                                    />
+                                </Col>
+                            )}
+                        </Row>
+                    </Popover.Content>
+                </Popover>
+            </Overlay>
+        );
+    }
+
     render() {
         const you = this.props.you === this.props.user.id;
         return (
             <Col className={"p-2"} xs={(you ? {order: "first"} : {})}>
-                <Media className={"user shadow rounded p-2 " + (you ? "bg-success you" : "")}>
-                    {you && this.state.icons !== null ?
-                        <Overlay
-                            show={this.state.popoverExpanded}
-                            placement={"top"}
-                            container={this.popoverRef}
-                            target={this.popoverRef.current}>
-                            <Popover id={"change-icon-popover"}>
-                                <Popover.Content>
-                                    <Row className={"pl-1"}>
-                                        {this.state.icons.map((icon) =>
-                                            <Col key={icon}
-                                                 className={"m-1 rounded user-icon"}
-                                                 onClick={() => {
-                                                     this.props.update(this.props.user.name, icon);
-                                                     this.setState({
-                                                         popoverExpanded: !this.state.popoverExpanded
-                                                     });
-                                                 }}
-                                                 xs={"auto"}>
-                                                <img
-                                                    width={48}
-                                                    height={48}
-                                                    src={ENDPOINT + "/icons/" + icon}
-                                                    alt={"User icon"}
-                                                />
-                                            </Col>
-                                        )}
-                                    </Row>
-                                </Popover.Content>
-                            </Popover>
-                        </Overlay> : <></>
-                    }
-                    <div ref={this.popoverRef}
-                         onClick={() => {
-                             this.setState({
-                                 popoverExpanded: !this.state.popoverExpanded
-                             });
-                         }}
-                         className={"mr-2 rounded user-icon"}>
-                        <img
-                            width={48}
-                            height={48}
-                            src={this.props.user.icon}
-                            alt={"User icon"}
-                        />
-                    </div>
-                    <Media.Body>
-                        {you ?
-                            <Form.Control
-                                className={"user-edit"}
-                                placeholder={"Your name"}
-                                value={this.props.user.name}
-                                onChange={(e) => {
-                                    this.props.update(e.target.value, this.props.user.icon);
-                                }}
-                                type={"text"}/> :
-                            <></>
-                        }
-                        <div className={"user-status"}>
-                            <h6 className={"mb-0 pb-1 text-truncate"}>
-                                {this.props.owner === this.props.user.id ?
-                                    <FaCrown size={21} className={"text-warning mr-1"}
-                                             style={{marginTop: "-0.5em"}}/>
-                                    : <></>}
-                                {this.props.user.name}
-                            </h6>
-                            <div className={"d-flex"}>
+                <Media className={"user shadow rounded p-2 " +
+                (you ? "bg-success you" : "") +
+                (this.props.user.embed ? "bg-dark" : "")}>
+                    {!this.props.user.embed ?
+                        <>
+                            {you && this.state.icons !== null ?
+                                this.renderChangeIcon() : <></>}
+                            <div ref={this.popoverRef}
+                                 onClick={() => {
+                                     this.setState({
+                                         popoverExpanded: !this.state.popoverExpanded
+                                     });
+                                 }}
+                                 className={"mr-2 rounded user-icon"}>
+                                <img
+                                    width={48}
+                                    height={48}
+                                    src={this.props.user.icon}
+                                    alt={"User icon"}
+                                />
+                            </div>
+                            <Media.Body>
+                                {you ?
+                                    <Form.Control
+                                        className={"user-edit"}
+                                        placeholder={"Your name"}
+                                        value={this.props.user.name}
+                                        onChange={(e) => {
+                                            if (this.props.user.icon) {
+                                                this.props.update(e.target.value, this.props.user.icon);
+                                            }
+                                        }}
+                                        type={"text"}/> :
+                                    <></>
+                                }
+                                <div className={"user-status"}>
+                                    <h6 className={"mb-0 pb-1 text-truncate"}>
+                                        {this.props.owner === this.props.user.id ?
+                                            <FaCrown size={21} className={"text-warning mr-1"}
+                                                     style={{marginTop: "-0.5em"}}/>
+                                            : <></>}
+                                        {this.props.user.name}
+                                    </h6>
+                                    <div className={"d-flex"}>
                                 <span>
                                     <span style={{marginRight: "0.2em"}}>
                                     {this.props.user.playing ?
@@ -146,14 +159,44 @@ class User extends React.Component<UserProps, UserState> {
                                     </span>
                                     {this.timeProgress()}
                                 </span>
-                                <span className={"ml-auto"}>
+                                        <span className={"ml-auto"}>
                                     {this.props.user.muted || this.props.user.volume === 0 ?
                                         <FaVolumeMute style={{marginTop: "-0.2em"}}/> : <></>
                                     }
                                 </span>
+                                    </div>
+                                </div>
+                            </Media.Body>
+                        </>
+                        :
+                        <Media.Body>
+                            <div className={"user-status"}>
+                                <h6 className={"mb-0 pb-1 text-truncate"}>
+                                    {this.props.owner === this.props.user.id ?
+                                        <FaCrown size={21} className={"text-warning mr-1"}
+                                                 style={{marginTop: "-0.5em"}}/>
+                                        : <></>}
+                                    <ImEmbed2 className={"text-warning"}/> Embedded player <ImEmbed2
+                                    className={"text-warning"}/>
+                                </h6>
+                                <div className={"d-flex"}>
+                                <span>
+                                    <span style={{marginRight: "0.2em"}}>
+                                    {this.props.user.playing ?
+                                        <IoPlay style={{marginTop: "-0.2em"}}/> :
+                                        <IoPause style={{marginTop: "-0.2em"}}/>}
+                                    </span>
+                                    {this.timeProgress()}
+                                </span>
+                                    <span className={"ml-auto"}>
+                                    {this.props.user.muted || this.props.user.volume === 0 ?
+                                        <FaVolumeMute style={{marginTop: "-0.2em"}}/> : <></>
+                                    }
+                                </span>
+                                </div>
                             </div>
-                        </div>
-                    </Media.Body>
+                        </Media.Body>
+                    }
                 </Media>
             </Col>
         );

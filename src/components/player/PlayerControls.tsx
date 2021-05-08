@@ -121,6 +121,19 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
         this.mouseMoved(touch);
     }
 
+    checkPopout() {
+        if (this.playerPopup) {
+            if (!this.playerPopup.closed) {
+                // check every 400ms if popout is still open
+                setTimeout(this.checkPopout.bind(this), 400);
+            } else {
+                this.setState({
+                    playerPoppedOut: false
+                });
+            }
+        }
+    }
+
     render() {
         return (
             <InteractionHandler
@@ -279,13 +292,7 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                                                     "toolbar=false,location=false," +
                                                                     "status=false,menubar=false," +
                                                                     "dependent=true,resizable=true");
-                                                                this.playerPopup?.addEventListener("unload", (e) => {
-                                                                    if (this.playerPopup?.closed) {
-                                                                        this.setState({
-                                                                            playerPoppedOut: false
-                                                                        });
-                                                                    }
-                                                                });
+                                                                setTimeout(this.checkPopout.bind(this), 400);
                                                             } else {
                                                                 if (this.playerPopup) {
                                                                     this.playerPopup.close();

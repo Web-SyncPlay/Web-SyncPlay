@@ -102,14 +102,21 @@ io.on("connection", (socket) => {
         }
     };
 
-    let name = getRandomName(), icon = getRandomItem(userIcons);
-    getRoom().users.push({
-        id: socket.id,
-        embed: embed === "true",
-        name: (embed === "true" ? "embed_" : "") + name,
-        icon
-    });
-    log("User " + socket.id + " joined, assigned: \"" + name + "\" " + icon);
+    if (embed === "true") {
+        getRoom().users.push({
+            id: socket.id,
+            embed: embed === "true"
+        });
+    } else {
+        let name = getRandomName(), icon = getRandomItem(userIcons);
+        getRoom().users.push({
+            id: socket.id,
+            embed: embed === "true",
+            name: (embed === "true" ? "embed_" : "") + name,
+            icon
+        });
+    }
+    log("User " + socket.id + " joined");
 
     // update room/user data
     const emitStatus = () => {
