@@ -1,4 +1,4 @@
-[![Website](https://img.shields.io/website?down_color=red&down_message=offline&label=Demo site&up_color=green&up_message=online&url=https%3A%2F%2Fwatch.agent77326.de)](https://watch.agent77326.de)
+[![Website](https://img.shields.io/website?down_color=red&down_message=offline&label=Demo-site&up_color=green&up_message=online&url=https%3A%2F%2Fwatch.agent77326.de)](https://watch.agent77326.de)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/35f7884623744a5c8ad64e184f6f5dcf)](https://www.codacy.com/gh/Web-SyncPlay/Web-SyncPlay/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Web-SyncPlay/Web-SyncPlay&amp;utm_campaign=Badge_Grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/web-syncplay/web-syncplay/badge)](https://www.codefactor.io/repository/github/web-syncplay/web-syncplay)
 [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/websyncplay/websyncplay/latest?logo=docker)](https://hub.docker.com/r/websyncplay/websyncplay)
