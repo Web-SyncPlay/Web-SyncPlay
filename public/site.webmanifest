@@ -1,21 +1,13 @@
 {
-    "name": "Studi-Watch",
-    "short_name": "Studi-Watch",
-    "description": "Synchronise video/music playback with your friends",
-    "scope": "/",
-    "start_url": "/",
+    "name": "Web-SyncPlay",
+    "short_name": "Web-SyncPlay",
     "icons": [
         {
             "src": "/android-chrome-192x192.png",
             "sizes": "192x192",
             "type": "image/png"
-        },
-        {
-            "src": "/android-chrome-512x512.png",
-            "sizes": "512x512",
-            "type": "image/png"
         }
     ],
-    "theme_color": "#1f1f1f",
-    "background_color": "#1f1f1f"
+    "theme_color": "#28a745",
+    "background_color": "#28a745"
 }

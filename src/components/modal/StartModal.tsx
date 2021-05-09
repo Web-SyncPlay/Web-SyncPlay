@@ -50,12 +50,15 @@ class StartModal extends React.Component<StartModelProps, StartModalState> {
         return (
             <ModalDialog>
                 <Helmet>
-                    <title>Studi-Watch</title>
+                    <title>Web-SyncPlay</title>
                     <link rel="canonical" href="/"/>
                 </Helmet>
                 <ModalHeader>
-                    <h4 className={"mb-0"}>
-                        Studi-Watch
+                    <h4 className={"mb-0"}
+                        style={{
+                            fontFamily: "Zen Dots"
+                        }}>
+                        Web-SyncPlay
                     </h4>
                 </ModalHeader>
                 <ModalBody>

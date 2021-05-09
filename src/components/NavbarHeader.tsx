@@ -32,7 +32,12 @@ class NavbarHeader extends React.Component<NavbarHeaderProps, NavbarHeaderState>
             <>
                 <Navbar collapseOnSelect expand={"md"} variant="dark" className={"mb-1"}>
                     <Link to={"/"} className={"navbar-brand"}>
-                        Studi-Watch
+                        <img alt={"Logo of Web-SyncPlay"}
+                             src={"/logo_white.png"}
+                             style={{
+                                 height: "2em",
+                                 width: "2em"
+                             }}/>
                     </Link>
                     <Navbar.Toggle className={"ml-auto"} aria-controls="responsive-navbar-nav"/>
                     <Navbar.Collapse id="responsive-navbar-nav">

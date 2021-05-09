@@ -3,10 +3,10 @@
 [![CodeFactor](https://www.codefactor.io/repository/github/yasamato/studi-watch/badge)](https://www.codefactor.io/repository/github/yasamato/studi-watch)
 [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/yasamato/studi-watch/latest?logo=docker)](https://hub.docker.com/r/yasamato/studi-watch)
 
-# Studi-Watch
+# Web-SyncPlay
 
-Watch videos, listen to music or tune in for a live stream and all that with your friends. Studi-Watch is a software
-that let's you synchronise your playback with all your friends with a clean modern Web-UI written
+Watch videos, listen to music or tune in for a live stream and all that with your friends. Web-SyncPlay is a software
+that lets you synchronise your playback with all your friends with a clean modern Web-UI written
 in [React](https://reactjs.org/), designed using [Bootstrap 4](https://getbootstrap.com/) and build on top
 of [react-player](https://github.com/cookpete/react-player).
 
@@ -52,7 +52,7 @@ To run this software on your own hardware, you will need to have [Docker](https:
 container engine installed and simply run:
 
 ```bash
-docker run -d -p 8081:8081 yasamato/studi-watch
+docker run -d -p 8081:8081 websyncplay/websyncplay
 ```
 
 Now open your browser and visit http://localhost:8081 or however you address the server. It is ***strongly***

@@ -3,7 +3,7 @@
 }
 
 .navbar-brand {
-    font-family: 'Zen Dots', cursive;
+    padding: 0;
 }
 
 .navbar .form-inline .input-group {

@@ -29,8 +29,8 @@ HEALTHCHECK CMD curl --fail http://localhost:8081 || exit 1
 
 LABEL org.opencontainers.image.url="https://watch.agent77326.de" \
       org.opencontainers.image.description="Watch media together" \
-      org.opencontainers.image.title="Studi-Watch" \
-      maintainer="Leo Jung"
+      org.opencontainers.image.title="Web-SyncPlay" \
+      maintainer="Yasamato <https://github.com/Yasamato>"
 
 COPY --from=react-build /app/build /app/public
 COPY index.js /app
