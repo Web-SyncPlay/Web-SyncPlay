@@ -27,8 +27,8 @@ ENV IS_DOCKER "true"
 EXPOSE 8081
 HEALTHCHECK CMD curl --fail http://localhost:8081 || exit 1
 
-LABEL org.opencontainers.image.url="https://watch.agent77326.de" \
-      org.opencontainers.image.description="Watch media together" \
+LABEL org.opencontainers.image.url="https://web-syncplay.de" \
+      org.opencontainers.image.description="Watch media in sync" \
       org.opencontainers.image.title="Web-SyncPlay" \
       maintainer="Yasamato <https://github.com/Yasamato>"
 

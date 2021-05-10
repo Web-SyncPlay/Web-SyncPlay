@@ -7,7 +7,7 @@ const Footer = () => {
     return (
         <footer className={"mt-auto p-2"}>
             <Container>
-                Copyright (c) <a href={"https://github.com/Yasamato"}>
+                Made by <a href={"https://github.com/Yasamato"}>
                 Yasamato
             </a> 2021, Images by <a href="https://icons8.com/">Icons8</a>
                 <span className={"float-right"}>
