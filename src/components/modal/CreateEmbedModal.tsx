@@ -2,7 +2,7 @@ import React, {ChangeEvent} from "react";
 import {Button, Col, Form, InputGroup, Modal, OverlayTrigger, Popover, Row} from "react-bootstrap";
 import {ImEmbed2, IoMdCopy} from "react-icons/all";
 import ReactPlayer from "react-player";
-import {getUrl, PlayURL} from "../queue/QueueItem";
+import {getUrl, PlayURL} from "../queue/QueueItemView";
 
 interface CreateEmbedModalProps {
     roomId: string,

@@ -1,6 +1,6 @@
 import React from "react";
 import {Col, Form, Media, Overlay, Popover, Row} from "react-bootstrap";
-import {UserData} from "./Room";
+import {UserData} from "./RoomView";
 import "./User.css";
 import {FaCrown, FaVolumeMute, GiTvRemote, ImEmbed2, IoGameController, IoPause, IoPlay} from "react-icons/all";
 
@@ -20,7 +20,7 @@ interface UserState {
     target: HTMLDivElement | null
 }
 
-class User extends React.Component<UserProps, UserState> {
+class UserView extends React.Component<UserProps, UserState> {
     popoverRef: React.RefObject<HTMLDivElement>;
 
     constructor(props: UserProps) {
@@ -62,8 +62,8 @@ class User extends React.Component<UserProps, UserState> {
     }
 
     timeProgress(): string {
-        return User.secondsToTime(this.props.user.played * this.props.duration) + " / " +
-            User.secondsToTime(this.props.duration);
+        return UserView.secondsToTime(this.props.user.played * this.props.duration) + " / " +
+            UserView.secondsToTime(this.props.duration);
     }
 
     renderChangeIcon() {
@@ -92,7 +92,7 @@ class User extends React.Component<UserProps, UserState> {
                                         width={48}
                                         height={48}
                                         src={ENDPOINT + icon}
-                                        alt={"User icon"}
+                                        alt={"UserView icon"}
                                     />
                                 </Col>
                             )}
@@ -128,7 +128,7 @@ class User extends React.Component<UserProps, UserState> {
                                     width={48}
                                     height={48}
                                     src={this.props.user.icon}
-                                    alt={"User icon"}/>
+                                    alt={"UserView icon"}/>
                             </div>
                             <Media.Body>
                                 {you ?
@@ -227,4 +227,4 @@ class User extends React.Component<UserProps, UserState> {
 
 }
 
-export default User;
+export default UserView;

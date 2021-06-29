@@ -1,4 +1,4 @@
 # https://www.robotstxt.org/robotstxt.html
-User-agent: *
+UserView-agent: *
 Disallow: /room/
 Disallow: /embed/

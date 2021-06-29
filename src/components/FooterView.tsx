@@ -3,7 +3,7 @@ import {Container} from "react-bootstrap";
 import "./Footer.css";
 import {FaGithub} from "react-icons/all";
 
-const Footer = () => {
+const FooterView = () => {
     return (
         <footer className={"mt-auto p-2"}>
             <Container>
@@ -25,4 +25,4 @@ const Footer = () => {
     );
 };
 
-export default Footer;
+export default FooterView;

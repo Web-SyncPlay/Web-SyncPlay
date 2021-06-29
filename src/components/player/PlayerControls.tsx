@@ -17,10 +17,10 @@ import {
 } from "react-icons/all";
 import VolumeControl from "./VolumeControl";
 import ControlButton from "./ControlButton";
-import User from "../User";
+import UserView from "../UserView";
 import PlaybackRate from "./PlaybackRate";
 import ReactPlayer from "react-player";
-import {getUrl, PlayURL} from "../queue/QueueItem";
+import {getUrl, PlayURL} from "../queue/QueueItemView";
 import InteractionHandler from "./InteractionHandler";
 import Slider from "./Slider";
 
@@ -256,9 +256,9 @@ class PlayerControls extends React.Component<PlayerControlsProps, PlayerControls
                                             }
                                             this.showControlsAction(touch);
                                         }}>
-                                        {(this.state.showTimePlayed ? User.secondsToTime(this.props.played * this.props.duration) :
-                                            "-" + User.secondsToTime((1 - this.props.played) * this.props.duration)) + " / " +
-                                        User.secondsToTime(this.props.duration)}
+                                        {(this.state.showTimePlayed ? UserView.secondsToTime(this.props.played * this.props.duration) :
+                                            "-" + UserView.secondsToTime((1 - this.props.played) * this.props.duration)) + " / " +
+                                        UserView.secondsToTime(this.props.duration)}
                                     </ControlButton>
                                     {!this.props.isEmbed ?
                                         <>

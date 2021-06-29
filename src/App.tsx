@@ -2,8 +2,8 @@ import React from "react";
 import "./App.css";
 import NavbarHeader from "./components/NavbarHeader";
 import StartModal from "./components/modal/StartModal";
-import Room from "./components/Room";
-import Footer from "./components/Footer";
+import RoomView from "./components/RoomView";
+import FooterView from "./components/FooterView";
 import {Redirect, Route, Switch, useHistory, useLocation} from "react-router-dom";
 import * as H from "history";
 import PlayerEmbed from "./embed/PlayerEmbed";
@@ -21,7 +21,7 @@ interface AppState {
 
 class App extends React.Component<AppProps> {
     state: AppState;
-    roomRef: React.RefObject<Room>;
+    roomRef: React.RefObject<RoomView>;
 
     constructor(props: AppProps) {
         super(props);
@@ -33,7 +33,7 @@ class App extends React.Component<AppProps> {
                 .replace("/embed/controller/", "")
         };
 
-        this.roomRef = React.createRef<Room>();
+        this.roomRef = React.createRef<RoomView>();
     }
 
     joinRoom(id: string) {
@@ -71,13 +71,13 @@ class App extends React.Component<AppProps> {
                                 <StartModal join={this.joinRoom.bind(this)}/>
                             </Route>
                             <Route exact path={"/room/:roomId"}>
-                                <Room ref={this.roomRef} roomId={this.state.roomId}/>
+                                <RoomView ref={this.roomRef} roomId={this.state.roomId}/>
                             </Route>
                             <Route>
                                 <Redirect to={"/"}/>
                             </Route>
                         </Switch>
-                        <Footer/>
+                        <FooterView/>
                     </Route>
                 </Switch>
             </div>

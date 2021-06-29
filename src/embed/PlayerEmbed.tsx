@@ -2,7 +2,7 @@ import React from "react";
 import socketIOClient, {Socket} from "socket.io-client";
 import Player from "../components/player/Player";
 import {Spinner} from "react-bootstrap";
-import {PlayURL} from "../components/queue/QueueItem";
+import {PlayURL} from "../components/queue/QueueItemView";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 

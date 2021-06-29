@@ -3,11 +3,11 @@ import socketIOClient, {Socket} from "socket.io-client";
 import {Col, Container, Row, Spinner} from "react-bootstrap";
 import ReactPlayer from "react-player";
 import {Helmet} from "react-helmet";
-import User from "./User";
+import UserView from "./UserView";
 import Chat from "./chat/Chat";
 import Player from "./player/Player";
-import Queue from "./queue/Queue";
-import {getUrl, PlayURL} from "./queue/QueueItem";
+import QueueView from "./queue/QueueView";
+import {getUrl, PlayURL} from "./queue/QueueItemView";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://192.168.178.57:8081";
 
@@ -46,7 +46,7 @@ export interface ChatData {
     message: string
 }
 
-class Room extends React.Component<RoomProps, RoomState> {
+class RoomView extends React.Component<RoomProps, RoomState> {
     socket: Socket | null;
     initialStatusReceived: boolean;
 
@@ -224,22 +224,22 @@ class Room extends React.Component<RoomProps, RoomState> {
                         </Col>
                     </Row>
                 </div>
-                <Queue isEmbed={false}
-                       queue={this.state.queue}
-                       queueIndex={this.state.queueIndex}
-                       roomId={this.state.id}
-                       updateState={this.updateState.bind(this)}
-                       url={this.state.url}/>
+                <QueueView isEmbed={false}
+                           queue={this.state.queue}
+                           queueIndex={this.state.queueIndex}
+                           roomId={this.state.id}
+                           updateState={this.updateState.bind(this)}
+                           url={this.state.url}/>
                 <div className={"px-2"}>
                     <Row className={"user-list"}>
                         {this.state.users.map((user) => {
                                 return (
-                                    <User key={user.id}
-                                          user={user}
-                                          duration={this.state.duration}
-                                          owner={this.state.owner}
-                                          you={this.socket?.id || ""}
-                                          update={this.updateUser.bind(this)}/>
+                                    <UserView key={user.id}
+                                              user={user}
+                                              duration={this.state.duration}
+                                              owner={this.state.owner}
+                                              you={this.socket?.id || ""}
+                                              update={this.updateUser.bind(this)}/>
                                 );
                             }
                         )}
@@ -250,4 +250,4 @@ class Room extends React.Component<RoomProps, RoomState> {
     }
 }
 
-export default Room;
+export default RoomView;

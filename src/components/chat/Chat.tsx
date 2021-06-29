@@ -1,5 +1,5 @@
 import React from "react";
-import {ChatData} from "../Room";
+import {ChatData} from "../RoomView";
 import "./Chat.css";
 import {Alert, Button, Form, InputGroup, Media, OverlayTrigger, Tooltip} from "react-bootstrap";
 import ReactPlayer from "react-player";
@@ -95,7 +95,7 @@ class Chat extends React.Component<ChatProps, ChatState> {
                                                 width={24}
                                                 height={24}
                                                 src={h.user.icon}
-                                                alt={"User icon"}
+                                                alt={"UserView icon"}
                                             />
                                         </div>
                                         <Media.Body className={"d-flex"}>

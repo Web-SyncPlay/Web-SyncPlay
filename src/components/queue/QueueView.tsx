@@ -2,7 +2,7 @@ import React from "react";
 import "./Queue.css";
 import {BiAddToQueue, GiTvRemote, ImEmbed2, RiDeleteBinLine} from "react-icons/all";
 import AddItemModal from "../modal/AddItemModal";
-import QueueItem, {getUrl, PlayURL} from "./QueueItem";
+import QueueItemView, {getUrl, PlayURL} from "./QueueItemView";
 import {Accordion, Row} from "react-bootstrap";
 import ConfirmClearModal from "../modal/ConfirmClearModal";
 import QueueExpandToggle from "./QueueExpandToggle";
@@ -24,7 +24,7 @@ interface QueueState {
     showCreateEmbedModal: boolean
 }
 
-class Queue extends React.Component<QueueProps, QueueState> {
+class QueueView extends React.Component<QueueProps, QueueState> {
     constructor(props: QueueProps) {
         super(props);
 
@@ -180,7 +180,7 @@ class Queue extends React.Component<QueueProps, QueueState> {
                     <Row className={"queue-items-list p-1"}
                          id={"queue-collapse"}>
                         {this.props.queue.map((q: string | PlayURL, index: number) =>
-                            <QueueItem
+                            <QueueItemView
                                 key={getUrl(q) + index}
                                 index={index}
                                 queueIndex={this.props.queueIndex}
@@ -212,4 +212,4 @@ class Queue extends React.Component<QueueProps, QueueState> {
 
 }
 
-export default Queue;
+export default QueueView;

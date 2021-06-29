@@ -1,8 +1,8 @@
 import React from "react";
-import {getUrl, PlayURL} from "../components/queue/QueueItem";
+import {getUrl, PlayURL} from "../components/queue/QueueItemView";
 import socketIOClient, {Socket} from "socket.io-client";
 import InputURL from "../components/InputURL";
-import Queue from "../components/queue/Queue";
+import QueueView from "../components/queue/QueueView";
 import ReactPlayer from "react-player";
 import "./ControllerEmbed.css";
 import InviteModal from "../components/modal/InviteModal";
@@ -225,12 +225,12 @@ class ControllerEmbed extends React.Component<ControlEmbedProps, ControlEmbedSta
                         </ControlButtonOverlay>
                     </div>
                 </div>
-                <Queue isEmbed={true}
-                       queue={this.state.queue}
-                       queueIndex={this.state.queueIndex}
-                       roomId={this.state.id}
-                       updateState={this.updateState.bind(this)}
-                       url={this.state.url}/>
+                <QueueView isEmbed={true}
+                           queue={this.state.queue}
+                           queueIndex={this.state.queueIndex}
+                           roomId={this.state.id}
+                           updateState={this.updateState.bind(this)}
+                           url={this.state.url}/>
                 <InviteModal roomId={this.props.roomId}
                              show={this.state.inviteModalOpen}
                              closeModal={() => this.setState({inviteModalOpen: false})}/>

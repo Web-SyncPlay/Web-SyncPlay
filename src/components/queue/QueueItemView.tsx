@@ -36,7 +36,7 @@ interface QueueItemProps {
     swapQueueItems: (oldIndex: number, newIndex: number) => void
 }
 
-class QueueItem extends React.Component<QueueItemProps> {
+class QueueItemView extends React.Component<QueueItemProps> {
     urlInputRef: HTMLInputElement | null;
 
     constructor(props: QueueItemProps) {
@@ -143,4 +143,4 @@ class QueueItem extends React.Component<QueueItemProps> {
     }
 }
 
-export default QueueItem;
+export default QueueItemView;

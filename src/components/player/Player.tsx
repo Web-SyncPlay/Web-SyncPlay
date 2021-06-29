@@ -3,7 +3,7 @@ import ReactPlayer from "react-player";
 import {Socket} from "socket.io-client";
 import "./Player.css";
 import PlayerControls from "./PlayerControls";
-import {getUrl, PlayURL} from "../queue/QueueItem";
+import {getUrl, PlayURL} from "../queue/QueueItemView";
 
 interface PlayerProps {
     controlsHidden: boolean,

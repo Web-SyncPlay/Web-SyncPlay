@@ -126,7 +126,7 @@ io.on("connection", (socket) => {
             icon
         });
     }
-    log("User " + socket.id + " joined" + (embed ? ", is embed" : "") + (controller ? ", is controller" : ""));
+    log("UserView " + socket.id + " joined" + (embed ? ", is embed" : "") + (controller ? ", is controller" : ""));
 
     // update room/user data
     const emitStatus = () => {
@@ -176,7 +176,7 @@ io.on("connection", (socket) => {
     };
 
     socket.on("disconnect", () => {
-        log("User " + socket.id + " disconnected");
+        log("UserView " + socket.id + " disconnected");
 
         let tmp = getRoom();
         if (tmp.users.length > 1) {
