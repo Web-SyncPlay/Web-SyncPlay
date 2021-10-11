@@ -155,28 +155,6 @@ class Player extends React.Component<PlayerProps, PlayerState> {
         return (
             <div className={"player"}
                  ref={(node) => this.fullscreenNode = node || undefined}>
-                {this.props.showRootPlayer ? <></> :
-                    <PlayerControls
-                        controlsHidden={this.props.controlsHidden}
-                        duration={this.state.duration}
-                        endInteract={() => this.interaction = false}
-                        fullscreen={this.state.fullscreen}
-                        fullscreenNode={this.fullscreenNode}
-                        isEmbed={this.props.isEmbed}
-                        muted={this.state.muted}
-                        playbackRate={this.state.playbackRate}
-                        played={this.state.played}
-                        player={this.player}
-                        playFromQueue={this.props.playFromQueue}
-                        playing={this.props.playing}
-                        queue={this.props.queue}
-                        queueIndex={this.props.queueIndex}
-                        roomId={this.props.id}
-                        startInteract={() => this.interaction = true}
-                        updateState={this.updateState.bind(this)}
-                        url={this.props.url}
-                        volume={this.state.volume}/>
-                }
                 <ReactPlayer
                     style={{
                         backgroundColor: "#000000",
@@ -235,6 +213,28 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                     }}
                     onDuration={(duration) => this.updateState({duration})}
                 />
+                {this.props.showRootPlayer ? <></> :
+                    <PlayerControls
+                        controlsHidden={this.props.controlsHidden}
+                        duration={this.state.duration}
+                        endInteract={() => this.interaction = false}
+                        fullscreen={this.state.fullscreen}
+                        fullscreenNode={this.fullscreenNode}
+                        isEmbed={this.props.isEmbed}
+                        muted={this.state.muted}
+                        playbackRate={this.state.playbackRate}
+                        played={this.state.played}
+                        player={this.player}
+                        playFromQueue={this.props.playFromQueue}
+                        playing={this.props.playing}
+                        queue={this.props.queue}
+                        queueIndex={this.props.queueIndex}
+                        roomId={this.props.id}
+                        startInteract={() => this.interaction = true}
+                        updateState={this.updateState.bind(this)}
+                        url={this.props.url}
+                        volume={this.state.volume}/>
+                }
             </div>
         );
     }
