@@ -97,7 +97,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
     unloadCaptionsYT() {
         const player = this.player.current?.getInternalPlayer();
         console.log("Internal player:", player);
-        if (player && player.unloadModule) {
+        if (typeof player !== "undefined" && player.unloadModule) {
             console.log("Unloading cc of youtube player");
             player.unloadModule("cc");  // Works for AS3 ignored by html5
             player.unloadModule("captions");  // Works for html5 ignored by AS3
@@ -122,7 +122,7 @@ class Player extends React.Component<PlayerProps, PlayerState> {
                 console.log("Not seeking, interaction has happened");
             } else {
                 if (this.player) {
-                    if (this.player.current) {
+                    if (this.player.current !== null) {
                         this.player.current.seekTo(this.props.played * prevState.duration, "seconds");
                     }
                 }
