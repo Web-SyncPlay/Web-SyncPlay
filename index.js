@@ -235,8 +235,9 @@ app.get("/", (req, res) => {
 });
 app.get("/*", (req, res) => {
     // sends file if it exists in /public
-    if (fs.existsSync("public" + req.url) && fs.lstatSync("public" + req.url).isFile()) {
-        res.sendFile("public" + req.url, {root: ROOT});
+    const url = encodeURIComponent(req.url)
+    if (fs.existsSync("public" + url) && fs.lstatSync("public" + url).isFile()) {
+        res.sendFile("public" + url, {root: ROOT});
     } else {
         res.sendFile("public/index.html", {root: ROOT});
     }
