@@ -134,7 +134,7 @@ class QueueItemView extends React.Component<QueueItemProps> {
                             }
                         </div>
                     </div>
-                    <a href={getUrl(this.props.queue[this.props.index])} target={"_blank"}>
+                    <a href={getUrl(this.props.queue[this.props.index])} target={"_blank"} rel={"noreferrer"}>
                         {this.props.queue[this.props.index]}
                     </a>
                 </div>

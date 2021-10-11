@@ -117,7 +117,7 @@ class ControllerEmbed extends React.Component<ControlEmbedProps, ControlEmbedSta
                             Currently playing:
                             <a className={"ml-1"}
                                href={getUrl(this.state.url)}
-                               target={"_blank"}>
+                               target={"_blank"} rel={"noreferrer"}>
                                 {getUrl(this.state.url)}
                             </a>
                         </div>

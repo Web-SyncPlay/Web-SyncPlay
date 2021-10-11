@@ -100,7 +100,7 @@ class Chat extends React.Component<ChatProps, ChatState> {
                                         </div>
                                         <Media.Body className={"d-flex"}>
                                         <span>
-                                            {canPlay ? <a href={h.message} target={"_blank"}>
+                                            {canPlay ? <a href={h.message} target={"_blank"} rel={"noreferrer"}>
                                                 {h.message}
                                             </a> : h.message}
                                         </span>

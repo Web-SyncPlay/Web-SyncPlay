@@ -11,7 +11,7 @@ const FooterView = () => {
                 Yasamato
             </a> 2021, Images by <a href="https://icons8.com/">Icons8</a>
                 <span className={"float-right"}>
-                    <a href="https://github.com/Web-SyncPlay/Web-SyncPlay" target="_blank" rel="noopener">
+                    <a href="https://github.com/Web-SyncPlay/Web-SyncPlay" target="_blank" rel={"noreferrer"}>
                         <span className={"icon"}>
                             <FaGithub/>
                         </span>
