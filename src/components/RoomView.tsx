@@ -1,13 +1,13 @@
 import React from "react";
 import socketIOClient, {Socket} from "socket.io-client";
 import {Col, Container, Row, Spinner} from "react-bootstrap";
-import ReactPlayer from "react-player";
 import {Helmet} from "react-helmet";
 import UserView from "./UserView";
 import Chat from "./chat/Chat";
 import Player from "./player/Player";
 import QueueView from "./queue/QueueView";
 import {getUrl, PlayURL} from "./queue/QueueItemView";
+import {canPlay} from "../utils";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://192.168.178.57:8081";
 
@@ -127,13 +127,13 @@ class RoomView extends React.Component<RoomProps, RoomState> {
     }
 
     play(url: string | PlayURL) {
-        if (ReactPlayer.canPlay(getUrl(url))) {
+        if (canPlay(getUrl(url))) {
             this.updateState({
                 queueIndex: -1
             });
             this.load(url);
         } else {
-            this.sendChat("unable to play" + url);
+            this.sendChat("unable to play:\n" + url);
             console.error("unable to play", url);
         }
     }

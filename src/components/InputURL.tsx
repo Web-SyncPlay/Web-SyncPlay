@@ -1,6 +1,6 @@
 import React from "react";
 import {Button, Form, FormControl, InputGroup} from "react-bootstrap";
-import ReactPlayer from "react-player";
+import {canPlay} from "../utils";
 
 interface InputURLProps {
     children: JSX.Element | JSX.Element[] | string,
@@ -68,7 +68,7 @@ class InputURL extends React.Component<InputURLProps, InputURLState> {
                                          } else {
                                              this.setState({
                                                  url: e.target.value,
-                                                 valid: ReactPlayer.canPlay(e.target.value),
+                                                 valid: canPlay(e.target.value),
                                                  validated: true
                                              });
                                          }

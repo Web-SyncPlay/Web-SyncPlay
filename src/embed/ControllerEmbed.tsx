@@ -3,7 +3,6 @@ import {getUrl, PlayURL} from "../components/queue/QueueItemView";
 import socketIOClient, {Socket} from "socket.io-client";
 import InputURL from "../components/InputURL";
 import QueueView from "../components/queue/QueueView";
-import ReactPlayer from "react-player";
 import "./ControllerEmbed.css";
 import InviteModal from "../components/modal/InviteModal";
 import {Button} from "react-bootstrap";
@@ -18,6 +17,7 @@ import {
     MdReplay
 } from "react-icons/all";
 import ControlButtonOverlay from "../components/player/ControlButtonOverlay";
+import {canPlay} from "../utils";
 
 const ENDPOINT = process.env.REACT_APP_DOCKER ? "" : "http://localhost:8081";
 
@@ -94,7 +94,7 @@ class ControllerEmbed extends React.Component<ControlEmbedProps, ControlEmbedSta
     }
 
     changeToURL(url: string | PlayURL) {
-        if (ReactPlayer.canPlay(getUrl(url))) {
+        if (canPlay(getUrl(url))) {
             this.updateState({
                 interaction: true,
                 played: 0,

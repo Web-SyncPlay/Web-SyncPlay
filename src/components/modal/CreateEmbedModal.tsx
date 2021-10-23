@@ -1,8 +1,8 @@
 import React, {ChangeEvent} from "react";
 import {Button, Col, Form, InputGroup, Modal, OverlayTrigger, Popover, Row} from "react-bootstrap";
 import {ImEmbed2, IoMdCopy} from "react-icons/all";
-import ReactPlayer from "react-player";
 import {getUrl, PlayURL} from "../queue/QueueItemView";
+import {canPlay} from "../../utils";
 
 interface CreateEmbedModalProps {
     roomId: string,
@@ -236,7 +236,7 @@ class CreateEmbedModal extends React.Component<CreateEmbedModalProps, CreateEmbe
                                                 } else {
                                                     this.updateState({
                                                         url: e.target.value,
-                                                        valid: ReactPlayer.canPlay(e.target.value),
+                                                        valid: canPlay(e.target.value),
                                                         validated: true
                                                     });
                                                 }

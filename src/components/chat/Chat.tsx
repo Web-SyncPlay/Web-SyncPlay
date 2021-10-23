@@ -2,9 +2,9 @@ import React from "react";
 import {ChatData} from "../RoomView";
 import "./Chat.css";
 import {Alert, Button, Form, InputGroup, Media, OverlayTrigger, Tooltip} from "react-bootstrap";
-import ReactPlayer from "react-player";
 import {BiAddToQueue, FiHelpCircle, FiSend, IoPlay, IoPlaySkipForwardSharp} from "react-icons/all";
 import ControlButtonOverlay from "../player/ControlButtonOverlay";
+import {canPlay} from "../../utils";
 
 
 interface ChatProps {
@@ -79,7 +79,7 @@ class Chat extends React.Component<ChatProps, ChatState> {
                     <div className={"d-flex"}>
                         {this.props.history.map((h) => {
                             const you = this.props.you === h.user.id;
-                            const canPlay = ReactPlayer.canPlay(h.message);
+                            const playable = canPlay(h.message);
                             return (
                                 <div key={h.time + h.message}
                                      className={"rounded mx-2 mb-2 px-2 pb-2 m" + (you ? "l-5" : "r-5")}
@@ -100,13 +100,13 @@ class Chat extends React.Component<ChatProps, ChatState> {
                                         </div>
                                         <Media.Body className={"d-flex"}>
                                         <span>
-                                            {canPlay ? <a href={h.message} target={"_blank"} rel={"noreferrer"}>
+                                            {playable ? <a href={h.message} target={"_blank"} rel={"noreferrer"}>
                                                 {h.message}
                                             </a> : h.message}
                                         </span>
                                         </Media.Body>
                                     </Media>
-                                    {canPlay ?
+                                    {playable ?
                                         <>
                                             <ControlButtonOverlay
                                                 id={"tooltip-chat-" + h.time + "-play"}
