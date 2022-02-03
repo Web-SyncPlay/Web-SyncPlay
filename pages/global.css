@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --primary: #2CA73C;
+    --accent: #4D7EA8;
+    --dark-700: #313131;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    color: white;
+    @apply stroke-white fill-white bg-dark-1000;
+}
+
+.action {
+    @apply outline-none;
+    @apply hover:bg-dark-700 hover:drop-shadow-lg;
+    @apply active:bg-dark-600;
+}
+
+.action > * {
+    @apply outline-none;
+}
+
+.action:hover > * {
+    @apply bg-dark-700;
+}
+
+.action:active > * {
+    @apply bg-dark-600;
+}
+
+.hide-below-sm {
+    @apply hidden sm:inline-block;
+}

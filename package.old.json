@@ -1,9 +1,9 @@
 {
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next run",
+    "dev": "nodemon",
+    "build": "next build && tsc --project tsconfig.server.json",
+    "start": "cross-env NODE_ENV=production node dist/server/index.js",
     "lint": "next lint"
   },
   "dependencies": {
@@ -16,7 +16,6 @@
     "react-player": "^2.9.0",
     "react-tooltip": "^4.2.21",
     "redis": "^4.0.3",
-    "sharp": "^0.30.0",
     "socket.io": "^4.4.1",
     "socket.io-client": "^4.4.1",
     "swr": "^1.2.1",

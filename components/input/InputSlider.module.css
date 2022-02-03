@@ -1,0 +1,99 @@
+.slider {
+    min-height: 15px;
+}
+
+/* input range slider */
+.slider input[type="range"] {
+    --value: 0%;
+    --lower: var(--primary);
+    --upper: rgba(255, 255, 255, 0.5);
+    --size: 5px;
+    --active-size: 8px;
+    --thumb-size: 7px;
+    --thumb-active-size: 10px;
+    --thumb-color: #fff;
+
+    cursor: pointer;
+    background: linear-gradient(to right, var(--lower) 0%, var(--lower) var(--value), var(--upper) var(--value), var(--upper) 100%);
+    border-radius: var(--size);
+    height: var(--size);
+    width: 100%;
+    outline: none;
+    touch-action: manipulation;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    transition: height ease-in-out 0.1s;
+}
+.slider input[type="range"]:hover,
+.slider input[type="range"]:active {
+    height: var(--active-size);
+}
+
+/* thumb */
+/* strangely I have to separate them, otherwise non of them recognizes the rule */
+.slider input[type="range"]::-moz-range-thumb {
+    width: var(--thumb-size);
+    height: var(--thumb-size);
+    background-color: var(--thumb-color);
+    border-radius: 100%;
+    cursor: pointer;
+    transition: width ease-in-out 0.1s, height ease-in-out 0.1s;
+}
+.slider input[type="range"]:hover::-moz-range-thumb,
+.slider input[type="range"]:active::-moz-range-thumb {
+    width: var(--thumb-active-size);
+    height: var(--thumb-active-size);
+}
+
+.slider input[type="range"]::-webkit-slider-thumb {
+    width: var(--thumb-size);
+    height: var(--thumb-size);
+    background-color: var(--thumb-color);
+    border-radius: 100%;
+    cursor: pointer;
+    -webkit-appearance: none;
+    transition: width ease-in-out 0.1s, height ease-in-out 0.1s;
+}
+.slider input[type="range"]:hover::-webkit-slider-thumb,
+.slider input[type="range"]:active::-webkit-slider-thumb {
+    width: var(--thumb-active-size);
+    height: var(--thumb-active-size);
+}
+
+.slider input[type="range"]::-ms-thumb {
+    width: var(--thumb-size);
+    height: var(--thumb-size);
+    background-color: var(--thumb-color);
+    border-radius: 100%;
+    cursor: pointer;
+    transition: width ease-in-out 0.1s, height ease-in-out 0.1s;
+}
+.slider input[type="range"]:hover::-ms-thumb,
+.slider input[type="range"]:active::-ms-thumb {
+    width: var(--thumb-active-size);
+    height: var(--thumb-active-size);
+}
+
+/* edge */
+.slider input[type=range]::-ms-track {
+    background: transparent;
+    border-color: transparent;
+    border-width: var(--size) 0;
+    color: transparent;
+    width: 100%;
+    height: var(--size);
+    cursor: pointer;
+    transition: width ease-in-out 0.1s, height ease-in-out 0.1s;
+}
+
+.slider input[type=range]::-ms-fill-lower,
+.slider input[type=range]:focus::-ms-fill-lower {
+    background: var(--lower);
+    border-radius: var(--size);
+}
+
+.slider input[type=range]::-ms-fill-upper,
+.slider input[type=range]:focus::-ms-fill-upper {
+    background: var(--upper);
+    border-radius: var(--size);
+}

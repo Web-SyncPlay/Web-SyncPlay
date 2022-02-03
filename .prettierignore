@@ -1,17 +1,19 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-node_modules/
-/.pnp
-.pnp.js
+/node_modules
+/.next
 
 # testing
+/db
 /coverage
 
 # production
-/.next
 /build
-/.dist
+public/sw.js
+public/workbox-*.js
+public/fallback-*.js
+public/*.map
 
 # misc
 .DS_Store
@@ -24,5 +26,20 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-.idea
-.iml
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+.vscode/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+next-env.d.ts
