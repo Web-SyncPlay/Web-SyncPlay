@@ -37,6 +37,7 @@ export const secondsToTime = (s: number): string => {
  * Time in s which is considered in sync
  */
 export const SYNC_DELTA = 3
+export const SYNC_PAUSED_DELTA = 0.2
 
 export const isSync = (
   playerTime: number,
@@ -49,7 +50,7 @@ export const isSync = (
     Math.abs(
       getTargetTime(targetProgress, lastSync, paused, playbackRate) - playerTime
     ) * playbackRate
-  return d < SYNC_DELTA
+  return d < (paused ? SYNC_PAUSED_DELTA : SYNC_DELTA)
 }
 
 export const getTargetTime = (
@@ -92,4 +93,16 @@ export const getRandomName = (words = 2) => {
     length: words,
     style: "capital",
   }).replace("_", " ")
+}
+
+export const isUrl = (url: string) => {
+  // hell of a regex from @diegoperini, taken from https://mathiasbynens.be/demo/url-regex, note e.g. \x{ffff} is converted to \uffff
+  return !!url.match(
+    /^https?:\/\/(?:\S+(?::\S*)?@)?(?:(?!10(?:\.\d{1,3}){3})(?!127(?:\.\d{1,3}){3})(?!169\.254(?:\.\d{1,3}){2})(?!192\.168(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4])|(?:[a-z\u00a1-\uffff0-9]+-?)*[a-z\u00a1-\uffff0-9]+(?:\.(?:[a-z\u00a1-\uffff0-9]+-?)*[a-z\u00a1-\uffff0-9]+)*\.[a-z\u00a1-\uffff]{2,})(?::\d{2,5})?(?:\/[^\s]*)?$/
+  )
+}
+
+export const getDomain = (url: string) => {
+  const matches = url.match(/^(?:https?:)?(?:\/\/)?([^\/\?]+)/)
+  return ((matches && matches[1]) || url).replace(/^www\./, "")
 }

@@ -9,6 +9,7 @@ export interface MediaOption {
 }
 
 export interface MediaElement {
+  title?: string
   sub: Subtitle[]
   src: MediaOption[]
 }

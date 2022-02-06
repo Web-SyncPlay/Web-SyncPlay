@@ -12,6 +12,7 @@ import {
 } from "../../lib/cache"
 import { createNewRoom, createNewUser, updateLastSync } from "../../lib/room"
 import { Playlist, RoomState, UserState } from "../../lib/types"
+import { isUrl } from "../../lib/utils"
 
 const ioHandler = (_: NextApiRequest, res: NextApiResponse) => {
   // @ts-ignore
@@ -266,6 +267,29 @@ const ioHandler = (_: NextApiRequest, res: NextApiResponse) => {
             return u
           })
 
+          await broadcast(room)
+        })
+
+        socket.on("playUrl", async (url) => {
+          const room = await getRoom(roomId)
+          if (room === null) {
+            throw new Error(
+              "Impossible non existing room, cannot send anything:" + roomId
+            )
+          }
+          log("playing url", url)
+
+          if (!isUrl(url)) {
+            return
+          }
+
+          room.targetState.playing = {
+            src: [{ src: url, resolution: "" }],
+            sub: [],
+          }
+          room.targetState.playlist.currentIndex = -1
+          room.targetState.progress = 0
+          room.targetState.lastSync = new Date().getTime() / 1000
           await broadcast(room)
         })
 

@@ -9,7 +9,6 @@ import io, { Socket } from "socket.io-client"
 
 export interface ServerToClientEvents {
   playlistUpdate: (playlist: Playlist) => void
-  targetUpdate: (target: PlayerState) => void
   userUpdates: (users: UserState[]) => void
   update: (room: RoomState) => void
 }
@@ -27,7 +26,7 @@ export interface ClientToServerEvents {
   setPlaybackRate: (playbackRate: number) => void
 
   seek: (progress: number) => void
-  playItem: (src: string) => void
+  playUrl: (src: string) => void
   playAgain: () => void
   playEnded: () => void
   fetch: () => void

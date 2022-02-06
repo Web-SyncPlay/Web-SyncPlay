@@ -35,7 +35,7 @@ const Player: FC<Props> = ({ socket }) => {
   // setX are the normal plain state hooks
   const [playlist, updatePlaylist] = useState<Playlist>({
     items: [],
-    currentIndex: 0,
+    currentIndex: -1,
   })
   const playlistRef = useRef(playlist)
   const _setPlaylist = (newPlaylist: Playlist) => {
@@ -143,51 +143,48 @@ const Player: FC<Props> = ({ socket }) => {
   }, [progress, targetProgress, lastSync, paused, ready, playbackRate])
 
   useEffect(() => {
-    if (socket) {
-      socket.on("connect", () => {
-        setConnected(true)
-      })
-      socket.on("disconnect", () => {
-        setConnected(false)
-      })
-      if (socket.connected) {
-        setConnected(true)
-      }
-
-      socket.on("update", (room: RoomState) => {
-        if (!readyRef.current) {
-          return console.log("Not ready yet...")
-        }
-        const update = room.targetState
-        if (
-          JSON.stringify(update.playlist) !==
-          JSON.stringify(playlistRef.current)
-        ) {
-          _setPlaylist(update.playlist)
-        }
-        if (
-          JSON.stringify(update.playing) !== JSON.stringify(playingRef.current)
-        ) {
-          _setPlaying(update.playing)
-          setCurrentSrc(update.playing.src[0])
-        }
-        if (update.paused !== pausedRef.current) {
-          _setPaused(update.paused)
-        }
-        if (update.playbackRate !== playbackRateRef.current) {
-          _setPlaybackRate(update.playbackRate)
-        }
-        if (update.loop !== loopRef.current) {
-          _setLoop(update.loop)
-        }
-        if (update.progress !== targetProgressRef.current) {
-          _setTargetProgress(update.progress)
-        }
-        if (update.lastSync !== lastSyncRef.current) {
-          _setLastSync(update.lastSync)
-        }
-      })
+    socket.on("connect", () => {
+      setConnected(true)
+    })
+    socket.on("disconnect", () => {
+      setConnected(false)
+    })
+    if (socket.connected) {
+      setConnected(true)
     }
+
+    socket.on("update", (room: RoomState) => {
+      if (!readyRef.current) {
+        return console.log("Not ready yet...")
+      }
+      const update = room.targetState
+      if (
+        JSON.stringify(update.playlist) !== JSON.stringify(playlistRef.current)
+      ) {
+        _setPlaylist(update.playlist)
+      }
+      if (
+        JSON.stringify(update.playing) !== JSON.stringify(playingRef.current)
+      ) {
+        _setPlaying(update.playing)
+        setCurrentSrc(update.playing.src[0])
+      }
+      if (update.paused !== pausedRef.current) {
+        _setPaused(update.paused)
+      }
+      if (update.playbackRate !== playbackRateRef.current) {
+        _setPlaybackRate(update.playbackRate)
+      }
+      if (update.loop !== loopRef.current) {
+        _setLoop(update.loop)
+      }
+      if (update.progress !== targetProgressRef.current) {
+        _setTargetProgress(update.progress)
+      }
+      if (update.lastSync !== lastSyncRef.current) {
+        _setLastSync(update.lastSync)
+      }
+    })
   }, [socket])
 
   useEffect(() => {
@@ -202,7 +199,7 @@ const Player: FC<Props> = ({ socket }) => {
 
   return (
     <FullScreen
-      className={"relative flex select-none"}
+      className={"relative grow flex select-none"}
       handle={fullscreenHandle}
       onChange={(state, _) => {
         if (fullscreen !== state) {

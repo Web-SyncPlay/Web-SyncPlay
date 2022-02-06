@@ -1,5 +1,6 @@
 import { FC } from "react"
 import IconClose from "../icon/IconClose"
+import classNames from "classnames"
 
 interface Props {
   value: string
@@ -20,13 +21,15 @@ const InputText: FC<Props> = ({
 }) => {
   return (
     <div
-      className={
-        "rounded flex flex-row items-center bg-dark-800 action " + className
-      }
+      className={classNames(
+        "rounded grow flex flex-row items-center bg-dark-800 action",
+        className
+      )}
     >
       {icon && <div className={"ml-1"}>{icon}</div>}
       <input
-        className={"rounded grow bg-dark-800 p-2 " + className}
+        size={1}
+        className={"grow rounded bg-dark-800 px-2 py-1.5" + className}
         placeholder={placeholder}
         value={value}
         onChange={(event) => onChange(event.target.value)}

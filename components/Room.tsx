@@ -8,7 +8,10 @@ import {
 import Button from "./action/Button"
 import { Socket } from "socket.io-client"
 import ConnectingAlert from "./alert/ConnectingAlert"
-import InputText from "./input/InputText"
+import PlaylistMenu from "./playlist/PlaylistMenu"
+import IconSync from "./icon/IconSync"
+import InputUrl from "./input/InputUrl"
+import UserList from "./user/UserList"
 
 interface Props {
   id: string
@@ -66,25 +69,41 @@ const Room: FC<Props> = ({ id }) => {
   }
 
   return (
-    <div className={"flex flex-col"}>
-      <Player socket={socket} />
-      <div className={"flex flex-row p-1"}>
-        <Button
-          tooltip={"Do a forced manual sync"}
-          className={"p-2"}
-          onClick={() => {
-            console.log("Fetching update", socket?.id)
-            socket?.emit("fetch")
-          }}
-        >
-          Force a sync
-        </Button>
-        <InputText
-          value={url}
-          placeholder={"Enter an url to a media..."}
-          onChange={setUrl}
-        />
+    <div className={"flex flex-col sm:flex-row gap-1"}>
+      <div className={"grow"}>
+        <Player socket={socket} />
+
+        <div className={"flex flex-row gap-1 p-1"}>
+          <Button
+            tooltip={"Do a forced manual sync"}
+            className={"p-2 flex flex-row gap-1 items-center"}
+            onClick={() => {
+              console.log("Fetching update", socket?.id)
+              socket?.emit("fetch")
+            }}
+          >
+            <IconSync className={"hover:animate-spin"} />
+            <div className={"hidden-below-sm"}>Manual sync</div>
+          </Button>
+          <InputUrl
+            className={"grow"}
+            url={url}
+            placeholder={"Play url now"}
+            tooltip={"Play given url now"}
+            onChange={setUrl}
+            onSubmit={() => {
+              console.log("Requesting", url, "now")
+              socket?.emit("playUrl", url)
+            }}
+          >
+            Play
+          </InputUrl>
+        </div>
+
+        <UserList socket={socket} />
       </div>
+
+      <PlaylistMenu socket={socket} />
     </div>
   )
 }

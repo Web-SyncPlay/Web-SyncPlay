@@ -19,7 +19,10 @@ const ControlButton: FC<Props> = ({
   return (
     <InteractionHandler
       tooltip={tooltip}
-      className={classNames("action cursor-pointer rounded p-2", className)}
+      className={classNames(
+        "action cursor-pointer rounded p-2 select-none",
+        className
+      )}
       onClick={(e, touch) => {
         e.preventDefault()
         e.stopPropagation()
