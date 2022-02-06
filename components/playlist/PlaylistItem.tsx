@@ -38,10 +38,10 @@ const PlaylistItem: FC<Props> = ({
   }
 
   useEffect(() => {
-    if (title !== item.title) {
-      updateTitle(title)
+    if (!edit) {
+      setTitle(item.title || "")
     }
-  }, [edit])
+  }, [edit, item.title])
 
   const itemTitle = () => {
     if (item.title && item.title !== "") {
@@ -93,7 +93,7 @@ const PlaylistItem: FC<Props> = ({
                       "ref",
                       titleRef.current
                     )
-                    setTitle(value)
+                    updateTitle(value)
                   }}
                   placeholder={"Set a title"}
                   value={titleRef.current}

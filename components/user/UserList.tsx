@@ -20,9 +20,7 @@ const UserList: FC<Props> = ({ socket }) => {
       setUsers(room.users)
     })
 
-    if (users.length === 0) {
-      socket.emit("fetch")
-    }
+    socket.emit("fetch")
   }, [socket])
 
   return <div>{users.map((user) => user.name)}</div>

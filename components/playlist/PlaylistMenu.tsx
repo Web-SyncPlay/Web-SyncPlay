@@ -139,6 +139,7 @@ const PlaylistMenu: FC<Props> = ({ socket }) => {
                 >
                   {playlist.items.map((item, index) => (
                     <PlaylistItem
+                      key={item.src[0].src + "-" + index}
                       playing={playlist.currentIndex === index}
                       item={item}
                       index={index}
