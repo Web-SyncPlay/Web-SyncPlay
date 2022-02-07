@@ -56,4 +56,4 @@ ENV PORT 8081
 # Uncomment the following line in case you want to disable telemetry.
 # ENV NEXT_TELEMETRY_DISABLED 1
 
-CMD ["sh", "-c", "redis-server --daemonize yes && node server.js"]
+CMD ["sh", "-c", "sysctl vm.overcommit_memory=1 && redis-server --daemonize yes && node server.js"]

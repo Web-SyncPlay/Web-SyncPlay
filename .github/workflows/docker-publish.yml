@@ -27,7 +27,6 @@ jobs:
           fi
 
           # Use Docker `latest` tag convention
-          [ "$VERSION" == "master" ] && VERSION=latest
           [ "$VERSION" == "main" ] && VERSION=latest
 
           TAG="${DOCKER_IMAGE}:${VERSION}"

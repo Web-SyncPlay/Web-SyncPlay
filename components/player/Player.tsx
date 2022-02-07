@@ -158,10 +158,11 @@ const Player: FC<Props> = ({ socket }) => {
         return console.log("Not ready yet...")
       }
       const update = room.targetState
-      if (
-        JSON.stringify(update.playlist) !== JSON.stringify(playlistRef.current)
-      ) {
-        _setPlaylist(update.playlist)
+      if (update.lastSync !== lastSyncRef.current) {
+        _setLastSync(update.lastSync)
+      }
+      if (update.progress !== targetProgressRef.current) {
+        _setTargetProgress(update.progress)
       }
       if (
         JSON.stringify(update.playing) !== JSON.stringify(playingRef.current)
@@ -178,11 +179,10 @@ const Player: FC<Props> = ({ socket }) => {
       if (update.loop !== loopRef.current) {
         _setLoop(update.loop)
       }
-      if (update.progress !== targetProgressRef.current) {
-        _setTargetProgress(update.progress)
-      }
-      if (update.lastSync !== lastSyncRef.current) {
-        _setLastSync(update.lastSync)
+      if (
+        JSON.stringify(update.playlist) !== JSON.stringify(playlistRef.current)
+      ) {
+        _setPlaylist(update.playlist)
       }
     })
   }, [socket])

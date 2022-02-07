@@ -30,9 +30,11 @@ const UserItem: FC<Props> = ({ user, ownerId, socketId, updateName }) => {
   return (
     <div
       className={classNames(
-        "rounded w-60 border-l-4",
+        "rounded border-l-4",
         "flex flex-row bg-dark-900 hover:bg-dark-800",
-        socketId == user.uid && "border-primary-900 hover:border-primary-800"
+        socketId == user.uid
+          ? "border-primary-900 hover:border-primary-800"
+          : "border-dark-900 hover:border-dark-600"
       )}
     >
       {ownerId == user.uid && (
@@ -74,9 +76,7 @@ const UserItem: FC<Props> = ({ user, ownerId, socketId, updateName }) => {
           />
         ) : (
           <>
-            <div className={"flex flex-row gap-1 text-truncate"}>
-              {user.name}
-            </div>
+            <div className={"flex flex-row gap-1 truncate"}>{user.name}</div>
             <div className={"flex flex-row gap-1 items-center"}>
               {user.player.paused ? (
                 <IconPause sizeClassName={"w-3 h-3"} />

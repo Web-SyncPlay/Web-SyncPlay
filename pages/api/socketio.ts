@@ -89,6 +89,9 @@ const ioHandler = (_: NextApiRequest, res: NextApiResponse) => {
             await deleteRoom(roomId)
             log("deleted empty room")
           } else {
+            if (room.ownerId === socket.id) {
+              room.ownerId = room.users[0].uid
+            }
             await broadcast(room)
           }
         })

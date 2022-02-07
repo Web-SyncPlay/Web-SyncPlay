@@ -39,7 +39,11 @@ const UserList: FC<Props> = ({ socket }) => {
   }, [users])
 
   return (
-    <div className={"grid grid-flow-row gap-1 auto-rows-max"}>
+    <div
+      className={
+        "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl: grid-cols-6 gap-1"
+      }
+    >
       {users.map((user) => (
         <UserItem
           user={user}
