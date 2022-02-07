@@ -1,0 +1,95 @@
+import { FC, useEffect, useRef, useState } from "react"
+import { UserState } from "../../lib/types"
+import { secondsToTime } from "../../lib/utils"
+import IconPause from "../icon/IconPause"
+import IconPlay from "../icon/IconPlay"
+import classNames from "classnames"
+import IconOwner from "../icon/IconOwner"
+import InputText from "../input/InputText"
+
+interface Props {
+  user: UserState
+  ownerId: string
+  socketId: string
+  updateName: (name: string) => void
+}
+
+const UserItem: FC<Props> = ({ user, ownerId, socketId, updateName }) => {
+  const [edit, setEdit] = useState(false)
+  const [name, _setName] = useState(user.name || "")
+  const nameRef = useRef(name)
+  const setName = (newName: string) => {
+    _setName(newName)
+    nameRef.current = newName
+  }
+
+  useEffect(() => {
+    setName(user.name || "")
+  }, [user.name])
+
+  return (
+    <div
+      className={classNames(
+        "rounded w-60 border-l-4",
+        "flex flex-row bg-dark-900 hover:bg-dark-800",
+        socketId == user.uid && "border-primary-900 hover:border-primary-800"
+      )}
+    >
+      {ownerId == user.uid && (
+        <div
+          className={"absolute inline-flex -ml-4 -mt-4 p-2 cursor-help"}
+          data-tip={"Owner of the lobby"}
+        >
+          <IconOwner className={"text-primary-700"} sizeClassName={"w-5 h-5"} />
+        </div>
+      )}
+      <div className={"aspect-square"}>
+        <img
+          className={"aspect-square h-[64px]"}
+          src={
+            "https://avatars.dicebear.com/api/pixel-art/" + user.uid + ".svg"
+          }
+          alt={"Generated profile picture of " + user.name}
+        />
+      </div>
+      <div
+        className={"p-2 pl-1 grow"}
+        onMouseEnter={() => {
+          if (user.uid === socketId) {
+            setEdit(true)
+          }
+        }}
+        onMouseLeave={() => {
+          if (user.uid === socketId) {
+            setEdit(false)
+          }
+        }}
+      >
+        {edit ? (
+          <InputText
+            className={"grow h-full"}
+            value={name}
+            onChange={updateName}
+            placeholder={"Change your name"}
+          />
+        ) : (
+          <>
+            <div className={"flex flex-row gap-1 text-truncate"}>
+              {user.name}
+            </div>
+            <div className={"flex flex-row gap-1 items-center"}>
+              {user.player.paused ? (
+                <IconPause sizeClassName={"w-3 h-3"} />
+              ) : (
+                <IconPlay sizeClassName={"w-3 h-3"} />
+              )}
+              {secondsToTime(user.player.progress)}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default UserItem

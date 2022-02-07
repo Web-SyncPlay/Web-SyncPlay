@@ -2,6 +2,7 @@ import { FC, useEffect, useRef, useState } from "react"
 import { RoomState, UserState } from "../../lib/types"
 import { Socket } from "socket.io-client"
 import { ClientToServerEvents, ServerToClientEvents } from "../../lib/socket"
+import UserItem from "./UserItem"
 
 interface Props {
   socket: Socket<ServerToClientEvents, ClientToServerEvents>
@@ -14,16 +15,39 @@ const UserList: FC<Props> = ({ socket }) => {
     userRef.current = newUsers
     _setUsers(newUsers)
   }
+  const [owner, _setOwner] = useState("")
+  const ownerRef = useRef(owner)
+  const setOwner = (newOwner: string) => {
+    ownerRef.current = newOwner
+    _setOwner(newOwner)
+  }
 
   useEffect(() => {
     socket.on("update", (room: RoomState) => {
+      setOwner(room.ownerId)
       setUsers(room.users)
     })
 
     socket.emit("fetch")
   }, [socket])
 
-  return <div>{users.map((user) => user.name)}</div>
+  return (
+    <div className={"grid grid-flow-row gap-1 auto-rows-max"}>
+      {users.map((user) => (
+        <UserItem
+          user={user}
+          socketId={socket.id}
+          ownerId={owner}
+          key={user.uid}
+          updateName={(name) => {
+            const newUser = JSON.parse(JSON.stringify(user))
+            newUser.name = name
+            socket.emit("updateUser", newUser)
+          }}
+        />
+      ))}
+    </div>
+  )
 }
 
 export default UserList

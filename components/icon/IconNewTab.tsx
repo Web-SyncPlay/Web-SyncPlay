@@ -1,9 +1,12 @@
 import { FC } from "react"
 import Icon, { IconProps } from "./Icon"
 
-const IconNewTab: FC<IconProps> = ({ className = "" }) => {
+const IconNewTab: FC<IconProps> = ({
+  className = "",
+  sizeClassName = "h-6 w-6",
+}) => {
   return (
-    <Icon className={className} sizeClassName={"h-6 w-6"}>
+    <Icon className={className} sizeClassName={sizeClassName}>
       <path
         strokeLinecap='round'
         strokeLinejoin='round'

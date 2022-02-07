@@ -1,4 +1,4 @@
-import { FC, useEffect, useRef, useState } from "react"
+import { FC, useEffect, useState } from "react"
 import { Draggable } from "react-beautiful-dnd"
 import classNames from "classnames"
 import { MediaElement } from "../../lib/types"
@@ -31,10 +31,8 @@ const PlaylistItem: FC<Props> = ({
 }) => {
   const [edit, setEdit] = useState(false)
   const [title, _setTitle] = useState(item.title || "")
-  const titleRef = useRef(title)
   const setTitle = (newTitle: string) => {
     _setTitle(newTitle)
-    titleRef.current = newTitle
   }
 
   useEffect(() => {
@@ -84,19 +82,9 @@ const PlaylistItem: FC<Props> = ({
             >
               {edit ? (
                 <InputText
-                  onChange={(value) => {
-                    console.log(
-                      "Updating title value to",
-                      value,
-                      "title is",
-                      title,
-                      "ref",
-                      titleRef.current
-                    )
-                    updateTitle(value)
-                  }}
+                  onChange={updateTitle}
                   placeholder={"Set a title"}
-                  value={titleRef.current}
+                  value={title}
                 />
               ) : (
                 itemTitle()

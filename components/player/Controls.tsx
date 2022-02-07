@@ -17,6 +17,7 @@ import IconBackward from "../icon/IconBackward"
 import IconForward from "../icon/IconForward"
 import PlayerMenu from "./PlayerMenu"
 import ReactTooltip from "react-tooltip"
+import IconNewTab from "../icon/IconNewTab"
 
 interface Props extends PlayerState {
   setCurrentSrc: (src: MediaOption) => void
@@ -241,6 +242,18 @@ const Controls: FC<Props> = ({
                 " / " +
                 secondsToTime(duration)}
             </span>
+          </ControlButton>
+
+          <ControlButton
+            tooltip={"Open source in new tab"}
+            onClick={() => {
+              window.open(currentSrc.src, "_blank")?.focus()
+            }}
+            interaction={showControlsAction}
+          >
+            <a href={currentSrc.src} target={"_blank"} rel={"noreferrer"}>
+              <IconNewTab sizeClassName={"w-5 h-5"} />
+            </a>
           </ControlButton>
 
           <PlayerMenu

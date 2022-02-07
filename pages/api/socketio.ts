@@ -87,6 +87,7 @@ const ioHandler = (_: NextApiRequest, res: NextApiResponse) => {
           )
           if (room.users.length === 0) {
             await deleteRoom(roomId)
+            log("deleted empty room")
           } else {
             await broadcast(room)
           }
