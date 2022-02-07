@@ -1,0 +1,19 @@
+version: '3.3'
+services:
+  web:
+    image: websyncplay/websyncplay
+    restart: unless-stopped
+    ports:
+      - 8081:8081
+    environment:
+      SITE_NAME: ${SITE_NAME}
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN}
+
+      # provide your own url to your own redis setup
+      REDIS_URL: ${REDIS_URL}
+    depends_on:
+      - redis
+
+  redis:
+    image: redis
+    restart: unless-stopped

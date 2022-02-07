@@ -22,7 +22,7 @@ WORKDIR /app
 
 ENV SITE_NAME="Web-SyncPlay"
 ENV PUBLIC_DOMAIN="https://web-syncplay.de"
-ENV REDIS_URL="redis://localhost:6379"
+ENV REDIS_URL="redis://redis:6379"
 
 EXPOSE 3000
 
@@ -32,8 +32,7 @@ LABEL org.opencontainers.image.url="https://web-syncplay.de" \
       maintainer="Yasamato <https://github.com/Yasamato>"
 
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001 && \
-    apk add --no-cache redis
+    adduser -S nextjs -u 1001
 
 # You only need to copy next.config.js if you are NOT using the default configuration
 # COPY --from=builder /app/next.config.js ./
@@ -56,4 +55,4 @@ ENV PORT 8081
 # Uncomment the following line in case you want to disable telemetry.
 # ENV NEXT_TELEMETRY_DISABLED 1
 
-CMD ["sh", "-c", "sysctl vm.overcommit_memory=1 && redis-server --daemonize yes && node server.js"]
+CMD ["sh", "-c", "node server.js"]
