@@ -3,6 +3,7 @@ import { RoomState, UserState } from "../../lib/types"
 import { Socket } from "socket.io-client"
 import { ClientToServerEvents, ServerToClientEvents } from "../../lib/socket"
 import UserItem from "./UserItem"
+import ReactTooltip from "react-tooltip"
 
 interface Props {
   socket: Socket<ServerToClientEvents, ClientToServerEvents>
@@ -24,12 +25,18 @@ const UserList: FC<Props> = ({ socket }) => {
 
   useEffect(() => {
     socket.on("update", (room: RoomState) => {
-      setOwner(room.ownerId)
+      if (ownerRef.current !== room.ownerId) {
+        setOwner(room.ownerId)
+      }
       setUsers(room.users)
     })
 
     socket.emit("fetch")
   }, [socket])
+
+  useEffect(() => {
+    ReactTooltip.rebuild()
+  }, [users])
 
   return (
     <div className={"grid grid-flow-row gap-1 auto-rows-max"}>
