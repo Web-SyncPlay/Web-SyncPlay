@@ -106,6 +106,12 @@ const Player: FC<Props> = ({ socket }) => {
     _setReady(newReady)
     readyRef.current = newReady
   }
+  const [seeked, _setSeeked] = useState(false)
+  const seekedRef = useRef(seeked)
+  const setSeeked = (newSeeked: boolean) => {
+    _setSeeked(newSeeked)
+    seekedRef.current = newSeeked
+  }
   const [buffering, setBuffering] = useState(true)
   const [connected, setConnected] = useState(false)
   const [unmuted, setUnmuted] = useState(false)
@@ -163,6 +169,7 @@ const Player: FC<Props> = ({ socket }) => {
       }
       if (update.progress !== targetProgressRef.current) {
         _setTargetProgress(update.progress)
+        setSeeked(false)
       }
       if (
         JSON.stringify(update.playing) !== JSON.stringify(playingRef.current)
@@ -209,7 +216,7 @@ const Player: FC<Props> = ({ socket }) => {
     >
       <ReactPlayer
         style={{
-          maxHeight: fullscreen ? "100vh" : "calc(100vh - 200px)",
+          maxHeight: fullscreen ? "100vh" : "calc(100vh - 220px)",
         }}
         ref={player}
         width={"100%"}
@@ -297,7 +304,7 @@ const Player: FC<Props> = ({ socket }) => {
             // sometimes onReady doesn't fire, but if there's playback...
             setReady(true)
           }
-          if (!seeking) {
+          if (!seeking || !seeked) {
             setProgress(playedSeconds)
           }
         }}
@@ -311,7 +318,10 @@ const Player: FC<Props> = ({ socket }) => {
         setPaused={setPaused}
         setVolume={setVolume}
         setMuted={setMuted}
-        setProgress={(newProgress) => socket?.emit("seek", newProgress)}
+        setProgress={(newProgress) => {
+          setSeeked(true)
+          socket?.emit("seek", newProgress)
+        }}
         setPlaybackRate={setPlaybackRate}
         setLoop={setLoop}
         setFullscreen={async (newFullscreen) => {
