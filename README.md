@@ -97,6 +97,12 @@ yarn build && yarn start
 
 ### Environment variables
 
+| Parameter      | Function                                       | Default                |
+|----------------|------------------------------------------------|------------------------|
+| `SITE_NAME`    | The name of your site                          | `"The Anime Index"`    |
+| `PUBLIC_DOMAIN`| Your domain or IP, remove trailing slash       | `"https://piracy.moe"` |
+| `REDIS_URL`    | Connection string for the redis cache database | `"redis://redis:6379"` |
+
 After deployment open your browser and visit http://localhost:8081 or however you address the server. It is
 ***strongly*** recommended putting a reverse proxy using TLS/SSL in front of this service.
 
