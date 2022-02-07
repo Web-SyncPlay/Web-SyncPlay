@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from "react"
+import { FC, useEffect, useRef, useState } from "react"
 import classNames from "classnames"
 import IconClose from "../icon/IconClose"
 import { isUrl } from "../../lib/utils"
@@ -22,6 +22,7 @@ const InputUrl: FC<Props> = ({
   children,
 }) => {
   const [valid, setValid] = useState(url === "" || isUrl(url))
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setValid(url === "" || isUrl(url))
@@ -41,6 +42,7 @@ const InputUrl: FC<Props> = ({
         className={"rounded grow flex flex-row items-center bg-dark-800 action"}
       >
         <input
+          ref={inputRef}
           size={1}
           className={classNames("grow rounded bg-dark-800 p-2")}
           placeholder={placeholder}
@@ -49,6 +51,7 @@ const InputUrl: FC<Props> = ({
             onChange(event.target.value)
           }}
           type={"text"}
+          onFocus={() => inputRef.current?.select()}
         />
         <div className={"p-1 cursor-pointer"} onClick={() => onChange("")}>
           <IconClose />

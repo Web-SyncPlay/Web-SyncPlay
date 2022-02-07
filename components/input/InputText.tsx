@@ -1,4 +1,4 @@
-import { FC } from "react"
+import { FC, useRef } from "react"
 import IconClose from "../icon/IconClose"
 import classNames from "classnames"
 
@@ -19,6 +19,7 @@ const InputText: FC<Props> = ({
   className = "",
   required = false,
 }) => {
+  const inputRef = useRef<HTMLInputElement>(null)
   return (
     <div
       className={classNames(
@@ -28,6 +29,7 @@ const InputText: FC<Props> = ({
     >
       {icon && <div className={"ml-1"}>{icon}</div>}
       <input
+        ref={inputRef}
         size={1}
         className={"grow rounded bg-dark-800 px-2 py-1.5" + className}
         placeholder={placeholder}
@@ -35,6 +37,7 @@ const InputText: FC<Props> = ({
         onChange={(event) => onChange(event.target.value)}
         type={"text"}
         required={required}
+        onFocus={() => inputRef.current?.select()}
       />
       <div className={"p-1 cursor-pointer"} onClick={() => onChange("")}>
         <IconClose />
