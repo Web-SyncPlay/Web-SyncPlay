@@ -1,7 +1,7 @@
 import { FC } from "react"
 import Icon, { IconProps } from "./Icon"
 
-const IconSync: FC<IconProps> = ({ className = "" }) => {
+const IconLoop: FC<IconProps> = ({ className = "" }) => {
   return (
     <Icon className={className} viewBox='0 0 512 512'>
       <path
@@ -12,4 +12,4 @@ const IconSync: FC<IconProps> = ({ className = "" }) => {
   )
 }
 
-export default IconSync
+export default IconLoop

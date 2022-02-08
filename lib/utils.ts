@@ -102,6 +102,10 @@ export const isUrl = (url: string) => {
   )
 }
 
+export const shellSanitizeUrl = (url: string) => {
+  return url.replace(/(&&)+/g, "&").replace(/(<|>|\$|;|\\|\|)+/, "")
+}
+
 export const getDomain = (url: string) => {
   const matches = url.match(/^(?:https?:)?(?:\/\/)?([^\/\?]+)/)
   return ((matches && matches[1]) || url).replace(/^www\./, "")

@@ -294,6 +294,35 @@ const Player: FC<Props> = ({ socket }) => {
         onEnded={() => socket?.emit("playEnded")}
         onError={(e) => {
           console.error("playback error", e)
+
+          console.log("Trying to get video url via yt-dlp...")
+          fetch("/api/source", { method: "POST", body: currentSrc.src })
+            .then((res) => {
+              if (res.status === 200) {
+                return res.json()
+              }
+              return res.text()
+            })
+            .then((data) => {
+              console.log("Received data", data)
+              if (typeof data === "string") {
+                throw new Error(data)
+              }
+              if (data.error) {
+                throw new Error(data.stderr)
+              }
+
+              const videoSrc: string[] = data.stdout
+                .split("\n")
+                .filter((v: string) => v !== "")
+              data.stdout.setCurrentSrc({
+                src: videoSrc[0],
+                resolution: "",
+              })
+            })
+            .catch((error) => {
+              console.error("Failed to get video url", error)
+            })
           setError(e)
         }}
         onProgress={({ playedSeconds }) => {

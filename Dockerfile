@@ -32,7 +32,10 @@ LABEL org.opencontainers.image.url="https://web-syncplay.de" \
       maintainer="Yasamato <https://github.com/Yasamato>"
 
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
+    adduser -S nextjs -u 1001 && \
+    apk add --no-cache curl python3 py3-pip &&  \
+    curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
+    chmod a+rx /usr/local/bin/yt-dlp
 
 # You only need to copy next.config.js if you are NOT using the default configuration
 # COPY --from=builder /app/next.config.js ./

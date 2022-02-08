@@ -11,6 +11,7 @@ import IconSettings from "../icon/IconSettings"
 import classNames from "classnames"
 import Button from "../action/Button"
 import ReactTooltip from "react-tooltip"
+import IconLoop from "../icon/IconLoop"
 
 interface Props {
   playing: MediaElement
@@ -77,7 +78,7 @@ const PlayerMenu: FC<Props> = ({
       ),
     },
     {
-      icon: <IconSettings />,
+      icon: <IconLoop />,
       title: "Loop",
       content: (
         <Button tooltip={"Click to toggle loop"} onClick={() => setLoop(!loop)}>

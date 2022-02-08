@@ -9,7 +9,7 @@ import Button from "./action/Button"
 import { Socket } from "socket.io-client"
 import ConnectingAlert from "./alert/ConnectingAlert"
 import PlaylistMenu from "./playlist/PlaylistMenu"
-import IconSync from "./icon/IconSync"
+import IconLoop from "./icon/IconLoop"
 import InputUrl from "./input/InputUrl"
 import UserList from "./user/UserList"
 
@@ -82,7 +82,7 @@ const Room: FC<Props> = ({ id }) => {
               socket?.emit("fetch")
             }}
           >
-            <IconSync className={"hover:animate-spin"} />
+            <IconLoop className={"hover:animate-spin"} />
             <div className={"hidden-below-sm"}>Manual sync</div>
           </Button>
           <InputUrl
