@@ -19,7 +19,7 @@ interface Props {
 }
 
 const PlaylistMenu: FC<Props> = ({ socket }) => {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(true)
   const [url, setUrl] = useState("")
 
   useEffect(() => {

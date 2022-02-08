@@ -58,8 +58,13 @@ export const createNewRoom = async (roomId: string, socketId: string) => {
     ownerId: socketId,
     targetState: {
       playlist: {
-        items: [],
-        currentIndex: -1,
+        items: [
+          {
+            src: [{ src: getDefaultSrc(), resolution: "" }],
+            sub: [],
+          },
+        ],
+        currentIndex: 0,
       },
       playing: {
         src: [{ src: getDefaultSrc(), resolution: "" }],

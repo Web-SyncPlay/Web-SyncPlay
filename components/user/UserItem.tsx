@@ -45,7 +45,7 @@ const UserItem: FC<Props> = ({ user, ownerId, socketId, updateName }) => {
           <IconOwner className={"text-primary-700"} sizeClassName={"w-5 h-5"} />
         </div>
       )}
-      <div className={"aspect-square"}>
+      <div className={"aspect-square shrink-0"}>
         <img
           className={"aspect-square h-[64px]"}
           src={

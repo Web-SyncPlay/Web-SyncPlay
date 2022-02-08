@@ -52,7 +52,7 @@ const VolumeControl: FC<Props> = ({
           setVolume(newVolume)
           interaction(null)
         }}
-        className={"hidden sm:flex"}
+        className={"hide-below-sm"}
       />
     </div>
   )
