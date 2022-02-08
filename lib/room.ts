@@ -53,6 +53,7 @@ export const createNewUser = async (roomId: string, socketId: string) => {
 
 export const createNewRoom = async (roomId: string, socketId: string) => {
   await setRoom(roomId, {
+    serverTime: 0,
     commandHistory: [],
     id: roomId,
     ownerId: socketId,

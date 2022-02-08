@@ -91,6 +91,12 @@ const Player: FC<Props> = ({ socket }) => {
     updateLastSync(newLastSync)
     lastSyncRef.current = newLastSync
   }
+  const [deltaServerTime, _setDeltaServerTime] = useState(0)
+  const deltaServerTimeRef = useRef(deltaServerTime)
+  const setDeltaServerTime = (newDeltaServerTime: number) => {
+    _setDeltaServerTime(newDeltaServerTime)
+    deltaServerTimeRef.current = newDeltaServerTime
+  }
 
   const [duration, setDuration] = useState(0)
   const [currentSrc, setCurrentSrc] = useState<MediaOption>({
@@ -136,17 +142,30 @@ const Player: FC<Props> = ({ socket }) => {
       !isSync(
         player.current.getCurrentTime(),
         targetProgress,
-        lastSync,
+        lastSync - deltaServerTime,
         paused,
         playbackRate
       ) &&
       !seeking
     ) {
-      const t = getTargetTime(targetProgress, lastSync, paused, playbackRate)
+      const t = getTargetTime(
+        targetProgress,
+        lastSync - deltaServerTime,
+        paused,
+        playbackRate
+      )
       console.log("Not in sync, seeking to", t)
       player.current.seekTo(t, "seconds")
     }
-  }, [progress, targetProgress, lastSync, paused, ready, playbackRate])
+  }, [
+    progress,
+    targetProgress,
+    lastSync,
+    deltaServerTime,
+    paused,
+    ready,
+    playbackRate,
+  ])
 
   useEffect(() => {
     socket.on("connect", () => {
@@ -163,6 +182,11 @@ const Player: FC<Props> = ({ socket }) => {
       if (!readyRef.current) {
         return console.log("Not ready yet...")
       }
+
+      if (deltaServerTimeRef.current === 0) {
+        setDeltaServerTime((room.serverTime - new Date().getTime()) / 1000)
+      }
+
       const update = room.targetState
       if (update.lastSync !== lastSyncRef.current) {
         _setLastSync(update.lastSync)

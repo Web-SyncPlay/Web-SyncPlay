@@ -63,6 +63,7 @@ export interface CommandLog {
 }
 
 export interface RoomState {
+  serverTime: number
   id: string
   ownerId: string
   users: UserState[]

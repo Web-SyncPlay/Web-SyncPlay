@@ -1,6 +1,6 @@
+import * as socketIo from "socket.io"
 import { Server } from "socket.io"
 import { NextApiRequest, NextApiResponse } from "next"
-import * as socketIo from "socket.io"
 import { ClientToServerEvents, ServerToClientEvents } from "../../lib/socket"
 import {
   decUsers,
@@ -40,6 +40,7 @@ const ioHandler = (_: NextApiRequest, res: NextApiResponse) => {
         room = d
       }
 
+      room.serverTime = new Date().getTime()
       io.to(roomId).emit("update", room)
     }
 
@@ -304,6 +305,8 @@ const ioHandler = (_: NextApiRequest, res: NextApiResponse) => {
               "Impossible non existing room, cannot send anything:" + roomId
             )
           }
+
+          room.serverTime = new Date().getTime()
           socket.emit("update", room)
         })
       }
