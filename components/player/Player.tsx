@@ -315,7 +315,7 @@ const Player: FC<Props> = ({ socket }) => {
               const videoSrc: string[] = data.stdout
                 .split("\n")
                 .filter((v: string) => v !== "")
-              data.stdout.setCurrentSrc({
+              setCurrentSrc({
                 src: videoSrc[0],
                 resolution: "",
               })
