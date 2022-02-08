@@ -37,7 +37,8 @@ of [react-player](https://github.com/cookpete/react-player).
     - HLS streams
     - DASH streams
 
-- Everything that is extractable via [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+- Everything that is extractable via [yt-dlp](https://github.com/yt-dlp/yt-dlp) and allowed
+  via [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
 
 ## Known limitations
 

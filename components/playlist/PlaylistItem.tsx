@@ -46,7 +46,7 @@ const PlaylistItem: FC<Props> = ({
       return item.title
     }
 
-    return "Item #" + index
+    return "Item #" + (index + 1)
   }
 
   return (

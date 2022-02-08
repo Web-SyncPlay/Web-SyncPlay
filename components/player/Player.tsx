@@ -229,6 +229,11 @@ const Player: FC<Props> = ({ socket }) => {
               origin: window.location.host,
             },
           },
+          file: {
+            hlsVersion: "1.1.3",
+            dashVersion: "4.2.1",
+            flvVersion: "1.6.2",
+          },
         }}
         url={currentSrc.src}
         pip={false}
@@ -294,36 +299,37 @@ const Player: FC<Props> = ({ socket }) => {
         onEnded={() => socket?.emit("playEnded")}
         onError={(e) => {
           console.error("playback error", e)
-
-          console.log("Trying to get video url via yt-dlp...")
-          fetch("/api/source", { method: "POST", body: currentSrc.src })
-            .then((res) => {
-              if (res.status === 200) {
-                return res.json()
-              }
-              return res.text()
-            })
-            .then((data) => {
-              console.log("Received data", data)
-              if (typeof data === "string") {
-                throw new Error(data)
-              }
-              if (data.error) {
-                throw new Error(data.stderr)
-              }
-
-              const videoSrc: string[] = data.stdout
-                .split("\n")
-                .filter((v: string) => v !== "")
-              setCurrentSrc({
-                src: videoSrc[0],
-                resolution: "",
+          if ("target" in e && "type" in e && e.type === "error") {
+            console.log("Trying to get video url via yt-dlp...")
+            fetch("/api/source", { method: "POST", body: currentSrc.src })
+              .then((res) => {
+                if (res.status === 200) {
+                  return res.json()
+                }
+                return res.text()
               })
-            })
-            .catch((error) => {
-              console.error("Failed to get video url", error)
-            })
-          setError(e)
+              .then((data) => {
+                console.log("Received data", data)
+                if (typeof data === "string") {
+                  throw new Error(data)
+                }
+                if (data.error) {
+                  throw new Error(data.stderr)
+                }
+
+                const videoSrc: string[] = data.stdout
+                  .split("\n")
+                  .filter((v: string) => v !== "")
+                setCurrentSrc({
+                  src: videoSrc[0],
+                  resolution: "",
+                })
+              })
+              .catch((error) => {
+                console.error("Failed to get video url", error)
+              })
+            setError(e)
+          }
         }}
         onProgress={({ playedSeconds }) => {
           if (!ready) {

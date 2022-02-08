@@ -94,6 +94,7 @@ const Room: FC<Props> = ({ id }) => {
             onSubmit={() => {
               console.log("Requesting", url, "now")
               socket?.emit("playUrl", url)
+              setUrl("")
             }}
           >
             Play
