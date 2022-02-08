@@ -37,6 +37,8 @@ of [react-player](https://github.com/cookpete/react-player).
     - HLS streams
     - DASH streams
 
+- Everything that is extractable via [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+
 ## Known limitations
 
 I would have loved to keep the original Player-UIs for ease of use, but they are usually being embedded as an iframe, as
