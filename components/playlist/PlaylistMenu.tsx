@@ -97,6 +97,7 @@ const PlaylistMenu: FC<Props> = ({ socket }) => {
           </InputUrl>
           <DragDropContext
             onDragEnd={(result) => {
+              ReactTooltip.rebuild()
               if (!result.destination) {
                 return
               }
