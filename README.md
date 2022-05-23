@@ -1,5 +1,5 @@
 [![Website](https://img.shields.io/website?down_color=red&down_message=offline&label=Demo-site&up_color=green&up_message=online&url=https%3A%2F%2Fdemo.web-syncplay.de)](https://demo.web-syncplay.de)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/35f7884623744a5c8ad64e184f6f5dcf)](https://www.codacy.com/gh/Web-SyncPlay/Web-SyncPlay/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Web-SyncPlay/Web-SyncPlay&amp;utm_campaign=Badge_Grade)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/35f7884623744a5c8ad64e184f6f5dcf)](https://www.codacy.com/gh/Web-SyncPlay/Web-SyncPlay/dashboard?utm_source=github.com&utm_medium=referral&utm_content=Web-SyncPlay/Web-SyncPlay&utm_campaign=Badge_Grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/web-syncplay/web-syncplay/badge)](https://www.codefactor.io/repository/github/web-syncplay/web-syncplay)
 [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/websyncplay/websyncplay/latest?logo=docker)](https://hub.docker.com/r/websyncplay/websyncplay)
 
@@ -34,8 +34,9 @@ of [react-player](https://github.com/cookpete/react-player).
 - Kaltura videos
 
 - Files playable via `<video>` or `<audio>` element as well as:
-    - HLS streams
-    - DASH streams
+
+  - HLS streams
+  - DASH streams
 
 - Everything that is extractable via [yt-dlp](https://github.com/yt-dlp/yt-dlp) and allowed
   via [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
@@ -100,14 +101,14 @@ yarn build && yarn start
 
 ### Environment variables
 
-| Parameter      | Function                                       | Default                |
-|----------------|------------------------------------------------|------------------------|
-| `SITE_NAME`    | The name of your site                          | `"The Anime Index"`    |
-| `PUBLIC_DOMAIN`| Your domain or IP, remove trailing slash       | `"https://piracy.moe"` |
-| `REDIS_URL`    | Connection string for the redis cache database | `"redis://redis:6379"` |
+| Parameter       | Function                                       | Default                |
+| --------------- | ---------------------------------------------- | ---------------------- |
+| `SITE_NAME`     | The name of your site                          | `"The Anime Index"`    |
+| `PUBLIC_DOMAIN` | Your domain or IP, remove trailing slash       | `"https://piracy.moe"` |
+| `REDIS_URL`     | Connection string for the redis cache database | `"redis://redis:6379"` |
 
 After deployment open your browser and visit http://localhost:8081 or however you address the server. It is
-***strongly*** recommended putting a reverse proxy using TLS/SSL in front of this service.
+**_strongly_** recommended putting a reverse proxy using TLS/SSL in front of this service.
 
 ## Adding synchronised playback to your website
 
@@ -130,12 +131,13 @@ have to manually update the iframe when playing a playlist, as this is already h
 For playing only a single file the service can be embedded via
 
 ```html
-
-<iframe allow="fullscreen; autoplay; encrypted-media; picture-in-picture"
-        style="border:none;"
-        width="100%"
-        height="100%"
-        src="<YOUR_ENDPOINT>/embed/player/<ROOM_ID>?url=<YOUR_MEDIA_URL>">
+<iframe
+  allow="fullscreen; autoplay; encrypted-media; picture-in-picture"
+  style="border:none;"
+  width="100%"
+  height="100%"
+  src="<YOUR_ENDPOINT>/embed/player/<ROOM_ID>?url=<YOUR_MEDIA_URL>"
+>
 </iframe>
 ```
 
@@ -147,12 +149,13 @@ If you want to sync playback across a playlist, you need to adjust the embed
   order you want them to be ordered
 
 ```html
-
-<iframe allow="fullscreen; autoplay; encrypted-media; picture-in-picture"
-        style="border:none;"
-        width="100%"
-        height="100%"
-        src="<YOUR_ENDPOINT>/embed/player/<ROOM_ID>?queueIndex=<START_INDEX>&queue=<ITEM_1>&queue=<ITEM_2>...&queue=<ITEM_N>">
+<iframe
+  allow="fullscreen; autoplay; encrypted-media; picture-in-picture"
+  style="border:none;"
+  width="100%"
+  height="100%"
+  src="<YOUR_ENDPOINT>/embed/player/<ROOM_ID>?queueIndex=<START_INDEX>&queue=<ITEM_1>&queue=<ITEM_2>...&queue=<ITEM_N>"
+>
 </iframe>
 ```
 

@@ -15,6 +15,16 @@ const memoizeExtractFromUrl = () => {
       return cache[url]
     }
 
+    if (!isUrl(url)) {
+      console.error("Invalid url provided to source video from:", url)
+      cache[url] = {
+        error: true,
+        stdout: "",
+        stderr: "Invalid url",
+      }
+      return cache[url]
+    }
+
     try {
       cache[url] = await asyncExec("yt-dlp -g " + url)
     } catch (error) {
