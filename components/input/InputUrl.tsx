@@ -1,4 +1,4 @@
-import { FC, useEffect, useRef, useState } from "react"
+import { FC, ReactNode, useEffect, useRef, useState } from "react"
 import classNames from "classnames"
 import IconClose from "../icon/IconClose"
 import { isUrl } from "../../lib/utils"
@@ -10,6 +10,7 @@ interface Props {
   onSubmit?: () => void
   onChange: (url: string) => void
   className?: string
+  children?: ReactNode
 }
 
 const InputUrl: FC<Props> = ({

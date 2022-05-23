@@ -6,7 +6,11 @@ import {
   ServerToClientEvents,
 } from "../../lib/socket"
 import Controls from "./Controls"
-import { FullScreen, useFullScreenHandle } from "react-full-screen"
+import {
+  FullScreen,
+  FullScreenProps,
+  useFullScreenHandle,
+} from "react-full-screen"
 import ReactPlayer from "react-player"
 import {
   MediaElement,
@@ -228,8 +232,11 @@ const Player: FC<Props> = ({ socket }) => {
     ReactTooltip.rebuild()
   }, [ready, playlist])
 
+  const FullScreenWithChildren = FullScreen as React.FC<
+    React.PropsWithChildren<FullScreenProps>
+  >
   return (
-    <FullScreen
+    <FullScreenWithChildren
       className={"relative grow flex select-none"}
       handle={fullscreenHandle}
       onChange={(state, _) => {
@@ -427,7 +434,7 @@ const Player: FC<Props> = ({ socket }) => {
           />
         )}
       </div>
-    </FullScreen>
+    </FullScreenWithChildren>
   )
 }
 

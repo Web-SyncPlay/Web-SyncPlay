@@ -138,41 +138,43 @@ const PlaylistMenu: FC<Props> = ({ socket }) => {
                     snapshot.isDraggingOver && "bg-dark-800"
                   )}
                 >
-                  {playlist.items.map((item, index) => (
-                    <PlaylistItem
-                      key={item.src[0].src + "-" + index}
-                      playing={playlist.currentIndex === index}
-                      item={item}
-                      index={index}
-                      deleteItem={(index) => {
-                        if (index < 0 || index >= playlist.items.length) {
-                          return
-                        }
+                  <>
+                    {playlist.items.map((item, index) => (
+                      <PlaylistItem
+                        key={item.src[0].src + "-" + index}
+                        playing={playlist.currentIndex === index}
+                        item={item}
+                        index={index}
+                        deleteItem={(index) => {
+                          if (index < 0 || index >= playlist.items.length) {
+                            return
+                          }
 
-                        const newPlaylist: Playlist = JSON.parse(
-                          JSON.stringify(playlist)
-                        )
-                        newPlaylist.items.splice(index, 1)
-                        if (newPlaylist.currentIndex === index) {
-                          newPlaylist.currentIndex = -1
-                        } else if (newPlaylist.currentIndex > index) {
-                          newPlaylist.currentIndex--
-                        }
-                        socket.emit("updatePlaylist", newPlaylist)
-                      }}
-                      updateTitle={(newTitle) => {
-                        const newPlaylist: Playlist = JSON.parse(
-                          JSON.stringify(playlist)
-                        )
-                        newPlaylist.items[index].title = newTitle
-                        socket.emit("updatePlaylist", newPlaylist)
-                      }}
-                      play={() => {
-                        playItemFromPlaylist(socket, playlist, index)
-                      }}
-                    />
-                  ))}
-                  {provided.placeholder}
+                          const newPlaylist: Playlist = JSON.parse(
+                            JSON.stringify(playlist)
+                          )
+                          newPlaylist.items.splice(index, 1)
+                          if (newPlaylist.currentIndex === index) {
+                            newPlaylist.currentIndex = -1
+                          } else if (newPlaylist.currentIndex > index) {
+                            newPlaylist.currentIndex--
+                          }
+                          socket.emit("updatePlaylist", newPlaylist)
+                        }}
+                        updateTitle={(newTitle) => {
+                          const newPlaylist: Playlist = JSON.parse(
+                            JSON.stringify(playlist)
+                          )
+                          newPlaylist.items[index].title = newTitle
+                          socket.emit("updatePlaylist", newPlaylist)
+                        }}
+                        play={() => {
+                          playItemFromPlaylist(socket, playlist, index)
+                        }}
+                      />
+                    ))}
+                    {provided.placeholder}
+                  </>
                 </div>
               )}
             </Droppable>

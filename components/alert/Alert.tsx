@@ -1,4 +1,4 @@
-import { FC, useState } from "react"
+import { FC, ReactNode, useState } from "react"
 import IconClose from "../icon/IconClose"
 import Button from "../action/Button"
 import classNames from "classnames"
@@ -6,6 +6,7 @@ import classNames from "classnames"
 export interface AlertProps {
   canClose?: boolean
   className?: string
+  children?: ReactNode
 }
 
 const Alert: FC<AlertProps> = ({

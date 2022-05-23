@@ -1,4 +1,4 @@
-import { FC } from "react"
+import { FC, ReactNode } from "react"
 import Navbar from "./Navbar"
 import NoScriptAlert from "./alert/NoScriptAlert"
 import Footer from "./Footer"
@@ -9,6 +9,7 @@ interface Props {
   showNavbar?: boolean
   error?: number
   roomId?: string
+  children?: ReactNode
 }
 
 const Layout: FC<Props> = ({

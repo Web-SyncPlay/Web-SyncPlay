@@ -1,4 +1,4 @@
-import React, { FC, useState } from "react"
+import React, { FC, ReactNode, useState } from "react"
 
 export const LEFT_MOUSE_CLICK = 0
 
@@ -16,6 +16,7 @@ interface Props {
   ) => void
   tabIndex?: number
   onKey?: (key: string) => void
+  children?: ReactNode
 }
 
 const InteractionHandler: FC<Props> = ({

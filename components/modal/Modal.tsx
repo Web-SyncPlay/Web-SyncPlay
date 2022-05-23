@@ -7,6 +7,7 @@ interface Props {
   title: ReactNode
   show: boolean
   close: () => void
+  children?: ReactNode
 }
 
 const Modal: FC<Props> = ({ title, show, close, children }) => {

@@ -1,4 +1,4 @@
-import { FC } from "react"
+import { FC, ReactNode } from "react"
 import InteractionHandler from "../action/InteractionHandler"
 import classNames from "classnames"
 
@@ -7,6 +7,7 @@ interface Props {
   className?: string
   onClick: () => void
   interaction: (touch: boolean) => void
+  children?: ReactNode
 }
 
 const ControlButton: FC<Props> = ({

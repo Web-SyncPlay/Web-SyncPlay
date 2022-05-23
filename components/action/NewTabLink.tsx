@@ -1,9 +1,10 @@
-import { FC } from "react"
+import { FC, ReactNode } from "react"
 import classNames from "classnames"
 
 interface Props {
   href: string
   className?: string
+  children?: ReactNode
 }
 
 const NewTabLink: FC<Props> = ({ href, children, className }) => {

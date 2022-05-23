@@ -10,6 +10,7 @@ interface Props {
   menuChange?: (open: boolean) => void
   interaction: (touch: boolean) => void
   buttonContent: ReactNode
+  children?: ReactNode
 }
 
 const DropUp: FC<Props> = ({

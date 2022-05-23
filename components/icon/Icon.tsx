@@ -1,10 +1,11 @@
-import { FC } from "react"
+import { FC, ReactNode } from "react"
 import classNames from "classnames"
 
 export interface IconProps {
   sizeClassName?: string
   className?: string
   viewBox?: string
+  children?: ReactNode
 }
 
 const Icon: FC<IconProps> = ({

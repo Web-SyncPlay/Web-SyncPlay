@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from "react"
+import React, { FC, useEffect, useState } from "react"
 import { Draggable } from "react-beautiful-dnd"
 import classNames from "classnames"
 import { MediaElement } from "../../lib/types"

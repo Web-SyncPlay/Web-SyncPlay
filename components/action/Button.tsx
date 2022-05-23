@@ -1,4 +1,4 @@
-import { FC, MouseEventHandler } from "react"
+import { FC, MouseEventHandler, ReactNode } from "react"
 import classNames from "classnames"
 
 interface Props {
@@ -9,6 +9,7 @@ interface Props {
   type?: "button" | "submit" | "reset"
   actionClasses?: string
   disabled?: boolean
+  children?: ReactNode
 }
 
 const Button: FC<Props> = ({
