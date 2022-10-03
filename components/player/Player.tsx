@@ -247,7 +247,7 @@ const Player: FC<Props> = ({ socket }) => {
     >
       <ReactPlayer
         style={{
-          maxHeight: fullscreen ? "100vh" : "calc(100vh - 220px)",
+          maxHeight: fullscreen ? "100vh" : "calc(100vh - 210px)",
         }}
         ref={player}
         width={"100%"}

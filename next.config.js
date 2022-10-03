@@ -4,9 +4,7 @@
  * @type {import("next").NextConfig}
  **/
 const nextConfig = {
-  experimental: {
-    outputStandalone: true,
-  },
+  output: 'standalone',
   async headers() {
     return [
       {

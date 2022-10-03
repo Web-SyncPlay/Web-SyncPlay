@@ -1,11 +1,11 @@
 import { FC } from "react"
 import Icon, { IconProps } from "./Icon"
 
-const IconCopyright: FC<IconProps> = ({ className = "" }) => {
+const IconCopyright: FC<IconProps> = ({ className = "", sizeClassName= "h-4 w-4" }) => {
   return (
     <Icon
       className={className}
-      sizeClassName={"h-4 w-4"}
+      sizeClassName={sizeClassName}
       viewBox={"0 0 512 512"}
     >
       <path

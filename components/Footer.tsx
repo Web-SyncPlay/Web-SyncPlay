@@ -9,11 +9,11 @@ interface Props {
 
 const Footer: FC<Props> = ({ error }) => {
   return (
-    <footer className={"flex flex-col bg-dark-900 py-2 px-4"}>
+    <footer className={"flex flex-col bg-dark-900 py-1 px-4"}>
       {error && <div>Error {error}</div>}
-      <div className={"flex flex-col gap-1 sm:flex-row sm:items-center"}>
+      <div className={"text-sm flex flex-col gap-1 sm:flex-row sm:items-center"}>
         <div className={"flex flex-row items-center"}>
-          <IconCopyright />
+          <IconCopyright sizeClassName={"h-3 w-3"}/>
           <NewTabLink href={"https://github.com/Yasamato"}>Yasamato</NewTabLink>
           2022,
         </div>
@@ -26,10 +26,10 @@ const Footer: FC<Props> = ({ error }) => {
         </div>
 
         <NewTabLink
-          className={"ml-auto flex"}
+          className={"ml-auto flex items-center"}
           href={"https://github.com/Web-SyncPlay/Web-SyncPlay"}
         >
-          <IconGithub className={"mr-2"} /> Github
+          <IconGithub className={"mr-1"} /> Github
         </NewTabLink>
       </div>
     </footer>
