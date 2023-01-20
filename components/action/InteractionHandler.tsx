@@ -34,7 +34,7 @@ const InteractionHandler: FC<Props> = ({
 
   const touch = () => {
     setTouched(true)
-    setTouchedTime(new Date().getTime)
+    setTouchedTime(new Date().getTime())
 
     setTimeout(() => {
       if (new Date().getTime() - touchedTime > 150) {
