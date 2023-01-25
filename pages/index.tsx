@@ -3,7 +3,7 @@ import { useState } from "react"
 import InputText from "../components/input/InputText"
 import Button from "../components/action/Button"
 import { useRouter } from "next/router"
-import ReactTooltip from "react-tooltip"
+import { Tooltip } from "react-tooltip"
 import useSWR from "swr"
 
 export default function Index() {
@@ -89,12 +89,10 @@ export default function Index() {
         </form>
       </div>
 
-      <ReactTooltip
-        place={"top"}
-        type={"dark"}
-        effect={"solid"}
-        arrowColor={"var(--dark-700)"}
-        backgroundColor={"var(--dark-700)"}
+      <Tooltip
+        style={{
+          backgroundColor: "var(--dark-700)",
+        }}
       />
     </Layout>
   )

@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react"
 import classNames from "classnames"
-import ReactTooltip from "react-tooltip"
+import { Tooltip } from "react-tooltip"
 import { secondsToTime } from "../../lib/utils"
 
 interface Props {
@@ -32,6 +32,7 @@ const InputSlider: FC<Props> = ({
   showValueHover = false,
 }) => {
   const [hoverValue, setHoverValue] = useState(0)
+  const [time, setTime] = useState(secondsToTime(hoverValue))
 
   if (min < 0) {
     console.error("Slider with min value below 0:", min)
@@ -68,8 +69,9 @@ const InputSlider: FC<Props> = ({
       className={classNames(styles.slider, "flex px-1 items-center", className)}
     >
       <input
-        data-tip={""}
-        data-for={showValueHover ? "slider" : null}
+        data-tooltip-content={""}
+        id={"slider"}
+        data-tooltip-variant={"dark"}
         type={"range"}
         min={min}
         max={max}
@@ -77,6 +79,7 @@ const InputSlider: FC<Props> = ({
         value={value}
         onMouseMove={(event) => {
           setHoverValue(calcSliderPos(event))
+          setTime(secondsToTime(calcSliderPos(event)))
         }}
         onMouseDown={startSeek as MouseEventHandler}
         onTouchStart={startSeek as TouchEventHandler}
@@ -93,14 +96,14 @@ const InputSlider: FC<Props> = ({
         style={valueStyle as CSSProperties}
       />
       {showValueHover && (
-        <ReactTooltip
-          id={"slider"}
+        <Tooltip
+          anchorId={"slider"}
           place={"top"}
-          type={"dark"}
-          effect={"float"}
-          arrowColor={"var(--dark-700)"}
-          backgroundColor={"var(--dark-700)"}
-          getContent={() => (showValueHover ? secondsToTime(hoverValue) : null)}
+          //arrowColor={"var(--dark-700)"}
+          content={time}
+          style={{
+            backgroundColor: "var(--dark-700)",
+          }}
         />
       )}
     </div>

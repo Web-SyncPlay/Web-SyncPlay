@@ -1,7 +1,6 @@
 import React, { FC, ReactNode, useEffect, useState } from "react"
 import ControlButton from "../input/ControlButton"
 import classNames from "classnames"
-import ReactTooltip from "react-tooltip"
 
 interface Props {
   tooltip: string
@@ -34,10 +33,6 @@ const DropUp: FC<Props> = ({
       }
     }
   }, [open, menuChange, menuOpen])
-
-  useEffect(() => {
-    ReactTooltip.rebuild()
-  }, [open])
 
   return (
     <div className={"relative"}>

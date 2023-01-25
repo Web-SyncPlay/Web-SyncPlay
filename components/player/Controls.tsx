@@ -1,5 +1,5 @@
 import React, { FC, useState } from "react"
-import { PlayerState, Subtitle, MediaOption } from "../../lib/types"
+import { MediaOption, PlayerState, Subtitle } from "../../lib/types"
 import InteractionHandler from "../action/InteractionHandler"
 import IconBigPause from "../icon/IconBigPause"
 import IconBigPlay from "../icon/IconBigPlay"
@@ -16,7 +16,7 @@ import VolumeControl from "./VolumeControl"
 import IconBackward from "../icon/IconBackward"
 import IconForward from "../icon/IconForward"
 import PlayerMenu from "./PlayerMenu"
-import ReactTooltip from "react-tooltip"
+import { Tooltip } from "react-tooltip"
 import IconNewTab from "../icon/IconNewTab"
 
 interface Props extends PlayerState {
@@ -284,13 +284,10 @@ const Controls: FC<Props> = ({
         </div>
       </InteractionHandler>
 
-      <ReactTooltip
-        place={"top"}
-        type={"dark"}
-        effect={"solid"}
-        arrowColor={"var(--dark-700)"}
-        backgroundColor={"var(--dark-700)"}
-        getContent={(content) => (showControls || menuOpen ? content : null)}
+      <Tooltip
+        style={{
+          backgroundColor: "var(--dark-700)",
+        }}
       />
     </>
   )

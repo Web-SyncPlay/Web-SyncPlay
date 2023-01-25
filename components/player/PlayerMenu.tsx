@@ -1,4 +1,4 @@
-import { FC, ReactNode, useEffect, useState } from "react"
+import { FC, ReactNode, useState } from "react"
 import { MediaElement, MediaOption, Subtitle } from "../../lib/types"
 import DropUp from "../action/DropUp"
 import InputRadio from "../input/InputRadio"
@@ -10,7 +10,6 @@ import IconChevron from "../icon/IconChevron"
 import IconSettings from "../icon/IconSettings"
 import classNames from "classnames"
 import Button from "../action/Button"
-import ReactTooltip from "react-tooltip"
 import IconLoop from "../icon/IconLoop"
 
 interface Props {
@@ -49,10 +48,6 @@ const PlayerMenu: FC<Props> = ({
   setMenuOpen,
 }) => {
   const [tab, setTab] = useState(-1)
-
-  useEffect(() => {
-    ReactTooltip.rebuild()
-  }, [tab])
 
   const tabs: Tab[] = [
     {

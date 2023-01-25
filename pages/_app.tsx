@@ -1,6 +1,7 @@
 import Head from "next/head"
 
 import "./global.css"
+import "react-tooltip/dist/react-tooltip.css"
 import { getSiteName } from "../lib/env"
 import { AppProps } from "next/app"
 

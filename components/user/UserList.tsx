@@ -3,7 +3,6 @@ import { RoomState, UserState } from "../../lib/types"
 import { Socket } from "socket.io-client"
 import { ClientToServerEvents, ServerToClientEvents } from "../../lib/socket"
 import UserItem from "./UserItem"
-import ReactTooltip from "react-tooltip"
 
 interface Props {
   socket: Socket<ServerToClientEvents, ClientToServerEvents>
@@ -33,10 +32,6 @@ const UserList: FC<Props> = ({ socket }) => {
 
     socket.emit("fetch")
   }, [socket])
-
-  useEffect(() => {
-    ReactTooltip.rebuild()
-  }, [users])
 
   return (
     <div

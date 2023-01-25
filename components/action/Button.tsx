@@ -2,8 +2,8 @@ import { FC, MouseEventHandler, ReactNode } from "react"
 import classNames from "classnames"
 
 interface Props {
+  id?: string
   tooltip: string
-  tooltipFor?: string
   onClick?: MouseEventHandler<HTMLButtonElement>
   className?: string
   type?: "button" | "submit" | "reset"
@@ -13,8 +13,8 @@ interface Props {
 }
 
 const Button: FC<Props> = ({
+  id,
   tooltip,
-  tooltipFor,
   onClick,
   className = "",
   type = "button",
@@ -24,8 +24,9 @@ const Button: FC<Props> = ({
 }) => {
   return (
     <button
-      data-tip={tooltip}
-      data-for={tooltipFor}
+      id={id}
+      data-tooltip-content={tooltip}
+      data-tooltip-variant={"dark"}
       onClick={onClick}
       type={type}
       disabled={disabled}

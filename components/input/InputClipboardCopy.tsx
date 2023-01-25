@@ -25,7 +25,7 @@ const InputClipboardCopy: FC<Props> = ({ value, className }) => {
         className={
           "p-2 bg-primary-900 hover:bg-primary-800 active:bg-primary-700 flex flex-row items-center rounded-r cursor-copy"
         }
-        data-tip={"Click to copy"}
+        data-tooltip-content={"Click to copy"}
         type={"button"}
         onClick={() => {
           navigator.clipboard

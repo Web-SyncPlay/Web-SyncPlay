@@ -24,7 +24,6 @@ import { getTargetTime, isSync } from "../../lib/utils"
 import BufferAlert from "components/alert/BufferAlert"
 import { getDefaultSrc } from "../../lib/env"
 import AutoplayAlert from "../alert/AutoplayAlert"
-import ReactTooltip from "react-tooltip"
 
 interface Props {
   socket: Socket<ServerToClientEvents, ClientToServerEvents>
@@ -227,10 +226,6 @@ const Player: FC<Props> = ({ socket }) => {
       socket.emit("fetch")
     }
   }, [ready, socket])
-
-  useEffect(() => {
-    ReactTooltip.rebuild()
-  }, [ready, playlist])
 
   const FullScreenWithChildren = FullScreen as React.FC<
     React.PropsWithChildren<FullScreenProps>

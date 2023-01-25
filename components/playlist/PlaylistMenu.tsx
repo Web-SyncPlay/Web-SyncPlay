@@ -10,7 +10,6 @@ import {
 } from "../../lib/socket"
 import ControlButton from "../input/ControlButton"
 import IconChevron from "../icon/IconChevron"
-import ReactTooltip from "react-tooltip"
 import PlaylistItem from "./PlaylistItem"
 import InputUrl from "../input/InputUrl"
 
@@ -21,10 +20,6 @@ interface Props {
 const PlaylistMenu: FC<Props> = ({ socket }) => {
   const [expanded, setExpanded] = useState(true)
   const [url, setUrl] = useState("")
-
-  useEffect(() => {
-    ReactTooltip.rebuild()
-  }, [expanded])
 
   const [playlist, _setPlaylist] = useState<Playlist>({
     items: [],
@@ -97,7 +92,6 @@ const PlaylistMenu: FC<Props> = ({ socket }) => {
           </InputUrl>
           <DragDropContext
             onDragEnd={(result) => {
-              ReactTooltip.rebuild()
               if (!result.destination) {
                 return
               }

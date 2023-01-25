@@ -60,7 +60,7 @@ const InputUrl: FC<Props> = ({
         <div>
           <button
             type={"submit"}
-            data-tip={tooltip}
+            data-tooltip-content={tooltip}
             className={classNames(
               "p-2 rounded-r",
               valid

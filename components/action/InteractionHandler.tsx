@@ -45,7 +45,7 @@ const InteractionHandler: FC<Props> = ({
 
   return (
     <div
-      data-tip={tooltip}
+      data-tooltip-content={tooltip}
       className={className}
       tabIndex={tabIndex}
       onTouchStart={(e) => {

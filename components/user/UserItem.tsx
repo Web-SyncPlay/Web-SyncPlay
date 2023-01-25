@@ -6,6 +6,7 @@ import IconPlay from "../icon/IconPlay"
 import classNames from "classnames"
 import IconOwner from "../icon/IconOwner"
 import InputText from "../input/InputText"
+import Image from "next/image"
 
 interface Props {
   user: UserState
@@ -40,13 +41,13 @@ const UserItem: FC<Props> = ({ user, ownerId, socketId, updateName }) => {
       {ownerId == user.uid && (
         <div
           className={"absolute inline-flex -ml-4 -mt-4 p-2 cursor-help"}
-          data-tip={"Owner of the lobby"}
+          data-tooltip-content={"Owner of the lobby"}
         >
           <IconOwner className={"text-primary-700"} sizeClassName={"w-5 h-5"} />
         </div>
       )}
       <div className={"aspect-square shrink-0"}>
-        <img
+        <Image
           className={"aspect-square h-[64px]"}
           src={
             "https://avatars.dicebear.com/api/pixel-art/" + user.uid + ".svg"

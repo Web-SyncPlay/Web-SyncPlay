@@ -1,7 +1,7 @@
 import Button from "../action/Button"
-import { FC, ReactNode, useEffect } from "react"
+import { FC, ReactNode } from "react"
 import IconClose from "../icon/IconClose"
-import ReactTooltip from "react-tooltip"
+import { Tooltip } from "react-tooltip"
 
 interface Props {
   title: ReactNode
@@ -11,10 +11,6 @@ interface Props {
 }
 
 const Modal: FC<Props> = ({ title, show, close, children }) => {
-  useEffect(() => {
-    ReactTooltip.rebuild()
-  }, [show])
-
   if (!show) {
     return <></>
   }
@@ -44,11 +40,7 @@ const Modal: FC<Props> = ({ title, show, close, children }) => {
             <div className={"p-2 mr-2"}>
               <h2 className={"text-xl"}>{title}</h2>
             </div>
-            <Button
-              tooltip={"Close modal"}
-              tooltipFor={"modal"}
-              onClick={close}
-            >
+            <Button tooltip={"Close modal"} id={"closeModal1"} onClick={close}>
               <IconClose />
             </Button>
           </div>
@@ -60,7 +52,7 @@ const Modal: FC<Props> = ({ title, show, close, children }) => {
           >
             <Button
               tooltip={"Close modal"}
-              tooltipFor={"modal"}
+              id={"closeModal2"}
               className={"p-2 bg-dark-600"}
               onClick={close}
             >
@@ -70,15 +62,8 @@ const Modal: FC<Props> = ({ title, show, close, children }) => {
         </div>
       </div>
 
-      <ReactTooltip
-        id={"modal"}
-        place={"top"}
-        type={"dark"}
-        effect={"solid"}
-        arrowColor={"var(--dark-700)"}
-        backgroundColor={"var(--dark-700)"}
-        getContent={() => (show ? "Close modal" : null)}
-      />
+      <Tooltip anchorId={"closeModal1"} />
+      <Tooltip anchorId={"closeModal2"} />
     </div>
   )
 }
