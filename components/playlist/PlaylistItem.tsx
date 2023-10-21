@@ -1,5 +1,5 @@
-import React, { FC, useEffect, useState } from "react"
-import { Draggable } from "react-beautiful-dnd"
+import React, { FC, useEffect, useState, useRef } from "react"
+import { Draggable as _Draggable, DraggableProps } from "react-beautiful-dnd"
 import classNames from "classnames"
 import { MediaElement } from "../../lib/types"
 import NewTabLink from "../action/NewTabLink"
@@ -12,6 +12,9 @@ import IconPlay from "../icon/IconPlay"
 import IconDisk from "../icon/IconDisk"
 import { getDomain } from "../../lib/utils"
 
+// HACK: this fixes type incompatibility
+const Draggable = _Draggable as unknown as FC<DraggableProps>
+
 interface Props {
   playing: boolean
   item: MediaElement
@@ -19,6 +22,13 @@ interface Props {
   play: () => void
   deleteItem: (index: number) => void
   updateTitle: (title: string) => void
+}
+
+const titleGen = (item: MediaElement, index: number) => {
+  if (!item || !item.title || item.title === "") {
+    return "Item #" + (index + 1)
+  }
+  return item.title
 }
 
 const PlaylistItem: FC<Props> = ({
@@ -30,24 +40,19 @@ const PlaylistItem: FC<Props> = ({
   updateTitle,
 }) => {
   const [edit, setEdit] = useState(false)
-  const [title, _setTitle] = useState(item.title || "")
-  const setTitle = (newTitle: string) => {
-    _setTitle(newTitle)
-  }
+  const [title, setTitle] = useState(titleGen(item, index))
+  const prevEdit = useRef(false)
 
   useEffect(() => {
-    if (!edit) {
-      setTitle(item.title || "")
-    }
-  }, [edit, item.title])
+    if (prevEdit.current !== edit) {
+      if (!edit) {
+        updateTitle(title || "")
+      }
 
-  const itemTitle = () => {
-    if (item.title && item.title !== "") {
-      return item.title
+      prevEdit.current = edit
     }
-
-    return "Item #" + (index + 1)
-  }
+    setTitle(titleGen(item, index))
+  }, [edit, item])
 
   return (
     <Draggable
@@ -82,16 +87,16 @@ const PlaylistItem: FC<Props> = ({
             >
               {edit ? (
                 <InputText
-                  onChange={updateTitle}
+                  onChange={setTitle}
                   placeholder={"Set a title"}
                   value={title}
                 />
-              ) : (
-                itemTitle()
-              )}
+              ) :
+                title
+              }
             </div>
             <DeleteButton
-              tooltip={"Delete " + itemTitle()}
+              tooltip={"Delete " + title}
               onClick={() => deleteItem(index)}
             />
           </div>

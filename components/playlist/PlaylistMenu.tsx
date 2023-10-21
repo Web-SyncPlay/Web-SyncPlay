@@ -1,6 +1,6 @@
 import { FC, useEffect, useRef, useState } from "react"
 import { MediaElement, Playlist, RoomState } from "../../lib/types"
-import { DragDropContext, Droppable } from "react-beautiful-dnd"
+import { DragDropContext as _DragDropContext, Droppable as _Droppable, DragDropContextProps, DroppableProps } from "react-beautiful-dnd"
 import classNames from "classnames"
 import { Socket } from "socket.io-client"
 import {
@@ -12,6 +12,10 @@ import ControlButton from "../input/ControlButton"
 import IconChevron from "../icon/IconChevron"
 import PlaylistItem from "./PlaylistItem"
 import InputUrl from "../input/InputUrl"
+
+// HACK: this fixes type incompatibility
+const DragDropContext = _DragDropContext as unknown as FC<DragDropContextProps>
+const Droppable = _Droppable as unknown as FC<DroppableProps>
 
 interface Props {
   socket: Socket<ServerToClientEvents, ClientToServerEvents>
