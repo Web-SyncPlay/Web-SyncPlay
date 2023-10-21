@@ -5,6 +5,11 @@
  **/
 const nextConfig = {
   output: 'standalone',
+  images: {
+    domains: [
+        'api.dicebear.com'
+    ]
+  },
   async headers() {
     return [
       {

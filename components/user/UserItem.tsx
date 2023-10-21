@@ -48,9 +48,10 @@ const UserItem: FC<Props> = ({ user, ownerId, socketId, updateName }) => {
       )}
       <div className={"aspect-square shrink-0"}>
         <Image
-          className={"aspect-square h-[64px]"}
+          width={64}
+          height={64}
           src={
-            "https://avatars.dicebear.com/api/pixel-art/" + user.uid + ".svg"
+            "https://api.dicebear.com/7.x/pixel-art/png?seed=" + user.uid
           }
           alt={"Generated profile picture of " + user.name}
         />
