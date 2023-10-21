@@ -25,10 +25,10 @@ interface Props {
 }
 
 const titleGen = (item: MediaElement, index: number) => {
-  if (!item || !item.title || item.title === "") {
-    return "Item #" + (index + 1)
+  if (item.title && item.title !== "") {
+    return item.title
   }
-  return item.title
+  return "Item #" + (index + 1)
 }
 
 const PlaylistItem: FC<Props> = ({
@@ -40,19 +40,24 @@ const PlaylistItem: FC<Props> = ({
   updateTitle,
 }) => {
   const [edit, setEdit] = useState(false)
-  const [title, setTitle] = useState(titleGen(item, index))
+  const [title, setTitle] = useState(item.title || "")
   const prevEdit = useRef(false)
 
   useEffect(() => {
     if (prevEdit.current !== edit) {
       if (!edit) {
-        updateTitle(title || "")
+        if (item.title !== title) {
+          updateTitle(title || "")
+        }
       }
 
       prevEdit.current = edit
     }
-    setTitle(titleGen(item, index))
-  }, [edit, item])
+
+    if (item.title && item.title !== "" && item.title !== title) {
+      setTitle(item.title || "")
+    }
+  }, [edit, item.title, title])
 
   return (
     <Draggable
@@ -92,7 +97,7 @@ const PlaylistItem: FC<Props> = ({
                   value={title}
                 />
               ) :
-                title
+                titleGen(item, index)
               }
             </div>
             <DeleteButton
