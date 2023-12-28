@@ -21,7 +21,6 @@ const Embed: FC<Props> = ({ id }) => {
     ServerToClientEvents,
     ClientToServerEvents
   > | null>(null)
-  const [url, setUrl] = useState("")
 
   useEffect(() => {
     fetch("/api/socketio").finally(() => {
