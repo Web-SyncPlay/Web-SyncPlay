@@ -6,13 +6,8 @@ import {
   createClientSocket,
   ServerToClientEvents,
 } from "../lib/socket"
-import Button from "./action/Button"
 import { Socket } from "socket.io-client"
 import ConnectingAlert from "./alert/ConnectingAlert"
-import PlaylistMenu from "./playlist/PlaylistMenu"
-import IconLoop from "./icon/IconLoop"
-import InputUrl from "./input/InputUrl"
-import UserList from "./user/UserList"
 
 interface Props {
   id: string
@@ -20,7 +15,7 @@ interface Props {
 
 let connecting = false
 
-const Room: FC<Props> = ({ id }) => {
+const Embed: FC<Props> = ({ id }) => {
   const [connected, setConnected] = useState(false)
   const [socket, setSocket] = useState<Socket<
     ServerToClientEvents,
@@ -70,44 +65,8 @@ const Room: FC<Props> = ({ id }) => {
   }
 
   return (
-    <div className={"flex flex-col sm:flex-row gap-1"}>
-      <div className={"grow"}>
-        <Player roomId={id} socket={socket} />
-
-        <div className={"flex flex-row gap-1 p-1"}>
-          <Button
-            tooltip={"Do a forced manual sync"}
-            className={"p-2 flex flex-row gap-1 items-center"}
-            onClick={() => {
-              console.log("Fetching update", socket?.id)
-              socket?.emit("fetch")
-            }}
-          >
-            <IconLoop className={"hover:animate-spin"} />
-            <div className={"hidden-below-sm"}>Manual sync</div>
-          </Button>
-          <InputUrl
-            className={"grow"}
-            url={url}
-            placeholder={"Play url now"}
-            tooltip={"Play given url now"}
-            onChange={setUrl}
-            onSubmit={() => {
-              console.log("Requesting", url, "now")
-              socket?.emit("playUrl", url)
-              setUrl("")
-            }}
-          >
-            Play
-          </InputUrl>
-        </div>
-
-        <UserList socket={socket} />
-      </div>
-
-      <PlaylistMenu socket={socket} />
-    </div>
+      <Player roomId={id} socket={socket}  fullHeight={true}/>
   )
 }
 
-export default Room
+export default Embed

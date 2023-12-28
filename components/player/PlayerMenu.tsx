@@ -1,3 +1,4 @@
+"use client"
 import { FC, ReactNode, useState } from "react"
 import { MediaElement, MediaOption, Subtitle } from "../../lib/types"
 import DropUp from "../action/DropUp"
@@ -11,8 +12,13 @@ import IconSettings from "../icon/IconSettings"
 import classNames from "classnames"
 import Button from "../action/Button"
 import IconLoop from "../icon/IconLoop"
+import IconShare from "components/icon/IconShare"
+import Link from "next/link"
+import IconNewTab from "components/icon/IconNewTab"
+import { useRouter } from 'next/navigation'
 
 interface Props {
+  roomId: string
   playing: MediaElement
   currentSrc: MediaOption
   setCurrentSrc: (src: MediaOption) => void
@@ -34,6 +40,7 @@ interface Tab {
 }
 
 const PlayerMenu: FC<Props> = ({
+  roomId,
   playing,
   currentSrc,
   setCurrentSrc,
@@ -48,6 +55,7 @@ const PlayerMenu: FC<Props> = ({
   setMenuOpen,
 }) => {
   const [tab, setTab] = useState(-1)
+  const router = useRouter()
 
   const tabs: Tab[] = [
     {
@@ -81,6 +89,42 @@ const PlayerMenu: FC<Props> = ({
         </Button>
       ),
     },
+    {
+      icon: <IconShare />,
+      title: "Open embed",
+      content: (
+        <div className="flex flex-col">
+        <Button tooltip="Switch to full player" className="action flex flex-row gap-1 p-2" onClick={() => {
+          router.push("/room/" + roomId)
+        }}>
+          <IconNewTab />
+          <span>
+            Switch to full player
+          </span>
+        </Button>
+        <Button tooltip="Switch to embed player" className="action flex flex-row gap-1 p-2" onClick={() => {
+          router.push("/embed/" + roomId)
+        }}>
+          <IconNewTab />
+          <span>
+            Switch to embed player
+          </span>
+        </Button>
+          <Link href={"/room/" + roomId} target="_blank" className="action flex flex-row gap-1 p-2">
+            <IconNewTab />
+            <span>
+              Open full player in new tab
+            </span>
+          </Link>
+          <Link href={"/embed/" + roomId} target="_blank" className="action flex flex-row gap-1 p-2">
+            <IconNewTab />
+            <span>
+              Open embed player in new tab
+            </span>
+          </Link>
+        </div>
+      )
+    }
   ]
 
   if (playing.src.length > 1) {

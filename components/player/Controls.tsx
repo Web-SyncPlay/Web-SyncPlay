@@ -18,8 +18,10 @@ import IconForward from "../icon/IconForward"
 import PlayerMenu from "./PlayerMenu"
 import { Tooltip } from "react-tooltip"
 import IconNewTab from "../icon/IconNewTab"
+import Link from "next/link"
 
 interface Props extends PlayerState {
+  roomId: string
   setCurrentSrc: (src: MediaOption) => void
   setCurrentSub: (sub: Subtitle) => void
   setPaused: (paused: boolean) => void
@@ -40,6 +42,7 @@ let interactionTime = 0
 let lastMouseMove = 0
 
 const Controls: FC<Props> = ({
+  roomId,
   playing,
   playlist,
   currentSrc,
@@ -251,12 +254,13 @@ const Controls: FC<Props> = ({
             }}
             interaction={showControlsAction}
           >
-            <a href={currentSrc.src} target={"_blank"} rel={"noreferrer"}>
+            <Link href={currentSrc.src} target={"_blank"} rel={"noreferrer"}>
               <IconNewTab sizeClassName={"w-5 h-5"} />
-            </a>
+            </Link>
           </ControlButton>
 
           <PlayerMenu
+            roomId={roomId}
             playing={playing}
             currentSrc={currentSrc}
             setCurrentSrc={setCurrentSrc}

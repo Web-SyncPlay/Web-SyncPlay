@@ -1,5 +1,6 @@
+"use client"
 import React, { FC, useEffect, useRef, useState } from "react"
-import { Socket } from "socket.io-client"
+import { type Socket } from "socket.io-client"
 import {
   ClientToServerEvents,
   playItemFromPlaylist,
@@ -26,12 +27,14 @@ import { getDefaultSrc } from "../../lib/env"
 import AutoplayAlert from "../alert/AutoplayAlert"
 
 interface Props {
+  roomId: string
   socket: Socket<ServerToClientEvents, ClientToServerEvents>
+  fullHeight?: boolean
 }
 
 let seeking = false
 
-const Player: FC<Props> = ({ socket }) => {
+const Player: FC<Props> = ({ roomId, socket, fullHeight }) => {
   // data to be reported to the server
   // updateX is never allowed to be called outside the _setX functions
   // _setX should not be called directly, but set via message from the server
@@ -242,11 +245,11 @@ const Player: FC<Props> = ({ socket }) => {
     >
       <ReactPlayer
         style={{
-          maxHeight: fullscreen ? "100vh" : "calc(100vh - 210px)",
+          maxHeight: fullscreen || fullHeight ? "100vh" : "calc(100vh - 210px)",
         }}
         ref={player}
         width={"100%"}
-        height={fullscreen ? "100vh" : "calc((9 / 16) * 100vw)"}
+        height={fullscreen || fullHeight ? "100vh" : "calc((9 / 16) * 100vw)"}
         config={{
           youtube: {
             playerVars: {
@@ -373,6 +376,7 @@ const Player: FC<Props> = ({ socket }) => {
       />
 
       <Controls
+        roomId={roomId}
         playing={playing}
         setCurrentSrc={setCurrentSrc}
         setCurrentSub={setCurrentSub}
