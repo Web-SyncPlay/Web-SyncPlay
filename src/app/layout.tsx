@@ -3,6 +3,7 @@ import "~/styles/globals.css";
 import { type Metadata } from "next";
 import NoScriptAlert from "~/components/alert/NoScriptAlert";
 import { env } from "~/env";
+import { GeistSans } from "geist/font/sans";
 
 export const metadata: Metadata = {
   title: env.SITE_NAME,
@@ -19,7 +20,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={GeistSans.className}>
       <head>
         <meta charSet="UTF-8" />
         <meta content="IE=Edge" httpEquiv="X-UA-Compatible" />
@@ -41,7 +42,7 @@ export default function RootLayout({
         <link rel="canonical" href="/" data-react-helmet="true" />
       </head>
 
-      <body className="flex min-h-screen flex-col items-center justify-center">
+      <body className="flex min-h-screen flex-col items-center justify-center bg-[#090a0f] text-white">
         <noscript>
           <NoScriptAlert />
         </noscript>
