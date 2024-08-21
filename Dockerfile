@@ -2,14 +2,11 @@
 FROM oven/bun:1.1.24-alpine AS deps
 WORKDIR /app
 
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
-
 COPY package.json bun.lockb ./
 RUN bun install --production --frozen-lockfile
 
 # Rebuild the source code only when needed
-FROM node:21.0-alpine AS builder
+FROM node:22.6-alpine AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -17,7 +14,7 @@ COPY . .
 RUN npm build
 
 # Production image, copy all the files and run next
-FROM node:21.0-alpine AS runner
+FROM node:22.6-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV="production"
@@ -28,9 +25,9 @@ ENV REDIS_URL="redis://redis:6379"
 EXPOSE 3000
 
 LABEL org.opencontainers.image.url="https://web-syncplay.de" \
-      org.opencontainers.image.description="Watch videos or play music in sync with your friends" \
-      org.opencontainers.image.title="Web-SyncPlay" \
-      maintainer="Yasamato <https://github.com/Yasamato>"
+    org.opencontainers.image.description="Watch videos or play music in sync with your friends" \
+    org.opencontainers.image.title="Web-SyncPlay" \
+    maintainer="Yasamato <https://github.com/Yasamato>"
 
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001 && \
