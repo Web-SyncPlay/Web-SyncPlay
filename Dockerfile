@@ -49,7 +49,7 @@ USER nextjs
 
 EXPOSE 8081
 
-ENV PORT 8081
+ENV PORT=8081
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry

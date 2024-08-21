@@ -1,4 +1,4 @@
-import { countRooms, countUsers } from "~/lib/cache"
+import { countRooms, countUsers } from "~/lib/cache/redis"
 import { type NextApiRequest, type NextApiResponse } from "next"
 
 export default async function stats(_: NextApiRequest, res: NextApiResponse) {

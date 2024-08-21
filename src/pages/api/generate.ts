@@ -1,4 +1,4 @@
-import { listRooms } from "~/lib/cache"
+import { listRooms } from "~/lib/cache/redis"
 import { generateId } from "~/lib/utils"
 import { type NextApiRequest, type NextApiResponse } from "next"
 

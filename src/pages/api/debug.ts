@@ -1,4 +1,4 @@
-import { getRoom, listRooms } from "~/lib/cache"
+import { getRoom, listRooms } from "~/lib/cache/redis"
 import { type NextApiRequest, type NextApiResponse } from "next"
 
 export default async function debug(_: NextApiRequest, res: NextApiResponse) {
