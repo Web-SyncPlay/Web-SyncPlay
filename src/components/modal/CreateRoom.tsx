@@ -42,12 +42,12 @@ export function CreateRoom() {
               fetch("/api/generate")
                 .then((r) => r.json())
                 .then(({ roomId }) => {
+                  console.log("Generated new roomId:", roomId);
                   if (
                     typeof roomId === "string" &&
                     roomId.length >= 4 &&
                     /^[a-z]{4,}$/.exec(roomId)
                   ) {
-                    console.log("Generated new roomId:", roomId);
                     router.push("/room/" + roomId);
                   } else {
                     throw Error("Invalid roomId generated: " + roomId);

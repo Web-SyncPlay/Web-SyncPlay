@@ -18,9 +18,10 @@ FROM node:22.6-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV="production"
-ENV SITE_NAME="Web-SyncPlay"
-ENV PUBLIC_DOMAIN="https://web-syncplay.de"
 ENV REDIS_URL="redis://redis:6379"
+ENV NEXT_PUBLIC_SITE_NAME="Web-SyncPlay"
+ENV NEXT_PUBLIC_DOMAIN="https://web-syncplay.de"
+ENV NEXT_PUBLIC_DEFAULT_SRC=""
 
 EXPOSE 3000
 

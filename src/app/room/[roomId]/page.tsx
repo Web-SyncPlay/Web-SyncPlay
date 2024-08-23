@@ -26,7 +26,7 @@ export async function generateMetadata(
           room.targetState.playing.src[0]?.url)
         : "Null room...") +
       " | " +
-      env.SITE_NAME,
+      env.NEXT_PUBLIC_SITE_NAME,
     description: "Watch videos or play music in sync with your friends",
     openGraph: {
       images: ["/apple-touch-icon.png", ...previousImages],

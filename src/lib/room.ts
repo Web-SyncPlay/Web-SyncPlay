@@ -61,14 +61,14 @@ export const createNewRoom = async (roomId: string, socketId: string) => {
       playlist: {
         items: [
           {
-            src: [{ url: env.DEFAULT_SRC, resolution: "" }],
+            src: [{ url: env.NEXT_PUBLIC_DEFAULT_SRC, resolution: "" }],
             sub: [],
           },
         ],
         currentIndex: 0,
       },
       playing: {
-        src: [{ url: env.DEFAULT_SRC, resolution: "" }],
+        src: [{ url: env.NEXT_PUBLIC_DEFAULT_SRC, resolution: "" }],
         sub: [],
       },
       paused: false,

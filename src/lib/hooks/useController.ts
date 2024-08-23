@@ -25,7 +25,7 @@ const initialPlaying: MediaElement = {
   sub: [],
   src: [
     {
-      url: env.DEFAULT_SRC,
+      url: env.NEXT_PUBLIC_DEFAULT_SRC,
       resolution: "",
     },
   ],

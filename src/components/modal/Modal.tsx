@@ -65,8 +65,8 @@ export default function Modal({
         </div>
       </div>
 
-      <Tooltip anchorId={"closeModal1"} />
-      <Tooltip anchorId={"closeModal2"} />
+      <Tooltip anchorSelect={"#closeModal1"} />
+      <Tooltip anchorSelect={"#closeModal2"} />
     </div>
   );
 }

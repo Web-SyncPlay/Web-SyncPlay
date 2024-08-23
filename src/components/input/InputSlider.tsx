@@ -96,7 +96,7 @@ export default function InputSlider({
       />
       {showValueHover && (
         <Tooltip
-          anchorId={"slider"}
+          anchorSelect={"#slider"}
           place={"top"}
           //arrowColor={"var(--dark-700)"}
           content={time}

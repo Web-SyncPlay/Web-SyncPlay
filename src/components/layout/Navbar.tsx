@@ -13,7 +13,7 @@ export function Navbar({ roomId }: { roomId: string }) {
   const [showShare, setShowShare] = useState(false);
 
   return (
-    <nav className={"bg-dark-900 flex flex-row items-stretch gap-1 px-2 py-1"}>
+    <nav className="flex w-full items-stretch gap-2 bg-[#1b2735] px-2 py-1">
       <NavbarLogo />
       {roomId && (
         <>
@@ -25,7 +25,7 @@ export function Navbar({ roomId }: { roomId: string }) {
             <div>Share this link to let more people join in on the fun</div>
             <InputClipboardCopy
               className={"bg-dark-1000"}
-              value={env.PUBLIC_DOMAIN + "/room/" + roomId}
+              value={env.NEXT_PUBLIC_DOMAIN + "/room/" + roomId}
             />
           </Modal>
           <Button
@@ -44,7 +44,7 @@ export function Navbar({ roomId }: { roomId: string }) {
       )}
 
       <Tooltip
-        anchorId={"navbar"}
+        anchorSelect="#navbar"
         place={"bottom"}
         style={{
           backgroundColor: "var(--dark-700)",

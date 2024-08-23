@@ -1,9 +1,9 @@
+# Web-SyncPlay
+
 [![Website](https://img.shields.io/website?down_color=red&down_message=offline&label=Website&up_color=green&up_message=online&url=https%3A%2F%2Fweb-syncplay.de)](https://demo.web-syncplay.de)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/35f7884623744a5c8ad64e184f6f5dcf)](https://www.codacy.com/gh/Web-SyncPlay/Web-SyncPlay/dashboard?utm_source=github.com&utm_medium=referral&utm_content=Web-SyncPlay/Web-SyncPlay&utm_campaign=Badge_Grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/web-syncplay/web-syncplay/badge)](https://www.codefactor.io/repository/github/web-syncplay/web-syncplay)
 [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/websyncplay/websyncplay/latest?logo=docker)](https://hub.docker.com/r/websyncplay/websyncplay)
-
-# Web-SyncPlay
 
 Watch videos, listen to music or tune in for a live stream and all that with your friends. Web-SyncPlay is a software
 that lets you synchronise your playback with all your friends with a clean modern Web-UI written
@@ -88,7 +88,7 @@ git clone https://github.com/Web-SyncPlay/Web-SyncPlay
 When you are trying to develop on the project simply run
 
 ```bash
-yarn dev
+bun run dev
 ```
 
 You can now view the project under `http://localhost:3000` with hot reloads
@@ -96,18 +96,19 @@ You can now view the project under `http://localhost:3000` with hot reloads
 To run an optimized deployment you need to run the following two commands:
 
 ```bash
-yarn build && yarn start
+bun run build && bun run start
 ```
 
 ### Environment variables
 
-| Parameter       | Function                                       | Default                |
-| --------------- | ---------------------------------------------- | ---------------------- |
-| `SITE_NAME`     | The name of your site                          | `"The Anime Index"`    |
-| `PUBLIC_DOMAIN` | Your domain or IP, remove trailing slash       | `"https://piracy.moe"` |
-| `REDIS_URL`     | Connection string for the redis cache database | `"redis://redis:6379"` |
+| Parameter                 | Function                                        | Default                           |
+| ------------------------- | ----------------------------------------------- | --------------------------------- |
+| `NEXT_PUBLIC_SITE_NAME`   | The name of your site                           | `"WebSyncPlay"`                   |
+| `NEXT_PUBLIC_DOMAIN`      | Your domain or IP, remove trailing slash        | `"https://web-syncplay.de"`       |
+| `NEXT_PUBLIC_DEFAULT_SRC` | URL to a media that should be played by default | `"https://youtu.be/NcBjx_eyvxc4"` |
+| `REDIS_URL`               | Connection string for the redis cache database  | `"redis://redis:6379"`            |
 
-After deployment open your browser and visit http://localhost:8081 or however you address the server. It is
+After deployment open your browser and visit <http://localhost:8081> or however you address the server. It is
 **_strongly_** recommended putting a reverse proxy using TLS/SSL in front of this service.
 
 ## Adding synchronised playback to your website

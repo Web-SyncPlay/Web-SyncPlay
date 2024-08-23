@@ -7,7 +7,7 @@ import { GeistSans } from "geist/font/sans";
 import Providers from "./providers";
 
 export const metadata: Metadata = {
-  title: env.SITE_NAME,
+  title: env.NEXT_PUBLIC_SITE_NAME,
   description: "Watch videos or play music in sync with your friends",
   icons: [
     { rel: "apple-touch-icon", url: "/apple-touch-icon.png" },
@@ -35,8 +35,11 @@ export default function RootLayout({
 
         <link rel="manifest" href="/site.webmanifest" />
         <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#28a745" />
-        <meta name="apple-mobile-web-app-title" content={env.SITE_NAME} />
-        <meta name="application-name" content={env.SITE_NAME} />
+        <meta
+          name="apple-mobile-web-app-title"
+          content={env.NEXT_PUBLIC_SITE_NAME}
+        />
+        <meta name="application-name" content={env.NEXT_PUBLIC_SITE_NAME} />
         <meta name="msapplication-TileColor" content="#2b5797" />
         <meta name="msapplication-TileImage" content="/mstile-144x144.png" />
         <meta name="theme-color" content="#28a745" />

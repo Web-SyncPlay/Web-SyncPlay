@@ -8,11 +8,14 @@ await import("./src/env.js");
  * @type {import("next").NextConfig}
  **/
 const nextConfig = {
-  output: 'standalone',
+  output: "standalone",
   images: {
-    domains: [
-        'api.dicebear.com'
-    ]
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "api.dicebear.com",
+      },
+    ],
   },
   async headers() {
     return [
@@ -34,8 +37,8 @@ const nextConfig = {
           },
         ],
       },
-    ]
+    ];
   },
-}
+};
 
-export default nextConfig
+export default nextConfig;

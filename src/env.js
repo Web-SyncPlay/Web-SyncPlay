@@ -8,10 +8,7 @@ export const env = createEnv({
    */
   server: {
     NODE_ENV: z.enum(["development", "test", "production"]),
-    SITE_NAME: z.string().default("Web-SyncPlay"),
-    PUBLIC_DOMAIN: z.string().url().default("https://web-syncplay.de"),
     REDIS_URL: z.string().url().default("redis://localhost:6379"),
-    DEFAULT_SRC: z.string().url().default("https://youtu.be/NcBjx_eyvxc4")
   },
 
   /**
@@ -20,7 +17,12 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    // NEXT_PUBLIC_CLIENTVAR: z.string(),
+    NEXT_PUBLIC_SITE_NAME: z.string().default("Web-SyncPlay"),
+    NEXT_PUBLIC_DOMAIN: z.string().url().default("https://web-syncplay.de"),
+    NEXT_PUBLIC_DEFAULT_SRC: z
+      .string()
+      .url()
+      .default("https://youtu.be/NcBjx_eyvxc4"),
   },
 
   /**
@@ -29,10 +31,10 @@ export const env = createEnv({
    */
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
-    SITE_NAME: process.env.SITE_NAME,
-    PUBLIC_DOMAIN: process.env.PUBLIC_DOMAIN,
     REDIS_URL: process.env.REDIS_URL,
-    DEFAULT_SRC: process.env.DEFAULT_SRC
+    NEXT_PUBLIC_SITE_NAME: process.env.NEXT_PUBLIC_SITE_NAME,
+    NEXT_PUBLIC_DOMAIN: process.env.NEXT_PUBLIC_DOMAIN,
+    NEXT_PUBLIC_DEFAULT_SRC: process.env.NEXT_PUBLIC_DEFAULT_SRC,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

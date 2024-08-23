@@ -17,14 +17,14 @@ export default function Room({ id }: { id: string }) {
 
   if (!connected || typeof socket.current === "undefined") {
     return (
-      <div className={"flex justify-center"}>
+      <div className={"flex grow justify-center"}>
         <ConnectingAlert />
       </div>
     );
   }
 
   return (
-    <div className={"flex flex-col gap-1 sm:flex-row"}>
+    <div className={"flex grow flex-col gap-1 sm:flex-row"}>
       <div className={"grow"}>
         <OldPlayer roomId={id} />
 
