@@ -4,6 +4,7 @@ import { type Metadata } from "next";
 import NoScriptAlert from "~/components/alert/NoScriptAlert";
 import { env } from "~/env";
 import { GeistSans } from "geist/font/sans";
+import Providers from "./providers";
 
 export const metadata: Metadata = {
   title: env.SITE_NAME,
@@ -47,7 +48,7 @@ export default function RootLayout({
           <NoScriptAlert />
         </noscript>
 
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

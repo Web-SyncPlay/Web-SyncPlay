@@ -1,7 +1,7 @@
 "use client";
 
-import { type FC, useState } from "react";
-import type { MediaOption, PlayerState, Subtitle } from "~/lib/types";
+import { useState } from "react";
+import type { MediaOption, Subtitle } from "~/lib/types";
 import InteractionHandler from "../action/InteractionHandler";
 import classNames from "classnames";
 import InputSlider from "../input/InputSlider";
@@ -21,55 +21,48 @@ import {
   StepBack,
   StepForward,
 } from "lucide-react";
-
-interface Props extends PlayerState {
-  roomId: string;
-  setCurrentSrc: (src: MediaOption) => void;
-  setCurrentSub: (sub: Subtitle) => void;
-  setPaused: (paused: boolean) => void;
-  setVolume: (volume: number) => void;
-  setMuted: (muted: boolean) => void;
-  setProgress: (progress: number) => void;
-  setPlaybackRate: (playbackRate: number) => void;
-  setFullscreen: (fullscreen: boolean) => void;
-  setLoop: (loop: boolean) => void;
-  playIndex: (index: number) => void;
-  setSeeking: (seeking: boolean) => void;
-  playAgain: () => void;
-}
+import { useController } from "~/lib/hooks/useController";
 
 let interaction = false;
 let doubleClick = false;
 let interactionTime = 0;
 let lastMouseMove = 0;
 
-const Controls: FC<Props> = ({
+export default function Controls({
   roomId,
-  playing,
-  playlist,
   currentSrc,
   setCurrentSrc,
   currentSub,
   setCurrentSub,
-  paused,
-  setPaused,
   volume,
   setVolume,
   muted,
   setMuted,
   progress,
   setProgress,
-  playbackRate,
-  loop,
-  setLoop,
-  setPlaybackRate,
   fullscreen,
   setFullscreen,
   duration,
-  playIndex,
   setSeeking,
-  playAgain,
-}) => {
+}: {
+  roomId: string;
+  currentSrc: MediaOption;
+  setCurrentSrc: (src: MediaOption) => void;
+  currentSub: Subtitle | null;
+  setCurrentSub: (sub: Subtitle) => void;
+  volume: number;
+  setVolume: (volume: number) => void;
+  muted: boolean;
+  setMuted: (muted: boolean) => void;
+  fullscreen: boolean;
+  setFullscreen: (fullscreen: boolean) => void;
+  progress: number;
+  setProgress: (progress: number) => void;
+  setSeeking: (seeking: boolean) => void;
+  error: unknown;
+  duration: number;
+}) {
+  const { paused, playlist, remote } = useController(roomId);
   const [showControls, setShowControls] = useState(true);
   const [showTimePlayed, setShowTimePlayed] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -83,9 +76,9 @@ const Controls: FC<Props> = ({
         if (interaction && !doubleClick) {
           doubleClick = false;
           if (playEnded()) {
-            playAgain();
+            remote.playAgain();
           } else {
-            setPaused(!paused);
+            remote.setPaused(!paused);
           }
         }
 
@@ -134,7 +127,7 @@ const Controls: FC<Props> = ({
         onKey={(key) => {
           console.log("Key down", key);
           if (key === " ") {
-            setPaused(!paused);
+            remote.setPaused(!paused);
           }
         }}
       >
@@ -185,7 +178,7 @@ const Controls: FC<Props> = ({
               tooltip={"Play previous"}
               onClick={() => {
                 if (show && playlist.currentIndex > 0) {
-                  playIndex(playlist.currentIndex - 1);
+                  remote.playItemFromPlaylist(playlist.currentIndex - 1);
                 }
               }}
               interaction={showControlsAction}
@@ -198,9 +191,9 @@ const Controls: FC<Props> = ({
             onClick={() => {
               if (show) {
                 if (playEnded()) {
-                  playAgain();
+                  remote.playAgain();
                 } else {
-                  setPaused(!paused);
+                  remote.setPaused(!paused);
                 }
               }
             }}
@@ -213,7 +206,7 @@ const Controls: FC<Props> = ({
               tooltip={"Skip"}
               onClick={() => {
                 if (show && playlist.currentIndex < playlist.items.length - 1) {
-                  playIndex(playlist.currentIndex + 1);
+                  remote.playItemFromPlaylist(playlist.currentIndex + 1);
                 }
               }}
               interaction={showControlsAction}
@@ -250,27 +243,22 @@ const Controls: FC<Props> = ({
           <ControlButton
             tooltip={"Open source in new tab"}
             onClick={() => {
-              window.open(currentSrc.src, "_blank")?.focus();
+              window.open(currentSrc.url, "_blank")?.focus();
             }}
             interaction={showControlsAction}
           >
-            <Link href={currentSrc.src} target={"_blank"} rel={"noreferrer"}>
+            <Link href={currentSrc.url} target={"_blank"} rel={"noreferrer"}>
               <ExternalLink className={"size-5"} />
             </Link>
           </ControlButton>
 
           <PlayerMenu
             roomId={roomId}
-            playing={playing}
             currentSrc={currentSrc}
             setCurrentSrc={setCurrentSrc}
             currentSub={currentSub}
             setCurrentSub={setCurrentSub}
-            loop={loop}
-            setLoop={setLoop}
             interaction={showControlsAction}
-            playbackRate={playbackRate}
-            setPlaybackRate={setPlaybackRate}
             menuOpen={menuOpen}
             setMenuOpen={setMenuOpen}
           />
@@ -295,6 +283,4 @@ const Controls: FC<Props> = ({
       />
     </>
   );
-};
-
-export default Controls;
+}

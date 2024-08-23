@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import type { MediaElement, MediaOption, Subtitle } from "~/lib/types";
+import type { MediaOption, Subtitle } from "~/lib/types";
 import DropUp from "../action/DropUp";
 import InputRadio from "../input/InputRadio";
 import ControlButton from "../input/ControlButton";
@@ -19,6 +19,7 @@ import {
   Share2,
   X,
 } from "lucide-react";
+import { useController } from "~/lib/hooks/useController";
 
 interface Tab {
   icon: ReactNode;
@@ -28,33 +29,24 @@ interface Tab {
 
 export default function PlayerMenu({
   roomId,
-  playing,
   currentSrc,
   setCurrentSrc,
   currentSub,
   setCurrentSub,
-  loop,
-  setLoop,
   interaction,
-  playbackRate,
-  setPlaybackRate,
   menuOpen,
   setMenuOpen,
 }: {
   roomId: string;
-  playing: MediaElement;
   currentSrc: MediaOption;
   setCurrentSrc: (src: MediaOption) => void;
-  currentSub: Subtitle;
+  currentSub: Subtitle | null;
   setCurrentSub: (sub: Subtitle) => void;
-  loop: boolean;
-  setLoop: (loop: boolean) => void;
   interaction: (touch: boolean) => void;
-  playbackRate: number;
-  setPlaybackRate: (playbackRate: number) => void;
   menuOpen: boolean;
   setMenuOpen: (open: boolean) => void;
 }) {
+  const { playing, loop, playbackRate, remote } = useController(roomId);
   const [tab, setTab] = useState(-1);
   const router = useRouter();
 
@@ -76,7 +68,7 @@ export default function PlayerMenu({
             "0.5",
             "0.25",
           ]}
-          setValue={(rate) => setPlaybackRate(parseFloat(rate))}
+          setValue={(rate) => remote.setPlaybackRate(parseFloat(rate))}
           interaction={interaction}
         />
       ),
@@ -85,7 +77,10 @@ export default function PlayerMenu({
       icon: <Repeat />,
       title: "Loop",
       content: (
-        <Button tooltip={"Click to toggle loop"} onClick={() => setLoop(!loop)}>
+        <Button
+          tooltip={"Click to toggle loop"}
+          onClick={() => remote.setLoop(!loop)}
+        >
           {loop ? "Disable loop" : "Enable loop"}
         </Button>
       ),
@@ -171,7 +166,7 @@ export default function PlayerMenu({
       title: "Subtitle",
       content: (
         <InputRadio
-          value={currentSub.lang}
+          value={currentSub?.lang ?? ""}
           options={playing.sub.map((sub) => sub.lang)}
           setValue={(lang) => {
             const newSub = playing.sub.find((sub) => sub.lang === lang);

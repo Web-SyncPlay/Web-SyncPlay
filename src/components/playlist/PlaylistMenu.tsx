@@ -1,5 +1,5 @@
-import { type FC, useEffect, useRef, useState } from "react";
-import type { MediaElement, Playlist, RoomState } from "~/lib/types";
+import { type FC, useCallback, useState } from "react";
+import type { MediaElement, Playlist } from "~/lib/types";
 import {
   DragDropContext as _DragDropContext,
   Droppable as _Droppable,
@@ -7,69 +7,43 @@ import {
   type DroppableProps,
 } from "react-beautiful-dnd";
 import classNames from "classnames";
-import { type Socket } from "socket.io-client";
-import {
-  type ClientToServerEvents,
-  playItemFromPlaylist,
-  type ServerToClientEvents,
-} from "~/lib/socket";
 import ControlButton from "../input/ControlButton";
 import PlaylistItem from "./PlaylistItem";
 import InputUrl from "../input/InputUrl";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useController } from "~/lib/hooks/useController";
 
 // HACK: this fixes type incompatibility
 const DragDropContext = _DragDropContext as unknown as FC<DragDropContextProps>;
 const Droppable = _Droppable as unknown as FC<DroppableProps>;
 
-export default function PlaylistMenu({
-  socket,
-}: {
-  socket: Socket<ServerToClientEvents, ClientToServerEvents>;
-}) {
+export default function PlaylistMenu({ roomId }: { roomId: string }) {
+  const { playlist, remote } = useController(roomId);
   const [expanded, setExpanded] = useState(true);
   const [url, setUrl] = useState("");
 
-  const [playlist, _setPlaylist] = useState<Playlist>({
-    items: [],
-    currentIndex: -1,
-  });
-  const playlistRef = useRef(playlist);
-  const setPlaylist = (newPlaylist: Playlist) => {
-    _setPlaylist(newPlaylist);
-    playlistRef.current = newPlaylist;
-  };
-
-  useEffect(() => {
-    socket.on("update", (room: RoomState) => {
-      if (
-        JSON.stringify(room.targetState.playlist) !==
-        JSON.stringify(playlistRef.current)
-      ) {
-        setPlaylist(room.targetState.playlist);
+  const addItem = useCallback(
+    (newUrl: string) => {
+      if (newUrl === "") {
+        return;
       }
-    });
-  }, [socket]);
+      setUrl("");
 
-  const addItem = (newUrl: string) => {
-    if (newUrl === "") {
-      return;
-    }
-    setUrl("");
-
-    const newMedia: MediaElement = {
-      src: [
-        {
-          src: newUrl,
-          resolution: "",
-        },
-      ],
-      sub: [],
-    };
-    const newPlaylist = JSON.parse(JSON.stringify(playlist)) as Playlist;
-    newPlaylist.items.push(newMedia);
-    socket.emit("updatePlaylist", newPlaylist);
-  };
+      const newMedia: MediaElement = {
+        src: [
+          {
+            url: newUrl,
+            resolution: "",
+          },
+        ],
+        sub: [],
+      };
+      const newPlaylist = JSON.parse(JSON.stringify(playlist)) as Playlist;
+      newPlaylist.items.push(newMedia);
+      remote.updatePlaylist(newPlaylist);
+    },
+    [playlist, remote],
+  );
 
   return (
     <div className={classNames("flex flex-col", expanded && "sm:w-[300px]")}>
@@ -113,7 +87,7 @@ export default function PlaylistMenu({
               newPlaylist.items.splice(
                 result.destination.index,
                 0,
-                playlist.items[result.source.index],
+                playlist.items[result.source.index]!,
               );
 
               if (
@@ -131,7 +105,7 @@ export default function PlaylistMenu({
               }
 
               console.log("Playlist updated to:", newPlaylist);
-              socket.emit("updatePlaylist", newPlaylist);
+              remote.updatePlaylist(newPlaylist);
             }}
           >
             <Droppable droppableId={"playlistMenu"}>
@@ -147,7 +121,7 @@ export default function PlaylistMenu({
                   <>
                     {playlist.items.map((item, index) => (
                       <PlaylistItem
-                        key={item.src[0]?.src + "-" + index}
+                        key={item.src[0]?.url + "-" + index}
                         playing={playlist.currentIndex === index}
                         item={item}
                         index={index}
@@ -165,18 +139,16 @@ export default function PlaylistMenu({
                           } else if (newPlaylist.currentIndex > index) {
                             newPlaylist.currentIndex--;
                           }
-                          socket.emit("updatePlaylist", newPlaylist);
+                          remote.updatePlaylist(newPlaylist);
                         }}
                         updateTitle={(newTitle) => {
                           const newPlaylist = JSON.parse(
                             JSON.stringify(playlist),
                           ) as Playlist;
-                          newPlaylist.items[index].title = newTitle;
-                          socket.emit("updatePlaylist", newPlaylist);
+                          newPlaylist.items[index]!.title = newTitle;
+                          remote.updatePlaylist(newPlaylist);
                         }}
-                        play={() => {
-                          playItemFromPlaylist(socket, playlist, index);
-                        }}
+                        play={() => remote.playItemFromPlaylist(index)}
                       />
                     ))}
                     {provided.placeholder}

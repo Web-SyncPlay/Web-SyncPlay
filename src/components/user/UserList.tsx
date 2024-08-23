@@ -1,40 +1,10 @@
-import { type FC, useEffect, useRef, useState } from "react";
-import { type RoomState, type UserState } from "../../lib/types";
-import { type Socket } from "socket.io-client";
-import {
-  type ClientToServerEvents,
-  type ServerToClientEvents,
-} from "../../lib/socket";
+"use client";
+import { type UserState } from "../../lib/types";
 import UserItem from "./UserItem";
+import { useController } from "~/lib/hooks/useController";
 
-interface Props {
-  socket: Socket<ServerToClientEvents, ClientToServerEvents>;
-}
-
-const UserList: FC<Props> = ({ socket }) => {
-  const [users, _setUsers] = useState<UserState[]>([]);
-  const userRef = useRef(users);
-  const setUsers = (newUsers: UserState[]) => {
-    userRef.current = newUsers;
-    _setUsers(newUsers);
-  };
-  const [owner, _setOwner] = useState("");
-  const ownerRef = useRef(owner);
-  const setOwner = (newOwner: string) => {
-    ownerRef.current = newOwner;
-    _setOwner(newOwner);
-  };
-
-  useEffect(() => {
-    socket.on("update", (room: RoomState) => {
-      if (ownerRef.current !== room.ownerId) {
-        setOwner(room.ownerId);
-      }
-      setUsers(room.users);
-    });
-
-    socket.emit("fetch");
-  }, [socket]);
+export default function UserList({ roomId }: { roomId: string }) {
+  const { users, owner, socket, remote } = useController(roomId);
 
   return (
     <div
@@ -45,18 +15,16 @@ const UserList: FC<Props> = ({ socket }) => {
       {users.map((user) => (
         <UserItem
           user={user}
-          socketId={socket.id}
+          socketId={socket.current?.id ?? ""}
           ownerId={owner}
           key={user.uid}
           updateName={(name) => {
             const newUser = JSON.parse(JSON.stringify(user)) as UserState;
             newUser.name = name;
-            socket.emit("updateUser", newUser);
+            remote.updateUser(newUser);
           }}
         />
       ))}
     </div>
   );
-};
-
-export default UserList;
+}

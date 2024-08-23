@@ -59,7 +59,7 @@ export default function PlaylistItem({
 
   return (
     <Draggable
-      key={item.src[0]?.src + "-" + index}
+      key={item.src[0]?.url + "-" + index}
       draggableId={"playlistMenu-item-" + index}
       index={index}
     >
@@ -120,11 +120,11 @@ export default function PlaylistItem({
               )}
             </ControlButton>
             <NewTabLink
-              href={item.src[0]?.src ?? ""}
+              href={item.src[0]?.url ?? ""}
               className={"flex flex-row gap-1"}
             >
               <div className={"line-clamp-2"}>
-                {getDomain(item.src[0]?.src ?? "")}
+                {getDomain(item.src[0]?.url ?? "")}
               </div>
               <ExternalLink className={"shrink-0"} />
             </NewTabLink>

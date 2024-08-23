@@ -1,12 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { type Socket } from "socket.io-client";
-import {
-  type ClientToServerEvents,
-  playItemFromPlaylist,
-  type ServerToClientEvents,
-} from "~/lib/socket";
 import Controls from "./Controls";
 import {
   FullScreen,
@@ -14,103 +8,49 @@ import {
   useFullScreenHandle,
 } from "react-full-screen";
 import ReactPlayer from "react-player";
-import type {
-  MediaElement,
-  MediaOption,
-  Playlist,
-  RoomState,
-  Subtitle,
-} from "~/lib/types";
+import type { MediaOption, Subtitle } from "~/lib/types";
 import ConnectingAlert from "../alert/ConnectingAlert";
 import { getTargetTime, isSync } from "~/lib/utils";
 import BufferAlert from "~/components/alert/BufferAlert";
 import AutoplayAlert from "../alert/AutoplayAlert";
-import { env } from "~/env";
+import { useController } from "~/lib/hooks/useController";
 
 export interface PlayerProps {
   roomId: string;
-  socket: Socket<ServerToClientEvents, ClientToServerEvents>;
   fullHeight?: boolean;
 }
 
 let seeking = false;
 
-export default function OldPlayer({ roomId, socket, fullHeight }: PlayerProps) {
-  // data to be reported to the server
+export default function OldPlayer({ roomId, fullHeight }: PlayerProps) {
+  const {
+    connected,
+    deltaServerTime,
+    playing,
+    paused,
+    progress: targetProgress,
+    playbackRate,
+    loop,
+    lastSync,
+    remote,
+  } = useController(roomId);
+
   // updateX is never allowed to be called outside the _setX functions
   // _setX should not be called directly, but set via message from the server
   // setX are the normal plain state hooks
-  const [playlist, updatePlaylist] = useState<Playlist>({
-    items: [],
-    currentIndex: -1,
-  });
-  const playlistRef = useRef(playlist);
-  const _setPlaylist = (newPlaylist: Playlist) => {
-    updatePlaylist(newPlaylist);
-    playlistRef.current = newPlaylist;
-  };
-  const [playing, updatePlaying] = useState<MediaElement>({ sub: [], src: [] });
-  const playingRef = useRef(playing);
-  const _setPlaying = (newPlaying: MediaElement) => {
-    updatePlaying(newPlaying);
-    playingRef.current = newPlaying;
-  };
-  const [paused, updatePaused] = useState(false);
-  const pausedRef = useRef(paused);
-  const _setPaused = (newPaused: boolean) => {
-    updatePaused(newPaused);
-    pausedRef.current = newPaused;
-  };
-  const setPaused = (newPaused: boolean) => {
-    socket?.emit("setPaused", newPaused);
-  };
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(true);
-  const [playbackRate, updatePlaybackRate] = useState(1);
-  const playbackRateRef = useRef(playbackRate);
-  const _setPlaybackRate = (newPlaybackRate: number) => {
-    updatePlaybackRate(newPlaybackRate);
-    playbackRateRef.current = newPlaybackRate;
-  };
-  const setPlaybackRate = (newPlaybackRate: number) =>
-    socket?.emit("setPlaybackRate", newPlaybackRate);
-  const [targetProgress, updateTargetProgress] = useState(0);
-  const targetProgressRef = useRef(targetProgress);
-  const _setTargetProgress = (newTargetProgress: number) => {
-    updateTargetProgress(newTargetProgress);
-    targetProgressRef.current = newTargetProgress;
-  };
   const [progress, _setProgress] = useState(0);
   const setProgress = (newProgress: number) => {
-    socket?.emit("setProgress", newProgress);
+    remote.setProgress(newProgress);
     _setProgress(newProgress);
-  };
-  const [loop, updateLoop] = useState(false);
-  const loopRef = useRef(loop);
-  const _setLoop = (newLoop: boolean) => {
-    updateLoop(newLoop);
-    loopRef.current = newLoop;
-  };
-  const setLoop = (newLoop: boolean) => socket?.emit("setLoop", newLoop);
-  const [lastSync, updateLastSync] = useState(new Date().getTime() / 1000);
-  const lastSyncRef = useRef(lastSync);
-  const _setLastSync = (newLastSync: number) => {
-    updateLastSync(newLastSync);
-    lastSyncRef.current = newLastSync;
-  };
-  const [deltaServerTime, _setDeltaServerTime] = useState(0);
-  const deltaServerTimeRef = useRef(deltaServerTime);
-  const setDeltaServerTime = (newDeltaServerTime: number) => {
-    _setDeltaServerTime(newDeltaServerTime);
-    deltaServerTimeRef.current = newDeltaServerTime;
   };
 
   const [duration, setDuration] = useState(0);
-  const [currentSrc, setCurrentSrc] = useState<MediaOption>({
-    src: env.DEFAULT_SRC,
-    resolution: "",
-  });
-  const [currentSub, setCurrentSub] = useState<Subtitle>({ src: "", lang: "" });
+  const [currentSrc, setCurrentSrc] = useState<MediaOption>(playing.src[0]!);
+  const [currentSub, setCurrentSub] = useState<Subtitle | null>(
+    playing.sub[0] ?? null,
+  );
 
   const [error, setError] = useState<null | object>(null);
   const [ready, _setReady] = useState(false);
@@ -126,7 +66,6 @@ export default function OldPlayer({ roomId, socket, fullHeight }: PlayerProps) {
     seekedRef.current = newSeeked;
   };
   const [buffering, setBuffering] = useState(true);
-  const [connected, setConnected] = useState(false);
   const [unmuted, setUnmuted] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const fullscreenHandle = useFullScreenHandle();
@@ -174,63 +113,6 @@ export default function OldPlayer({ roomId, socket, fullHeight }: PlayerProps) {
     playbackRate,
   ]);
 
-  useEffect(() => {
-    socket.on("connect", () => {
-      setConnected(true);
-    });
-    socket.on("disconnect", () => {
-      setConnected(false);
-    });
-    if (socket.connected) {
-      setConnected(true);
-    }
-
-    socket.on("update", (room: RoomState) => {
-      if (!readyRef.current) {
-        return console.log("Not ready yet...");
-      }
-
-      if (deltaServerTimeRef.current === 0) {
-        setDeltaServerTime((room.serverTime - new Date().getTime()) / 1000);
-      }
-
-      const update = room.targetState;
-      if (update.lastSync !== lastSyncRef.current) {
-        _setLastSync(update.lastSync);
-      }
-      if (update.progress !== targetProgressRef.current) {
-        _setTargetProgress(update.progress);
-        setSeeked(false);
-      }
-      if (
-        JSON.stringify(update.playing) !== JSON.stringify(playingRef.current)
-      ) {
-        _setPlaying(update.playing);
-        setCurrentSrc(update.playing.src[0]!);
-      }
-      if (update.paused !== pausedRef.current) {
-        _setPaused(update.paused);
-      }
-      if (update.playbackRate !== playbackRateRef.current) {
-        _setPlaybackRate(update.playbackRate);
-      }
-      if (update.loop !== loopRef.current) {
-        _setLoop(update.loop);
-      }
-      if (
-        JSON.stringify(update.playlist) !== JSON.stringify(playlistRef.current)
-      ) {
-        _setPlaylist(update.playlist);
-      }
-    });
-  }, [socket]);
-
-  useEffect(() => {
-    if (ready) {
-      socket.emit("fetch");
-    }
-  }, [ready, socket]);
-
   const FullScreenWithChildren = FullScreen as React.FC<
     React.PropsWithChildren<FullScreenProps>
   >;
@@ -265,7 +147,7 @@ export default function OldPlayer({ roomId, socket, fullHeight }: PlayerProps) {
             flvVersion: "1.6.2",
           },
         }}
-        url={currentSrc.src}
+        url={currentSrc.url}
         pip={false}
         playing={!paused}
         controls={false}
@@ -344,13 +226,13 @@ export default function OldPlayer({ roomId, socket, fullHeight }: PlayerProps) {
         }}
         onBuffer={() => setBuffering(true)}
         onBufferEnd={() => setBuffering(false)}
-        onEnded={() => socket?.emit("playEnded")}
+        onEnded={remote.playEnded}
         onError={(error) => {
           const e = error as object;
           console.error("playback error", e);
           if ("target" in e && "type" in e && e.type === "error") {
             console.log("Trying to get video url via yt-dlp...");
-            fetch("/api/source", { method: "POST", body: currentSrc.src })
+            fetch("/api/source", { method: "POST", body: currentSrc.url })
               .then((res) => {
                 if (res.status === 200) {
                   return res.json();
@@ -371,7 +253,7 @@ export default function OldPlayer({ roomId, socket, fullHeight }: PlayerProps) {
                   .split("\n")
                   .filter((v: string) => v !== "");
                 setCurrentSrc({
-                  src: videoSrc[0]!,
+                  url: videoSrc[0]!,
                   resolution: "",
                 });
               })
@@ -398,18 +280,14 @@ export default function OldPlayer({ roomId, socket, fullHeight }: PlayerProps) {
 
       <Controls
         roomId={roomId}
-        playing={playing}
         setCurrentSrc={setCurrentSrc}
         setCurrentSub={setCurrentSub}
-        setPaused={setPaused}
         setVolume={setVolume}
         setMuted={setMuted}
         setProgress={(newProgress) => {
           setSeeked(true);
-          socket?.emit("seek", newProgress);
+          remote.setProgress(newProgress);
         }}
-        setPlaybackRate={setPlaybackRate}
-        setLoop={setLoop}
         setFullscreen={async (newFullscreen) => {
           if (fullscreenHandle.active !== newFullscreen) {
             if (newFullscreen) {
@@ -420,26 +298,17 @@ export default function OldPlayer({ roomId, socket, fullHeight }: PlayerProps) {
           }
           setFullscreen(newFullscreen);
         }}
-        playlist={playlist}
         currentSrc={currentSrc}
         currentSub={currentSub}
-        paused={paused}
         volume={volume}
         muted={muted}
         progress={progress}
-        playbackRate={playbackRate}
         fullscreen={fullscreen}
         duration={duration}
-        loop={loop}
-        playIndex={(index) => {
-          playItemFromPlaylist(socket, playlist, index);
-        }}
         setSeeking={(newSeeking) => {
           seeking = newSeeking;
         }}
-        lastSync={lastSync}
         error={error}
-        playAgain={() => socket?.emit("playAgain")}
       />
 
       <div className={"absolute left-1 top-1 flex flex-col gap-1 p-1"}>

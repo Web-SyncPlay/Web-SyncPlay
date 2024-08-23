@@ -1,65 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import OldPlayer from "./player/OldPlayer";
-import {
-  type ClientToServerEvents,
-  createClientSocket,
-  type ServerToClientEvents,
-} from "../lib/socket";
 import Button from "./action/Button";
-import { type Socket } from "socket.io-client";
-import ConnectingAlert from "./alert/ConnectingAlert";
 import PlaylistMenu from "./playlist/PlaylistMenu";
 import InputUrl from "./input/InputUrl";
 import UserList from "./user/UserList";
 import { Repeat } from "lucide-react";
 import { Tooltip } from "react-tooltip";
-
-let connecting = false;
+import { useController } from "~/lib/hooks/useController";
+import ConnectingAlert from "./alert/ConnectingAlert";
 
 export default function Room({ id }: { id: string }) {
-  const [connected, setConnected] = useState(false);
-  const [socket, setSocket] = useState<Socket<
-    ServerToClientEvents,
-    ClientToServerEvents
-  > | null>(null);
+  const { socket, connected, remote } = useController(id);
   const [url, setUrl] = useState("");
 
-  useEffect(() => {
-    void fetch("/api/socketio").finally(() => {
-      if (socket !== null) {
-        setConnected(socket.connected);
-      } else {
-        const newSocket = createClientSocket(id);
-        newSocket.on("connect", () => {
-          setConnected(true);
-        });
-        setSocket(newSocket);
-      }
-    });
-
-    return () => {
-      if (socket !== null) {
-        socket.disconnect();
-      }
-    };
-  }, [id, socket]);
-
-  const connectionCheck = () => {
-    if (socket?.connected) {
-      connecting = false;
-      setConnected(true);
-      return;
-    }
-    setTimeout(connectionCheck, 100);
-  };
-
-  if (!connected || socket === null) {
-    if (!connecting) {
-      connecting = true;
-      connectionCheck();
-    }
+  if (!connected || typeof socket.current === "undefined") {
     return (
       <div className={"flex justify-center"}>
         <ConnectingAlert />
@@ -70,15 +26,15 @@ export default function Room({ id }: { id: string }) {
   return (
     <div className={"flex flex-col gap-1 sm:flex-row"}>
       <div className={"grow"}>
-        <OldPlayer roomId={id} socket={socket} />
+        <OldPlayer roomId={id} />
 
         <div className={"flex flex-row gap-1 p-1"}>
           <Button
             tooltip={"Do a forced manual sync"}
             className={"flex flex-row items-center gap-1 p-2"}
             onClick={() => {
-              console.log("Fetching update", socket?.id);
-              socket?.emit("fetch");
+              console.log("Fetching update", socket.current?.id);
+              remote.fetch();
             }}
           >
             <Repeat />
@@ -92,7 +48,7 @@ export default function Room({ id }: { id: string }) {
             onChange={setUrl}
             onSubmit={() => {
               console.log("Requesting", url, "now");
-              socket?.emit("playUrl", url);
+              remote.playUrl(url);
               setUrl("");
             }}
           >
@@ -100,10 +56,10 @@ export default function Room({ id }: { id: string }) {
           </InputUrl>
         </div>
 
-        <UserList socket={socket} />
+        <UserList roomId={id} />
       </div>
 
-      <PlaylistMenu socket={socket} />
+      <PlaylistMenu roomId={id} />
       <Tooltip
         style={{
           backgroundColor: "var(--dark-700)",
