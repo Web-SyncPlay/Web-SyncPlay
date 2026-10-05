@@ -762,7 +762,7 @@ export function PlayerPanel({
               send("playback:pause", { currentTimeMs: getCurrentTimeMs() })
             }
           }}
-          onPlay={(event) => {
+          onPlay={() => {
             setIsBuffering(false)
             setPlaybackError(undefined)
             participantStatusErrorRef.current = null
@@ -773,21 +773,11 @@ export function PlayerPanel({
             }
             if (!canControlPlayback) {
               enforceServerPlaybackState()
-              return
             }
-
-            // Request handlers already commit user intent. Ignore provider
-            // echoes unless a trusted user gesture somehow skipped requests.
-            if (!playbackRef.current.paused) {
-              return
-            }
-            if (!event.isOriginTrusted) {
-              return
-            }
-
-            send("playback:play", { currentTimeMs: getCurrentTimeMs() })
+            // Do not send playback:play from media events — YouTube/autoplay
+            // echoes are not authoritative. User intent goes through request handlers.
           }}
-          onPause={(event) => {
+          onPause={() => {
             setIsBuffering(false)
             bufferingSinceRef.current = null
             if (suppressOutgoingRef.current) {
@@ -797,20 +787,11 @@ export function PlayerPanel({
               enforceServerPlaybackState()
               return
             }
-
-            if (playbackRef.current.paused) {
-              return
-            }
-
-            // YouTube/iframe providers emit non-user pauses while buffering or
-            // recovering. Mirroring those into room state is what left the
-            // default media "stuck" after a brief successful autoplay.
-            if (!event.isOriginTrusted) {
+            // Provider-driven pauses (buffer stalls, iframe quirks) must not
+            // rewrite room state. Pull local player back to room authority.
+            if (!playbackRef.current.paused) {
               enforceServerPlaybackState()
-              return
             }
-
-            send("playback:pause", { currentTimeMs: getCurrentTimeMs() })
           }}
           onPlaying={() => {
             setIsBuffering(false)
