@@ -22,9 +22,45 @@ export const handleParticipantUpdate: RoomMessageHandler = async (
     (state, participant) => {
       const previousUsername = participant.username
       const previousError = participant.localPlayback.error
-      participant.username = String(
+      const previousAvatar = participant.avatarStyle
+      const previousPlayback = participant.localPlayback
+
+      const nextUsername = String(
         participantResult.data.username ?? participant.username,
       )
+      const nextAvatarStyle = String(
+        participantResult.data.avatarStyle ?? participant.avatarStyle,
+      )
+      const nextPaused = Boolean(
+        participantResult.data.paused ?? previousPlayback.paused,
+      )
+      const nextCurrentTimeMs = Number(
+        participantResult.data.currentTimeMs ?? previousPlayback.currentTimeMs,
+      )
+      const nextLoading = Boolean(
+        participantResult.data.loading ?? previousPlayback.loading,
+      )
+      const nextError =
+        typeof participantResult.data.error === "string"
+          ? participantResult.data.error
+          : previousPlayback.error
+
+      // Skip Redis write + full-room fan-out when nothing meaningful changed.
+      // Clients can tick often; time drift under 750ms is not worth a broadcast.
+      const timeDirty =
+        Math.abs(nextCurrentTimeMs - previousPlayback.currentTimeMs) >= 750
+      const identityDirty =
+        nextUsername !== previousUsername || nextAvatarStyle !== previousAvatar
+      const playbackDirty =
+        nextPaused !== previousPlayback.paused ||
+        nextLoading !== previousPlayback.loading ||
+        nextError !== previousError ||
+        timeDirty
+      if (!identityDirty && !playbackDirty) {
+        return false
+      }
+
+      participant.username = nextUsername
       if (participant.username !== previousUsername) {
         appendActionLog(state, {
           roomId: ctx.roomId,
@@ -37,24 +73,12 @@ export const handleParticipantUpdate: RoomMessageHandler = async (
           },
         })
       }
-      participant.avatarStyle = String(
-        participantResult.data.avatarStyle ?? participant.avatarStyle,
-      )
+      participant.avatarStyle = nextAvatarStyle
       participant.localPlayback = {
-        paused: Boolean(
-          participantResult.data.paused ?? participant.localPlayback.paused,
-        ),
-        currentTimeMs: Number(
-          participantResult.data.currentTimeMs ??
-            participant.localPlayback.currentTimeMs,
-        ),
-        loading: Boolean(
-          participantResult.data.loading ?? participant.localPlayback.loading,
-        ),
-        error:
-          typeof participantResult.data.error === "string"
-            ? participantResult.data.error
-            : participant.localPlayback.error,
+        paused: nextPaused,
+        currentTimeMs: nextCurrentTimeMs,
+        loading: nextLoading,
+        error: nextError,
         updatedAt: Date.now(),
       }
       if (typeof participantResult.data.error === "string") {

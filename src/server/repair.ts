@@ -207,6 +207,16 @@ export function repairCleanupAndCheckRoomState(state: RoomState) {
     findings.push("history-trimmed")
   }
 
+  if (Array.isArray(state.playlist) && state.playlist.length > env.ROOM_PLAYLIST_LIMIT) {
+    const overflow = state.playlist.length - env.ROOM_PLAYLIST_LIMIT
+    state.playlist = state.playlist.slice(-env.ROOM_PLAYLIST_LIMIT)
+    state.currentIndex = Math.max(
+      0,
+      Math.min(state.currentIndex - overflow, state.playlist.length - 1),
+    )
+    findings.push("playlist-trimmed")
+  }
+
   const playbackRepairs = sanitizePlayback(state)
   for (let i = 0; i < playbackRepairs; i += 1)
     findings.push("playback-repaired")

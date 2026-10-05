@@ -23,12 +23,26 @@ export function consumeRateLimit(params: {
   const now = Date.now()
   const bucket = buckets.get(params.key) ?? { timestamps: [] }
   prune(bucket, params.windowMs, now)
+  if (bucket.timestamps.length === 0) {
+    buckets.delete(params.key)
+  }
   if (bucket.timestamps.length >= params.limit) {
     buckets.set(params.key, bucket)
     return { allowed: false, remaining: 0 }
   }
   bucket.timestamps.push(now)
   buckets.set(params.key, bucket)
+
+  // Opportunistic GC so idle keys do not linger forever in long-lived processes.
+  if (buckets.size > 2_000) {
+    for (const [key, idle] of buckets) {
+      prune(idle, params.windowMs, now)
+      if (idle.timestamps.length === 0) {
+        buckets.delete(key)
+      }
+    }
+  }
+
   return {
     allowed: true,
     remaining: Math.max(0, params.limit - bucket.timestamps.length),

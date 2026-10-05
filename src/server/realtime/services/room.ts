@@ -42,7 +42,10 @@ export async function createInitialRoomState(
     actionLog: [],
     participants: {},
     playback: {
-      paused: true,
+      // Start playing so default (often YouTube) media can muted-autoplay on
+      // first paint after room creation / navigation. Clients stay muted by
+      // default to satisfy browser autoplay policy.
+      paused: false,
       playbackRate: 1,
       timelineAnchorMs: 0,
       serverNowMs: Date.now(),

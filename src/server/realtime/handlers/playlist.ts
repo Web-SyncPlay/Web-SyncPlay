@@ -1,3 +1,4 @@
+import { env } from "@/env"
 import { appendActionLog } from "@/server/log"
 import { resolvePlaylistItem } from "@/server/realtime/services/playlist-resolve"
 import { nextMonotonicMs } from "@/server/realtime/services/timeline"
@@ -28,7 +29,9 @@ export const handlePlaylistSelect: RoomMessageHandler = async (ctx, data) => {
         state.playback.serverNowMs,
         Date.now(),
       )
-      state.playback.paused = true
+      // Keep play/pause intent across item changes. Forcing pause here used to
+      // rely on a client-only autoPlayAfterLoad flag that was cleared when the
+      // new src mounted — leaving YouTube (and others) permanently stuck paused.
       appendActionLog(state, {
         roomId: ctx.roomId,
         actorUserId: ctx.userId,
@@ -63,6 +66,9 @@ export const handlePlaylistAddUrl: RoomMessageHandler = async (ctx, data) => {
   let shouldResolve = false
 
   await mutateControlledRoomMessage(ctx, (state, participant) => {
+    if (state.playlist.length >= env.ROOM_PLAYLIST_LIMIT) {
+      return false
+    }
     shouldResolve = true
     state.playlist.push({
       id: queuedItemId,
@@ -108,6 +114,9 @@ export const handlePlaylistAddLocal: RoomMessageHandler = async (ctx, data) => {
 
   const itemId = randomUUID()
   await mutateControlledRoomMessage(ctx, (state, participant) => {
+    if (state.playlist.length >= env.ROOM_PLAYLIST_LIMIT) {
+      return false
+    }
     const playableUrl = `/api/media/local/${encodeURIComponent(parsed.data.localMediaId)}`
     state.playlist.push({
       id: itemId,

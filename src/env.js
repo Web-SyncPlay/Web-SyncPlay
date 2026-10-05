@@ -33,6 +33,12 @@ export const env = createEnv({
       .min(1)
       .max(1000)
       .default(500),
+    ROOM_PLAYLIST_LIMIT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(200)
+      .default(50),
     WS_HEARTBEAT_INTERVAL_MS: z.coerce
       .number()
       .int()
@@ -88,6 +94,7 @@ export const env = createEnv({
     ROOM_PARTICIPANTS_LIMIT: process.env.ROOM_PARTICIPANTS_LIMIT,
     ROOM_HISTORY_LIMIT: process.env.ROOM_HISTORY_LIMIT,
     ROOM_ACTION_LOG_LIMIT: process.env.ROOM_ACTION_LOG_LIMIT,
+    ROOM_PLAYLIST_LIMIT: process.env.ROOM_PLAYLIST_LIMIT,
     WS_HEARTBEAT_INTERVAL_MS: process.env.WS_HEARTBEAT_INTERVAL_MS,
     WS_HEARTBEAT_TIMEOUT_MS: process.env.WS_HEARTBEAT_TIMEOUT_MS,
     OPS_SECRET: process.env.OPS_SECRET,

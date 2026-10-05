@@ -1,7 +1,8 @@
 import { getLocalMediaEntry } from "@/server/media/local-media-store"
 import { getRoomStateStore } from "@/server/redis/state-store"
 import { NextResponse } from "next/server"
-import { promises as fs } from "node:fs"
+import { createReadStream } from "node:fs"
+import { Readable } from "node:stream"
 
 function parseRangeHeader(rangeHeader: string | null, totalLength: number) {
   if (!rangeHeader) {
@@ -72,24 +73,35 @@ async function handleLocalMediaRequest(
         headers,
       })
     }
-    const fileBytes = await fs.readFile(entry.tempFilePath)
-    return new Response(fileBytes, {
+    // Stream the file — never buffer entire uploads (up to LOCAL_MEDIA_MAX_BYTES) in RAM.
+    const stream = Readable.toWeb(
+      createReadStream(entry.tempFilePath),
+    ) as unknown as ReadableStream
+    return new Response(stream, {
       status: 200,
       headers,
     })
   }
 
   const chunkLength = rangeInfo.end - rangeInfo.start + 1
-  const handle = await fs.open(entry.tempFilePath, "r")
-  const chunk = Buffer.alloc(chunkLength)
-  await handle.read(chunk, 0, chunkLength, rangeInfo.start)
-  await handle.close()
-  headers.set("content-length", String(chunk.byteLength))
+  headers.set("content-length", String(chunkLength))
   headers.set(
     "content-range",
     `bytes ${rangeInfo.start}-${rangeInfo.end}/${entry.sizeBytes}`,
   )
-  return new Response(method === "HEAD" ? null : chunk, {
+  if (method === "HEAD") {
+    return new Response(null, {
+      status: 206,
+      headers,
+    })
+  }
+  const stream = Readable.toWeb(
+    createReadStream(entry.tempFilePath, {
+      start: rangeInfo.start,
+      end: rangeInfo.end,
+    }),
+  ) as unknown as ReadableStream
+  return new Response(stream, {
     status: 206,
     headers,
   })

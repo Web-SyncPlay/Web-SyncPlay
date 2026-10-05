@@ -37,7 +37,8 @@ describe("playlist handler interfaces", () => {
     const next = store.peek("room-1")
     expect(next?.currentIndex).toBe(2)
     expect(next?.playback.timelineAnchorMs).toBe(0)
-    expect(next?.playback.paused).toBe(true)
+    // Selecting an item preserves prior play/pause intent (was playing).
+    expect(next?.playback.paused).toBe(false)
     expect(next?.actionLog.at(-1)?.action).toBe("media:played")
   })
 

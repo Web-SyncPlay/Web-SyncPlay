@@ -160,13 +160,13 @@ export function PlayerPanel({
   ]
 
   const playerRef = useRef<MediaPlayerInstance>(null)
-  const autoPlayAfterLoadRef = useRef(false)
   const suppressOutgoingRef = useRef(false)
   const playbackRef = useRef(roomState.playback)
   const isMediaReadyRef = useRef(false)
   const bufferingSinceRef = useRef<number | null>(null)
   const participantStatusErrorRef = useRef<string | null>(null)
   const pendingSyncRef = useRef<PendingSyncState | null>(null)
+  const playRetryTimerRef = useRef<number | undefined>(undefined)
 
   const reportedItemErrorRef = useRef<string | null>(null)
   const proxyRenewAttemptedRef = useRef<string | null>(null)
@@ -286,12 +286,15 @@ export function PlayerPanel({
   }, [roomState.playback])
 
   useEffect(() => {
-    autoPlayAfterLoadRef.current = false
     isMediaReadyRef.current = false
     pendingSyncRef.current = null
     bufferingSinceRef.current = Date.now()
     participantStatusErrorRef.current = null
     proxyRenewAttemptedRef.current = null
+    if (playRetryTimerRef.current) {
+      window.clearTimeout(playRetryTimerRef.current)
+      playRetryTimerRef.current = undefined
+    }
   }, [current?.id, playerSrc])
 
   useEffect(() => {
@@ -317,6 +320,55 @@ export function PlayerPanel({
     roomState.playback.playbackRate,
     roomState.playback.videoLoop,
   ])
+
+  const getCurrentTimeMs = useCallback(() => {
+    const player = playerRef.current
+    if (!player) {
+      return 0
+    }
+
+    return Math.max(0, Math.floor(Number(player.currentTime ?? 0) * 1000))
+  }, [])
+
+  const schedulePlayRetry = useCallback(
+    (player: MediaPlayerInstance, syncState: PendingSyncState) => {
+      if (syncState.paused) {
+        return
+      }
+      if (playRetryTimerRef.current) {
+        window.clearTimeout(playRetryTimerRef.current)
+      }
+      playRetryTimerRef.current = window.setTimeout(() => {
+        playRetryTimerRef.current = undefined
+        if (!isMediaReadyRef.current) {
+          return
+        }
+        if (playbackRef.current.paused) {
+          return
+        }
+        if (!player.paused) {
+          return
+        }
+        suppressOutgoingRef.current = true
+        try {
+          void applySyncToPlayer({
+            player,
+            syncState: {
+              paused: false,
+              playbackRate: playbackRef.current.playbackRate,
+              timelineAnchorMs: playbackRef.current.timelineAnchorMs,
+              serverNowMs: playbackRef.current.serverNowMs,
+            },
+          }).playAttempt
+        } finally {
+          window.setTimeout(() => {
+            suppressOutgoingRef.current = false
+          }, 80)
+        }
+      }, 350)
+    },
+    [applySyncToPlayer],
+  )
 
   useEffect(() => {
     const player = playerRef.current
@@ -347,8 +399,12 @@ export function PlayerPanel({
     suppressOutgoingRef.current = true
 
     try {
-      applySyncToPlayer({ player, syncState })
+      const result = applySyncToPlayer({ player, syncState })
       pendingSyncRef.current = null
+      void result.playAttempt?.then(() => {
+        schedulePlayRetry(player, syncState)
+      })
+      schedulePlayRetry(player, syncState)
     } catch {
       pendingSyncRef.current = syncState
       console.warn("[player] applySyncToPlayer failed (effect)", {
@@ -374,6 +430,7 @@ export function PlayerPanel({
     roomState.playback.serverNowMs,
     roomState.playback.timelineAnchorMs,
     roomState.playback.videoLoop,
+    schedulePlayRetry,
     timeline.awaitingSeekTargetMs,
     viewType,
   ])
@@ -384,12 +441,29 @@ export function PlayerPanel({
       return
     }
 
+    // Presence ticks used to fire every 250ms and rewrite full room state for
+    // every viewer. Only send when paused/loading/error change, time drifts
+    // meaningfully, or a slow heartbeat keeps lastSeen fresh.
+    const HEARTBEAT_MS = 2_000
+    const TIME_DIRTY_MS = 750
+    let lastSent = {
+      paused: Boolean(player.paused),
+      currentTimeMs: Math.max(
+        0,
+        Math.floor(Number(player.currentTime ?? 0) * 1000),
+      ),
+      loading: isBuffering,
+      error:
+        playbackErrorLabel ?? participantStatusErrorRef.current ?? undefined,
+      at: 0,
+    }
+
     const timer = window.setInterval(() => {
       if (suppressOutgoingRef.current) {
         return
       }
 
-      send("participant:update", {
+      const next = {
         paused: Boolean(player.paused),
         currentTimeMs: Math.max(
           0,
@@ -398,19 +472,23 @@ export function PlayerPanel({
         loading: isBuffering,
         error:
           playbackErrorLabel ?? participantStatusErrorRef.current ?? undefined,
-      })
-    }, 250)
+      }
+      const now = Date.now()
+      const dirty =
+        next.paused !== lastSent.paused ||
+        next.loading !== lastSent.loading ||
+        next.error !== lastSent.error ||
+        Math.abs(next.currentTimeMs - lastSent.currentTimeMs) >= TIME_DIRTY_MS ||
+        now - lastSent.at >= HEARTBEAT_MS
+      if (!dirty) {
+        return
+      }
+
+      lastSent = { ...next, at: now }
+      send("participant:update", next)
+    }, 500)
     return () => window.clearInterval(timer)
   }, [send, roomState.currentIndex, isBuffering, playbackErrorLabel])
-
-  const getCurrentTimeMs = useCallback(() => {
-    const player = playerRef.current
-    if (!player) {
-      return 0
-    }
-
-    return Math.max(0, Math.floor(Number(player.currentTime ?? 0) * 1000))
-  }, [])
 
   const enforceServerPlaybackState = useCallback(() => {
     const player = playerRef.current
@@ -425,7 +503,23 @@ export function PlayerPanel({
     suppressOutgoingRef.current = true
 
     try {
-      applySyncToPlayer({ player, syncState })
+      const result = applySyncToPlayer({ player, syncState })
+      void result.playAttempt?.then(() => {
+        schedulePlayRetry(player, {
+          paused: syncState.paused,
+          playbackRate: syncState.playbackRate,
+          timelineAnchorMs: syncState.timelineAnchorMs,
+          serverNowMs: syncState.serverNowMs,
+          videoLoop: syncState.videoLoop !== "off",
+        })
+      })
+      schedulePlayRetry(player, {
+        paused: syncState.paused,
+        playbackRate: syncState.playbackRate,
+        timelineAnchorMs: syncState.timelineAnchorMs,
+        serverNowMs: syncState.serverNowMs,
+        videoLoop: syncState.videoLoop !== "off",
+      })
     } catch {
       // Ignore transient sync errors while provider is rebuilding.
       console.warn("[player] applySyncToPlayer failed (enforce)", {
@@ -445,6 +539,7 @@ export function PlayerPanel({
     applySyncToPlayer,
     current?.id,
     current?.name,
+    schedulePlayRetry,
     viewType,
   ])
 
@@ -465,9 +560,7 @@ export function PlayerPanel({
 
   const selectPlaylistIndex = useCallback(
     (targetIndex: number) => {
-      const wasPlaying = !playbackRef.current.paused
       send("playlist:select", { index: targetIndex })
-      autoPlayAfterLoadRef.current = wasPlaying
       if (
         roomState.playback.playlistLoop === "once" &&
         targetIndex === 0 &&
@@ -630,6 +723,7 @@ export function PlayerPanel({
           loop={roomState.playback.videoLoop !== "off"}
           crossOrigin={useCrossOriginAnonymous ? "anonymous" : undefined}
           playsInline
+          autoPlay={!roomState.playback.paused}
           {...(current?.isLive ? { streamType: "live" as const } : {})}
           muted={isMuted}
           className={`size-full ${isOtherUserSeeking ? "remote-seek-controls-hidden" : ""} ${!canControlPlayback ? "guest-controls-guard" : ""}`}
@@ -647,20 +741,28 @@ export function PlayerPanel({
             event.stopPropagation()
           }}
           onMediaPlayRequest={(event) => {
-            if (canControlPlayback) {
+            if (!canControlPlayback) {
+              event.preventDefault()
+              enforceServerPlaybackState()
               return
             }
-            event.preventDefault()
-            enforceServerPlaybackState()
+            // User-initiated control surface — update room authority here so
+            // transient provider play/pause events cannot own shared state.
+            if (playbackRef.current.paused) {
+              send("playback:play", { currentTimeMs: getCurrentTimeMs() })
+            }
           }}
           onMediaPauseRequest={(event) => {
-            if (canControlPlayback) {
+            if (!canControlPlayback) {
+              event.preventDefault()
+              enforceServerPlaybackState()
               return
             }
-            event.preventDefault()
-            enforceServerPlaybackState()
+            if (!playbackRef.current.paused) {
+              send("playback:pause", { currentTimeMs: getCurrentTimeMs() })
+            }
           }}
-          onPlay={() => {
+          onPlay={(event) => {
             setIsBuffering(false)
             setPlaybackError(undefined)
             participantStatusErrorRef.current = null
@@ -674,11 +776,18 @@ export function PlayerPanel({
               return
             }
 
-            if (playbackRef.current.paused) {
-              send("playback:play", { currentTimeMs: getCurrentTimeMs() })
+            // Request handlers already commit user intent. Ignore provider
+            // echoes unless a trusted user gesture somehow skipped requests.
+            if (!playbackRef.current.paused) {
+              return
             }
+            if (!event.isOriginTrusted) {
+              return
+            }
+
+            send("playback:play", { currentTimeMs: getCurrentTimeMs() })
           }}
-          onPause={() => {
+          onPause={(event) => {
             setIsBuffering(false)
             bufferingSinceRef.current = null
             if (suppressOutgoingRef.current) {
@@ -689,9 +798,19 @@ export function PlayerPanel({
               return
             }
 
-            if (!playbackRef.current.paused) {
-              send("playback:pause", { currentTimeMs: getCurrentTimeMs() })
+            if (playbackRef.current.paused) {
+              return
             }
+
+            // YouTube/iframe providers emit non-user pauses while buffering or
+            // recovering. Mirroring those into room state is what left the
+            // default media "stuck" after a brief successful autoplay.
+            if (!event.isOriginTrusted) {
+              enforceServerPlaybackState()
+              return
+            }
+
+            send("playback:pause", { currentTimeMs: getCurrentTimeMs() })
           }}
           onPlaying={() => {
             setIsBuffering(false)
@@ -716,13 +835,16 @@ export function PlayerPanel({
             participantStatusErrorRef.current = null
             bufferingSinceRef.current = null
             const player = playerRef.current
-            const pending = pendingSyncRef.current
-            if (!player || !pending) {
-              if (autoPlayAfterLoadRef.current) {
-                autoPlayAfterLoadRef.current = false
-                send("playback:play", { currentTimeMs: 0 })
-              }
+            if (!player) {
               return
+            }
+
+            const pending = pendingSyncRef.current ?? {
+              paused: playbackRef.current.paused,
+              playbackRate: playbackRef.current.playbackRate,
+              timelineAnchorMs: playbackRef.current.timelineAnchorMs,
+              serverNowMs: playbackRef.current.serverNowMs,
+              videoLoop: playbackRef.current.videoLoop !== "off",
             }
 
             const pendingToApply =
@@ -740,8 +862,15 @@ export function PlayerPanel({
             suppressOutgoingRef.current = true
 
             try {
-              applySyncToPlayer({ player, syncState: pendingToApply })
+              const result = applySyncToPlayer({
+                player,
+                syncState: pendingToApply,
+              })
               pendingSyncRef.current = null
+              void result.playAttempt?.then(() => {
+                schedulePlayRetry(player, pendingToApply)
+              })
+              schedulePlayRetry(player, pendingToApply)
             } catch {
               pendingSyncRef.current = pendingToApply
               console.warn("[player] applySyncToPlayer failed (onCanPlay)", {
@@ -752,10 +881,6 @@ export function PlayerPanel({
                 pendingToApply,
               })
             } finally {
-              if (autoPlayAfterLoadRef.current) {
-                autoPlayAfterLoadRef.current = false
-                send("playback:play", { currentTimeMs: 0 })
-              }
               window.setTimeout(() => {
                 suppressOutgoingRef.current = false
               }, 80)
