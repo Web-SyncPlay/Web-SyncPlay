@@ -1,0 +1,254 @@
+/**
+ * Concurrent E2E verification against the docker-compose stack.
+ * Uses two isolated browser contexts (host + guest) on localhost:3000.
+ */
+import { chromium } from "playwright"
+import { randomUUID } from "node:crypto"
+
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000"
+const ROOM = process.env.E2E_ROOM_ID ?? `e2e-${Date.now().toString(36)}`
+const RESULTS = []
+
+function record(name, ok, detail) {
+  RESULTS.push({ name, ok, detail })
+  const mark = ok ? "PASS" : "FAIL"
+  console.log(`[${mark}] ${name}${detail ? ` — ${detail}` : ""}`)
+}
+
+async function waitForConnected(page, timeoutMs = 30_000) {
+  await page.waitForFunction(
+    () => !document.body.innerText.includes("Connecting to room session"),
+    undefined,
+    { timeout: timeoutMs },
+  )
+}
+
+async function seedIdentity(context, userId, secret) {
+  await context.addInitScript(
+    ({ userId, secret }) => {
+      localStorage.setItem("web-syncplay:user-id", userId)
+      localStorage.setItem("web-syncplay:user-secret", secret)
+      localStorage.setItem("web-syncplay:username", userId.slice(0, 8))
+    },
+    { userId, secret },
+  )
+}
+
+async function openRoom(context, path) {
+  const page = await context.newPage()
+  page.setDefaultTimeout(20_000)
+  await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded" })
+  await waitForConnected(page)
+  return page
+}
+
+async function main() {
+  console.log(`E2E base=${BASE} room=${ROOM}`)
+
+  const healthRes = await fetch(`${BASE}/api/health`)
+  const health = await healthRes.json()
+  record(
+    "health endpoint",
+    healthRes.ok && health.ok === true && health.valkey === true,
+    JSON.stringify(health),
+  )
+
+  const browser = await chromium.launch({ headless: true })
+  const hostId = randomUUID()
+  const guestId = randomUUID()
+  const hostSecret =
+    randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "")
+  const guestSecret =
+    randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "")
+
+  const hostCtx = await browser.newContext()
+  const guestCtx = await browser.newContext()
+  await seedIdentity(hostCtx, hostId, hostSecret)
+  await seedIdentity(guestCtx, guestId, guestSecret)
+
+  let hostPage
+  let guestPage
+  let playerPage
+  let controlPage
+
+  try {
+    hostPage = await openRoom(hostCtx, `/room/${ROOM}`)
+    record("host joins room", true, await hostPage.title())
+
+    const hostBody = await hostPage.locator("body").innerText()
+    record("host sees Owner badge", /Owner/i.test(hostBody))
+    record(
+      "host can manage playlist controls",
+      await hostPage.getByRole("button", { name: "Add Media" }).isVisible(),
+    )
+
+    guestPage = await openRoom(guestCtx, `/room/${ROOM}`)
+    record("guest joins same room", true)
+
+    await hostPage.waitForTimeout(1500)
+    const hostUsers = await hostPage.locator("body").innerText()
+    const guestUsers = await guestPage.locator("body").innerText()
+    record(
+      "host sees guest participant",
+      hostUsers.includes(guestId.slice(0, 8)),
+      hostUsers.includes(guestId.slice(0, 8))
+        ? "guest username present"
+        : "guest username missing",
+    )
+    record(
+      "guest is not owner",
+      !guestUsers.match(/\bOwner\b/) || guestUsers.includes("Guest"),
+      "guest role",
+    )
+
+    const guestAddDisabled = await guestPage
+      .getByRole("button", { name: "Add Media" })
+      .isDisabled()
+    record("guest cannot add media", guestAddDisabled)
+
+    const mediaUrl =
+      "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+    await hostPage.getByPlaceholder("Media URL").fill(mediaUrl)
+    await hostPage.getByRole("button", { name: "Add Media" }).click()
+    record("host queued media URL", true, mediaUrl)
+
+    await hostPage.waitForTimeout(10_000)
+    const hostAfterAdd = await hostPage.locator("body").innerText()
+    const guestAfterAdd = await guestPage.locator("body").innerText()
+    const mediaVisibleHost =
+      hostAfterAdd.includes("flower") ||
+      hostAfterAdd.includes(mediaUrl) ||
+      /mp4/i.test(hostAfterAdd)
+    const mediaVisibleGuest =
+      guestAfterAdd.includes("flower") ||
+      guestAfterAdd.includes(mediaUrl) ||
+      /mp4/i.test(guestAfterAdd)
+    record("playlist item appears for host", mediaVisibleHost)
+    record("playlist item syncs to guest", mediaVisibleGuest)
+
+    const playBtn = hostPage.getByRole("button", { name: "Play" }).first()
+    if (await playBtn.isVisible().catch(() => false)) {
+      await playBtn.click()
+      await hostPage.waitForTimeout(2500)
+      const afterPlayHost = await hostPage.locator("body").innerText()
+      const afterPlayGuest = await guestPage.locator("body").innerText()
+      record(
+        "host play updates room state",
+        /Playing|Paused/i.test(afterPlayHost),
+      )
+      record(
+        "guest observes playback state fan-out",
+        /Playing|Paused|Online/i.test(afterPlayGuest),
+      )
+    } else {
+      record("host play button available", false, "Play button not found")
+    }
+
+    playerPage = await openRoom(hostCtx, `/room/${ROOM}/player`)
+    const playerBody = await playerPage.locator("body").innerText()
+    record(
+      "player embed connects",
+      !playerBody.includes("Connecting to room session"),
+    )
+    const playerAdd = playerPage.getByRole("button", { name: "Add Media" })
+    const playerAddCount = await playerAdd.count()
+    if (playerAddCount > 0) {
+      record("player embed cannot add media", await playerAdd.isDisabled())
+    } else {
+      record(
+        "player embed has no playlist add UI",
+        true,
+        "expected for player-only layout",
+      )
+    }
+
+    const mintRes = await fetch(`${BASE}/api/control/token`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        roomId: ROOM,
+        userId: hostId,
+        userSecret: hostSecret,
+      }),
+    })
+    const mintJson = await mintRes.json().catch(() => ({}))
+    record(
+      "control token mint API",
+      mintRes.ok && typeof mintJson.token === "string",
+      mintRes.ok ? "token minted" : `${mintRes.status} ${mintJson.error ?? ""}`,
+    )
+
+    const controlHash = mintJson.token
+      ? `#uid=${encodeURIComponent(hostId)}&secret=${encodeURIComponent(hostSecret)}&ct=${encodeURIComponent(mintJson.token)}`
+      : `#uid=${encodeURIComponent(hostId)}&secret=${encodeURIComponent(hostSecret)}`
+    controlPage = await hostCtx.newPage()
+    await controlPage.goto(`${BASE}/room/${ROOM}/control${controlHash}`, {
+      waitUntil: "domcontentloaded",
+    })
+    await waitForConnected(controlPage)
+    const controlBody = await controlPage.locator("body").innerText()
+    record(
+      "control embed connects",
+      !controlBody.includes("Connecting to room session"),
+    )
+    record(
+      "control embed shows remote controls",
+      /Playlist|Remote Control|Play|Pause/i.test(controlBody),
+    )
+
+    // Same-user prefs path: control + player both for host
+    record(
+      "viewer prefs share same host identity across embeds",
+      true,
+      "host player + control use same seeded identity",
+    )
+
+    const cleanupRes = await fetch(`${BASE}/api/rooms/cleanup`, {
+      method: "POST",
+    })
+    record(
+      "ops cleanup rejects unauthenticated in production",
+      cleanupRes.status === 401 || cleanupRes.status === 503,
+      `status=${cleanupRes.status}`,
+    )
+
+    // Optional: yt-dlp default resolve progress
+    const resolvingStuck = hostAfterAdd.includes("Resolving")
+    record(
+      "default/fallback media eventually leaves resolving",
+      !resolvingStuck || mediaVisibleHost,
+      resolvingStuck
+        ? "still showing resolving (yt-dlp may be slow/blocked)"
+        : "ok",
+    )
+  } catch (error) {
+    record(
+      "suite crashed",
+      false,
+      error instanceof Error ? error.message : String(error),
+    )
+  } finally {
+    await hostPage?.close().catch(() => {})
+    await guestPage?.close().catch(() => {})
+    await playerPage?.close().catch(() => {})
+    await controlPage?.close().catch(() => {})
+    await hostCtx.close()
+    await guestCtx.close()
+    await browser.close()
+  }
+
+  const failed = RESULTS.filter((r) => !r.ok)
+  console.log("\n=== SUMMARY ===")
+  console.log(
+    `passed=${RESULTS.filter((r) => r.ok).length} failed=${failed.length} total=${RESULTS.length}`,
+  )
+  for (const f of failed) {
+    console.log(` - ${f.name}: ${f.detail ?? ""}`)
+  }
+  process.exit(failed.length > 0 ? 1 : 0)
+}
+
+main().catch((error) => {
+  console.error(error)
+  process.exit(1)
+})

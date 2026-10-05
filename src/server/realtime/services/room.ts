@@ -1,29 +1,29 @@
 import { resolveMediaSource } from "@/server/media/resolve"
-import type { RoomStateStore } from "@/server/redis/state-store"
+import type { RoomStateStorePort } from "@/server/realtime/ports"
 import { repairCleanupAndCheckRoomState } from "@/server/repair"
-import type { RoomState } from "@/zod/types"
+import type { PlaylistItem, RoomState } from "@/zod/types"
 import { randomUUID } from "node:crypto"
 import { normalizeParticipantRoles } from "./permissions"
 import { createDefaultRoomSecurity } from "./room-security"
 
-async function resolveSeedItemInBackground(
-  store: RoomStateStore,
+/** Dedupes concurrent resolve kicks for the same playlist item. */
+const inflightPlaylistResolves = new Set<string>()
+
+async function applyResolvedSeedItem(
+  store: RoomStateStorePort,
   roomId: string,
   itemId: string,
-  sourceUrl: string,
   title: string,
+  resolved: Awaited<ReturnType<typeof resolveMediaSource>>,
 ) {
-  try {
-    const resolved = await resolveMediaSource({
-      url: sourceUrl,
-      name: title,
-      roomId,
-      mediaId: itemId,
-    })
-    await store.updateRoom(roomId, async (state) => {
+  // Retry briefly: native YouTube resolve can finish before the creating
+  // join transaction has committed the room key to Redis.
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    const written = await store.updateRoom(roomId, async (state) => {
       if (!state) return null
       const item = state.playlist.find((entry) => entry.id === itemId)
-      if (!item || item.ingestStatus !== "resolving") return null
+      // Item removed or already settled — commit no-op and stop retrying.
+      if (!item || item.ingestStatus !== "resolving") return state
       if (resolved.failureReason) {
         item.ingestStatus = "error"
         item.ingestError =
@@ -46,21 +46,81 @@ async function resolveSeedItemInBackground(
       state.updatedAt = Date.now()
       return state
     })
-  } catch {
-    await store.updateRoom(roomId, async (state) => {
-      if (!state) return null
-      const item = state.playlist.find((entry) => entry.id === itemId)
-      if (!item || item.ingestStatus !== "resolving") return null
-      item.ingestStatus = "error"
-      item.ingestError = "Failed to resolve default media"
-      state.updatedAt = Date.now()
-      return state
+
+    if (written) {
+      return
+    }
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.min(25 * 2 ** Math.min(attempt, 4), 200)),
+    )
+  }
+}
+
+async function resolvePlaylistItemInBackground(
+  store: RoomStateStorePort,
+  roomId: string,
+  itemId: string,
+  sourceUrl: string,
+  title: string,
+) {
+  const key = `${roomId}:${itemId}`
+  try {
+    const resolved = await resolveMediaSource({
+      url: sourceUrl,
+      name: title,
+      roomId,
+      mediaId: itemId,
     })
+    await applyResolvedSeedItem(store, roomId, itemId, title, resolved)
+  } catch {
+    for (let attempt = 0; attempt < 24; attempt += 1) {
+      const written = await store.updateRoom(roomId, async (state) => {
+        if (!state) return null
+        const item = state.playlist.find((entry) => entry.id === itemId)
+        if (!item || item.ingestStatus !== "resolving") return null
+        item.ingestStatus = "error"
+        item.ingestError = "Failed to resolve default media"
+        state.updatedAt = Date.now()
+        return state
+      })
+      if (written) return
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.min(25 * 2 ** Math.min(attempt, 4), 200)),
+      )
+    }
+  } finally {
+    inflightPlaylistResolves.delete(key)
+  }
+}
+
+/**
+ * Start background resolve for playlist items still in `resolving`.
+ * Safe to call after the room has been persisted (e.g. post-join).
+ */
+export function scheduleResolvingPlaylistItems(
+  store: RoomStateStorePort,
+  roomId: string,
+  playlist: PlaylistItem[],
+) {
+  for (const item of playlist) {
+    if (item.ingestStatus !== "resolving") continue
+    if (item.sourceKind === "local_file") continue
+    const key = `${roomId}:${item.id}`
+    if (inflightPlaylistResolves.has(key)) continue
+    inflightPlaylistResolves.add(key)
+    void resolvePlaylistItemInBackground(
+      store,
+      roomId,
+      item.id,
+      item.sourceUrl,
+      item.name,
+    )
   }
 }
 
 export async function createInitialRoomState(
-  store: RoomStateStore,
+  store: RoomStateStorePort,
   roomId: string,
   ownerId: string,
 ): Promise<RoomState> {
@@ -80,16 +140,9 @@ export async function createInitialRoomState(
     }
   })
 
-  // Fire-and-forget resolve so join is not blocked by yt-dlp.
-  for (const item of playlist) {
-    void resolveSeedItemInBackground(
-      store,
-      roomId,
-      item.id,
-      item.sourceUrl,
-      item.name,
-    )
-  }
+  // Do not resolve here — callers must persist the room first, then call
+  // scheduleResolvingPlaylistItems. Starting resolve inside create races the
+  // join WATCH/SET and can leave native URLs stuck on "resolving" forever.
 
   return {
     roomId,
@@ -114,7 +167,7 @@ export async function createInitialRoomState(
 }
 
 export async function resolveRoom(
-  store: RoomStateStore,
+  store: RoomStateStorePort,
   roomId: string,
   ownerId: string,
 ): Promise<RoomState> {

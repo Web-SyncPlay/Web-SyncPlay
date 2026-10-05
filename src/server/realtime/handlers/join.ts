@@ -8,7 +8,10 @@ import {
 import { validateControlToken } from "@/server/realtime/services/control-token"
 import { claimOrVerifyIdentitySecret } from "@/server/realtime/services/identity-store"
 import { normalizeParticipantRoles } from "@/server/realtime/services/permissions"
-import { createInitialRoomState } from "@/server/realtime/services/room"
+import {
+  createInitialRoomState,
+  scheduleResolvingPlaylistItems,
+} from "@/server/realtime/services/room"
 import { markCurrentMedia } from "@/server/realtime/services/timeline"
 import { repairCleanupAndCheckRoomState } from "@/server/repair"
 import {
@@ -159,7 +162,7 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
       }
     | undefined
 
-  await ctx.store.updateRoom(roomId, async (existing) => {
+  const committed = await ctx.store.updateRoom(roomId, async (existing) => {
     const state =
       existing ?? (await createInitialRoomState(ctx.store, roomId, userId))
     normalizeParticipantRoles(state)
@@ -238,6 +241,11 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
     state.updatedAt = Date.now()
     return state
   })
+
+  // Persist-first: kick (or re-kick stuck) resolving items only after Redis write.
+  if (committed) {
+    scheduleResolvingPlaylistItems(ctx.store, roomId, committed.playlist)
+  }
 
   if (sessionCapabilities) {
     sendEnvelope(ctx.ws, {

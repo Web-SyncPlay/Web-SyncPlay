@@ -9,6 +9,8 @@
     "lint": "eslint",
     "typecheck": "bunx tsc -p tsconfig.json --noEmit",
     "test": "bunx tsx --test src/server/ws/registry.test.ts src/server/realtime/services/permissions.test.ts src/server/realtime/services/ownership.test.ts src/server/realtime/services/cleanup.test.ts src/server/realtime/services/room-security.test.ts src/server/realtime/handlers/join.test.ts src/lib/session-identity.test.ts src/server/security/url-safety.test.ts src/server/media/resolve/build-selectable-streams.test.ts",
+    "test:e2e": "node scripts/e2e-concurrent.mjs",
+    "test:e2e:ws": "node scripts/e2e-ws-concurrent.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {
@@ -58,6 +60,7 @@
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.4",
     "eslint-config-prettier": "^10.1.8",
+    "playwright": "^1.63.0",
     "postcss": "^8.5.12",
     "prettier": "^3.8.3",
     "prettier-plugin-organize-imports": "^4.3.0",
