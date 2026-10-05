@@ -16,6 +16,7 @@ export function RoomClient({ roomId }: { roomId: string }) {
     sessionCapabilities,
     send,
     userId,
+    userSecret,
     status,
     joinError,
     submitJoinPassword,
@@ -24,7 +25,7 @@ export function RoomClient({ roomId }: { roomId: string }) {
     handleCopyShareUrl,
     playerEmbedUrl,
     controlEmbedUrl,
-  } = useRoomSession(roomId)
+  } = useRoomSession(roomId, { sessionKind: "room" })
 
   if (!roomState) {
     if (status === "awaiting_password") {
@@ -51,6 +52,7 @@ export function RoomClient({ roomId }: { roomId: string }) {
     roomState,
     send,
     userId,
+    userSecret,
     capabilities: {
       ...sessionCapabilities,
       canControlPlayback: canMutateFromThisSession,

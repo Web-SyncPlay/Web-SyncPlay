@@ -1,10 +1,11 @@
 import type { TypedRoomEventSender } from "@/lib/room-events"
-import type { RoomState } from "@/zod/types"
+import type { RoomState, SessionKind } from "@/zod/types"
 
 export interface RoomPanelProps {
   roomState: RoomState
   roomId: string
   userId: string
+  userSecret: string
   send: TypedRoomEventSender
   capabilities: {
     canControlPlayback: boolean
@@ -12,5 +13,6 @@ export interface RoomPanelProps {
     canManageRoomSecurity: boolean
     isControlSession: boolean
     controlAuthorized: boolean
+    sessionKind?: SessionKind
   }
 }

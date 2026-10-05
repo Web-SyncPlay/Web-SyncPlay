@@ -29,7 +29,8 @@ export class RoomStateStore {
     const stateKey = keys.roomState(roomId)
     const channel = keys.roomChannel(roomId)
 
-    for (let attempt = 0; attempt < 5; attempt += 1) {
+    const maxAttempts = 12
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       await client.watch(stateKey)
       const raw = await client.get(stateKey)
       const current = raw ? (JSON.parse(raw) as RoomState) : null
@@ -49,6 +50,11 @@ export class RoomStateStore {
       if (execResult !== null) {
         return next
       }
+
+      await client.unwatch()
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.min(50 * 2 ** attempt, 400)),
+      )
     }
 
     throw new Error("updateRoom: WATCH retry exhausted")

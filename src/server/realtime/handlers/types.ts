@@ -1,5 +1,5 @@
 import type { RoomStateStore } from "@/server/redis/state-store"
-import type { WsEnvelope } from "@/zod/types"
+import type { SessionKind, WsEnvelope } from "@/zod/types"
 import type { WebSocket } from "ws"
 
 export type RoomMessageContext = {
@@ -9,6 +9,7 @@ export type RoomMessageContext = {
   userId: string
   controlAuthorized: boolean
   isControlSession: boolean
+  sessionKind: SessionKind
 }
 
 export type RoomMessageHandler = (

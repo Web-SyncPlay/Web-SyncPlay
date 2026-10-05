@@ -6,7 +6,6 @@ import {
   getSocketMeta,
   removeSocket,
   setSocketPresenceTracked,
-  verifySocketIdentitySecret,
 } from "./registry"
 
 function createWs() {
@@ -20,6 +19,7 @@ test("preserves presenceTracked for duplicate joins on same socket", () => {
     userId: "u1",
     controlAuthorized: false,
     isControlSession: false,
+    sessionKind: "room",
   })
   setSocketPresenceTracked(ws, true)
 
@@ -28,6 +28,7 @@ test("preserves presenceTracked for duplicate joins on same socket", () => {
     userId: "u1",
     controlAuthorized: false,
     isControlSession: false,
+    sessionKind: "room",
   })
   const meta = getSocketMeta(ws)
 
@@ -43,12 +44,14 @@ test("replacing room metadata on same socket updates room/user", () => {
     userId: "u1",
     controlAuthorized: false,
     isControlSession: false,
+    sessionKind: "room",
   })
   addSocket(ws, {
     roomId: "room-2",
     userId: "u2",
     controlAuthorized: true,
     isControlSession: true,
+    sessionKind: "control",
   })
   const meta = getSocketMeta(ws)
 
@@ -56,33 +59,7 @@ test("replacing room metadata on same socket updates room/user", () => {
   assert.equal(meta?.userId, "u2")
   assert.equal(meta?.controlAuthorized, true)
   assert.equal(meta?.isControlSession, true)
+  assert.equal(meta?.sessionKind, "control")
 
   removeSocket(ws)
-})
-
-test("stores and verifies user secret per room/user", () => {
-  assert.equal(
-    verifySocketIdentitySecret({
-      roomId: "room-1",
-      userId: "u1",
-      userSecret: "secret-a",
-    }),
-    true,
-  )
-  assert.equal(
-    verifySocketIdentitySecret({
-      roomId: "room-1",
-      userId: "u1",
-      userSecret: "secret-a",
-    }),
-    true,
-  )
-  assert.equal(
-    verifySocketIdentitySecret({
-      roomId: "room-1",
-      userId: "u1",
-      userSecret: "secret-b",
-    }),
-    false,
-  )
 })

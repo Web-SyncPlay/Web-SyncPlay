@@ -30,6 +30,7 @@ export const handlePlaybackSeek: RoomMessageHandler = async (ctx, data) => {
         !canControlFromConnectionContext(state, ctx.userId, {
           controlAuthorized: ctx.controlAuthorized,
           isControlSession: ctx.isControlSession,
+          sessionKind: ctx.sessionKind,
         })
       ) {
         return false
@@ -82,6 +83,7 @@ async function setPlaybackPausedState(
         !canControlFromConnectionContext(state, ctx.userId, {
           controlAuthorized: ctx.controlAuthorized,
           isControlSession: ctx.isControlSession,
+          sessionKind: ctx.sessionKind,
         })
       ) {
         return false
@@ -130,6 +132,7 @@ export const handlePlaybackRate: RoomMessageHandler = async (ctx, data) => {
         !canControlFromConnectionContext(state, ctx.userId, {
           controlAuthorized: ctx.controlAuthorized,
           isControlSession: ctx.isControlSession,
+          sessionKind: ctx.sessionKind,
         })
       ) {
         return false
@@ -169,6 +172,7 @@ export const handlePlaybackLoopVideo: RoomMessageHandler = async (
         !canControlFromConnectionContext(state, ctx.userId, {
           controlAuthorized: ctx.controlAuthorized,
           isControlSession: ctx.isControlSession,
+          sessionKind: ctx.sessionKind,
         })
       ) {
         return false
@@ -212,6 +216,7 @@ export const handlePlaybackLoopPlaylist: RoomMessageHandler = async (
         !canControlFromConnectionContext(state, ctx.userId, {
           controlAuthorized: ctx.controlAuthorized,
           isControlSession: ctx.isControlSession,
+          sessionKind: ctx.sessionKind,
         })
       ) {
         return false

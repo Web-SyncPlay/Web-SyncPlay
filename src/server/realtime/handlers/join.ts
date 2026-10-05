@@ -5,6 +5,8 @@ import {
   reconcileParticipantsConnectivity,
   schedulePrune,
 } from "@/server/realtime/services/participants"
+import { validateControlToken } from "@/server/realtime/services/control-token"
+import { claimOrVerifyIdentitySecret } from "@/server/realtime/services/identity-store"
 import { normalizeParticipantRoles } from "@/server/realtime/services/permissions"
 import { createInitialRoomState } from "@/server/realtime/services/room"
 import { markCurrentMedia } from "@/server/realtime/services/timeline"
@@ -14,10 +16,10 @@ import {
   getSocketMeta,
   setSocketControlAuthorized,
   setSocketPresenceTracked,
-  verifySocketIdentitySecret,
 } from "@/server/ws/registry"
+import { consumeRateLimit } from "@/server/security/rate-limit"
 import { roomJoinSchema } from "@/zod/schemas"
-import type { ParticipantState, WsEnvelope } from "@/zod/types"
+import type { ParticipantState, SessionKind, WsEnvelope } from "@/zod/types"
 import { randomUUID } from "node:crypto"
 import type { WebSocket } from "ws"
 import { evaluateJoinAdmission } from "../services/room-security"
@@ -64,6 +66,22 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
   const avatarStyle = String(joinResult.data.avatarStyle || "adventurer")
   const userSecret = joinResult.data.userSecret
   const joinPassword = joinResult.data.joinPassword
+  const sessionKind: SessionKind = joinResult.data.sessionKind ?? "room"
+  const controlToken = joinResult.data.controlToken
+
+  const joinLimit = consumeRateLimit({
+    key: `join:${roomId}`,
+    limit: 60,
+    windowMs: 60_000,
+  })
+  if (!joinLimit.allowed) {
+    sendEnvelope(ctx.ws, {
+      type: "room:join:rejected",
+      requestId: data.requestId,
+      payload: { reason: "rate_limited" },
+    })
+    return
+  }
 
   const previousMeta = getSocketMeta(ctx.ws)
   if (
@@ -90,14 +108,36 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
     return
   }
 
-  const isControlSession = true
+  const identityOk = await claimOrVerifyIdentitySecret({
+    roomId,
+    userId,
+    userSecret,
+  })
+
+  const isControlSession = sessionKind === "control"
+  let controlAuthorized = false
+  if (isControlSession) {
+    if (controlToken) {
+      controlAuthorized = await validateControlToken({
+        token: controlToken,
+        roomId,
+        userId,
+      })
+    }
+    // Migration: legacy secret match still authorizes control embeds briefly.
+    if (!controlAuthorized && identityOk) {
+      controlAuthorized = true
+    }
+  }
+
   addSocket(ctx.ws, {
     roomId,
     userId,
-    controlAuthorized: false,
+    controlAuthorized,
     isControlSession,
+    sessionKind,
   })
-  setSocketControlAuthorized(ctx.ws, false)
+  setSocketControlAuthorized(ctx.ws, controlAuthorized)
   const activeMeta = getSocketMeta(ctx.ws)
   const isPresenceAlreadyTracked = Boolean(activeMeta?.presenceTracked)
   if (!activeMeta?.presenceTracked) {
@@ -115,6 +155,7 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
         canManageRoomSecurity: boolean
         isControlSession: boolean
         controlAuthorized: boolean
+        sessionKind: SessionKind
       }
     | undefined
 
@@ -164,6 +205,7 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
         error: existingParticipant?.localPlayback.error,
         updatedAt: now,
       },
+      viewerMedia: existingParticipant?.viewerMedia,
     }
     if (!isPresenceAlreadyTracked || !existingParticipant?.connected) {
       appendActionLog(state, {
@@ -174,23 +216,23 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
         payload: {},
       })
     }
-    const controlAuthorized = verifySocketIdentitySecret({
-      roomId,
-      userId,
-      userSecret,
-    })
-    setSocketControlAuthorized(ctx.ws, controlAuthorized)
     const canControlByRole = role === "owner" || role === "moderator"
+    const playerBlocked = sessionKind === "player"
     const canMutate =
-      canControlByRole && (!isControlSession || controlAuthorized)
+      !playerBlocked &&
+      canControlByRole &&
+      (!isControlSession || controlAuthorized)
     const canManageRoomSecurity =
-      role === "owner" && (!isControlSession || controlAuthorized)
+      !playerBlocked &&
+      role === "owner" &&
+      (!isControlSession || controlAuthorized)
     sessionCapabilities = {
       canControlPlayback: canMutate,
       canManagePlaylist: canMutate,
       canManageRoomSecurity,
       isControlSession,
       controlAuthorized,
+      sessionKind,
     }
     markCurrentMedia(state)
     state.updatedAt = Date.now()

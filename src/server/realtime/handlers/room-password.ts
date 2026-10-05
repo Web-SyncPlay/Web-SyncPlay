@@ -17,6 +17,7 @@ export const handleRoomPasswordSet: RoomMessageHandler = async (ctx, data) => {
     (state, participant) => {
       if (
         state.ownerId !== ctx.userId ||
+        ctx.sessionKind === "player" ||
         (ctx.isControlSession && !ctx.controlAuthorized)
       ) {
         return false
@@ -53,6 +54,7 @@ export const handleRoomPasswordClear: RoomMessageHandler = async (
     (state, participant) => {
       if (
         state.ownerId !== ctx.userId ||
+        ctx.sessionKind === "player" ||
         (ctx.isControlSession && !ctx.controlAuthorized)
       ) {
         return false

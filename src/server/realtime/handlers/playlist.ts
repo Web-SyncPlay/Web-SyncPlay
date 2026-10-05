@@ -1,19 +1,15 @@
 import { appendActionLog } from "@/server/log"
 import { resolveMediaSource } from "@/server/media/resolve"
+import { canControlFromConnectionContext } from "@/server/realtime/services/permissions"
+import { consumeRateLimit } from "@/server/security/rate-limit"
 import {
-  canControlFromConnectionContext,
-} from "@/server/realtime/services/permissions"
-import {
-  playlistAddUrlSchema,
   playlistAddLocalSchema,
+  playlistAddUrlSchema,
   playlistItemErrorSchema,
   playlistRenameSchema,
   playlistReorderSchema,
   playlistRetrySchema,
-  playlistStreamSelectSchema,
-  playlistTextTrackSelectSchema,
 } from "@/zod/schemas"
-import type { RoomState } from "@/zod/types"
 import { randomUUID } from "node:crypto"
 import { mutateRoomMessage } from "./mutate-room"
 import type { RoomMessageHandler } from "./types"
@@ -22,36 +18,41 @@ function nextMonotonicMs(previous: number, next: number) {
   return Math.max(previous + 1, next)
 }
 
-export const handlePlaylistAdd: RoomMessageHandler = async (ctx, data) => {
-  await mutateRoomMessage(
-    ctx.store,
-    ctx.roomId,
-    ctx.userId,
-    (state, participant) => {
-      if (
-        !canControlFromConnectionContext(state, ctx.userId, {
-          controlAuthorized: ctx.controlAuthorized,
-          isControlSession: ctx.isControlSession,
-        })
-      ) {
-        return false
-      }
-      const item = data.payload.item as RoomState["playlist"][number]
-      state.playlist.push(item)
-      appendActionLog(state, {
-        roomId: ctx.roomId,
-        actorUserId: ctx.userId,
-        actorUsername: participant.username,
-        action: "playlist:add",
-        payload: {
-          itemId: item.id,
-          itemName: item.name,
-          index: state.playlist.length - 1,
-        },
-      })
-      return true
-    },
-  )
+function applyResolvedToItem(
+  item: {
+    playableUrl: string
+    playbackMode: "direct" | "relay"
+    mediaStreams?: unknown
+    textTracks?: unknown
+    defaultStreamId?: string
+    defaultTextTrackId?: string
+    selectedStreamId?: string
+    selectedTextTrackId?: string
+    durationSeconds?: number
+    isLive?: boolean
+    ingestStatus?: string
+    ingestError?: string
+    name: string
+    sourceUrl: string
+  },
+  resolved: Awaited<ReturnType<typeof resolveMediaSource>>,
+) {
+  item.playableUrl = resolved.playableUrl
+  item.playbackMode = resolved.playbackMode
+  item.mediaStreams = resolved.mediaStreams
+  item.defaultStreamId = resolved.defaultStreamId
+  item.textTracks = resolved.textTracks
+  item.defaultTextTrackId = resolved.defaultTextTrackId
+  // Clear deprecated room-selection aliases
+  item.selectedStreamId = undefined
+  item.selectedTextTrackId = undefined
+  item.durationSeconds = resolved.durationSeconds ?? undefined
+  item.isLive = resolved.isLive ?? undefined
+  item.ingestStatus = "ready"
+  item.ingestError = undefined
+  if (item.name.trim() === item.sourceUrl.trim()) {
+    item.name = resolved.title || item.sourceUrl
+  }
 }
 
 export const handlePlaylistSelect: RoomMessageHandler = async (ctx, data) => {
@@ -64,6 +65,7 @@ export const handlePlaylistSelect: RoomMessageHandler = async (ctx, data) => {
         !canControlFromConnectionContext(state, ctx.userId, {
           controlAuthorized: ctx.controlAuthorized,
           isControlSession: ctx.isControlSession,
+          sessionKind: ctx.sessionKind,
         })
       ) {
         return false
@@ -102,6 +104,15 @@ export const handlePlaylistAddUrl: RoomMessageHandler = async (ctx, data) => {
   const addUrlResult = playlistAddUrlSchema.safeParse(data.payload)
   if (!addUrlResult.success) return
 
+  const resolveLimit = consumeRateLimit({
+    key: `resolve:${ctx.roomId}:${ctx.userId}`,
+    limit: 10,
+    windowMs: 60_000,
+  })
+  if (!resolveLimit.allowed) {
+    return
+  }
+
   const queuedItemId = randomUUID()
   const sourceUrl = addUrlResult.data.url
   let shouldResolve = false
@@ -115,6 +126,7 @@ export const handlePlaylistAddUrl: RoomMessageHandler = async (ctx, data) => {
         !canControlFromConnectionContext(state, ctx.userId, {
           controlAuthorized: ctx.controlAuthorized,
           isControlSession: ctx.isControlSession,
+          sessionKind: ctx.sessionKind,
         })
       ) {
         return false
@@ -129,7 +141,6 @@ export const handlePlaylistAddUrl: RoomMessageHandler = async (ctx, data) => {
         sourceUrl,
         playableUrl: sourceUrl,
         ingestStatus: "resolving",
-        isResolving: true,
         createdBy: ctx.userId,
         createdAt: Date.now(),
       })
@@ -154,25 +165,30 @@ export const handlePlaylistAddUrl: RoomMessageHandler = async (ctx, data) => {
   }
 
   try {
-    const resolved = await resolveMediaSource({ url: sourceUrl })
+    const resolved = await resolveMediaSource({
+      url: sourceUrl,
+      roomId: ctx.roomId,
+      mediaId: queuedItemId,
+    })
+    if (resolved.failureReason) {
+      await ctx.store.updateRoom(ctx.roomId, async (state) => {
+        if (!state) return null
+        const item = state.playlist.find((entry) => entry.id === queuedItemId)
+        if (!item) return null
+        item.ingestStatus = "error"
+        item.ingestError =
+          resolved.resolveUserMessage ?? "Failed to resolve metadata"
+        state.updatedAt = Date.now()
+        return state
+      })
+      return
+    }
+
     await ctx.store.updateRoom(ctx.roomId, async (state) => {
       if (!state) return null
       const item = state.playlist.find((entry) => entry.id === queuedItemId)
       if (!item) return null
-      item.playableUrl = resolved.playableUrl
-      item.playbackMode = resolved.playbackMode
-      item.mediaStreams = resolved.mediaStreams
-      item.selectedStreamId = resolved.selectedStreamId
-      item.textTracks = resolved.textTracks
-      item.selectedTextTrackId = resolved.selectedTextTrackId
-      item.durationSeconds = resolved.durationSeconds ?? undefined
-      item.ingestStatus = "ready"
-      item.isResolving = false
-      item.ingestError = undefined
-      item.resolutionError = undefined
-      if (item.name.trim() === item.sourceUrl.trim()) {
-        item.name = resolved.title || item.sourceUrl
-      }
+      applyResolvedToItem(item, resolved)
       state.updatedAt = Date.now()
       return state
     })
@@ -181,10 +197,8 @@ export const handlePlaylistAddUrl: RoomMessageHandler = async (ctx, data) => {
       if (!state) return null
       const item = state.playlist.find((entry) => entry.id === queuedItemId)
       if (!item) return null
-      item.isResolving = false
       item.ingestStatus = "error"
       item.ingestError = "Failed to resolve metadata"
-      item.resolutionError = "Failed to resolve metadata"
       state.updatedAt = Date.now()
       return state
     })
@@ -196,63 +210,84 @@ export const handlePlaylistAddLocal: RoomMessageHandler = async (ctx, data) => {
   if (!parsed.success) return
 
   const itemId = randomUUID()
-  await mutateRoomMessage(ctx.store, ctx.roomId, ctx.userId, (state, participant) => {
-    if (
-      !canControlFromConnectionContext(state, ctx.userId, {
-        controlAuthorized: ctx.controlAuthorized,
-        isControlSession: ctx.isControlSession,
-      })
-    ) {
-      return false
-    }
-    const playableUrl = `/api/media/local/${encodeURIComponent(parsed.data.localMediaId)}`
-    state.playlist.push({
-      id: itemId,
-      name: parsed.data.name,
-      sourceKind: "local_file",
-      playbackMode: "relay",
-      sourceUrl: playableUrl,
-      playableUrl,
-      ingestStatus: "ready",
-      mediaStreams: [
-        {
-          id: "local-default",
-          src: playableUrl,
-          type: parsed.data.mimeType,
-          isDefault: true,
-          label: "Local",
-        },
-      ],
-      localMediaId: parsed.data.localMediaId,
-      localOriginUserId: ctx.userId,
-      createdBy: ctx.userId,
-      createdAt: Date.now(),
-    })
-    appendActionLog(state, {
-      roomId: ctx.roomId,
-      actorUserId: ctx.userId,
-      actorUsername: participant.username,
-      action: "playlist:add",
-      payload: {
-        itemId,
-        itemName: parsed.data.name,
-        index: state.playlist.length - 1,
+  await mutateRoomMessage(
+    ctx.store,
+    ctx.roomId,
+    ctx.userId,
+    (state, participant) => {
+      if (
+        !canControlFromConnectionContext(state, ctx.userId, {
+          controlAuthorized: ctx.controlAuthorized,
+          isControlSession: ctx.isControlSession,
+          sessionKind: ctx.sessionKind,
+        })
+      ) {
+        return false
+      }
+      const playableUrl = `/api/media/local/${encodeURIComponent(parsed.data.localMediaId)}`
+      state.playlist.push({
+        id: itemId,
+        name: parsed.data.name,
         sourceKind: "local_file",
-      },
-    })
-    return true
-  })
+        playbackMode: "direct",
+        sourceUrl: playableUrl,
+        playableUrl,
+        ingestStatus: "ready",
+        mediaStreams: [
+          {
+            id: "local-default",
+            src: playableUrl,
+            type: parsed.data.mimeType,
+            isDefault: true,
+            label: "Local",
+            kind: "combined",
+          },
+        ],
+        defaultStreamId: "local-default",
+        localMediaId: parsed.data.localMediaId,
+        localOriginUserId: ctx.userId,
+        createdBy: ctx.userId,
+        createdAt: Date.now(),
+      })
+      appendActionLog(state, {
+        roomId: ctx.roomId,
+        actorUserId: ctx.userId,
+        actorUsername: participant.username,
+        action: "playlist:add",
+        payload: {
+          itemId,
+          itemName: parsed.data.name,
+          index: state.playlist.length - 1,
+          sourceKind: "local_file",
+        },
+      })
+      return true
+    },
+  )
 }
 
 export const handlePlaylistRetry: RoomMessageHandler = async (ctx, data) => {
   const parsed = playlistRetrySchema.safeParse(data.payload)
   if (!parsed.success) return
 
+  const resolveLimit = consumeRateLimit({
+    key: `resolve:${ctx.roomId}:${ctx.userId}`,
+    limit: 10,
+    windowMs: 60_000,
+  })
+  if (!resolveLimit.allowed) {
+    return
+  }
+
+  let sourceUrl: string | undefined
+  let itemId: string | undefined
+
   await mutateRoomMessage(ctx.store, ctx.roomId, ctx.userId, (state) => {
     if (
       !canControlFromConnectionContext(state, ctx.userId, {
         controlAuthorized: ctx.controlAuthorized,
         isControlSession: ctx.isControlSession,
+        sessionKind: ctx.sessionKind,
       })
     ) {
       return false
@@ -262,117 +297,118 @@ export const handlePlaylistRetry: RoomMessageHandler = async (ctx, data) => {
     if (item.blockedReason === "local_owner_offline") {
       return false
     }
-    item.ingestStatus = "ready"
+    if (item.sourceKind !== "remote_url") {
+      return false
+    }
+    itemId = item.id
+    sourceUrl = item.sourceUrl
+    item.ingestStatus = "resolving"
     item.ingestError = undefined
-    item.resolutionError = undefined
-    item.isResolving = false
     return true
   })
-}
 
-export const handlePlaylistItemError: RoomMessageHandler = async (ctx, data) => {
-  const parsed = playlistItemErrorSchema.safeParse(data.payload)
-  if (!parsed.success) return
+  if (!itemId || !sourceUrl) {
+    return
+  }
 
-  await mutateRoomMessage(ctx.store, ctx.roomId, ctx.userId, (state, participant) => {
-    if (
-      !canControlFromConnectionContext(state, ctx.userId, {
-        controlAuthorized: ctx.controlAuthorized,
-        isControlSession: ctx.isControlSession,
-      })
-    ) {
-      return false
-    }
-
-    const index = state.playlist.findIndex((entry) => entry.id === parsed.data.itemId)
-    if (index < 0) return false
-    const item = state.playlist[index]
-    if (!item) return false
-    item.ingestStatus = "error"
-    item.ingestError = parsed.data.error
-    item.resolutionError = parsed.data.error
-
-    if (state.currentIndex === index && state.playlist.length > 1) {
-      const nextIndex = Math.min(state.playlist.length - 1, index + 1)
-      if (nextIndex !== index) {
-        state.currentIndex = nextIndex
-        state.playback.timelineAnchorMs = 0
-        state.playback.serverNowMs = nextMonotonicMs(
-          state.playback.serverNowMs,
-          Date.now(),
-        )
-        state.playback.paused = true
-      }
-    }
-    appendActionLog(state, {
+  try {
+    const resolved = await resolveMediaSource({
+      url: sourceUrl,
       roomId: ctx.roomId,
-      actorUserId: ctx.userId,
-      actorUsername: participant.username,
-      action: "participant:error",
-      payload: {
-        itemId: item.id,
-        mediaName: item.name,
-      },
-      error: parsed.data.error,
+      mediaId: itemId,
     })
-    return true
-  })
-}
-
-export const handlePlaylistStreamSelect: RoomMessageHandler = async (ctx, data) => {
-  const parsed = playlistStreamSelectSchema.safeParse(data.payload)
-  if (!parsed.success) return
-
-  await mutateRoomMessage(ctx.store, ctx.roomId, ctx.userId, (state) => {
-    if (
-      !canControlFromConnectionContext(state, ctx.userId, {
-        controlAuthorized: ctx.controlAuthorized,
-        isControlSession: ctx.isControlSession,
+    if (resolved.failureReason) {
+      await ctx.store.updateRoom(ctx.roomId, async (state) => {
+        if (!state) return null
+        const item = state.playlist.find((entry) => entry.id === itemId)
+        if (!item) return null
+        item.ingestStatus = "error"
+        item.ingestError =
+          resolved.resolveUserMessage ?? "Failed to resolve metadata"
+        state.updatedAt = Date.now()
+        return state
       })
-    ) {
-      return false
+      return
     }
-    const item = state.playlist.find((entry) => entry.id === parsed.data.itemId)
-    if (!item) return false
-    const stream = item.mediaStreams?.find(
-      (entry) => entry.id === parsed.data.streamId,
-    )
-    if (!stream) return false
-    item.selectedStreamId = stream.id
-    item.playableUrl = stream.src
-    state.updatedAt = Date.now()
-    return true
-  })
+
+    await ctx.store.updateRoom(ctx.roomId, async (state) => {
+      if (!state) return null
+      const item = state.playlist.find((entry) => entry.id === itemId)
+      if (!item) return null
+      applyResolvedToItem(item, resolved)
+      state.updatedAt = Date.now()
+      return state
+    })
+  } catch {
+    await ctx.store.updateRoom(ctx.roomId, async (state) => {
+      if (!state) return null
+      const item = state.playlist.find((entry) => entry.id === itemId)
+      if (!item) return null
+      item.ingestStatus = "error"
+      item.ingestError = "Failed to resolve metadata"
+      state.updatedAt = Date.now()
+      return state
+    })
+  }
 }
 
-export const handlePlaylistTextTrackSelect: RoomMessageHandler = async (
+export const handlePlaylistItemError: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  const parsed = playlistTextTrackSelectSchema.safeParse(data.payload)
+  const parsed = playlistItemErrorSchema.safeParse(data.payload)
   if (!parsed.success) return
 
-  await mutateRoomMessage(ctx.store, ctx.roomId, ctx.userId, (state) => {
-    if (
-      !canControlFromConnectionContext(state, ctx.userId, {
-        controlAuthorized: ctx.controlAuthorized,
-        isControlSession: ctx.isControlSession,
+  await mutateRoomMessage(
+    ctx.store,
+    ctx.roomId,
+    ctx.userId,
+    (state, participant) => {
+      if (
+        !canControlFromConnectionContext(state, ctx.userId, {
+          controlAuthorized: ctx.controlAuthorized,
+          isControlSession: ctx.isControlSession,
+          sessionKind: ctx.sessionKind,
+        })
+      ) {
+        return false
+      }
+
+      const index = state.playlist.findIndex(
+        (entry) => entry.id === parsed.data.itemId,
+      )
+      if (index < 0) return false
+      const item = state.playlist[index]
+      if (!item) return false
+      item.ingestStatus = "error"
+      item.ingestError = parsed.data.error
+
+      if (state.currentIndex === index && state.playlist.length > 1) {
+        const nextIndex = Math.min(state.playlist.length - 1, index + 1)
+        if (nextIndex !== index) {
+          state.currentIndex = nextIndex
+          state.playback.timelineAnchorMs = 0
+          state.playback.serverNowMs = nextMonotonicMs(
+            state.playback.serverNowMs,
+            Date.now(),
+          )
+          state.playback.paused = true
+        }
+      }
+      appendActionLog(state, {
+        roomId: ctx.roomId,
+        actorUserId: ctx.userId,
+        actorUsername: participant.username,
+        action: "participant:error",
+        payload: {
+          itemId: item.id,
+          mediaName: item.name,
+        },
+        error: parsed.data.error,
       })
-    ) {
-      return false
-    }
-    const item = state.playlist.find((entry) => entry.id === parsed.data.itemId)
-    if (!item) return false
-    if (
-      parsed.data.textTrackId !== null &&
-      !item.textTracks?.some((entry) => entry.id === parsed.data.textTrackId)
-    ) {
-      return false
-    }
-    item.selectedTextTrackId = parsed.data.textTrackId ?? undefined
-    state.updatedAt = Date.now()
-    return true
-  })
+      return true
+    },
+  )
 }
 
 export const handlePlaylistReorder: RoomMessageHandler = async (ctx, data) => {
@@ -388,6 +424,7 @@ export const handlePlaylistReorder: RoomMessageHandler = async (ctx, data) => {
         !canControlFromConnectionContext(state, ctx.userId, {
           controlAuthorized: ctx.controlAuthorized,
           isControlSession: ctx.isControlSession,
+          sessionKind: ctx.sessionKind,
         })
       ) {
         return false
@@ -441,6 +478,7 @@ export const handlePlaylistRename: RoomMessageHandler = async (ctx, data) => {
         !canControlFromConnectionContext(state, ctx.userId, {
           controlAuthorized: ctx.controlAuthorized,
           isControlSession: ctx.isControlSession,
+          sessionKind: ctx.sessionKind,
         })
       ) {
         return false
@@ -468,32 +506,6 @@ export const handlePlaylistRename: RoomMessageHandler = async (ctx, data) => {
           nextName,
         },
       })
-      return true
-    },
-  )
-}
-
-export const handlePlaylistImport: RoomMessageHandler = async (ctx, data) => {
-  await mutateRoomMessage(
-    ctx.store,
-    ctx.roomId,
-    ctx.userId,
-    (state) => {
-      if (
-        !canControlFromConnectionContext(state, ctx.userId, {
-          controlAuthorized: ctx.controlAuthorized,
-          isControlSession: ctx.isControlSession,
-        })
-      ) {
-        return false
-      }
-      const mode = String(data.payload.mode ?? "append")
-      const items = (data.payload.items as RoomState["playlist"]) ?? []
-      state.playlist =
-        mode === "override" ? items : [...state.playlist, ...items]
-      if (state.currentIndex >= state.playlist.length) {
-        state.currentIndex = Math.max(0, state.playlist.length - 1)
-      }
       return true
     },
   )

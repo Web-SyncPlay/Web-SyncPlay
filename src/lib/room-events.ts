@@ -1,4 +1,4 @@
-import type { LoopMode, RoomRole } from "@/zod/types"
+import type { LoopMode, RoomRole, SessionKind } from "@/zod/types"
 
 export interface ClientEventPayloadMap {
   "participant:update": {
@@ -28,8 +28,12 @@ export interface ClientEventPayloadMap {
   }
   "playlist:retry": { itemId: string }
   "playlist:item:error": { itemId: string; error: string }
-  "playlist:stream:select": { itemId: string; streamId: string }
-  "playlist:text-track:select": { itemId: string; textTrackId: string | null }
+  "viewer:media:preferences": {
+    itemId: string
+    streamId?: string | null
+    textTrackId?: string | null
+    audioLanguage?: string
+  }
   "playlist:rename": { itemId: string; name: string }
   "playlist:reorder": { from: number; to: number }
   "playlist:select": { index: number }
@@ -44,3 +48,5 @@ export type TypedRoomEventSender = <T extends ClientEventType>(
   type: T,
   payload: ClientEventPayloadMap[T],
 ) => void
+
+export type { SessionKind }

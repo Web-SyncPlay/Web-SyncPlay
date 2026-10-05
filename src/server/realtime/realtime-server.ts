@@ -107,7 +107,6 @@ function setupWebSocketConnection(
           item.ingestStatus = "error"
           item.ingestError =
             "Local file owner went offline. Re-add the file to resume."
-          item.resolutionError = item.ingestError
           item.blockedReason = "local_owner_offline"
           didMutate = true
 
@@ -189,6 +188,7 @@ function setupWebSocketConnection(
             userId: meta.userId,
             controlAuthorized: meta.controlAuthorized,
             isControlSession: meta.isControlSession,
+            sessionKind: meta.sessionKind,
           },
           data,
         )

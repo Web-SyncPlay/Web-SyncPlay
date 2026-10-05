@@ -74,12 +74,13 @@ test("denies control session when identity verification failed", () => {
   )
 })
 
-test("allows control session when identity verification passed", () => {
+test("denies player embed session mutations", () => {
   assert.equal(
     canControlFromConnectionContext(state, "owner", {
-      isControlSession: true,
+      isControlSession: false,
       controlAuthorized: true,
+      sessionKind: "player",
     }),
-    true,
+    false,
   )
 })

@@ -2,6 +2,8 @@ import { z } from "zod"
 
 const roomRoleSchema = z.enum(["owner", "moderator", "guest"])
 
+export const sessionKindSchema = z.enum(["room", "player", "control"])
+
 export const roomJoinSchema = z.object({
   roomId: z.string().min(1),
   userId: z.string().min(1).optional(),
@@ -9,6 +11,8 @@ export const roomJoinSchema = z.object({
   joinPassword: z.string().min(1).max(256).optional(),
   username: z.string().min(1).max(64).optional(),
   avatarStyle: z.string().min(1).max(64).optional(),
+  sessionKind: sessionKindSchema.default("room"),
+  controlToken: z.string().min(1).max(512).optional(),
 })
 
 export const roomPasswordSetSchema = z.object({
@@ -62,14 +66,11 @@ export const playlistItemErrorSchema = z.object({
   error: z.string().min(1).max(300),
 })
 
-export const playlistStreamSelectSchema = z.object({
+export const viewerMediaPreferencesSchema = z.object({
   itemId: z.string().min(1),
-  streamId: z.string().min(1),
-})
-
-export const playlistTextTrackSelectSchema = z.object({
-  itemId: z.string().min(1),
-  textTrackId: z.string().min(1).nullable(),
+  streamId: z.string().min(1).nullable().optional(),
+  textTrackId: z.string().min(1).nullable().optional(),
+  audioLanguage: z.string().min(1).max(32).optional(),
 })
 
 export const participantUpdateSchema = z.object({

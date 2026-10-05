@@ -12,6 +12,7 @@ export const handleSeekPreview: RoomMessageHandler = async (ctx, data) => {
       !canControlFromConnectionContext(state, ctx.userId, {
         controlAuthorized: ctx.controlAuthorized,
         isControlSession: ctx.isControlSession,
+        sessionKind: ctx.sessionKind,
       })
     )
       return false

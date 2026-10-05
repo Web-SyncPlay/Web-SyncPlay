@@ -41,6 +41,7 @@ export function PlaylistPanel({
   roomState,
   send,
   userId,
+  userSecret,
   capabilities,
 }: RoomPanelProps) {
   const [draftName, setDraftName] = useState<Record<string, string>>({})
@@ -63,7 +64,7 @@ export function PlaylistPanel({
     return sum
   }, 0)
   const resolvingCount = roomState.playlist.filter(
-    (item) => item.isResolving || item.ingestStatus === "resolving",
+    (item) => item.ingestStatus === "resolving",
   ).length
 
   const commitItemName = (itemId: string, currentName: string) => {
@@ -126,6 +127,7 @@ export function PlaylistPanel({
         <PlaylistAddMediaControls
           roomId={roomState.roomId}
           userId={userId}
+          userSecret={userSecret}
           send={send}
           canManagePlaylist={canManagePlaylist}
         />

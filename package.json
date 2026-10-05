@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "bunx tsc -p tsconfig.json --noEmit",
+    "test": "bunx tsx --test src/server/ws/registry.test.ts src/server/realtime/services/permissions.test.ts src/server/realtime/services/ownership.test.ts src/server/realtime/services/cleanup.test.ts src/server/realtime/services/room-security.test.ts src/server/realtime/handlers/join.test.ts src/lib/session-identity.test.ts src/server/security/url-safety.test.ts src/server/media/resolve/build-selectable-streams.test.ts",
     "format": "prettier --write ."
   },
   "dependencies": {

@@ -12,6 +12,13 @@ export const env = createEnv({
       .default("production"),
     VALKEY_URL: z.url(),
     YTDLP_BIN: z.string().default("yt-dlp"),
+    YTDLP_MAX_CONCURRENT: z.coerce.number().int().min(1).default(2),
+    YTDLP_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1000)
+      .max(120_000)
+      .default(30_000),
     FALLBACK_DEFAULT_MEDIA_URL: z.url().default("https://youtu.be/uD4izuDMUQA"),
     ROOM_PARTICIPANTS_LIMIT: z.coerce
       .number()
@@ -38,6 +45,23 @@ export const env = createEnv({
       .min(1000)
       .max(60000)
       .default(15000),
+    OPS_SECRET: z.string().min(8).optional(),
+    PROXY_ALLOW_PRIVATE_URLS: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
+    CONTROL_TOKEN_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(60)
+      .max(60 * 60 * 48)
+      .default(60 * 60 * 12),
+    LOCAL_MEDIA_MAX_BYTES: z.coerce
+      .number()
+      .int()
+      .min(1024)
+      .max(1024 * 1024 * 1024)
+      .default(100 * 1024 * 1024),
   },
 
   /**
@@ -58,12 +82,18 @@ export const env = createEnv({
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
     VALKEY_URL: process.env.VALKEY_URL,
     YTDLP_BIN: process.env.YTDLP_BIN,
+    YTDLP_MAX_CONCURRENT: process.env.YTDLP_MAX_CONCURRENT,
+    YTDLP_TIMEOUT_MS: process.env.YTDLP_TIMEOUT_MS,
     FALLBACK_DEFAULT_MEDIA_URL: process.env.FALLBACK_DEFAULT_MEDIA_URL,
     ROOM_PARTICIPANTS_LIMIT: process.env.ROOM_PARTICIPANTS_LIMIT,
     ROOM_HISTORY_LIMIT: process.env.ROOM_HISTORY_LIMIT,
     ROOM_ACTION_LOG_LIMIT: process.env.ROOM_ACTION_LOG_LIMIT,
     WS_HEARTBEAT_INTERVAL_MS: process.env.WS_HEARTBEAT_INTERVAL_MS,
     WS_HEARTBEAT_TIMEOUT_MS: process.env.WS_HEARTBEAT_TIMEOUT_MS,
+    OPS_SECRET: process.env.OPS_SECRET,
+    PROXY_ALLOW_PRIVATE_URLS: process.env.PROXY_ALLOW_PRIVATE_URLS,
+    CONTROL_TOKEN_TTL_SECONDS: process.env.CONTROL_TOKEN_TTL_SECONDS,
+    LOCAL_MEDIA_MAX_BYTES: process.env.LOCAL_MEDIA_MAX_BYTES,
   },
 
   /**

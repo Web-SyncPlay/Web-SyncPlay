@@ -1,5 +1,5 @@
 import { normalizeRole } from "@/lib/room-utils"
-import type { ParticipantState, RoomState } from "@/zod/types"
+import type { ParticipantState, RoomState, SessionKind } from "@/zod/types"
 
 export function hasPlaybackAndPlaylistControl(
   state: RoomState,
@@ -20,8 +20,14 @@ export function canControlFromConnectionContext(
   context: {
     isControlSession: boolean
     controlAuthorized: boolean
+    sessionKind?: SessionKind
   },
 ) {
+  // Player embeds are display surfaces — no room mutations.
+  if (context.sessionKind === "player") {
+    return false
+  }
+
   if (!hasPlaybackAndPlaylistControl(state, userId)) {
     return false
   }

@@ -1,6 +1,6 @@
 import { env } from "@/env"
 import { createDefaultRoomSecurity } from "@/server/realtime/services/room-security"
-import type { RoomState } from "@/zod/types"
+import type { PlaylistItem, RoomState } from "@/zod/types"
 import { randomUUID } from "node:crypto"
 import { trackedActionTypes } from "./log"
 
@@ -75,22 +75,54 @@ export function repairCleanupAndCheckRoomState(state: RoomState) {
       item.playbackMode = "direct"
       findings.push("playlist-item-playback-mode-repaired")
     }
+    // Local files are same-origin — never "relay"
+    if (item.sourceKind === "local_file" && item.playbackMode === "relay") {
+      item.playbackMode = "direct"
+      findings.push("playlist-item-local-playback-mode-repaired")
+    }
+
+    const legacy = item as PlaylistItem & {
+      isResolving?: boolean
+      resolutionError?: string
+      originalUrl?: string
+      selectedStreamId?: string
+      selectedTextTrackId?: string
+    }
+
     if (
       item.ingestStatus !== "ready" &&
       item.ingestStatus !== "resolving" &&
       item.ingestStatus !== "error"
     ) {
-      item.ingestStatus = item.isResolving
+      item.ingestStatus = legacy.isResolving
         ? "resolving"
-        : item.resolutionError
+        : legacy.resolutionError
           ? "error"
           : "ready"
       findings.push("playlist-item-ingest-status-repaired")
     }
-    if (!item.ingestError && typeof item.resolutionError === "string") {
-      item.ingestError = item.resolutionError
+    if (!item.ingestError && typeof legacy.resolutionError === "string") {
+      item.ingestError = legacy.resolutionError
       findings.push("playlist-item-ingest-error-migrated")
     }
+    if (!item.defaultStreamId && typeof legacy.selectedStreamId === "string") {
+      item.defaultStreamId = legacy.selectedStreamId
+      findings.push("playlist-item-default-stream-migrated")
+    }
+    if (
+      !item.defaultTextTrackId &&
+      typeof legacy.selectedTextTrackId === "string"
+    ) {
+      item.defaultTextTrackId = legacy.selectedTextTrackId
+      findings.push("playlist-item-default-text-track-migrated")
+    }
+
+    // Strip legacy dual-write fields
+    delete legacy.isResolving
+    delete legacy.resolutionError
+    delete legacy.originalUrl
+    delete legacy.selectedStreamId
+    delete legacy.selectedTextTrackId
   }
 
   if (state.currentIndex >= state.playlist.length) {

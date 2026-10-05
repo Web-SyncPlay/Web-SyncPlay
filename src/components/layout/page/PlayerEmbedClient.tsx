@@ -14,6 +14,7 @@ export function PlayerEmbedClient({ roomId }: { roomId: string }) {
     sessionCapabilities,
     send,
     userId,
+    userSecret,
     status,
     joinError,
     submitJoinPassword,
@@ -22,7 +23,7 @@ export function PlayerEmbedClient({ roomId }: { roomId: string }) {
     handleCopyShareUrl,
     playerEmbedUrl,
     controlEmbedUrl,
-  } = useRoomSession(roomId)
+  } = useRoomSession(roomId, { sessionKind: "player" })
 
   if (!roomState) {
     if (status === "awaiting_password") {
@@ -72,6 +73,7 @@ export function PlayerEmbedClient({ roomId }: { roomId: string }) {
           roomState={roomState}
           roomId={roomId}
           userId={userId}
+          userSecret={userSecret}
           send={send}
           capabilities={{
             ...sessionCapabilities,

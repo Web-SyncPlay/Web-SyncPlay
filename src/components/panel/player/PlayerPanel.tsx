@@ -33,6 +33,13 @@ import type { RoomPanelProps } from "../../layout/page/types"
 import { ControlPanel } from "../control/ControlPanel"
 import { PlaylistAddMediaControls } from "../playlist/PlaylistAddMediaControls"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   useBufferingWatchdog,
   type PendingSyncState,
 } from "./hooks/use-buffering-watchdog"
@@ -42,6 +49,73 @@ import { usePlayerVolume } from "./hooks/use-player-volume"
 import { useRemoteSeekOverlay } from "./hooks/use-remote-seek-overlay"
 import { usePlaybackTimelineController } from "./playback-control/use-playback-timeline-controller"
 import { RemoteSeekOverlay } from "./RemoteSeekOverlay"
+import type { PlaylistItem, PlaylistMediaStream } from "@/zod/types"
+
+/** Vidstack needs an explicit HLS MIME when the URL has no `.m3u8` suffix (e.g. `/api/media/proxy/…`). */
+type PlayerSrcInput =
+  | string
+  | { src: string; type: "application/x-mpegurl" | "application/vnd.apple.mpegurl" }
+
+function normalizeHlsMime(
+  mime: string | undefined,
+): "application/x-mpegurl" | "application/vnd.apple.mpegurl" | undefined {
+  if (!mime) return undefined
+  const lower = mime.toLowerCase()
+  if (lower === "application/vnd.apple.mpegurl") {
+    return "application/vnd.apple.mpegurl"
+  }
+  if (lower === "application/x-mpegurl" || lower.includes("mpegurl")) {
+    return "application/x-mpegurl"
+  }
+  return undefined
+}
+
+function buildPlayerSrc(
+  activePlaybackSrc: string,
+  current: PlaylistItem | undefined,
+  activeStream: PlaylistMediaStream | null,
+): PlayerSrcInput {
+  if (!activePlaybackSrc) {
+    return ""
+  }
+
+  const rawMime =
+    activeStream?.type ??
+    current?.mediaStreams?.find((s) => s.id === current.defaultStreamId)
+      ?.type ??
+    current?.mediaStreams?.find((s) => s.isDefault)?.type ??
+    current?.mediaStreams?.[0]?.type
+
+  const streamMime = normalizeHlsMime(rawMime)
+  if (streamMime) {
+    return { src: activePlaybackSrc, type: streamMime }
+  }
+
+  const looksAdaptive =
+    activeStream?.kind === "adaptive" ||
+    /\.m3u8(\?|$)/i.test(activePlaybackSrc) ||
+    (activeStream?.protocol ?? "").toLowerCase().includes("m3u8")
+
+  if (looksAdaptive) {
+    return { src: activePlaybackSrc, type: "application/x-mpegurl" }
+  }
+
+  return activePlaybackSrc
+}
+
+function isSameOriginPlaybackUrl(url: string): boolean {
+  if (typeof window === "undefined") {
+    return false
+  }
+  if (url.startsWith("/")) {
+    return true
+  }
+  try {
+    return new URL(url).origin === window.location.origin
+  } catch {
+    return false
+  }
+}
 
 function formatMediaErrorDetail(detail: MediaErrorDetail) {
   if (typeof detail === "string") {
@@ -77,9 +151,13 @@ export function PlayerPanel({
   roomState,
   send,
   userId,
+  userSecret,
   capabilities,
 }: RoomPanelProps) {
   const current = roomState.playlist[roomState.currentIndex]
+  const viewerPrefs = roomState.participants[userId]?.viewerMedia?.byItemId[
+    current?.id ?? ""
+  ]
 
   const playerRef = useRef<MediaPlayerInstance>(null)
   const autoPlayAfterLoadRef = useRef(false)
@@ -91,6 +169,7 @@ export function PlayerPanel({
   const pendingSyncRef = useRef<PendingSyncState | null>(null)
 
   const reportedItemErrorRef = useRef<string | null>(null)
+  const proxyRenewAttemptedRef = useRef<string | null>(null)
 
   const [isBuffering, setIsBuffering] = useState(false)
   const [mediaDurationMs, setMediaDurationMs] = useState(0)
@@ -122,18 +201,48 @@ export function PlayerPanel({
     if (!current) {
       return null
     }
+
     const streams = current.mediaStreams ?? []
     if (streams.length === 0) {
       return null
     }
+
     return (
-      streams.find((stream) => stream.id === current.selectedStreamId) ??
+      streams.find((stream) => stream.id === viewerPrefs?.streamId) ??
+      streams.find((stream) => stream.id === current.defaultStreamId) ??
       streams.find((stream) => stream.isDefault) ??
       streams[0] ??
       null
     )
-  }, [current])
-  const activePlaybackSrc = activeStream?.src ?? current?.playableUrl ?? ""
+  }, [current, viewerPrefs?.streamId])
+  const activePlaybackSrc = useMemo(() => {
+    if (!current) {
+      return ""
+    }
+
+    const fromStream = activeStream?.src
+    if (
+      current.playbackMode === "relay" &&
+      fromStream &&
+      /^https?:\/\//i.test(fromStream)
+    ) {
+      return current.playableUrl ?? ""
+    }
+
+    return fromStream ?? current.playableUrl ?? ""
+  }, [activeStream?.src, current])
+
+  const playerSrc = useMemo(
+    () => buildPlayerSrc(activePlaybackSrc, current, activeStream),
+    [activePlaybackSrc, activeStream, current],
+  )
+
+  const playbackUrlForOrigin =
+    typeof playerSrc === "string" ? playerSrc : playerSrc.src
+  const useCrossOriginAnonymous =
+    playbackUrlForOrigin.length > 0 &&
+    !isSameOriginPlaybackUrl(playbackUrlForOrigin)
+
   const viewType = inferMediaViewType(activePlaybackSrc)
 
   const canControlPlayback = canControlByRole && capabilities.canControlPlayback
@@ -182,7 +291,8 @@ export function PlayerPanel({
     pendingSyncRef.current = null
     bufferingSinceRef.current = Date.now()
     participantStatusErrorRef.current = null
-  }, [current?.id, activePlaybackSrc])
+    proxyRenewAttemptedRef.current = null
+  }, [current?.id, playerSrc])
 
   useEffect(() => {
     if (canControlPlayback) {
@@ -223,7 +333,8 @@ export function PlayerPanel({
     }
     const shouldHoldForLocalSeek =
       timeline.awaitingSeekTargetMs !== null &&
-      Math.abs(syncState.timelineAnchorMs - timeline.awaitingSeekTargetMs) >= 450
+      Math.abs(syncState.timelineAnchorMs - timeline.awaitingSeekTargetMs) >=
+        450
     if (shouldHoldForLocalSeek) {
       return
     }
@@ -443,16 +554,83 @@ export function PlayerPanel({
           You are a guest. Playback controls are view-only here.
         </div>
       )}
+      {current &&
+        ((current.mediaStreams?.length ?? 0) > 1 ||
+          (current.textTracks?.length ?? 0) > 0) && (
+          <div className="absolute right-3 top-3 z-20 flex max-w-[min(100%,20rem)] flex-wrap items-center justify-end gap-2">
+            {(current.mediaStreams?.length ?? 0) > 1 && (
+              <Select
+                value={activeStream?.id ?? current.defaultStreamId ?? ""}
+                onValueChange={(streamId) => {
+                  if (!current || !streamId) return
+                  send("viewer:media:preferences", {
+                    itemId: current.id,
+                    streamId,
+                  })
+                  setPlayerRemountNonce((value) => value + 1)
+                }}
+              >
+                <SelectTrigger
+                  size="sm"
+                  className="h-8 min-w-28 border-white/20 bg-black/70 text-xs text-white"
+                >
+                  <SelectValue placeholder="Quality" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(current.mediaStreams ?? []).map((stream) => (
+                    <SelectItem key={stream.id} value={stream.id}>
+                      {stream.label || stream.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {(current.textTracks?.length ?? 0) > 0 && (
+              <Select
+                value={
+                  viewerPrefs?.textTrackId === null
+                    ? "off"
+                    : (viewerPrefs?.textTrackId ??
+                      current.defaultTextTrackId ??
+                      "off")
+                }
+                onValueChange={(textTrackId) => {
+                  if (!current) return
+                  send("viewer:media:preferences", {
+                    itemId: current.id,
+                    textTrackId: textTrackId === "off" ? null : textTrackId,
+                  })
+                }}
+              >
+                <SelectTrigger
+                  size="sm"
+                  className="h-8 min-w-28 border-white/20 bg-black/70 text-xs text-white"
+                >
+                  <SelectValue placeholder="Captions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="off">Captions off</SelectItem>
+                  {(current.textTracks ?? []).map((track) => (
+                    <SelectItem key={track.id} value={track.id}>
+                      {track.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
       {activePlaybackSrc ? (
         <MediaPlayer
-          key={`${current?.id ?? "no-media"}:${playerRemountNonce}`}
+          key={`${current?.id ?? "no-media"}:${activeStream?.id ?? "auto"}:${playerRemountNonce}`}
           ref={playerRef}
-          src={activePlaybackSrc}
+          src={playerSrc}
           title={current?.name ?? "Web-SyncPlay"}
           viewType={viewType}
           loop={roomState.playback.videoLoop !== "off"}
-          crossOrigin
+          crossOrigin={useCrossOriginAnonymous ? "anonymous" : undefined}
           playsInline
+          {...(current?.isLive ? { streamType: "live" as const } : {})}
           muted={isMuted}
           className={`size-full ${isOtherUserSeeking ? "remote-seek-controls-hidden" : ""} ${!canControlPlayback ? "guest-controls-guard" : ""}`}
           onKeyDownCapture={(event) => {
@@ -617,13 +795,39 @@ export function PlayerPanel({
             setIsBuffering(false)
             participantStatusErrorRef.current = null
             bufferingSinceRef.current = null
+
+            const message = formatMediaErrorDetail(detail)
+            const usesProxyPath =
+              activePlaybackSrc.includes("/api/media/proxy/") ||
+              (current?.playableUrl?.includes("/api/media/proxy/") ?? false)
+            const looksExpiredOrMissing =
+              /\b404\b/i.test(message) ||
+              message.toLowerCase().includes("not found") ||
+              message.toLowerCase().includes("expired")
+
+            if (
+              current &&
+              canControlPlayback &&
+              current.sourceKind === "remote_url" &&
+              usesProxyPath &&
+              looksExpiredOrMissing &&
+              proxyRenewAttemptedRef.current !== current.id
+            ) {
+              proxyRenewAttemptedRef.current = current.id
+              send("playlist:retry", { itemId: current.id })
+              setPlaybackError(undefined)
+              console.warn("[player] proxy URL stale; requested playlist retry", {
+                itemId: current.id,
+              })
+              return
+            }
+
             if (
               current &&
               canControlPlayback &&
               reportedItemErrorRef.current !== current.id
             ) {
               reportedItemErrorRef.current = current.id
-              const message = formatMediaErrorDetail(detail)
               toast.error(message)
               send("playlist:item:error", {
                 itemId: current.id,
@@ -632,8 +836,9 @@ export function PlayerPanel({
             }
             console.error("[player] playback error", {
               detail,
-              message: formatMediaErrorDetail(detail),
-              source: current?.playableUrl ?? "",
+              message,
+              source: activePlaybackSrc,
+              playerSrc,
             })
           }}
           onRateChange={(detail) => {
@@ -715,9 +920,11 @@ export function PlayerPanel({
               kind={track.kind ?? "subtitles"}
               language={track.language}
               default={Boolean(
-                current?.selectedTextTrackId
-                  ? track.id === current.selectedTextTrackId
-                  : track.isDefault,
+                viewerPrefs?.textTrackId !== undefined
+                  ? track.id === viewerPrefs.textTrackId
+                  : current?.defaultTextTrackId
+                    ? track.id === current.defaultTextTrackId
+                    : track.isDefault,
               )}
             />
           ))}
@@ -748,6 +955,7 @@ export function PlayerPanel({
             <PlaylistAddMediaControls
               roomId={roomState.roomId}
               userId={userId}
+              userSecret={userSecret}
               send={send}
               canManagePlaylist={canControlPlayback}
               className="flex w-full flex-wrap items-center justify-center gap-2"

@@ -9,11 +9,13 @@ import { toast } from "sonner"
 export function PlaylistAddMediaControls(props: {
   roomId: string
   userId: string
+  userSecret: string
   send: TypedRoomEventSender
   canManagePlaylist: boolean
   className?: string
 }) {
-  const { roomId, userId, send, canManagePlaylist, className } = props
+  const { roomId, userId, userSecret, send, canManagePlaylist, className } =
+    props
   const [url, setUrl] = useState("")
   const [uploadingLocal, setUploadingLocal] = useState(false)
   const localFileInputRef = useRef<HTMLInputElement>(null)
@@ -33,6 +35,7 @@ export function PlaylistAddMediaControls(props: {
       const formData = new FormData()
       formData.set("roomId", roomId)
       formData.set("ownerUserId", userId)
+      formData.set("userSecret", userSecret)
       formData.set("file", file)
       const response = await fetch("/api/media/local", {
         method: "POST",

@@ -3,8 +3,12 @@ const ROOM_STATE_SUFFIX = ":state"
 const ROOM_CHANNEL_SUFFIX = ":channel"
 const DEFAULTS_KEY = "defaults:daily-top-10"
 const MEDIA_PROXY_PREFIX = "media:proxy:"
+const MEDIA_PROXY_BY_URL_PREFIX = "media:proxy:by-url:"
 const LOCAL_MEDIA_PREFIX = "media:local:"
 const LOCAL_MEDIA_OWNER_INDEX_PREFIX = "media:local:room:"
+const CONTROL_TOKEN_PREFIX = "control:token:"
+const ROOM_IDENTITY_PREFIX = "room:"
+const ROOM_IDENTITY_SUFFIX = ":identity"
 
 export const keys = {
   roomState(roomId: string) {
@@ -43,8 +47,21 @@ export const keys = {
     return `${ROOM_STATE_PREFIX}${roomId}:presenceRef`
   },
 
+  /** HASH userId -> userSecret for participant identity continuity */
+  roomIdentity(roomId: string) {
+    return `${ROOM_IDENTITY_PREFIX}${roomId}${ROOM_IDENTITY_SUFFIX}`
+  },
+
   mediaProxyToken(token: string) {
     return `${MEDIA_PROXY_PREFIX}${token}`
+  },
+
+  mediaProxyByUrl(urlHash: string) {
+    return `${MEDIA_PROXY_BY_URL_PREFIX}${urlHash}`
+  },
+
+  controlToken(tokenHash: string) {
+    return `${CONTROL_TOKEN_PREFIX}${tokenHash}`
   },
 
   localMediaEntry(id: string) {

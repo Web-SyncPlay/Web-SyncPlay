@@ -4,6 +4,8 @@ export type PlaylistSourceKind = "remote_url" | "local_file"
 export type PlaybackMode = "direct" | "relay"
 export type IngestStatus = "ready" | "resolving" | "error"
 export type PlaylistBlockedReason = "local_owner_offline"
+export type SessionKind = "room" | "player" | "control"
+export type PlaylistMediaStreamKind = "adaptive" | "combined"
 
 export interface PlaylistMediaStream {
   id: string
@@ -16,6 +18,10 @@ export interface PlaylistMediaStream {
   audioBitrate?: number
   label?: string
   isDefault?: boolean
+  kind?: PlaylistMediaStreamKind
+  vcodec?: string
+  acodec?: string
+  audioLanguage?: string
 }
 
 export interface PlaylistTextTrack {
@@ -41,16 +47,31 @@ export interface PlaylistItem {
   blockedReason?: PlaylistBlockedReason
   mediaStreams?: PlaylistMediaStream[]
   textTracks?: PlaylistTextTrack[]
+  /** Resolve-time catalog default (not room-wide viewer selection). */
+  defaultStreamId?: string
+  /** Resolve-time catalog default caption (not room-wide viewer selection). */
+  defaultTextTrackId?: string
+  /** @deprecated Migrated to defaultStreamId by repair. */
   selectedStreamId?: string
+  /** @deprecated Migrated to defaultTextTrackId by repair. */
   selectedTextTrackId?: string
-  originalUrl?: string
-  // Backward compatibility for existing room states.
-  isResolving?: boolean
-  resolutionError?: string
+  /** From yt-dlp when resolve succeeds (live broadcast vs VOD). */
+  isLive?: boolean
   localMediaId?: string
   localOriginUserId?: string
   createdBy: string
   createdAt: number
+}
+
+export interface ViewerMediaItemPreference {
+  streamId?: string
+  textTrackId?: string | null
+  audioLanguage?: string
+}
+
+export interface ViewerMediaPreferences {
+  /** Cap enforced server-side (e.g. last 32 item ids). */
+  byItemId: Record<string, ViewerMediaItemPreference>
 }
 
 export interface ParticipantState {
@@ -70,6 +91,7 @@ export interface ParticipantState {
     error?: string
     updatedAt: number
   }
+  viewerMedia?: ViewerMediaPreferences
 }
 
 export interface PlaybackState {
@@ -129,3 +151,6 @@ export interface WsEnvelope<T extends string, P> {
 }
 
 export const roomStateTtlSeconds = 3600
+export const VIEWER_MEDIA_BY_ITEM_LIMIT = 32
+export const MEDIA_STREAM_CATALOG_LIMIT = 12
+export const MEDIA_TEXT_TRACK_CATALOG_LIMIT = 20

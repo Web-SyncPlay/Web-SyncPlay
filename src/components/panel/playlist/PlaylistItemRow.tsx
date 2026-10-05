@@ -111,7 +111,7 @@ export function PlaylistItemRow(props: {
             )}
           >
             {isCurrent && <PlayCircle className="size-4 text-emerald-500" />}
-            {(item.isResolving || item.ingestStatus === "resolving") && (
+            {(item.ingestStatus === "resolving") && (
               <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
             )}
             {index + 1}. {item.name}
@@ -121,11 +121,10 @@ export function PlaylistItemRow(props: {
               </span>
             )}
           </ItemTitle>
-          {item.isResolving || item.resolutionError || item.ingestError ? (
+          {item.ingestStatus === "resolving" || item.ingestError ? (
             <p className="text-xs text-muted-foreground">
               {item.sourceUrl}
-              {(item.resolutionError || item.ingestError) &&
-                ` (${item.ingestError ?? item.resolutionError})`}
+              {item.ingestError && ` (${item.ingestError})`}
             </p>
           ) : null}
         </ItemContent>

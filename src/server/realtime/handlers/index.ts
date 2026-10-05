@@ -3,6 +3,7 @@ import * as playback from "./playback"
 import * as playlist from "./playlist"
 import * as roomPassword from "./room-password"
 import * as seekPreview from "./seek-preview"
+import * as viewerMedia from "./viewer-media"
 import type { RoomMessageHandler } from "./types"
 
 export const roomMessageHandlers: Record<string, RoomMessageHandler> = {
@@ -12,7 +13,6 @@ export const roomMessageHandlers: Record<string, RoomMessageHandler> = {
   "playback:rate": playback.handlePlaybackRate,
   "playback:loop:video": playback.handlePlaybackLoopVideo,
   "playback:loop:playlist": playback.handlePlaybackLoopPlaylist,
-  "playlist:add": playlist.handlePlaylistAdd,
   "playlist:add:url": playlist.handlePlaylistAddUrl,
   "playlist:add:local": playlist.handlePlaylistAddLocal,
   "playlist:select": playlist.handlePlaylistSelect,
@@ -20,9 +20,7 @@ export const roomMessageHandlers: Record<string, RoomMessageHandler> = {
   "playlist:rename": playlist.handlePlaylistRename,
   "playlist:retry": playlist.handlePlaylistRetry,
   "playlist:item:error": playlist.handlePlaylistItemError,
-  "playlist:stream:select": playlist.handlePlaylistStreamSelect,
-  "playlist:text-track:select": playlist.handlePlaylistTextTrackSelect,
-  "playlist:import": playlist.handlePlaylistImport,
+  "viewer:media:preferences": viewerMedia.handleViewerMediaPreferences,
   "seek:preview": seekPreview.handleSeekPreview,
   "participant:update": participant.handleParticipantUpdate,
   "participant:role:update": participant.handleParticipantRoleUpdate,

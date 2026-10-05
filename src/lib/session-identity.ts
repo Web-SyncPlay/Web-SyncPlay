@@ -18,12 +18,13 @@ function isValidIdentityValue(value: string | null): value is string {
 
 function looksLikeIdentityBootstrapHash(rawHash: string): boolean {
   const params = new URLSearchParams(rawHash)
-  if (params.has("uid") || params.has("secret")) {
+  if (params.has("uid") || params.has("secret") || params.has("ct")) {
     return true
   }
   return (
     /(^|[&;])uid(?:[=&;]|$)/i.test(rawHash) ||
-    /(^|[&;])secret(?:[=&;]|$)/i.test(rawHash)
+    /(^|[&;])secret(?:[=&;]|$)/i.test(rawHash) ||
+    /(^|[&;])ct(?:[=&;]|$)/i.test(rawHash)
   )
 }
 
@@ -79,6 +80,7 @@ export function getOrCreateSessionIdentity(): {
 export function consumeSessionIdentityFromHash(): {
   userId?: string
   userSecret?: string
+  controlToken?: string
 } {
   if (typeof window === "undefined") {
     return {}
@@ -94,6 +96,7 @@ export function consumeSessionIdentityFromHash(): {
   const params = new URLSearchParams(rawHash)
   const hashUserId = params.get("uid")
   const hashSecret = params.get("secret")
+  const controlToken = params.get("ct") ?? undefined
   if (!isValidIdentityValue(hashUserId) || !isValidIdentityValue(hashSecret)) {
     stripIdentityHashFromUrl()
     return {}
@@ -103,11 +106,23 @@ export function consumeSessionIdentityFromHash(): {
   window.localStorage.setItem(USER_SECRET_KEY, hashSecret)
   clearUrlHash()
 
-  return { userId: hashUserId, userSecret: hashSecret }
+  return {
+    userId: hashUserId,
+    userSecret: hashSecret,
+    ...(isValidIdentityValue(controlToken ?? null)
+      ? { controlToken }
+      : {}),
+  }
 }
 
-export function buildIdentityHash(userId: string, userSecret: string): string {
-  return `uid=${encodeURIComponent(userId)}&secret=${encodeURIComponent(userSecret)}`
+export function buildIdentityHash(
+  userId: string,
+  userSecret: string,
+  controlToken?: string,
+): string {
+  const base = `uid=${encodeURIComponent(userId)}&secret=${encodeURIComponent(userSecret)}`
+  if (!controlToken) return base
+  return `${base}&ct=${encodeURIComponent(controlToken)}`
 }
 
 export function getPersistedUsername(): string | null {

@@ -1,3 +1,4 @@
+import type { SessionKind } from "@/zod/types"
 import type { WebSocket } from "ws"
 
 export type SocketMeta = {
@@ -6,12 +7,12 @@ export type SocketMeta = {
   presenceTracked: boolean
   controlAuthorized: boolean
   isControlSession: boolean
+  sessionKind: SessionKind
 }
 
 type RegistrySlot = {
   rooms: Map<string, Set<WebSocket>>
   sockets: Map<WebSocket, SocketMeta>
-  identities: Map<string, Map<string, string>>
 }
 
 function getRegistrySlot() {
@@ -22,7 +23,6 @@ function getRegistrySlot() {
     g.__webSyncPlayWsRegistry = {
       rooms: new Map(),
       sockets: new Map(),
-      identities: new Map(),
     }
   }
 
@@ -52,6 +52,7 @@ export function addSocket(
     presenceTracked: previousMeta?.presenceTracked ?? false,
     controlAuthorized: meta.controlAuthorized,
     isControlSession: meta.isControlSession,
+    sessionKind: meta.sessionKind,
   })
 }
 
@@ -80,7 +81,7 @@ export function setSocketControlAuthorized(
 }
 
 export function removeSocket(ws: WebSocket) {
-  const { rooms, sockets, identities } = getRegistrySlot()
+  const { rooms, sockets } = getRegistrySlot()
   const meta = sockets.get(ws)
   if (!meta) {
     return undefined
@@ -90,7 +91,6 @@ export function removeSocket(ws: WebSocket) {
   roomSet?.delete(ws)
   if (roomSet && roomSet.size === 0) {
     rooms.delete(meta.roomId)
-    identities.delete(meta.roomId)
   }
   return meta
 }
@@ -106,21 +106,4 @@ export function getSocketsForRoom(roomId: string) {
 export function hasAnySocketInRoom(roomId: string) {
   const set = getRegistrySlot().rooms.get(roomId)
   return (set?.size ?? 0) > 0
-}
-
-export function verifySocketIdentitySecret(params: {
-  roomId: string
-  userId: string
-  userSecret: string
-}): boolean {
-  const { roomId, userId, userSecret } = params
-  const { identities } = getRegistrySlot()
-  const roomIdentities = identities.get(roomId) ?? new Map<string, string>()
-  identities.set(roomId, roomIdentities)
-  const existing = roomIdentities.get(userId)
-  if (!existing) {
-    roomIdentities.set(userId, userSecret)
-    return true
-  }
-  return existing === userSecret
 }

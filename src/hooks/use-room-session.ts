@@ -1,14 +1,19 @@
 "use client"
 
 import {
-  getControlEmbedUrl,
   getPlayerEmbedUrl,
   getRoomUrl,
+  mintControlEmbedUrl,
 } from "@/lib/control-url"
+import type { SessionKind } from "@/zod/types"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRoomSocket } from "./use-room-socket"
 
-export function useRoomSession(roomId: string) {
+export function useRoomSession(
+  roomId: string,
+  options?: { sessionKind?: SessionKind },
+) {
+  const sessionKind = options?.sessionKind ?? "room"
   const {
     roomState,
     sessionCapabilities,
@@ -18,18 +23,29 @@ export function useRoomSession(roomId: string) {
     status,
     joinError,
     submitJoinPassword,
-  } = useRoomSocket(roomId)
+  } = useRoomSocket(roomId, { sessionKind })
   const [copied, setCopied] = useState(false)
+  const [controlEmbedUrl, setControlEmbedUrl] = useState(() =>
+    typeof window === "undefined"
+      ? `/room/${roomId}/control`
+      : `${window.location.origin}/room/${roomId}/control`,
+  )
 
   const shareUrl = useMemo(() => getRoomUrl(roomId), [roomId])
   const playerEmbedUrl = useMemo(
     () => getPlayerEmbedUrl(roomId, userId, userSecret),
     [roomId, userId, userSecret],
   )
-  const controlEmbedUrl = useMemo(
-    () => getControlEmbedUrl(roomId, userId, userSecret),
-    [roomId, userId, userSecret],
-  )
+
+  useEffect(() => {
+    let cancelled = false
+    void mintControlEmbedUrl({ roomId, userId, userSecret }).then((url) => {
+      if (!cancelled) setControlEmbedUrl(url)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [roomId, userId, userSecret, roomState?.participants[userId]?.role])
 
   const handleCopyShareUrl = useCallback(async () => {
     try {

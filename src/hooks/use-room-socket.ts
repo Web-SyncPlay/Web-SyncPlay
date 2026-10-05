@@ -9,7 +9,7 @@ import {
   persistUsername,
   stripIdentityHashFromUrl,
 } from "@/lib/session-identity"
-import type { RoomState, WsEnvelope } from "@/zod/types"
+import type { RoomState, SessionKind, WsEnvelope } from "@/zod/types"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 type SessionCapabilities = {
@@ -18,6 +18,7 @@ type SessionCapabilities = {
   canManageRoomSecurity: boolean
   isControlSession: boolean
   controlAuthorized: boolean
+  sessionKind: SessionKind
 }
 
 export type JoinStatus =
@@ -27,9 +28,12 @@ export type JoinStatus =
   | "connected"
   | "reconnecting"
 
-type JoinRejectedReason = "password_required" | "invalid_password"
+type JoinRejectedReason = "password_required" | "invalid_password" | "rate_limited"
 
-export function useRoomSocket(roomId: string): {
+export function useRoomSocket(
+  roomId: string,
+  options?: { sessionKind?: SessionKind },
+): {
   roomState: RoomState | null
   sessionCapabilities: SessionCapabilities
   send: TypedRoomEventSender
@@ -39,6 +43,7 @@ export function useRoomSocket(roomId: string): {
   joinError: string | null
   submitJoinPassword: (password: string) => void
 } {
+  const sessionKind = options?.sessionKind ?? "room"
   const [roomState, setRoomState] = useState<RoomState | null>(null)
   const [status, setStatus] = useState<JoinStatus>("connecting")
   const [joinError, setJoinError] = useState<string | null>(null)
@@ -47,8 +52,9 @@ export function useRoomSocket(roomId: string): {
       canControlPlayback: false,
       canManagePlaylist: false,
       canManageRoomSecurity: false,
-      isControlSession: true,
-      controlAuthorized: true,
+      isControlSession: sessionKind === "control",
+      controlAuthorized: false,
+      sessionKind,
     })
 
   const wsRef = useRef<WebSocket | null>(null)
@@ -57,9 +63,13 @@ export function useRoomSocket(roomId: string): {
   const usernameRef = useRef<string>("guest")
   const joinPasswordRef = useRef<string>("")
   const sendJoinRef = useRef<(() => void) | null>(null)
+  const controlTokenRef = useRef<string | undefined>(undefined)
 
   const { userId, userSecret } = useMemo(() => {
-    consumeSessionIdentityFromHash()
+    const fromHash = consumeSessionIdentityFromHash()
+    if (fromHash.controlToken) {
+      controlTokenRef.current = fromHash.controlToken
+    }
     return getOrCreateSessionIdentity()
   }, [])
 
@@ -107,8 +117,9 @@ export function useRoomSocket(roomId: string): {
         canControlPlayback: false,
         canManagePlaylist: false,
         canManageRoomSecurity: false,
-        isControlSession: true,
-        controlAuthorized: true,
+        isControlSession: sessionKind === "control",
+        controlAuthorized: false,
+        sessionKind,
       })
       if (stateTimeoutRef.current) {
         window.clearTimeout(stateTimeoutRef.current)
@@ -194,6 +205,8 @@ export function useRoomSocket(roomId: string): {
                 userSecret,
                 joinPassword: joinPasswordRef.current || undefined,
                 username: usernameRef.current,
+                sessionKind,
+                controlToken: controlTokenRef.current,
               },
             } satisfies WsEnvelope<string, Record<string, unknown>>),
           )
@@ -239,6 +252,8 @@ export function useRoomSocket(roomId: string): {
             canManageRoomSecurity: Boolean(payload.canManageRoomSecurity),
             isControlSession: Boolean(payload.isControlSession),
             controlAuthorized: Boolean(payload.controlAuthorized),
+            sessionKind:
+              (payload.sessionKind as SessionKind | undefined) ?? sessionKind,
           })
           return
         }
@@ -295,7 +310,7 @@ export function useRoomSocket(roomId: string): {
       }
       wsRef.current?.close()
     }
-  }, [roomId, userId, userSecret])
+  }, [roomId, userId, userSecret, sessionKind])
 
   const send = useCallback<TypedRoomEventSender>((type, payload) => {
     wsRef.current?.send(

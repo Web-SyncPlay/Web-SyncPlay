@@ -17,6 +17,7 @@ function ControlClientReady(props: {
   sessionCapabilities: ReturnType<typeof useRoomSession>["sessionCapabilities"]
   send: ReturnType<typeof useRoomSession>["send"]
   userId: string
+  userSecret: string
   copied: boolean
   shareUrl: string
   handleCopyShareUrl: () => void
@@ -29,6 +30,7 @@ function ControlClientReady(props: {
     sessionCapabilities,
     send,
     userId,
+    userSecret,
     copied,
     shareUrl,
     handleCopyShareUrl,
@@ -64,6 +66,7 @@ function ControlClientReady(props: {
     roomState,
     send,
     userId,
+    userSecret,
     capabilities: {
       ...sessionCapabilities,
       canControlPlayback: canControl,
@@ -130,6 +133,7 @@ export function ControlClient(props: { roomId: string }) {
     sessionCapabilities,
     send,
     userId,
+    userSecret,
     status,
     joinError,
     submitJoinPassword,
@@ -138,7 +142,7 @@ export function ControlClient(props: { roomId: string }) {
     handleCopyShareUrl,
     playerEmbedUrl,
     controlEmbedUrl,
-  } = useRoomSession(roomId)
+  } = useRoomSession(roomId, { sessionKind: "control" })
 
   if (!roomState) {
     if (status === "awaiting_password") {
@@ -161,6 +165,7 @@ export function ControlClient(props: { roomId: string }) {
       sessionCapabilities={sessionCapabilities}
       send={send}
       userId={userId}
+      userSecret={userSecret}
       copied={copied}
       shareUrl={shareUrl}
       handleCopyShareUrl={handleCopyShareUrl}
