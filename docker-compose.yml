@@ -11,7 +11,10 @@ services:
       WS_HEARTBEAT_INTERVAL_MS: 5000
       WS_HEARTBEAT_TIMEOUT_MS: 15000
     ports:
-      - "3000:3000"
+      # Bind IPv4 loopback explicitly so another local forwarder (e.g. VS Code
+      # "Ports" on 127.0.0.1:3000) cannot steal IPv4 traffic from Docker's
+      # 0.0.0.0 publish — that makes browsers hang while curl localhost (IPv6) works.
+      - "127.0.0.1:3000:3000"
     depends_on:
       - valkey
 

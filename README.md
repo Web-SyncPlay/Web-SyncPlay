@@ -68,6 +68,23 @@ Key env vars (see `.env.example`): `VALKEY_URL`, `YTDLP_*`, `OPS_SECRET`, `CONTR
 docker compose up -d --build
 ```
 
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000). Compose publishes IPv4 loopback only, so the stack is not reachable from other machines on the LAN.
+
+### Troubleshooting: browser hangs, curl works
+
+On Windows, if Firefox/Chrome spin forever on `http://127.0.0.1:3000` while `curl http://localhost:3000` returns instantly, another process (often **VS Code / Cursor port forwarding**) is usually bound to `127.0.0.1:3000` and accepting TCP without answering HTTP. `localhost` may still work via IPv6 while IPv4 is broken.
+
+Check listeners:
+
+```powershell
+Get-NetTCPConnection -LocalPort 3000 -State Listen |
+  Select-Object LocalAddress, OwningProcess |
+  Format-Table -AutoSize
+Get-Process -Id <OwningProcess>
+```
+
+Stop the extra forwarder (or close that editor window’s Ports panel), then `docker compose up -d` again. Compose binds `127.0.0.1:3000` so a later `127.0.0.1`-only forwarder cannot silently steal IPv4. Prefer `http://127.0.0.1:3000` when testing locally.
+
 ### Runbook notes
 
 - Rotate `OPS_SECRET` by updating env and restarting
