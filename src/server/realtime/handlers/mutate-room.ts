@@ -5,7 +5,7 @@ import {
   schedulePrune,
 } from "@/server/realtime/services/participants"
 import { markCurrentMedia } from "@/server/realtime/services/timeline"
-import type { RoomStateStore } from "@/server/redis/state-store"
+import type { RoomStateStorePort } from "@/server/realtime/ports"
 import type { RoomState } from "@/zod/types"
 
 /**
@@ -13,7 +13,7 @@ import type { RoomState } from "@/zod/types"
  * Body returns false to abort (no write).
  */
 export async function mutateRoomMessage(
-  store: RoomStateStore,
+  store: RoomStateStorePort,
   roomId: string,
   userId: string,
   body: (

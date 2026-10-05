@@ -2,12 +2,12 @@ import { appendActionLog } from "@/server/log"
 import { canControlFromConnectionContext } from "@/server/realtime/services/permissions"
 import { resolveCurrentTimelineMs } from "@/server/realtime/services/timeline"
 import {
+  playbackLoopModeSchema,
   playbackRateSchema,
   playbackSeekSchema,
   playbackSetPausedSchema,
 } from "@/zod/schemas"
 import type { LoopMode } from "@/zod/types"
-import { z } from "zod"
 import { mutateRoomMessage } from "./mutate-room"
 import type { RoomMessageHandler } from "./types"
 
@@ -59,10 +59,6 @@ export const handlePlaybackSeek: RoomMessageHandler = async (ctx, data) => {
     },
   )
 }
-
-const playbackLoopModeSchema = z.object({
-  mode: z.enum(["off", "always", "once"]),
-})
 
 async function setPlaybackPausedState(
   ctx: Parameters<RoomMessageHandler>[0],

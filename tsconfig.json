@@ -4,7 +4,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "target": "ESNext",
-    "types": ["node"],
+    "types": ["node", "bun"],
     "allowJs": true,
     "resolveJsonModule": true,
     "moduleDetection": "force",

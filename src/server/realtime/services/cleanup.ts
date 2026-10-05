@@ -1,8 +1,8 @@
-import type { RoomStateStore } from "@/server/redis/state-store"
+import type { RoomStateStorePort } from "@/server/realtime/ports"
 import { transferOwnershipIfNeeded } from "./ownership"
 import { clearAllRoomPrunes } from "./participants"
 
-export async function cleanupInactiveRooms(store: RoomStateStore): Promise<{
+export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
   scannedRooms: number
   removedRooms: number
   removedParticipants: number

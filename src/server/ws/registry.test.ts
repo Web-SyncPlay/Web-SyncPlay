@@ -1,5 +1,4 @@
-import assert from "node:assert/strict"
-import test from "node:test"
+import { expect, test } from "bun:test"
 import type { WebSocket } from "ws"
 import {
   addSocket,
@@ -32,9 +31,9 @@ test("preserves presenceTracked for duplicate joins on same socket", () => {
   })
   const meta = getSocketMeta(ws)
 
-  assert.equal(meta?.presenceTracked, true)
+  expect(meta?.presenceTracked).toBe(true)
   const removed = removeSocket(ws)
-  assert.equal(removed?.presenceTracked, true)
+  expect(removed?.presenceTracked).toBe(true)
 })
 
 test("replacing room metadata on same socket updates room/user", () => {
@@ -55,11 +54,11 @@ test("replacing room metadata on same socket updates room/user", () => {
   })
   const meta = getSocketMeta(ws)
 
-  assert.equal(meta?.roomId, "room-2")
-  assert.equal(meta?.userId, "u2")
-  assert.equal(meta?.controlAuthorized, true)
-  assert.equal(meta?.isControlSession, true)
-  assert.equal(meta?.sessionKind, "control")
+  expect(meta?.roomId).toBe("room-2")
+  expect(meta?.userId).toBe("u2")
+  expect(meta?.controlAuthorized).toBe(true)
+  expect(meta?.isControlSession).toBe(true)
+  expect(meta?.sessionKind).toBe("control")
 
   removeSocket(ws)
 })

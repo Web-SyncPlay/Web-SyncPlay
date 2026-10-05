@@ -2,7 +2,7 @@ import {
   installShutdownOnce,
   registerShutdownHandler,
 } from "@/server/lifecycle"
-import type { RoomStateStore } from "@/server/redis/state-store"
+import type { RoomStateStorePort } from "@/server/realtime/ports"
 import type { RoomState } from "@/zod/types"
 
 const participantPruneMs = Number(process.env.PARTICIPANT_PRUNE_MS ?? 60_000)
@@ -58,7 +58,7 @@ export function clearPrune(roomId: string, userId: string) {
 export function schedulePrune(
   roomId: string,
   userId: string,
-  store: RoomStateStore,
+  store: RoomStateStorePort,
 ) {
   ensurePruneShutdownRegistered()
   clearPrune(roomId, userId)

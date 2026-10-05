@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "bunx tsc -p tsconfig.json --noEmit",
-    "test": "bunx tsx --test src/server/ws/registry.test.ts src/server/realtime/services/permissions.test.ts src/server/realtime/services/ownership.test.ts src/server/realtime/services/cleanup.test.ts src/server/realtime/services/room-security.test.ts src/server/realtime/handlers/join.test.ts src/lib/session-identity.test.ts src/server/security/url-safety.test.ts src/server/media/resolve/build-selectable-streams.test.ts",
+    "test": "bun test",
+    "test:unit": "bun test src/server src/zod src/lib",
     "test:e2e": "node scripts/e2e-concurrent.mjs",
     "test:e2e:ws": "node scripts/e2e-ws-concurrent.mjs",
     "format": "prettier --write ."
@@ -51,6 +52,7 @@
     "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.2.4",
     "@tanstack/eslint-plugin-query": "^5.100.6",
+    "@types/bun": "^1.4.2",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

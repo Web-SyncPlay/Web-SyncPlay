@@ -1,5 +1,6 @@
 import { env } from "@/env"
 import { extractMetadata } from "@/server/media/yt-dlp"
+import type { RoomStateStorePort } from "@/server/realtime/ports"
 import { roomStateTtlSeconds, type RoomState } from "@/zod/types"
 import { getCommandClient } from "./client"
 import { keys } from "./keys"
@@ -8,7 +9,7 @@ const fallbackDefaults = [
   { title: "Fallback media", url: env.FALLBACK_DEFAULT_MEDIA_URL },
 ]
 
-export class RoomStateStore {
+export class RoomStateStore implements RoomStateStorePort {
   async get(roomId: string) {
     const client = await getCommandClient()
     const raw = await client.get(keys.roomState(roomId))

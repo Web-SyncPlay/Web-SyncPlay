@@ -1,10 +1,10 @@
-import type { RoomStateStore } from "@/server/redis/state-store"
+import type { RoomStateStorePort } from "@/server/realtime/ports"
 import type { SessionKind, WsEnvelope } from "@/zod/types"
 import type { WebSocket } from "ws"
 
 export type RoomMessageContext = {
   ws: WebSocket
-  store: RoomStateStore
+  store: RoomStateStorePort
   roomId: string
   userId: string
   controlAuthorized: boolean
@@ -19,7 +19,7 @@ export type RoomMessageHandler = (
 
 export type JoinContext = {
   ws: WebSocket
-  store: RoomStateStore
+  store: RoomStateStorePort
 }
 
 export type JoinHandler = (

@@ -1,18 +1,23 @@
-import assert from "node:assert/strict"
-import test from "node:test"
+import { expect, test } from "bun:test"
+import type { RoomState } from "@/zod/types"
 import { cleanupInactiveRooms } from "./cleanup"
 
 test("cleanup reassigns owner to connected moderator", async () => {
-  const state = {
+  const state: RoomState = {
     roomId: "room-1",
     ownerId: "owner",
+    roomSecurity: {
+      joinPasswordEnabled: false,
+      joinPasswordUpdatedAt: null,
+      admissionVersion: 0,
+    },
     playback: {
       paused: true,
       playbackRate: 1,
       timelineAnchorMs: 0,
       serverNowMs: Date.now(),
-      videoLoop: "off" as const,
-      playlistLoop: "off" as const,
+      videoLoop: "off",
+      playlistLoop: "off",
       shuffle: false,
     },
     playlist: [],
@@ -22,7 +27,7 @@ test("cleanup reassigns owner to connected moderator", async () => {
         userId: "owner",
         username: "Owner",
         avatarStyle: "adventurer",
-        role: "owner" as const,
+        role: "owner",
         connected: true,
         joinedAt: 1,
         localPlayback: {
@@ -36,7 +41,7 @@ test("cleanup reassigns owner to connected moderator", async () => {
         userId: "mod",
         username: "Mod",
         avatarStyle: "adventurer",
-        role: "moderator" as const,
+        role: "moderator",
         connected: true,
         joinedAt: 2,
         localPlayback: {
@@ -59,8 +64,8 @@ test("cleanup reassigns owner to connected moderator", async () => {
     updateRoom: async (
       roomId: string,
       mutate: (
-        current: typeof state | null,
-      ) => Promise<typeof state | null> | typeof state | null,
+        current: RoomState | null,
+      ) => Promise<RoomState | null> | RoomState | null,
     ) => {
       const next = await mutate(roomId === "room-1" ? state : null)
       if (next) {
@@ -72,7 +77,7 @@ test("cleanup reassigns owner to connected moderator", async () => {
 
   await cleanupInactiveRooms(fakeStore as never)
 
-  assert.equal(state.ownerId, "mod")
-  assert.equal(state.participants.mod?.role, "owner")
-  assert.equal(state.participants.owner, undefined)
+  expect(state.ownerId).toBe("mod")
+  expect(state.participants.mod?.role).toBe("owner")
+  expect(state.participants.owner).toBeUndefined()
 })

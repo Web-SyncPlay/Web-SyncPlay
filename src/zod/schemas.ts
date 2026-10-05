@@ -36,6 +36,14 @@ export const playbackSetPausedSchema = z.object({
   currentTimeMs: z.number().min(0).optional(),
 })
 
+export const playbackLoopModeSchema = z.object({
+  mode: z.enum(["off", "always", "once"]),
+})
+
+export const playlistSelectSchema = z.object({
+  index: z.number().int().min(0),
+})
+
 export const playlistReorderSchema = z.object({
   from: z.number().int().min(0),
   to: z.number().int().min(0),

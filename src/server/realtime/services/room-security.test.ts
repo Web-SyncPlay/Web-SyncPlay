@@ -1,6 +1,5 @@
 import type { RoomState } from "@/zod/types"
-import assert from "node:assert/strict"
-import test from "node:test"
+import { expect, test } from "bun:test"
 import {
   clearJoinPassword,
   createDefaultRoomSecurity,
@@ -49,22 +48,22 @@ function createState(): RoomState {
 test("allows join when room has no password", () => {
   const state = createState()
 
-  assert.deepEqual(evaluateJoinAdmission(state), { allowed: true })
+  expect(evaluateJoinAdmission(state)).toEqual({ allowed: true })
 })
 
 test("requires a password for protected rooms and rejects wrong passwords", () => {
   const state = createState()
   setJoinPassword(state, "secret-pass")
 
-  assert.deepEqual(evaluateJoinAdmission(state), {
+  expect(evaluateJoinAdmission(state)).toEqual({
     allowed: false,
     reason: "password_required",
   })
-  assert.deepEqual(evaluateJoinAdmission(state, "wrong-pass"), {
+  expect(evaluateJoinAdmission(state, "wrong-pass")).toEqual({
     allowed: false,
     reason: "invalid_password",
   })
-  assert.deepEqual(evaluateJoinAdmission(state, "secret-pass"), {
+  expect(evaluateJoinAdmission(state, "secret-pass")).toEqual({
     allowed: true,
   })
 })
@@ -75,10 +74,10 @@ test("sanitizes hashed password fields before broadcasting room state", () => {
 
   const sanitized = sanitizeRoomStateForClient(state)
 
-  assert.equal(sanitized.roomSecurity.joinPasswordEnabled, true)
-  assert.equal(typeof sanitized.roomSecurity.joinPasswordUpdatedAt, "number")
-  assert.equal("joinPasswordHash" in sanitized.roomSecurity, false)
-  assert.equal("joinPasswordSalt" in sanitized.roomSecurity, false)
+  expect(sanitized.roomSecurity.joinPasswordEnabled).toBe(true)
+  expect(typeof sanitized.roomSecurity.joinPasswordUpdatedAt).toBe("number")
+  expect("joinPasswordHash" in sanitized.roomSecurity).toBe(false)
+  expect("joinPasswordSalt" in sanitized.roomSecurity).toBe(false)
 })
 
 test("clearing the password disables future admission checks", () => {
@@ -87,7 +86,7 @@ test("clearing the password disables future admission checks", () => {
 
   const changed = clearJoinPassword(state)
 
-  assert.equal(changed, true)
-  assert.equal(state.roomSecurity.joinPasswordEnabled, false)
-  assert.deepEqual(evaluateJoinAdmission(state), { allowed: true })
+  expect(changed).toBe(true)
+  expect(state.roomSecurity.joinPasswordEnabled).toBe(false)
+  expect(evaluateJoinAdmission(state)).toEqual({ allowed: true })
 })

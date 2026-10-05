@@ -1,5 +1,4 @@
-import assert from "node:assert/strict"
-import test from "node:test"
+import { expect, test } from "bun:test"
 import type { RoomState } from "@/zod/types"
 import { createPlaybackActions } from "./use-playback-actions"
 
@@ -64,7 +63,7 @@ test("commitSeek ends preview and commits target", () => {
 
   actions.commitSeek(45_000)
 
-  assert.deepEqual(sent, [
+  expect(sent).toEqual([
     {
       type: "seek:preview",
       payload: { targetMs: 45_000, active: false },
@@ -89,7 +88,7 @@ test("stepBy seeks from provided elapsed snapshot", () => {
 
   actions.stepBy(10_000)
 
-  assert.deepEqual(sent, [
+  expect(sent).toEqual([
     {
       type: "playback:seek",
       payload: { targetMs: 20_000 },

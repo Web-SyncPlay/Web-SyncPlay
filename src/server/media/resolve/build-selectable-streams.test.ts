@@ -1,5 +1,4 @@
-import assert from "node:assert/strict"
-import test from "node:test"
+import { expect, test } from "bun:test"
 import { buildSelectableStreams } from "./build-selectable-streams"
 
 test("prefers adaptive Auto and excludes video-only streams", () => {
@@ -40,10 +39,12 @@ test("prefers adaptive Auto and excludes video-only streams", () => {
     playableUrl: "https://cdn.example/master.m3u8",
   })
 
-  assert.equal(result.defaultStreamId, "auto")
-  assert.ok(result.mediaStreams.every((stream) => stream.id !== "vonly"))
-  assert.equal(result.mediaStreams[0]?.kind, "adaptive")
-  assert.ok(result.mediaStreams.some((stream) => stream.id === "720"))
+  expect(result.defaultStreamId).toBe("auto")
+  expect(result.mediaStreams.every((stream) => stream.id !== "vonly")).toBe(
+    true,
+  )
+  expect(result.mediaStreams[0]?.kind).toBe("adaptive")
+  expect(result.mediaStreams.some((stream) => stream.id === "720")).toBe(true)
 })
 
 test("falls back to combined ladder when no adaptive", () => {
@@ -68,6 +69,8 @@ test("falls back to combined ladder when no adaptive", () => {
     playableUrl: "https://cdn.example/1080.mp4",
   })
 
-  assert.ok(result.mediaStreams.length >= 1)
-  assert.ok(result.mediaStreams.every((stream) => stream.kind === "combined"))
+  expect(result.mediaStreams.length >= 1).toBe(true)
+  expect(
+    result.mediaStreams.every((stream) => stream.kind === "combined"),
+  ).toBe(true)
 })

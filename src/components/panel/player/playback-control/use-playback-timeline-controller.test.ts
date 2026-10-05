@@ -1,5 +1,4 @@
-import assert from "node:assert/strict"
-import test from "node:test"
+import { expect, test } from "bun:test"
 import type { RoomState } from "@/zod/types"
 import { projectPlaybackMs } from "./use-playback-timeline-controller"
 
@@ -18,7 +17,7 @@ test("projectPlaybackMs advances time when playback is active", () => {
   } as RoomState
 
   const projected = projectPlaybackMs(roomState, baseNow + 4_000)
-  assert.equal(projected, 26_000)
+  expect(projected).toBe(26_000)
 })
 
 test("projectPlaybackMs keeps anchor when paused", () => {
@@ -36,5 +35,5 @@ test("projectPlaybackMs keeps anchor when paused", () => {
   } as RoomState
 
   const projected = projectPlaybackMs(roomState, baseNow + 10_000)
-  assert.equal(projected, 30_000)
+  expect(projected).toBe(30_000)
 })

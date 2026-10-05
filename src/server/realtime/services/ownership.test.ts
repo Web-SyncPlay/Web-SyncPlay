@@ -1,8 +1,8 @@
-import assert from "node:assert/strict"
-import test from "node:test"
+import { expect, test } from "bun:test"
+import type { RoomState } from "@/zod/types"
 import { transferOwnershipIfNeeded } from "./ownership"
 
-function createState() {
+function createState(): RoomState {
   return {
     roomId: "room-1",
     ownerId: "owner",
@@ -27,7 +27,7 @@ function createState() {
         userId: "owner",
         username: "Owner",
         avatarStyle: "adventurer",
-        role: "owner" as const,
+        role: "owner",
         connected: false,
         joinedAt: 1,
         localPlayback: {
@@ -41,7 +41,7 @@ function createState() {
         userId: "modNew",
         username: "Mod New",
         avatarStyle: "adventurer",
-        role: "moderator" as const,
+        role: "moderator",
         connected: true,
         joinedAt: 20,
         localPlayback: {
@@ -55,7 +55,7 @@ function createState() {
         userId: "modOld",
         username: "Mod Old",
         avatarStyle: "adventurer",
-        role: "moderator" as const,
+        role: "moderator",
         connected: true,
         joinedAt: 10,
         localPlayback: {
@@ -69,7 +69,7 @@ function createState() {
         userId: "guestOld",
         username: "Guest Old",
         avatarStyle: "adventurer",
-        role: "guest" as const,
+        role: "guest",
         connected: true,
         joinedAt: 5,
         localPlayback: {
@@ -90,10 +90,10 @@ test("transfers owner to longest-tenured connected moderator first", () => {
   const state = createState()
   const changed = transferOwnershipIfNeeded(state, "disconnect")
 
-  assert.equal(changed, true)
-  assert.equal(state.ownerId, "modOld")
-  assert.equal(state.participants.modOld?.role, "owner")
-  assert.equal(state.participants.owner?.role, "guest")
+  expect(changed).toBe(true)
+  expect(state.ownerId).toBe("modOld")
+  expect(state.participants.modOld?.role).toBe("owner")
+  expect(state.participants.owner?.role).toBe("guest")
 })
 
 test("falls back to longest-tenured guest when no moderator connected", () => {
@@ -103,9 +103,9 @@ test("falls back to longest-tenured guest when no moderator connected", () => {
 
   const changed = transferOwnershipIfNeeded(state, "cleanup")
 
-  assert.equal(changed, true)
-  assert.equal(state.ownerId, "guestOld")
-  assert.equal(state.participants.guestOld?.role, "owner")
+  expect(changed).toBe(true)
+  expect(state.ownerId).toBe("guestOld")
+  expect(state.participants.guestOld?.role).toBe("owner")
 })
 
 test("does not change owner when current owner is still connected", () => {
@@ -114,6 +114,6 @@ test("does not change owner when current owner is still connected", () => {
 
   const changed = transferOwnershipIfNeeded(state, "disconnect")
 
-  assert.equal(changed, false)
-  assert.equal(state.ownerId, "owner")
+  expect(changed).toBe(false)
+  expect(state.ownerId).toBe("owner")
 })

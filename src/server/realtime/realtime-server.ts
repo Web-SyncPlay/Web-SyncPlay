@@ -178,7 +178,8 @@ function setupWebSocketConnection(
 
       await store.touchWsPresence(meta.roomId, meta.userId)
 
-      const handler = roomMessageHandlers[data.type]
+      const handler =
+        roomMessageHandlers[data.type as keyof typeof roomMessageHandlers]
       if (handler) {
         await handler(
           {

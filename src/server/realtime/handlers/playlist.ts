@@ -9,6 +9,7 @@ import {
   playlistRenameSchema,
   playlistReorderSchema,
   playlistRetrySchema,
+  playlistSelectSchema,
 } from "@/zod/schemas"
 import { randomUUID } from "node:crypto"
 import { mutateRoomMessage } from "./mutate-room"
@@ -56,6 +57,9 @@ function applyResolvedToItem(
 }
 
 export const handlePlaylistSelect: RoomMessageHandler = async (ctx, data) => {
+  const selectResult = playlistSelectSchema.safeParse(data.payload)
+  if (!selectResult.success) return
+
   await mutateRoomMessage(
     ctx.store,
     ctx.roomId,
@@ -70,12 +74,8 @@ export const handlePlaylistSelect: RoomMessageHandler = async (ctx, data) => {
       ) {
         return false
       }
-      const nextIndex = Number(data.payload.index ?? -1)
-      if (
-        Number.isInteger(nextIndex) &&
-        nextIndex >= 0 &&
-        nextIndex < state.playlist.length
-      ) {
+      const nextIndex = selectResult.data.index
+      if (nextIndex >= 0 && nextIndex < state.playlist.length) {
         state.currentIndex = nextIndex
         state.playback.timelineAnchorMs = 0
         state.playback.serverNowMs = nextMonotonicMs(

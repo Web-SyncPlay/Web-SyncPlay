@@ -4,9 +4,14 @@ import * as playlist from "./playlist"
 import * as roomPassword from "./room-password"
 import * as seekPreview from "./seek-preview"
 import * as viewerMedia from "./viewer-media"
+import type { ClientEventType } from "@/lib/room-events"
 import type { RoomMessageHandler } from "./types"
 
-export const roomMessageHandlers: Record<string, RoomMessageHandler> = {
+/**
+ * Typed registry: every {@link ClientEventType} must have a handler.
+ * Compile-time `satisfies` rejects missing/extra keys.
+ */
+export const roomMessageHandlers = {
   "playback:seek": playback.handlePlaybackSeek,
   "playback:play": playback.handlePlaybackPlay,
   "playback:pause": playback.handlePlaybackPause,
@@ -26,4 +31,4 @@ export const roomMessageHandlers: Record<string, RoomMessageHandler> = {
   "participant:role:update": participant.handleParticipantRoleUpdate,
   "room:password:set": roomPassword.handleRoomPasswordSet,
   "room:password:clear": roomPassword.handleRoomPasswordClear,
-}
+} as const satisfies Record<ClientEventType, RoomMessageHandler>

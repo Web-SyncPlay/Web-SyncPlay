@@ -1,5 +1,4 @@
-import assert from "node:assert/strict"
-import test from "node:test"
+import { expect, test } from "bun:test"
 import {
   consumeSessionIdentityFromHash,
   getPersistedUsername,
@@ -60,10 +59,10 @@ test("consumeSessionIdentityFromHash stores valid identity and strips hash", () 
 
   const consumed = consumeSessionIdentityFromHash()
 
-  assert.deepEqual(consumed, { userId: "user-1", userSecret: "secret-1" })
-  assert.equal(mock.storage.get("web-syncplay:user-id"), "user-1")
-  assert.equal(mock.storage.get("web-syncplay:user-secret"), "secret-1")
-  assert.equal(mock.getReplacedUrl(), "/room/abc/player?embed=1")
+  expect(consumed).toEqual({ userId: "user-1", userSecret: "secret-1" })
+  expect(mock.storage.get("web-syncplay:user-id")).toBe("user-1")
+  expect(mock.storage.get("web-syncplay:user-secret")).toBe("secret-1")
+  expect(mock.getReplacedUrl()).toBe("/room/abc/player?embed=1")
   cleanupWindow()
 })
 
@@ -72,10 +71,10 @@ test("consumeSessionIdentityFromHash strips malformed identity hash without stor
 
   const consumed = consumeSessionIdentityFromHash()
 
-  assert.deepEqual(consumed, {})
-  assert.equal(mock.storage.has("web-syncplay:user-id"), false)
-  assert.equal(mock.storage.has("web-syncplay:user-secret"), false)
-  assert.equal(mock.getReplacedUrl(), "/room/abc/player?embed=1")
+  expect(consumed).toEqual({})
+  expect(mock.storage.has("web-syncplay:user-id")).toBe(false)
+  expect(mock.storage.has("web-syncplay:user-secret")).toBe(false)
+  expect(mock.getReplacedUrl()).toBe("/room/abc/player?embed=1")
   cleanupWindow()
 })
 
@@ -84,10 +83,10 @@ test("consumeSessionIdentityFromHash strips partial identity hash without storin
 
   const consumed = consumeSessionIdentityFromHash()
 
-  assert.deepEqual(consumed, {})
-  assert.equal(mock.storage.has("web-syncplay:user-id"), false)
-  assert.equal(mock.storage.has("web-syncplay:user-secret"), false)
-  assert.equal(mock.getReplacedUrl(), "/room/abc/player?embed=1")
+  expect(consumed).toEqual({})
+  expect(mock.storage.has("web-syncplay:user-id")).toBe(false)
+  expect(mock.storage.has("web-syncplay:user-secret")).toBe(false)
+  expect(mock.getReplacedUrl()).toBe("/room/abc/player?embed=1")
   cleanupWindow()
 })
 
@@ -96,8 +95,8 @@ test("persistUsername trims and retrieves username", () => {
 
   persistUsername("  Alice  ")
 
-  assert.equal(mock.storage.get("web-syncplay:username"), "Alice")
-  assert.equal(getPersistedUsername(), "Alice")
+  expect(mock.storage.get("web-syncplay:username")).toBe("Alice")
+  expect(getPersistedUsername()).toBe("Alice")
   cleanupWindow()
 })
 
@@ -106,7 +105,7 @@ test("stripIdentityHashFromUrl removes identity-like malformed hash", () => {
 
   const stripped = stripIdentityHashFromUrl()
 
-  assert.equal(stripped, true)
-  assert.equal(mock.getReplacedUrl(), "/room/abc/player?embed=1")
+  expect(stripped).toBe(true)
+  expect(mock.getReplacedUrl()).toBe("/room/abc/player?embed=1")
   cleanupWindow()
 })
