@@ -7,7 +7,10 @@ import {
 } from "@/server/realtime/services/participants"
 import { validateControlToken } from "@/server/realtime/services/control-token"
 import { claimOrVerifyIdentitySecret } from "@/server/realtime/services/identity-store"
-import { normalizeParticipantRoles } from "@/server/realtime/services/permissions"
+import {
+  computeSessionCapabilities,
+  normalizeParticipantRoles,
+} from "@/server/realtime/services/permissions"
 import {
   createInitialRoomState,
   scheduleResolvingPlaylistItems,
@@ -22,6 +25,7 @@ import {
 } from "@/server/ws/registry"
 import { consumeRateLimit } from "@/server/security/rate-limit"
 import { roomJoinSchema } from "@/zod/schemas"
+import type { SessionCapabilities } from "@/server/realtime/services/permissions"
 import type { ParticipantState, SessionKind, WsEnvelope } from "@/zod/types"
 import { randomUUID } from "node:crypto"
 import type { WebSocket } from "ws"
@@ -151,16 +155,7 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
   let reconnectingUserIds: string[] = []
   let disconnectingUserIds: string[] = []
 
-  let sessionCapabilities:
-    | {
-        canControlPlayback: boolean
-        canManagePlaylist: boolean
-        canManageRoomSecurity: boolean
-        isControlSession: boolean
-        controlAuthorized: boolean
-        sessionKind: SessionKind
-      }
-    | undefined
+  let sessionCapabilities: SessionCapabilities | undefined
 
   const committed = await ctx.store.updateRoom(roomId, async (existing) => {
     const state =
@@ -219,24 +214,12 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
         payload: {},
       })
     }
-    const canControlByRole = role === "owner" || role === "moderator"
-    const playerBlocked = sessionKind === "player"
-    const canMutate =
-      !playerBlocked &&
-      canControlByRole &&
-      (!isControlSession || controlAuthorized)
-    const canManageRoomSecurity =
-      !playerBlocked &&
-      role === "owner" &&
-      (!isControlSession || controlAuthorized)
-    sessionCapabilities = {
-      canControlPlayback: canMutate,
-      canManagePlaylist: canMutate,
-      canManageRoomSecurity,
+    sessionCapabilities = computeSessionCapabilities({
+      role,
+      sessionKind,
       isControlSession,
       controlAuthorized,
-      sessionKind,
-    }
+    })
     markCurrentMedia(state)
     state.updatedAt = Date.now()
     return state

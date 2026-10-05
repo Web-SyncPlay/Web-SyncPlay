@@ -2,8 +2,8 @@ import { expect, test } from "bun:test"
 import type { RoomState } from "@/zod/types"
 import { cleanupInactiveRooms } from "./cleanup"
 
-test("cleanup reassigns owner to connected moderator", async () => {
-  const state: RoomState = {
+function createState(): RoomState {
+  return {
     roomId: "room-1",
     ownerId: "owner",
     roomSecurity: {
@@ -56,6 +56,10 @@ test("cleanup reassigns owner to connected moderator", async () => {
     actionLog: [],
     updatedAt: Date.now(),
   }
+}
+
+test("cleanup reassigns owner when owner loses presence (grace keeps participant)", async () => {
+  const state = createState()
 
   const fakeStore = {
     listRoomIds: async () => ["room-1"],
@@ -79,5 +83,39 @@ test("cleanup reassigns owner to connected moderator", async () => {
 
   expect(state.ownerId).toBe("mod")
   expect(state.participants.mod?.role).toBe("owner")
+  expect(state.participants.owner?.connected).toBe(false)
+  expect(state.participants.owner).toBeDefined()
+})
+
+test("cleanup removes participants past prune grace", async () => {
+  const state = createState()
+  const owner = state.participants.owner
+  if (owner) {
+    owner.connected = false
+    owner.disconnectedAt = Date.now() - 120_000
+  }
+
+  const fakeStore = {
+    listRoomIds: async () => ["room-1"],
+    delete: async () => undefined,
+    getWsPresenceUserIds: async () => new Set<string>(["mod"]),
+    updateRoom: async (
+      roomId: string,
+      mutate: (
+        current: RoomState | null,
+      ) => Promise<RoomState | null> | RoomState | null,
+    ) => {
+      const next = await mutate(roomId === "room-1" ? state : null)
+      if (next) {
+        Object.assign(state, next)
+      }
+      return next
+    },
+  }
+
+  const result = await cleanupInactiveRooms(fakeStore as never)
+
+  expect(result.removedParticipants).toBe(1)
   expect(state.participants.owner).toBeUndefined()
+  expect(state.ownerId).toBe("mod")
 })

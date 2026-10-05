@@ -112,20 +112,20 @@ export function createRoomState(overrides: Partial<RoomState> = {}): RoomState {
 
 export class InMemoryRoomStateStore implements RoomStateStorePort {
   rooms = new Map<string, RoomState>()
-  presence = new Map<string, Set<string>>()
+  /** Mirrors Redis presence hash: userId → connection refcount. */
+  presence = new Map<string, Map<string, number>>()
   dailyDefaults: Array<{ title: string; url: string }> = []
 
   constructor(initial?: RoomState) {
     if (initial) {
       this.rooms.set(initial.roomId, structuredClone(initial))
-      this.presence.set(
-        initial.roomId,
-        new Set(
-          Object.values(initial.participants)
-            .filter((p) => p.connected)
-            .map((p) => p.userId),
-        ),
-      )
+      const refs = new Map<string, number>()
+      for (const participant of Object.values(initial.participants)) {
+        if (participant.connected) {
+          refs.set(participant.userId, 1)
+        }
+      }
+      this.presence.set(initial.roomId, refs)
     }
   }
 
@@ -167,19 +167,28 @@ export class InMemoryRoomStateStore implements RoomStateStorePort {
   }
 
   async addWsConnectionRef(roomId: string, userId: string) {
-    const set = this.presence.get(roomId) ?? new Set()
-    set.add(userId)
-    this.presence.set(roomId, set)
+    const refs = this.presence.get(roomId) ?? new Map<string, number>()
+    refs.set(userId, (refs.get(userId) ?? 0) + 1)
+    this.presence.set(roomId, refs)
   }
 
   async removeWsConnectionRef(roomId: string, userId: string) {
-    this.presence.get(roomId)?.delete(userId)
+    const refs = this.presence.get(roomId)
+    if (!refs) return
+    const next = (refs.get(userId) ?? 0) - 1
+    if (next <= 0) {
+      refs.delete(userId)
+    } else {
+      refs.set(userId, next)
+    }
   }
 
-  async touchWsPresence(_roomId: string, _userId: string) {}
+  async touchWsPresence() {
+    // Presence TTL is a no-op for the in-memory test store.
+  }
 
   async getWsPresenceUserIds(roomId: string) {
-    return new Set(this.presence.get(roomId) ?? [])
+    return new Set(this.presence.get(roomId)?.keys() ?? [])
   }
 
   async seedDailyDefaultsIfEmpty() {

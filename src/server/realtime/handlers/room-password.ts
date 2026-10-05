@@ -1,4 +1,5 @@
 import { appendActionLog } from "@/server/log"
+import { canManageRoomSecurityFromConnectionContext } from "@/server/realtime/services/permissions"
 import { roomPasswordClearSchema, roomPasswordSetSchema } from "@/zod/schemas"
 import { clearJoinPassword, setJoinPassword } from "../services/room-security"
 import { mutateRoomMessage } from "./mutate-room"
@@ -16,9 +17,11 @@ export const handleRoomPasswordSet: RoomMessageHandler = async (ctx, data) => {
     ctx.userId,
     (state, participant) => {
       if (
-        state.ownerId !== ctx.userId ||
-        ctx.sessionKind === "player" ||
-        (ctx.isControlSession && !ctx.controlAuthorized)
+        !canManageRoomSecurityFromConnectionContext(state, ctx.userId, {
+          controlAuthorized: ctx.controlAuthorized,
+          isControlSession: ctx.isControlSession,
+          sessionKind: ctx.sessionKind,
+        })
       ) {
         return false
       }
@@ -53,9 +56,11 @@ export const handleRoomPasswordClear: RoomMessageHandler = async (
     ctx.userId,
     (state, participant) => {
       if (
-        state.ownerId !== ctx.userId ||
-        ctx.sessionKind === "player" ||
-        (ctx.isControlSession && !ctx.controlAuthorized)
+        !canManageRoomSecurityFromConnectionContext(state, ctx.userId, {
+          controlAuthorized: ctx.controlAuthorized,
+          isControlSession: ctx.isControlSession,
+          sessionKind: ctx.sessionKind,
+        })
       ) {
         return false
       }

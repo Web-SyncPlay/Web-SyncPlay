@@ -1,5 +1,10 @@
 import type { RoomState } from "@/zod/types"
 
+/** Ensure playback server clocks never move backwards under concurrent writes. */
+export function nextMonotonicMs(previous: number, next: number) {
+  return Math.max(previous + 1, next)
+}
+
 export function resolveCurrentTimelineMs(state: RoomState, nowMs: number) {
   if (state.playback.paused) {
     return state.playback.timelineAnchorMs

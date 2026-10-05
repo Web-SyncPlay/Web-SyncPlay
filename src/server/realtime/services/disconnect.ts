@@ -1,0 +1,144 @@
+import { appendActionLog } from "@/server/log"
+import { deleteLocalMediaEntriesForOwner } from "@/server/media/local-media-store"
+import type { RoomStateStorePort } from "@/server/realtime/ports"
+import type { RoomState } from "@/zod/types"
+import { transferOwnershipIfNeeded } from "./ownership"
+import {
+  applyOfflinePruning,
+  clearAllRoomPrunes,
+  schedulePrune,
+} from "./participants"
+import { nextMonotonicMs } from "./timeline"
+
+export type DisconnectSocketMeta = {
+  roomId: string
+  userId: string
+  presenceTracked: boolean
+}
+
+/**
+ * Tear down a room: process-local prune timers + Redis state/presence/identities.
+ * Prefer this over calling `store.delete` directly from lifecycle paths.
+ */
+export async function destroyRoom(
+  store: RoomStateStorePort,
+  roomId: string,
+): Promise<void> {
+  clearAllRoomPrunes(roomId)
+  await store.delete(roomId)
+}
+
+function invalidateLocalMediaForOwner(
+  state: RoomState,
+  userId: string,
+  nowMs: number,
+): boolean {
+  let invalidatedCurrent = false
+  let didMutate = false
+
+  for (const item of state.playlist) {
+    if (item.sourceKind !== "local_file") continue
+    if (!item.localOriginUserId || item.localOriginUserId !== userId) continue
+    if (item.blockedReason === "local_owner_offline") continue
+
+    item.ingestStatus = "error"
+    item.ingestError =
+      "Local file owner went offline. Re-add the file to resume."
+    item.blockedReason = "local_owner_offline"
+    didMutate = true
+
+    if (state.playlist[state.currentIndex]?.id === item.id) {
+      invalidatedCurrent = true
+    }
+  }
+
+  if (invalidatedCurrent && !state.playback.paused) {
+    state.playback.paused = true
+    state.playback.serverNowMs = nextMonotonicMs(
+      state.playback.serverNowMs,
+      nowMs,
+    )
+    didMutate = true
+  }
+
+  return didMutate
+}
+
+/**
+ * Apply participant-offline effects inside an existing room mutation.
+ * Returns whether the room state was changed.
+ */
+export function applyUserWentOffline(
+  state: RoomState,
+  roomId: string,
+  userId: string,
+  nowMs = Date.now(),
+): boolean {
+  let didMutate = false
+  const participant = state.participants[userId]
+  if (participant) {
+    participant.connected = false
+    participant.disconnectedAt = nowMs
+    participant.lastSeenAt = nowMs
+    participant.localPlayback.updatedAt = nowMs
+    didMutate = true
+  }
+
+  if (invalidateLocalMediaForOwner(state, userId, nowMs)) {
+    didMutate = true
+  }
+
+  applyOfflinePruning(state)
+  if (transferOwnershipIfNeeded(state, "disconnect")) {
+    didMutate = true
+  }
+
+  if (participant) {
+    appendActionLog(state, {
+      roomId,
+      actorUserId: userId,
+      actorUsername: participant.username,
+      action: "participant:disconnected",
+      payload: {},
+    })
+  }
+
+  if (didMutate) {
+    state.updatedAt = nowMs
+  }
+
+  return didMutate
+}
+
+/**
+ * Full socket-disconnect lifecycle: presence ref, room delete or offline effects.
+ */
+export async function handleSocketDisconnect(
+  store: RoomStateStorePort,
+  meta: DisconnectSocketMeta,
+): Promise<void> {
+  if (meta.presenceTracked) {
+    await store.removeWsConnectionRef(meta.roomId, meta.userId)
+  }
+
+  await store.updateRoom(meta.roomId, async (state) => {
+    if (!state) {
+      return null
+    }
+
+    const activeUsers = await store.getWsPresenceUserIds(meta.roomId)
+    if (activeUsers.size === 0) {
+      await destroyRoom(store, meta.roomId)
+      return null
+    }
+
+    if (activeUsers.has(meta.userId)) {
+      return null
+    }
+
+    applyUserWentOffline(state, meta.roomId, meta.userId)
+    await deleteLocalMediaEntriesForOwner(meta.roomId, meta.userId)
+    schedulePrune(meta.roomId, meta.userId, store)
+    return state
+  })
+}

@@ -65,7 +65,8 @@ export class RoomStateStore implements RoomStateStorePort {
     const client = await getCommandClient()
     const stateKey = keys.roomState(roomId)
     const presenceKey = keys.roomPresenceRef(roomId)
-    await client.del([stateKey, presenceKey])
+    const identityKey = keys.roomIdentity(roomId)
+    await client.del([stateKey, presenceKey, identityKey])
   }
 
   async listRoomIds(): Promise<string[]> {

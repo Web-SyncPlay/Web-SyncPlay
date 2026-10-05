@@ -1,5 +1,25 @@
 import { normalizeRole } from "@/lib/room-utils"
-import type { ParticipantState, RoomState, SessionKind } from "@/zod/types"
+import type {
+  ParticipantState,
+  RoomRole,
+  RoomState,
+  SessionKind,
+} from "@/zod/types"
+
+export type ConnectionAuthContext = {
+  isControlSession: boolean
+  controlAuthorized: boolean
+  sessionKind?: SessionKind
+}
+
+export type SessionCapabilities = {
+  canControlPlayback: boolean
+  canManagePlaylist: boolean
+  canManageRoomSecurity: boolean
+  isControlSession: boolean
+  controlAuthorized: boolean
+  sessionKind: SessionKind
+}
 
 export function hasPlaybackAndPlaylistControl(
   state: RoomState,
@@ -14,29 +34,61 @@ export function hasPlaybackAndPlaylistControl(
   return role === "owner" || role === "moderator"
 }
 
-export function canControlFromConnectionContext(
-  state: RoomState,
-  userId: string,
-  context: {
-    isControlSession: boolean
-    controlAuthorized: boolean
-    sessionKind?: SessionKind
-  },
-) {
-  // Player embeds are display surfaces — no room mutations.
+function passesSessionGate(context: ConnectionAuthContext) {
   if (context.sessionKind === "player") {
     return false
   }
-
-  if (!hasPlaybackAndPlaylistControl(state, userId)) {
-    return false
-  }
-
   if (!context.isControlSession) {
     return true
   }
-
   return context.controlAuthorized
+}
+
+export function canControlFromConnectionContext(
+  state: RoomState,
+  userId: string,
+  context: ConnectionAuthContext,
+) {
+  if (!passesSessionGate(context)) {
+    return false
+  }
+  return hasPlaybackAndPlaylistControl(state, userId)
+}
+
+/** Owner-only room security (password) — same session gate as playback control. */
+export function canManageRoomSecurityFromConnectionContext(
+  state: RoomState,
+  userId: string,
+  context: ConnectionAuthContext,
+) {
+  if (!passesSessionGate(context)) {
+    return false
+  }
+  return state.ownerId === userId
+}
+
+export function computeSessionCapabilities(params: {
+  role: RoomRole
+  sessionKind: SessionKind
+  isControlSession: boolean
+  controlAuthorized: boolean
+}): SessionCapabilities {
+  const { role, sessionKind, isControlSession, controlAuthorized } = params
+  const canControlByRole = role === "owner" || role === "moderator"
+  const playerBlocked = sessionKind === "player"
+  const sessionOk =
+    !playerBlocked && (!isControlSession || controlAuthorized)
+  const canMutate = sessionOk && canControlByRole
+  const canManageRoomSecurity = sessionOk && role === "owner"
+
+  return {
+    canControlPlayback: canMutate,
+    canManagePlaylist: canMutate,
+    canManageRoomSecurity,
+    isControlSession,
+    controlAuthorized,
+    sessionKind,
+  }
 }
 
 export function normalizeParticipantRoles(state: RoomState): void {

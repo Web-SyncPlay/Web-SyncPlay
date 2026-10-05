@@ -1,7 +1,15 @@
+import { destroyRoom } from "@/server/realtime/services/disconnect"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
 import { transferOwnershipIfNeeded } from "./ownership"
-import { clearAllRoomPrunes } from "./participants"
+import {
+  pruneOfflineParticipants,
+  reconcileParticipantsConnectivity,
+} from "./participants"
 
+/**
+ * Ops cleanup: sync presence, prune offline participants past grace,
+ * transfer ownership, delete empty rooms.
+ */
 export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
   scannedRooms: number
   removedRooms: number
@@ -23,32 +31,19 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
       }
 
       const activeConnections = await store.getWsPresenceUserIds(roomId)
-      let didMutate = false
-      for (const participant of Object.values(current.participants)) {
-        const isConnected = activeConnections.has(participant.userId)
-        if (participant.connected !== isConnected) {
-          didMutate = true
-        }
-        participant.connected = isConnected
-        if (isConnected) {
-          participant.disconnectedAt = undefined
-        } else if (!participant.disconnectedAt) {
-          participant.disconnectedAt = Date.now()
-          participant.lastSeenAt = Date.now()
-        }
-      }
+      const recon = reconcileParticipantsConnectivity(
+        current,
+        activeConnections,
+      )
+      let didMutate =
+        recon.disconnecting.length > 0 || recon.reconnecting.length > 0
 
-      const prunedUserIds: string[] = []
-      for (const [userId, participant] of Object.entries(
-        current.participants,
-      )) {
-        if (participant.connected) continue
-        delete current.participants[userId]
-        prunedUserIds.push(userId)
+      const prunedUserIds = pruneOfflineParticipants(current, Date.now())
+      lastPruned = prunedUserIds.length
+      if (prunedUserIds.length > 0) {
         didMutate = true
       }
 
-      lastPruned = prunedUserIds.length
       if (transferOwnershipIfNeeded(current, "cleanup")) {
         didMutate = true
       }
@@ -56,8 +51,7 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
       const hasConnections = activeConnections.size > 0
       const hasParticipants = Object.keys(current.participants).length > 0
       if (!hasConnections && !hasParticipants) {
-        await store.delete(roomId)
-        clearAllRoomPrunes(roomId)
+        await destroyRoom(store, roomId)
         lastDeleted = true
         return null
       }

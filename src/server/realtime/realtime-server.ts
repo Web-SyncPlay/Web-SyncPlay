@@ -1,10 +1,4 @@
-import { appendActionLog } from "@/server/log"
-import { deleteLocalMediaEntriesForOwner } from "@/server/media/local-media-store"
-import {
-  applyOfflinePruning,
-  clearAllRoomPrunes,
-  schedulePrune,
-} from "@/server/realtime/services/participants"
+import { handleSocketDisconnect } from "@/server/realtime/services/disconnect"
 import { subscribeRoomUpdates } from "@/server/redis/pubsub"
 import { getRoomStateStore } from "@/server/redis/state-store"
 import {
@@ -20,12 +14,7 @@ import type { Server as HttpServer } from "node:http"
 import type { WebSocket } from "ws"
 import { roomMessageHandlers } from "./handlers/index"
 import { handleRoomJoin } from "./handlers/join"
-import { transferOwnershipIfNeeded } from "./services/ownership"
 import { sanitizeRoomStateForClient } from "./services/room-security"
-
-function nextMonotonicMs(previous: number, next: number) {
-  return Math.max(previous + 1, next)
-}
 
 function broadcastRoomStateLocal(roomId: string, state: unknown) {
   const payload = sanitizeRoomStateForClient(state as RoomState)
@@ -70,83 +59,11 @@ function setupWebSocketConnection(
     if (!meta) {
       return
     }
-    if (meta.presenceTracked) {
-      await store.removeWsConnectionRef(meta.roomId, meta.userId)
+    try {
+      await handleSocketDisconnect(store, meta)
+    } catch (error) {
+      console.error("[realtime] disconnect handling failed", error)
     }
-
-    await store.updateRoom(meta.roomId, async (state) => {
-      if (!state) {
-        return null
-      }
-      const activeUsers = await store.getWsPresenceUserIds(meta.roomId)
-      if (activeUsers.size === 0) {
-        await store.delete(meta.roomId)
-        clearAllRoomPrunes(meta.roomId)
-        return null
-      }
-      const stillActive = activeUsers.has(meta.userId)
-      if (!stillActive) {
-        let didMutate = false
-        const now = Date.now()
-        const participant = state.participants[meta.userId]
-        if (participant) {
-          participant.connected = false
-          participant.disconnectedAt = now
-          participant.lastSeenAt = now
-          participant.localPlayback.updatedAt = now
-          didMutate = true
-        }
-
-        let invalidatedCurrent = false
-        for (const item of state.playlist) {
-          if (item.sourceKind !== "local_file") continue
-          if (!item.localOriginUserId || item.localOriginUserId !== meta.userId)
-            continue
-          if (item.blockedReason === "local_owner_offline") continue
-
-          item.ingestStatus = "error"
-          item.ingestError =
-            "Local file owner went offline. Re-add the file to resume."
-          item.blockedReason = "local_owner_offline"
-          didMutate = true
-
-          if (state.playlist[state.currentIndex]?.id === item.id) {
-            invalidatedCurrent = true
-          }
-        }
-
-        if (invalidatedCurrent && !state.playback.paused) {
-          state.playback.paused = true
-          state.playback.serverNowMs = nextMonotonicMs(
-            state.playback.serverNowMs,
-            now,
-          )
-          didMutate = true
-        }
-
-        await deleteLocalMediaEntriesForOwner(meta.roomId, meta.userId)
-
-        applyOfflinePruning(state)
-        if (transferOwnershipIfNeeded(state, "disconnect")) {
-          didMutate = true
-        }
-        if (participant) {
-          appendActionLog(state, {
-            roomId: meta.roomId,
-            actorUserId: meta.userId,
-            actorUsername: participant.username,
-            action: "participant:disconnected",
-            payload: {},
-          })
-        }
-        if (didMutate) {
-          state.updatedAt = now
-        }
-        schedulePrune(meta.roomId, meta.userId, store)
-        return state
-      }
-      return null
-    })
   })
 
   ws.on("message", async (message) => {
