@@ -9,6 +9,15 @@ export default defineConfig([
   ...nextTs,
   ...pluginQuery.configs["flat/recommended"],
   prettier,
+  {
+    // Pin React version so eslint-plugin-react skips detectReactVersion()
+    // (which still uses the removed ESLint context.getFilename API).
+    settings: {
+      react: {
+        version: "19.3",
+      },
+    },
+  },
   globalIgnores([
     "**/build/**",
     "**/dist/**",

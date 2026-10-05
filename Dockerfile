@@ -1,4 +1,4 @@
-FROM oven/bun:1.3.13-alpine AS base
+FROM oven/bun:1.4.2-alpine AS base
 WORKDIR /app
 
 LABEL org.opencontainers.image.url="https://web-syncplay.de" \
@@ -19,14 +19,9 @@ RUN bun install --frozen-lockfile
 COPY . .
 RUN SKIP_ENV_VALIDATION=true bun run build
 
-# Runtime uses Node.js, not Bun: Bun's node:http compat layer (<=1.3.13) silently
-# drops socket.write() inside HTTP `upgrade` handlers (oven-sh/bun#9882, fix in
-# unmerged PR #27237), which breaks the WebSocket 101 handshake performed by the
-# `ws` library at src/server/ws/transport.ts. `next dev` works on Bun because
-# Next.js 16 uses Turbopack's Rust HTTP server in dev, bypassing node:http.
-# Once that bug ships in a Bun release, the runtime stage can be collapsed back
-# into the Bun image.
-FROM node:22-alpine AS runner
+# Bun >= 1.4 ships the node:http upgrade-socket fix (oven-sh/bun#30664), so the
+# `ws` handshake in src/server/ws/transport.ts works under Bun in production.
+FROM base AS runner
 WORKDIR /app
 
 RUN apk add --no-cache yt-dlp
@@ -46,11 +41,11 @@ ENV NODE_ENV=production \
     CONTROL_TOKEN_TTL_SECONDS=43200
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=builder --chown=node:node /app/.next ./.next
+COPY --from=builder --chown=bun:bun /app/.next ./.next
 COPY package.json next.config.ts ./
 COPY public ./public
 COPY src/env.js ./src/env.js
 
-USER node
+USER bun
 EXPOSE 3000/tcp
-CMD ["node", "node_modules/next/dist/bin/next", "start"]
+CMD ["bun", "run", "start"]

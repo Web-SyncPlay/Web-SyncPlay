@@ -37,6 +37,8 @@ export function useRoomSession(
     [roomId, userId, userSecret],
   )
 
+  const participantRole = roomState?.participants[userId]?.role
+
   useEffect(() => {
     let cancelled = false
     void mintControlEmbedUrl({ roomId, userId, userSecret }).then((url) => {
@@ -45,7 +47,7 @@ export function useRoomSession(
     return () => {
       cancelled = true
     }
-  }, [roomId, userId, userSecret, roomState?.participants[userId]?.role])
+  }, [roomId, userId, userSecret, participantRole])
 
   const handleCopyShareUrl = useCallback(async () => {
     try {

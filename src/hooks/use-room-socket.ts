@@ -65,13 +65,19 @@ export function useRoomSocket(
   const sendJoinRef = useRef<(() => void) | null>(null)
   const controlTokenRef = useRef<string | undefined>(undefined)
 
-  const { userId, userSecret } = useMemo(() => {
+  const { userId, userSecret, controlTokenFromHash } = useMemo(() => {
     const fromHash = consumeSessionIdentityFromHash()
-    if (fromHash.controlToken) {
-      controlTokenRef.current = fromHash.controlToken
+    return {
+      ...getOrCreateSessionIdentity(),
+      controlTokenFromHash: fromHash.controlToken,
     }
-    return getOrCreateSessionIdentity()
   }, [])
+
+  useEffect(() => {
+    if (controlTokenFromHash) {
+      controlTokenRef.current = controlTokenFromHash
+    }
+  }, [controlTokenFromHash])
 
   useEffect(() => {
     // Some clients briefly re-apply the initial hash during hydration/history sync.

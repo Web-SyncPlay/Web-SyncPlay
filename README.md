@@ -4,7 +4,7 @@ Watch videos or play music in sync with friends. Unified Next.js app with an emb
 
 ## Stack
 
-- Bun for install/dev; **Node.js** for production runtime (WebSocket upgrade compatibility)
+- Bun for install, dev, and production runtime
 - Next.js + React + TypeScript
 - Tailwind CSS + shadcn/ui + Lucide
 - Vidstack player

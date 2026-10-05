@@ -33,7 +33,14 @@ export async function getCommandClient(): Promise<RedisClientType> {
     return slot.command
   }
 
-  slot.command ??= createClient({ url: env.VALKEY_URL })
+  slot.command ??= createClient({
+    url: env.VALKEY_URL,
+    // redis@6 defaults to RESP3 + a 5s command timeout. Keep RESP3 (Valkey-
+    // compatible) but restore no-timeout command behavior and disable Redis
+    // Enterprise maintenance notifications (not applicable to Valkey).
+    commandOptions: { timeout: undefined },
+    maintNotifications: "disabled",
+  })
   if (!slot.command.isOpen) {
     await slot.command.connect()
   }
@@ -46,7 +53,11 @@ export async function getSubscriberClient(): Promise<RedisClientType> {
     return slot.subscriber
   }
 
-  slot.subscriber ??= createClient({ url: env.VALKEY_URL })
+  slot.subscriber ??= createClient({
+    url: env.VALKEY_URL,
+    commandOptions: { timeout: undefined },
+    maintNotifications: "disabled",
+  })
   if (!slot.subscriber.isOpen) {
     await slot.subscriber.connect()
   }
