@@ -3,6 +3,9 @@
 FROM oven/bun:1.4.2-alpine AS base
 WORKDIR /app
 
+# https://nextjs.org/telemetry
+ENV NEXT_TELEMETRY_DISABLED=1
+
 LABEL org.opencontainers.image.url="https://web-syncplay.de" \
     org.opencontainers.image.description="Watch videos or play music in sync with your friends" \
     org.opencontainers.image.title="Web-SyncPlay" \

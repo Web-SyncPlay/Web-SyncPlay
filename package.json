@@ -3,9 +3,9 @@
   "private": true,
   "packageManager": "bun@1.4.2",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "NEXT_TELEMETRY_DISABLED=1 next dev",
+    "build": "NEXT_TELEMETRY_DISABLED=1 next build",
+    "start": "NEXT_TELEMETRY_DISABLED=1 next start",
     "lint": "eslint",
     "typecheck": "bunx --package @typescript/native tsc -p tsconfig.json --noEmit",
     "test": "bun test",
