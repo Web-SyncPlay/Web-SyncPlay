@@ -1,85 +1,149 @@
-import {
-  installShutdownOnce,
-  registerShutdownHandler,
-} from "@/server/lifecycle"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
+import { getCommandClient } from "@/server/redis/client"
+import { keys } from "@/server/redis/keys"
 import type { RoomState } from "@/zod/types"
 
-const participantPruneMs = Number(process.env.PARTICIPANT_PRUNE_MS ?? 60_000)
+export const PARTICIPANT_PRUNE_MS = 60_000
+const PARTICIPANT_PRUNE_SECONDS = Math.ceil(PARTICIPANT_PRUNE_MS / 1000)
+/** Keep the pending-prunes index at least as long as a grace period, with slack. */
+const PENDING_PRUNES_TTL_SECONDS = PARTICIPANT_PRUNE_SECONDS * 2
 
-let pruneShutdownRegistered = false
-
-function ensurePruneShutdownRegistered() {
-  if (pruneShutdownRegistered) return
-  pruneShutdownRegistered = true
-  installShutdownOnce()
-  registerShutdownHandler(async () => {
-    const timers = getPruneTimers()
-    for (const t of timers.values()) {
-      clearTimeout(t)
-    }
-    timers.clear()
-  })
+function encodePruneMember(roomId: string, userId: string) {
+  return `${roomId}\t${userId}`
 }
 
-type PruneTimers = Map<string, ReturnType<typeof setTimeout>>
-
-function getPruneTimers(): PruneTimers {
-  const g = globalThis as typeof globalThis & {
-    __webSyncPlayPruneTimers?: PruneTimers
+export function parsePruneMember(
+  member: string,
+): { roomId: string; userId: string } | null {
+  const idx = member.indexOf("\t")
+  if (idx <= 0 || idx === member.length - 1) return null
+  return {
+    roomId: member.slice(0, idx),
+    userId: member.slice(idx + 1),
   }
-  g.__webSyncPlayPruneTimers ??= new Map()
-  return g.__webSyncPlayPruneTimers
 }
 
 export function pruneKey(roomId: string, userId: string) {
   return `${roomId}:${userId}`
 }
 
-export function clearAllRoomPrunes(roomId: string) {
-  const pruneTimers = getPruneTimers()
-  for (const [key, timer] of pruneTimers.entries()) {
-    if (!key.startsWith(`${roomId}:`)) continue
-    clearTimeout(timer)
-    pruneTimers.delete(key)
-  }
-}
-
-export function clearPrune(roomId: string, userId: string) {
-  const pruneTimers = getPruneTimers()
-  const key = pruneKey(roomId, userId)
-  const existing = pruneTimers.get(key)
-  if (existing) {
-    clearTimeout(existing)
-    pruneTimers.delete(key)
-  }
-}
-
-export function schedulePrune(
-  roomId: string,
-  userId: string,
-  store: RoomStateStorePort,
+async function refreshPendingPrunesTtl(
+  client: Awaited<ReturnType<typeof getCommandClient>>,
 ) {
-  ensurePruneShutdownRegistered()
-  clearPrune(roomId, userId)
-  const pruneTimers = getPruneTimers()
-  const key = pruneKey(roomId, userId)
-  const timer = setTimeout(() => {
-    pruneTimers.delete(key)
-    void store.updateRoom(roomId, (state) => {
-      if (!state) {
-        return null
+  await client.expire(keys.roomPendingPrunes(), PENDING_PRUNES_TTL_SECONDS)
+}
+
+export async function clearAllRoomPrunes(roomId: string) {
+  try {
+    const client = await getCommandClient()
+    const members = await client.sMembers(keys.roomPendingPrunes())
+    const prefix = `${roomId}\t`
+    const toRemove: string[] = []
+    const pruneKeys: string[] = []
+
+    for (const member of members) {
+      if (!member.startsWith(prefix)) continue
+      toRemove.push(member)
+      const parsed = parsePruneMember(member)
+      if (parsed) {
+        pruneKeys.push(keys.roomParticipantPrune(parsed.roomId, parsed.userId))
       }
-      const participant = state.participants[userId]
-      if (!participant || participant.connected) {
-        return state
-      }
-      delete state.participants[userId]
-      state.updatedAt = Date.now()
-      return state
+    }
+
+    if (pruneKeys.length > 0) {
+      await client.del(pruneKeys)
+    }
+    if (toRemove.length > 0) {
+      await client.sRem(keys.roomPendingPrunes(), toRemove)
+    }
+    await refreshPendingPrunesTtl(client)
+  } catch (error) {
+    console.warn("[participants] clearAllRoomPrunes redis failed", error)
+  }
+}
+
+export async function clearPrune(roomId: string, userId: string) {
+  try {
+    const client = await getCommandClient()
+    await client.del(keys.roomParticipantPrune(roomId, userId))
+    await client.sRem(
+      keys.roomPendingPrunes(),
+      encodePruneMember(roomId, userId),
+    )
+    await refreshPendingPrunesTtl(client)
+  } catch (error) {
+    console.warn("[participants] clearPrune redis failed", error)
+  }
+}
+
+export async function schedulePrune(roomId: string, userId: string) {
+  try {
+    const client = await getCommandClient()
+    await client.set(keys.roomParticipantPrune(roomId, userId), "1", {
+      EX: PARTICIPANT_PRUNE_SECONDS,
     })
-  }, participantPruneMs)
-  pruneTimers.set(key, timer)
+    await client.sAdd(
+      keys.roomPendingPrunes(),
+      encodePruneMember(roomId, userId),
+    )
+    await refreshPendingPrunesTtl(client)
+  } catch (error) {
+    console.warn("[participants] schedulePrune redis failed", error)
+  }
+}
+
+/**
+ * Pending members whose grace key expired — remove disconnected participants.
+ * Safe across instances; room update WATCH serializes mutations.
+ */
+export async function processDuePrunes(
+  store: RoomStateStorePort,
+): Promise<number> {
+  try {
+    const client = await getCommandClient()
+    const members = await client.sMembers(keys.roomPendingPrunes())
+    let pruned = 0
+    let mutated = false
+
+    for (const member of members) {
+      const parsed = parsePruneMember(member)
+      if (!parsed) {
+        await client.sRem(keys.roomPendingPrunes(), member)
+        mutated = true
+        continue
+      }
+
+      const graceKey = keys.roomParticipantPrune(parsed.roomId, parsed.userId)
+      const stillGrace = await client.get(graceKey)
+      if (stillGrace) continue
+
+      const next = await store.updateRoom(parsed.roomId, (state) => {
+        if (!state) return null
+        const participant = state.participants[parsed.userId]
+        if (!participant || participant.connected) {
+          return state
+        }
+        delete state.participants[parsed.userId]
+        state.updatedAt = Date.now()
+        return state
+      })
+
+      await client.sRem(keys.roomPendingPrunes(), member)
+      mutated = true
+      if (next && !next.participants[parsed.userId]) {
+        pruned += 1
+      }
+    }
+
+    if (mutated || members.length > 0) {
+      await refreshPendingPrunesTtl(client)
+    }
+
+    return pruned
+  } catch (error) {
+    console.warn("[participants] processDuePrunes redis failed", error)
+    return 0
+  }
 }
 
 export function pruneOfflineParticipants(state: RoomState, nowMs: number) {
@@ -95,7 +159,7 @@ export function pruneOfflineParticipants(state: RoomState, nowMs: number) {
       continue
     }
 
-    if (nowMs - disconnectedAt < participantPruneMs) {
+    if (nowMs - disconnectedAt < PARTICIPANT_PRUNE_MS) {
       continue
     }
 
@@ -141,7 +205,7 @@ export function applyOfflinePruning(state: RoomState) {
   }
 
   for (const userId of prunedUserIds) {
-    clearPrune(state.roomId, userId)
+    void clearPrune(state.roomId, userId)
   }
   state.updatedAt = nowMs
 }

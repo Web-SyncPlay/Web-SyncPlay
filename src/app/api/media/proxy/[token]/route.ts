@@ -60,7 +60,7 @@ function buildUpstreamHeaders(
 
 async function authorizeProxyRequest(request: Request, token: string) {
   const ip = clientIpFromRequest(request)
-  const ipLimit = consumeRateLimit({
+  const ipLimit = await consumeRateLimit({
     key: `proxy:ip:${ip}`,
     limit: 240,
     windowMs: 60_000,
@@ -68,7 +68,7 @@ async function authorizeProxyRequest(request: Request, token: string) {
   if (!ipLimit.allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 })
   }
-  const tokenLimit = consumeRateLimit({
+  const tokenLimit = await consumeRateLimit({
     key: `proxy:token:${token}`,
     limit: 120,
     windowMs: 60_000,

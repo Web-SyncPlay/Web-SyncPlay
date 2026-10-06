@@ -1,51 +1,38 @@
-type Bucket = {
-  timestamps: number[]
-}
+import { getCommandClient } from "@/server/redis/client"
 
-const buckets = new Map<string, Bucket>()
-
-function prune(bucket: Bucket, windowMs: number, now: number) {
-  const cutoff = now - windowMs
-  while (bucket.timestamps.length > 0 && bucket.timestamps[0]! < cutoff) {
-    bucket.timestamps.shift()
-  }
-}
+type RateLimitResult = { allowed: boolean; remaining: number }
 
 /**
- * Simple in-process sliding-window rate limiter.
- * Suitable for single-node Docker deploys; multi-node needs Redis later.
+ * Redis fixed-window rate limiter (INCR + EXPIRE).
+ * Fail-open on Redis errors so rooms stay available during Valkey blips.
  */
-export function consumeRateLimit(params: {
+export async function consumeRateLimit(params: {
   key: string
   limit: number
   windowMs: number
-}): { allowed: boolean; remaining: number } {
-  const now = Date.now()
-  const bucket = buckets.get(params.key) ?? { timestamps: [] }
-  prune(bucket, params.windowMs, now)
-  if (bucket.timestamps.length === 0) {
-    buckets.delete(params.key)
-  }
-  if (bucket.timestamps.length >= params.limit) {
-    buckets.set(params.key, bucket)
-    return { allowed: false, remaining: 0 }
-  }
-  bucket.timestamps.push(now)
-  buckets.set(params.key, bucket)
+}): Promise<RateLimitResult> {
+  const windowSeconds = Math.max(1, Math.ceil(params.windowMs / 1000))
+  const redisKey = `rate:${params.key}`
 
-  // Opportunistic GC so idle keys do not linger forever in long-lived processes.
-  if (buckets.size > 2_000) {
-    for (const [key, idle] of buckets) {
-      prune(idle, params.windowMs, now)
-      if (idle.timestamps.length === 0) {
-        buckets.delete(key)
-      }
+  try {
+    const client = await getCommandClient()
+    const count = await client.incr(redisKey)
+    // Fixed window: set TTL only on the first hit so traffic cannot extend the window.
+    if (count === 1) {
+      await client.expire(redisKey, windowSeconds)
     }
-  }
 
-  return {
-    allowed: true,
-    remaining: Math.max(0, params.limit - bucket.timestamps.length),
+    if (count > params.limit) {
+      return { allowed: false, remaining: 0 }
+    }
+
+    return {
+      allowed: true,
+      remaining: Math.max(0, params.limit - count),
+    }
+  } catch (error) {
+    console.warn("[rate-limit] redis unavailable; allowing request", error)
+    return { allowed: true, remaining: params.limit }
   }
 }
 

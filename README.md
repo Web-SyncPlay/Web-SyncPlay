@@ -83,7 +83,7 @@ curl -X POST -H "Authorization: Bearer $OPS_SECRET" http://localhost:3000/api/pl
 
 Health check: `GET /api/health` (Valkey ping).
 
-Key env vars (see `.env.example`): `VALKEY_URL`, `YTDLP_*`, `OPS_SECRET`, `CONTROL_TOKEN_TTL_SECONDS`, `PROXY_ALLOW_PRIVATE_URLS`, `LOCAL_MEDIA_RELAY_*`, `LOCAL_MEDIA_BLOCK_CACHE_*`.
+Key env vars (see `.env.example`): `VALKEY_URL`, `YTDLP_*`, `OPS_SECRET`, `CONTROL_TOKEN_TTL_SECONDS`, `PROXY_ALLOW_PRIVATE_URLS`, `WS_HEARTBEAT_INTERVAL_MS`, room limits. Fixed in code: WS heartbeat timeout = 3× interval; yt-dlp lock/lease timings from `YTDLP_*`; room TTL 1h; proxy token 7d; coalesce / local-media / HLS cache intervals.
 
 ## Production
 

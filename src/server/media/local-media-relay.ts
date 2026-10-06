@@ -1,4 +1,3 @@
-import { env } from "@/env"
 import {
   getOrFetchLocalMediaBlock,
   invalidateLocalMediaBlockCache,
@@ -13,6 +12,9 @@ import {
 } from "@/lib/local-media-errors"
 import { randomUUID } from "node:crypto"
 import type { WebSocket } from "ws"
+
+const LOCAL_MEDIA_RELAY_CHUNK_BYTES = 256 * 1024
+const LOCAL_MEDIA_RELAY_TIMEOUT_MS = 15_000
 
 export type LocalMediaReadRequest = {
   requestId: string
@@ -179,7 +181,7 @@ async function fetchChunkViaLocalSockets(
   }
 
   const requestId = randomUUID()
-  const pending = createPending(requestId, env.LOCAL_MEDIA_RELAY_TIMEOUT_MS)
+  const pending = createPending(requestId, LOCAL_MEDIA_RELAY_TIMEOUT_MS)
   const sent = sendReadToSockets(sockets, {
     requestId,
     localMediaId: entry.id,
@@ -234,7 +236,7 @@ async function fetchChunkViaRedis(
 
   const timeoutSeconds = Math.max(
     1,
-    Math.ceil(env.LOCAL_MEDIA_RELAY_TIMEOUT_MS / 1000),
+    Math.ceil(LOCAL_MEDIA_RELAY_TIMEOUT_MS / 1000),
   )
   const result = await client.blPop(replyKey, timeoutSeconds)
   if (!result) {
@@ -270,7 +272,7 @@ async function handleRelayPubSubRequest(raw: string) {
     return
   }
 
-  const pending = createPending(requestId, env.LOCAL_MEDIA_RELAY_TIMEOUT_MS)
+  const pending = createPending(requestId, LOCAL_MEDIA_RELAY_TIMEOUT_MS)
   const sent = sendReadToSockets(sockets, {
     requestId,
     localMediaId: message.localMediaId,
@@ -362,18 +364,11 @@ export function alignedBlockStart(offset: number, chunkBytes: number) {
  * One cacheable provider block. Concurrent viewers coalesce via singleflight;
  * later viewers hit the process-local LRU so the sharer’s upload is ~1× per block.
  */
-function relayChunkBytes() {
-  const raw = env.LOCAL_MEDIA_RELAY_CHUNK_BYTES
-  return typeof raw === "number" && Number.isFinite(raw) && raw > 0
-    ? raw
-    : 256 * 1024
-}
-
 export async function fetchLocalMediaAlignedBlock(
   entry: LocalMediaEntry,
   blockStart: number,
 ): Promise<{ bytes: Uint8Array; cacheHit: boolean }> {
-  const chunkBytes = relayChunkBytes()
+  const chunkBytes = LOCAL_MEDIA_RELAY_CHUNK_BYTES
   const aligned = alignedBlockStart(blockStart, chunkBytes)
   if (aligned !== blockStart) {
     throw new LocalMediaRelayError(
@@ -399,7 +394,7 @@ export function createLocalMediaByteStream(
   start: number,
   end: number,
 ): ReadableStream<Uint8Array> {
-  const chunkBytes = relayChunkBytes()
+  const chunkBytes = LOCAL_MEDIA_RELAY_CHUNK_BYTES
   let offset = start
   const last = Math.min(end, entry.sizeBytes - 1)
 

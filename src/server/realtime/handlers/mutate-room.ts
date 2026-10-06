@@ -29,10 +29,10 @@ export async function mutateRoomMessage(
     const active = await store.getWsPresenceUserIds(roomId)
     const recon = reconcileParticipantsConnectivity(state, active)
     for (const uid of recon.disconnecting) {
-      schedulePrune(roomId, uid, store)
+      await schedulePrune(roomId, uid)
     }
     for (const uid of recon.reconnecting) {
-      clearPrune(roomId, uid)
+      await clearPrune(roomId, uid)
     }
     applyOfflinePruning(state)
 

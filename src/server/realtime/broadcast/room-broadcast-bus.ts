@@ -1,4 +1,3 @@
-import { env } from "@/env"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
@@ -22,6 +21,10 @@ import type {
 
 /** Identifies this process so Redis pub/sub echoes are not double-delivered. */
 export const BROADCAST_NODE_ID = randomUUID()
+
+const PRESENCE_BATCH_INTERVAL_MS = 250
+const SNAPSHOT_COALESCE_MS = 100
+const ACTION_LOG_SNAPSHOT_MAX_MS = 2000
 
 type WiredEnvelope = RoomBroadcastEnvelope & { originNodeId?: string }
 
@@ -188,7 +191,7 @@ export class RoomBroadcastBus {
     dirty.presenceTimer = setTimeout(() => {
       dirty.presenceTimer = undefined
       void this.flushPresence(roomId)
-    }, env.PRESENCE_BATCH_INTERVAL_MS)
+    }, PRESENCE_BATCH_INTERVAL_MS)
   }
 
   markSnapshotDirty(roomId: string) {
@@ -198,7 +201,7 @@ export class RoomBroadcastBus {
     dirty.snapshotTimer = setTimeout(() => {
       dirty.snapshotTimer = undefined
       void this.flushSnapshot(roomId)
-    }, env.SNAPSHOT_COALESCE_MS)
+    }, SNAPSHOT_COALESCE_MS)
   }
 
   markActionLogDirty(roomId: string) {
@@ -211,7 +214,7 @@ export class RoomBroadcastBus {
       dirty.actionLog = false
       dirty.snapshot = true
       void this.flushSnapshot(roomId)
-    }, env.ACTION_LOG_SNAPSHOT_MAX_MS)
+    }, ACTION_LOG_SNAPSHOT_MAX_MS)
   }
 
   async flushPresence(roomId: string) {

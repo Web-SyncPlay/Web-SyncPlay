@@ -16,7 +16,7 @@ const mintSchema = z.object({
 
 export async function POST(request: Request) {
   const ip = clientIpFromRequest(request)
-  const limit = consumeRateLimit({
+  const limit = await consumeRateLimit({
     key: `control-token:${ip}`,
     limit: 20,
     windowMs: 60_000,

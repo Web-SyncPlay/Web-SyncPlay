@@ -45,79 +45,27 @@ export const env = createEnv({
       .min(100)
       .max(30000)
       .default(5000),
-    WS_HEARTBEAT_TIMEOUT_MS: z.coerce
-      .number()
-      .int()
-      .min(1000)
-      .max(60000)
-      .default(15000),
     OPS_SECRET: z.string().min(8).optional(),
     PROXY_ALLOW_PRIVATE_URLS: z
       .enum(["true", "false"])
       .default("false")
-      .transform((value) => value === "true"),
+      .transform((value) => {
+        // Never allow private/LAN proxy targets in production, regardless of input.
+        if (process.env.NODE_ENV === "production") return false
+        return value === "true"
+      }),
     CONTROL_TOKEN_TTL_SECONDS: z.coerce
       .number()
       .int()
       .min(60)
       .max(60 * 60 * 48)
       .default(60 * 60 * 12),
-    LOCAL_MEDIA_RELAY_CHUNK_BYTES: z.coerce
-      .number()
-      .int()
-      .min(16 * 1024)
-      .max(1024 * 1024)
-      .default(256 * 1024),
-    LOCAL_MEDIA_RELAY_TIMEOUT_MS: z.coerce
-      .number()
-      .int()
-      .min(1_000)
-      .max(60_000)
-      .default(15_000),
-    /** How long aligned provider blocks stay in the process-local fan-out cache (0 disables). */
-    LOCAL_MEDIA_BLOCK_CACHE_TTL_MS: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .max(600_000)
-      .default(120_000),
-    /** Soft memory budget for cached local-media blocks (default 64 MiB). */
-    LOCAL_MEDIA_BLOCK_CACHE_MAX_BYTES: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .max(1024 * 1024 * 1024)
-      .default(64 * 1024 * 1024),
     YTDLP_CACHE_TTL_SECONDS: z.coerce
       .number()
       .int()
       .min(0)
       .max(86_400)
       .default(1800),
-    HLS_REWRITE_CACHE_TTL_MS: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .max(120_000)
-      .default(15_000),
-    PRESENCE_BATCH_INTERVAL_MS: z.coerce
-      .number()
-      .int()
-      .min(50)
-      .max(5_000)
-      .default(250),
-    SNAPSHOT_COALESCE_MS: z.coerce
-      .number()
-      .int()
-      .min(20)
-      .max(2_000)
-      .default(100),
-    ACTION_LOG_SNAPSHOT_MAX_MS: z.coerce
-      .number()
-      .int()
-      .min(200)
-      .max(10_000)
-      .default(2_000),
   },
 
   /**
@@ -146,20 +94,10 @@ export const env = createEnv({
     ROOM_ACTION_LOG_LIMIT: process.env.ROOM_ACTION_LOG_LIMIT,
     ROOM_PLAYLIST_LIMIT: process.env.ROOM_PLAYLIST_LIMIT,
     WS_HEARTBEAT_INTERVAL_MS: process.env.WS_HEARTBEAT_INTERVAL_MS,
-    WS_HEARTBEAT_TIMEOUT_MS: process.env.WS_HEARTBEAT_TIMEOUT_MS,
     OPS_SECRET: process.env.OPS_SECRET,
     PROXY_ALLOW_PRIVATE_URLS: process.env.PROXY_ALLOW_PRIVATE_URLS,
     CONTROL_TOKEN_TTL_SECONDS: process.env.CONTROL_TOKEN_TTL_SECONDS,
-    LOCAL_MEDIA_RELAY_CHUNK_BYTES: process.env.LOCAL_MEDIA_RELAY_CHUNK_BYTES,
-    LOCAL_MEDIA_RELAY_TIMEOUT_MS: process.env.LOCAL_MEDIA_RELAY_TIMEOUT_MS,
-    LOCAL_MEDIA_BLOCK_CACHE_TTL_MS: process.env.LOCAL_MEDIA_BLOCK_CACHE_TTL_MS,
-    LOCAL_MEDIA_BLOCK_CACHE_MAX_BYTES:
-      process.env.LOCAL_MEDIA_BLOCK_CACHE_MAX_BYTES,
     YTDLP_CACHE_TTL_SECONDS: process.env.YTDLP_CACHE_TTL_SECONDS,
-    HLS_REWRITE_CACHE_TTL_MS: process.env.HLS_REWRITE_CACHE_TTL_MS,
-    PRESENCE_BATCH_INTERVAL_MS: process.env.PRESENCE_BATCH_INTERVAL_MS,
-    SNAPSHOT_COALESCE_MS: process.env.SNAPSHOT_COALESCE_MS,
-    ACTION_LOG_SNAPSHOT_MAX_MS: process.env.ACTION_LOG_SNAPSHOT_MAX_MS,
   },
 
   /**

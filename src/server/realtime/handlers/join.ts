@@ -77,7 +77,7 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
   const sessionKind: SessionKind = joinResult.data.sessionKind ?? "room"
   const controlToken = joinResult.data.controlToken
 
-  const joinLimit = consumeRateLimit({
+  const joinLimit = await consumeRateLimit({
     key: `join:${roomId}`,
     limit: 60,
     windowMs: 60_000,
@@ -177,7 +177,7 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
 
     applyOfflinePruning(state)
 
-    clearPrune(roomId, userId)
+    await clearPrune(roomId, userId)
     const existingParticipant = state.participants[userId]
     const role: ParticipantState["role"] =
       existingParticipant?.role ??
@@ -275,9 +275,9 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
   }
 
   for (const uid of reconnectingUserIds) {
-    clearPrune(roomId, uid)
+    await clearPrune(roomId, uid)
   }
   for (const uid of disconnectingUserIds) {
-    schedulePrune(roomId, uid, ctx.store)
+    await schedulePrune(roomId, uid)
   }
 }

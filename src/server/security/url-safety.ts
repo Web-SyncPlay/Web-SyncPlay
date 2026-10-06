@@ -1,3 +1,4 @@
+import { env } from "@/env"
 import { isIP } from "node:net"
 
 const BLOCKED_HOSTNAMES = new Set([
@@ -7,7 +8,7 @@ const BLOCKED_HOSTNAMES = new Set([
 ])
 
 function allowPrivateUrls(): boolean {
-  return process.env.PROXY_ALLOW_PRIVATE_URLS === "true"
+  return env.PROXY_ALLOW_PRIVATE_URLS
 }
 
 function isPrivateOrLocalIp(ip: string): boolean {

@@ -1,4 +1,3 @@
-import { env } from "@/env"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
 import { RESP_TYPES } from "redis"
@@ -15,24 +14,13 @@ type CacheSlot = {
   totalBytes: number
 }
 
-const DEFAULT_TTL_MS = 120_000
-const DEFAULT_MAX_BYTES = 64 * 1024 * 1024
+const CACHE_TTL_MS = 120_000
+const CACHE_MAX_BYTES = 64 * 1024 * 1024
 const REDIS_WARN_INTERVAL_MS = 30_000
 const REDIS_BACKOFF_MS = 5_000
 
-function cacheTtlMs() {
-  const raw = env.LOCAL_MEDIA_BLOCK_CACHE_TTL_MS
-  // When SKIP_ENV_VALIDATION is set (unit tests), zod defaults may be absent.
-  return typeof raw === "number" && Number.isFinite(raw) ? raw : DEFAULT_TTL_MS
-}
-
 function cacheTtlSeconds() {
-  return Math.max(1, Math.ceil(cacheTtlMs() / 1000))
-}
-
-function cacheMaxBytes() {
-  const raw = env.LOCAL_MEDIA_BLOCK_CACHE_MAX_BYTES
-  return typeof raw === "number" && Number.isFinite(raw) ? raw : DEFAULT_MAX_BYTES
+  return Math.max(1, Math.ceil(CACHE_TTL_MS / 1000))
 }
 
 function slot(): CacheSlot {
@@ -54,7 +42,7 @@ function blockKey(mediaId: string, blockStart: number) {
 }
 
 function evictIfNeeded(incomingBytes: number) {
-  const maxBytes = cacheMaxBytes()
+  const maxBytes = CACHE_MAX_BYTES
   if (maxBytes <= 0) return
   const s = slot()
   while (s.totalBytes + incomingBytes > maxBytes && s.blocks.size > 0) {
@@ -197,7 +185,7 @@ export async function getOrFetchLocalMediaBlock(params: {
   blockStart: number
   fetch: () => Promise<Uint8Array>
 }): Promise<{ bytes: Uint8Array; cacheHit: boolean }> {
-  const ttl = cacheTtlMs()
+  const ttl = CACHE_TTL_MS
   const key = blockKey(params.mediaId, params.blockStart)
   const s = slot()
 

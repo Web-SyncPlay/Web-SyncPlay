@@ -1,6 +1,7 @@
 import { reclaimAbandonedResolves } from "@/server/media/yt-dlp/resolve-lease"
 import { derivedResolveReclaimIntervalMs } from "@/server/media/yt-dlp/policy"
 import { reresolveRemotePlaylistItem } from "@/server/realtime/services/playlist-resolve"
+import { processDuePrunes } from "@/server/realtime/services/participants"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
 import { env } from "@/env"
 import {
@@ -17,7 +18,8 @@ function timeoutMs(): number {
 
 /**
  * Periodically reclaim playlist resolves whose Valkey lease expired (holder
- * crashed). Safe to call from multiple instances — claim keys serialize work.
+ * crashed). Also processes due participant prunes. Safe to call from multiple
+ * instances — claim keys / WATCH serialize work.
  */
 export function startResolveReclaimLoop(store: RoomStateStorePort) {
   if (reclaimTimer) return
@@ -36,6 +38,12 @@ export function startResolveReclaimLoop(store: RoomStateStorePort) {
         console.info("[yt-dlp] reclaimed abandoned playlist resolves", {
           count: n,
         })
+      }
+    })
+
+    void processDuePrunes(store).then((n) => {
+      if (n > 0) {
+        console.info("[participants] pruned disconnected users", { count: n })
       }
     })
   }

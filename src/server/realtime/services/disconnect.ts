@@ -21,15 +21,44 @@ export type DisconnectSocketMeta = {
   presenceTracked: boolean
 }
 
+async function deleteLocalMediaForRoomOwners(
+  state: RoomState | null,
+  roomId: string,
+  extraOwnerUserIds: string[] = [],
+): Promise<void> {
+  const ownerIds = new Set<string>(extraOwnerUserIds)
+  if (state) {
+    for (const participant of Object.values(state.participants)) {
+      ownerIds.add(participant.userId)
+    }
+    for (const item of state.playlist) {
+      if (item.localOriginUserId) {
+        ownerIds.add(item.localOriginUserId)
+      }
+    }
+  }
+  await Promise.all(
+    [...ownerIds].map((ownerUserId) =>
+      deleteLocalMediaEntriesForOwner(roomId, ownerUserId),
+    ),
+  )
+}
+
 /**
- * Tear down a room: process-local prune timers + Redis state/presence/identities.
+ * Tear down a room: Redis prune markers + local media + Redis state/presence/identities.
  * Prefer this over calling `store.delete` directly from lifecycle paths.
  */
 export async function destroyRoom(
   store: RoomStateStorePort,
   roomId: string,
 ): Promise<void> {
-  clearAllRoomPrunes(roomId)
+  await clearAllRoomPrunes(roomId)
+  try {
+    const state = await store.get(roomId)
+    await deleteLocalMediaForRoomOwners(state, roomId)
+  } catch (error) {
+    console.warn("[disconnect] local media cleanup before destroy failed", error)
+  }
   await store.delete(roomId)
 }
 
@@ -136,6 +165,7 @@ export async function handleSocketDisconnect(
 
     const activeUsers = await store.getWsPresenceUserIds(meta.roomId)
     if (activeUsers.size === 0) {
+      await deleteLocalMediaForRoomOwners(state, meta.roomId, [meta.userId])
       await destroyRoom(store, meta.roomId)
       return null
     }
@@ -159,7 +189,7 @@ export async function handleSocketDisconnect(
 
     applyUserWentOffline(state, meta.roomId, meta.userId)
     await deleteLocalMediaEntriesForOwner(meta.roomId, meta.userId)
-    schedulePrune(meta.roomId, meta.userId, store)
+    await schedulePrune(meta.roomId, meta.userId)
     state.generation = (state.generation ?? 0) + 1
     state.structuralRevision = (state.structuralRevision ?? 0) + 1
     return state

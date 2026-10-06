@@ -1,4 +1,3 @@
-import { env } from "@/env"
 import { createHash } from "node:crypto"
 
 type CacheEntry = {
@@ -8,6 +7,7 @@ type CacheEntry = {
 }
 
 const MAX_ENTRIES = 256
+const HLS_REWRITE_CACHE_TTL_MS = 15_000
 const cache = new Map<string, CacheEntry>()
 const inflight = new Map<string, Promise<CacheEntry>>()
 
@@ -29,7 +29,7 @@ export function peekHlsRewriteCache(
   token: string,
   upstreamUrl: string,
 ): { body: string; contentType: string } | null {
-  if (env.HLS_REWRITE_CACHE_TTL_MS <= 0) return null
+  if (HLS_REWRITE_CACHE_TTL_MS <= 0) return null
   const key = cacheKey(token, upstreamUrl)
   const hit = cache.get(key)
   if (!hit || hit.expiresAt <= Date.now()) {
@@ -47,7 +47,7 @@ export async function getOrComputeHlsRewrite(params: {
   upstreamUrl: string
   compute: () => Promise<{ body: string; contentType: string }>
 }): Promise<{ body: string; contentType: string; cacheHit: boolean }> {
-  const ttl = env.HLS_REWRITE_CACHE_TTL_MS
+  const ttl = HLS_REWRITE_CACHE_TTL_MS
   const key = cacheKey(params.token, params.upstreamUrl)
 
   if (ttl <= 0) {

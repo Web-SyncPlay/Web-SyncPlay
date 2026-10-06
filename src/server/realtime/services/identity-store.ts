@@ -30,9 +30,12 @@ export async function matchIdentitySecret(params: {
   userSecret: string
 }): Promise<boolean> {
   const client = await getCommandClient()
-  const existing = await client.hGet(keys.roomIdentity(params.roomId), params.userId)
+  const key = keys.roomIdentity(params.roomId)
+  const existing = await client.hGet(key, params.userId)
   if (!existing) return false
-  return existing === params.userSecret
+  if (existing !== params.userSecret) return false
+  await client.expire(key, roomStateTtlSeconds)
+  return true
 }
 
 export async function clearRoomIdentities(roomId: string): Promise<void> {

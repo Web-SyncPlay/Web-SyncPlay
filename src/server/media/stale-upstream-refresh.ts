@@ -20,7 +20,7 @@ export async function scheduleStaleUpstreamRefresh(
   const mediaId = payload.mediaId
   if (!roomId || !mediaId) return false
 
-  const limit = consumeRateLimit({
+  const limit = await consumeRateLimit({
     key: `stale-refresh:${roomId}:${mediaId}`,
     limit: 2,
     windowMs: 60_000,

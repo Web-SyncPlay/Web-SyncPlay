@@ -105,9 +105,29 @@ export const keys = {
     return `media:ytdlp:resolve-lease:${roomId}:${itemId}`
   },
 
+  /** Per-item pending marker that expires with the resolve lease. */
+  mediaYtDlpPending(roomId: string, itemId: string) {
+    return `media:ytdlp:pending:${roomId}:${itemId}`
+  },
+
+  /** Short NX claim so only one instance reclaims an abandoned resolve. */
+  mediaYtDlpResolveClaim(roomId: string, itemId: string) {
+    return `media:ytdlp:resolve-claim:${roomId}:${itemId}`
+  },
+
   /** SET of `roomId\\titemId` pending resolves for crash reclaim. */
   mediaYtDlpPendingResolves() {
     return "media:ytdlp:pending-resolves"
+  },
+
+  /** Grace-period marker while a disconnected participant awaits prune. */
+  roomParticipantPrune(roomId: string, userId: string) {
+    return `${ROOM_STATE_PREFIX}${roomId}:prune:${userId}`
+  },
+
+  /** SET of `roomId\\tuserId` pending participant prunes cluster-wide. */
+  roomPendingPrunes() {
+    return `${ROOM_STATE_PREFIX}pending-prunes`
   },
 
   /** HASH userId -> userSecret for participant identity continuity */

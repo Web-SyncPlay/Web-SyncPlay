@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { getCommandClient } from "@/server/redis/client"
 import {
   clearLocalMediaProviderReadyForOwner,
   createLocalMediaEntry,
@@ -7,7 +8,25 @@ import {
   setLocalMediaProviderReady,
 } from "@/server/media/local-media-store"
 
-describe("local-media-store metadata", () => {
+async function redisAvailable(): Promise<boolean> {
+  try {
+    const client = await getCommandClient()
+    await client.ping()
+    return true
+  } catch {
+    return false
+  }
+}
+
+const hasRedis = await redisAvailable()
+
+describe.skipIf(!hasRedis)("local-media-store metadata", () => {
+  if (!hasRedis) {
+    console.warn(
+      "[local-media-store.test] skipping: Redis/Valkey unavailable",
+    )
+  }
+
   test("creates and reads metadata without storing file bytes", async () => {
     const id = crypto.randomUUID()
     const entry = await createLocalMediaEntry({

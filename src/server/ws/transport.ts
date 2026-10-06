@@ -109,11 +109,12 @@ export function attachWebSocketTransport(
 
   enhancedServer.__webSyncPlayWsServer = wss
 
+  const heartbeatTimeoutMs = env.WS_HEARTBEAT_INTERVAL_MS * 3
   slot.heartbeat = setInterval(() => {
     for (const ws of wss.clients) {
       if (ws.readyState !== ws.OPEN) continue
       const lastSeen = slot.lastPongAt.get(ws) ?? Date.now()
-      if (Date.now() - lastSeen > env.WS_HEARTBEAT_TIMEOUT_MS) {
+      if (Date.now() - lastSeen > heartbeatTimeoutMs) {
         ws.terminate()
         continue
       }

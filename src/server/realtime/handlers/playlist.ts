@@ -62,7 +62,7 @@ export const handlePlaylistAddUrl: RoomMessageHandler = async (ctx, data) => {
   const addUrlResult = playlistAddUrlSchema.safeParse(data.payload)
   if (!addUrlResult.success) return
 
-  const resolveLimit = consumeRateLimit({
+  const resolveLimit = await consumeRateLimit({
     key: `resolve:${ctx.roomId}:${ctx.userId}`,
     limit: 10,
     windowMs: 60_000,
@@ -204,7 +204,7 @@ export const handlePlaylistRetry: RoomMessageHandler = async (ctx, data) => {
   const parsed = playlistRetrySchema.safeParse(data.payload)
   if (!parsed.success) return
 
-  const resolveLimit = consumeRateLimit({
+  const resolveLimit = await consumeRateLimit({
     key: `resolve:${ctx.roomId}:${ctx.userId}`,
     limit: 10,
     windowMs: 60_000,

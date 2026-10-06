@@ -193,12 +193,17 @@ export class RoomStateStore implements RoomStateStorePort {
     await client.expire(hkey, roomStateTtlSeconds)
   }
 
-  /** Refresh TTL while the room is active (optional heartbeat for presence hash). */
+  /** Refresh TTL while the room is active (all room-related keys). */
   async touchWsPresence(roomId: string, userId: string) {
     void userId
     const client = await getCommandClient()
-    const hkey = keys.roomPresenceRef(roomId)
-    await client.expire(hkey, roomStateTtlSeconds)
+    await client
+      .multi()
+      .expire(keys.roomState(roomId), roomStateTtlSeconds)
+      .expire(keys.roomPresenceRef(roomId), roomStateTtlSeconds)
+      .expire(keys.roomPresenceData(roomId), roomStateTtlSeconds)
+      .expire(keys.roomIdentity(roomId), roomStateTtlSeconds)
+      .exec()
   }
 
   /** User IDs with at least one active WS connection cluster-wide. */
