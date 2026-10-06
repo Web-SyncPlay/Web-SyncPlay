@@ -253,6 +253,7 @@ export function SiteNavbar(props: {
                   }}
                 >
                   <RoomJoinPasswordSection
+                    roomId={roomId}
                     roomSecurity={roomSecurity}
                     canManageRoomSecurity={canManageRoomSecurity}
                     send={send}

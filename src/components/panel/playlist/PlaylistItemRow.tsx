@@ -12,16 +12,6 @@ import type { PlaylistItem } from "@/zod/types"
 import { useSortable } from "@dnd-kit/react/sortable"
 import { GripVertical, Loader2, Play, Trash2 } from "lucide-react"
 
-function JumpingDots() {
-  return (
-    <span className="inline-flex items-center gap-[2px]" aria-hidden>
-      <span className="size-[3px] rounded-full bg-current animate-jump-dot" />
-      <span className="size-[3px] rounded-full bg-current animate-jump-dot [animation-delay:150ms]" />
-      <span className="size-[3px] rounded-full bg-current animate-jump-dot [animation-delay:300ms]" />
-    </span>
-  )
-}
-
 export function PlaylistItemRow(props: {
   item: PlaylistItem
   index: number
@@ -85,12 +75,7 @@ export function PlaylistItemRow(props: {
           )}
         >
           <span>{index + 1}.</span>
-          {isCurrent ? (
-            <span className="inline-flex items-center gap-1">
-              playing
-              <JumpingDots />
-            </span>
-          ) : null}
+          {isCurrent ? <span>Active</span> : null}
         </span>
         {canControlPlaylist && (
           <ItemMedia>

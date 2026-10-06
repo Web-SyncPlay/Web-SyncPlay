@@ -5,15 +5,16 @@ import { Input } from "@/components/ui/input"
 import { resolvePlayableMimeType } from "@/lib/media-mime"
 import { registerLocalMediaFile } from "@/lib/local-media-provider"
 import type { TypedRoomEventSender } from "@/lib/room-events"
-import { useRef, useState } from "react"
+import { useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 
 export function PlaylistAddMediaControls(props: {
   send: TypedRoomEventSender
   canManagePlaylist: boolean
   className?: string
+  endAddon?: ReactNode
 }) {
-  const { send, canManagePlaylist, className } = props
+  const { send, canManagePlaylist, className, endAddon } = props
   const [url, setUrl] = useState("")
   const [sharingLocal, setSharingLocal] = useState(false)
   const localFileInputRef = useRef<HTMLInputElement>(null)
@@ -80,9 +81,9 @@ export function PlaylistAddMediaControls(props: {
           }
         }}
       />
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+      <div className="flex flex-wrap items-center gap-2">
         <Button
-          className="min-h-11 touch-manipulation sm:min-h-8"
+          className="min-h-11 flex-1 touch-manipulation sm:min-h-8 sm:flex-none"
           onClick={addMedia}
           disabled={!canManagePlaylist || !url.trim()}
         >
@@ -107,6 +108,7 @@ export function PlaylistAddMediaControls(props: {
         >
           {sharingLocal ? "Sharing..." : "Share Local File"}
         </Button>
+        {endAddon}
       </div>
     </div>
   )

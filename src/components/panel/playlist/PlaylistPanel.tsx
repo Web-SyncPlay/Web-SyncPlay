@@ -7,16 +7,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ItemGroup } from "@/components/ui/item"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { canControlPlaylist } from "@/lib/permissions-utils"
 import { formatDurationSeconds } from "@/lib/time-format"
-import type { LoopMode } from "@/zod/types"
 import { RestrictToVerticalAxis } from "@dnd-kit/abstract/modifiers"
 import { DragDropProvider } from "@dnd-kit/react"
 import { isSortable } from "@dnd-kit/react/sortable"
@@ -25,6 +17,10 @@ import { useState } from "react"
 import type { RoomPanelProps } from "../../layout/page/types"
 import { PlaylistAddMediaControls } from "./PlaylistAddMediaControls"
 import { PlaylistItemRow } from "./PlaylistItemRow"
+import {
+  nextPlaylistLoopMode,
+  PlaylistLoopToggle,
+} from "./PlaylistLoopToggle"
 
 function renderItemDuration(durationSeconds?: number): string | null {
   if (
@@ -50,27 +46,24 @@ export function PlaylistPanel({
   const myRole = roomState.participants[userId]?.role
   const canManagePlaylist =
     canControlPlaylist(myRole) && capabilities.canManagePlaylist
-  const playlistLoopLabels: Record<LoopMode, string> = {
-    off: "Off",
-    once: "Once",
-    always: "Always",
-  }
+  const playlistLoop = roomState.playback.playlistLoop
   const resolvingCount = roomState.playlist.filter(
     (item) => item.ingestStatus === "resolving",
   ).length
-  const descriptionParts = [
-    !canManagePlaylist ? (
-      <span key="view-only">Playlist is view-only here.</span>
-    ) : null,
-    resolvingCount > 0 ? (
-      <span key="resolving" className="flex items-center gap-1">
-        <Loader2 className="animate-spin" />
-        Resolving {resolvingCount} new URL
-        {resolvingCount === 1 ? "" : "s"}
-        ...
-      </span>
-    ) : null,
-  ].filter(Boolean)
+
+  const cyclePlaylistLoop = () => {
+    send("playback:loop:playlist", {
+      mode: nextPlaylistLoopMode(playlistLoop),
+    })
+  }
+
+  const loopToggle = (
+    <PlaylistLoopToggle
+      mode={playlistLoop}
+      interactive={canManagePlaylist}
+      onCycle={cyclePlaylistLoop}
+    />
+  )
 
   const commitItemName = (itemId: string, currentName: string) => {
     const rawDraft = draftName[itemId]
@@ -86,49 +79,32 @@ export function PlaylistPanel({
 
   return (
     <>
-      <CardHeader className="shrink-0">
-        <div className="flex items-center justify-between gap-2">
-          {hideTitle ? (
-            <span className="text-sm font-medium text-muted-foreground">
-              Loop
-            </span>
-          ) : (
-            <CardTitle>Playlist</CardTitle>
-          )}
-          <div className="flex items-center gap-2">
-            {!hideTitle ? <span>Loop</span> : null}
-            {canManagePlaylist ? (
-              <Select
-                value={roomState.playback.playlistLoop}
-                onValueChange={(value) => {
-                  if (value !== "off" && value !== "once" && value !== "always")
-                    return
-                  send("playback:loop:playlist", { mode: value })
-                }}
-              >
-                <SelectTrigger size="sm">
-                  <SelectValue className="capitalize" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="off">Off</SelectItem>
-                  <SelectItem value="once">Once</SelectItem>
-                  <SelectItem value="always">Always</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                {playlistLoopLabels[roomState.playback.playlistLoop]}
-              </p>
-            )}
+      <CardHeader className="shrink-0 gap-3">
+        {!hideTitle ? <CardTitle>Playlist</CardTitle> : null}
+        {canManagePlaylist ? (
+          <PlaylistAddMediaControls
+            send={send}
+            canManagePlaylist={canManagePlaylist}
+            endAddon={loopToggle}
+          />
+        ) : (
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">
+              Guests are view-only
+            </p>
+            {loopToggle}
           </div>
-        </div>
-        {descriptionParts.length > 0 ? (
-          <CardDescription>{descriptionParts}</CardDescription>
+        )}
+        {resolvingCount > 0 ? (
+          <CardDescription>
+            <span className="flex items-center gap-1">
+              <Loader2 className="animate-spin" />
+              Resolving {resolvingCount} new URL
+              {resolvingCount === 1 ? "" : "s"}
+              ...
+            </span>
+          </CardDescription>
         ) : null}
-        <PlaylistAddMediaControls
-          send={send}
-          canManagePlaylist={canManagePlaylist}
-        />
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-3">
         <DragDropProvider
