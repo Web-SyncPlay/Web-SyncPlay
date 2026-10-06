@@ -159,7 +159,7 @@ export function PlaylistPanel({
             })
           }}
         >
-          <ItemGroup className="gap-2 text-sm overflow-y-auto max-h-[80vh]">
+          <ItemGroup className="gap-3 pt-1 text-sm overflow-y-auto max-h-[80vh]">
             {roomState.playlist.map((x, i) => {
               const isCurrent =
                 (roomState.playback.mediaId ??

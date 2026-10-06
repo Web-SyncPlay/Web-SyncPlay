@@ -10,13 +10,17 @@ import {
 import { cn } from "@/lib/utils"
 import type { PlaylistItem } from "@/zod/types"
 import { useSortable } from "@dnd-kit/react/sortable"
-import {
-  GripVertical,
-  Loader2,
-  Play,
-  PlayCircle,
-  Trash2,
-} from "lucide-react"
+import { GripVertical, Loader2, Play, Trash2 } from "lucide-react"
+
+function JumpingDots() {
+  return (
+    <span className="inline-flex items-center gap-[2px]" aria-hidden>
+      <span className="size-[3px] rounded-full bg-current animate-jump-dot" />
+      <span className="size-[3px] rounded-full bg-current animate-jump-dot [animation-delay:150ms]" />
+      <span className="size-[3px] rounded-full bg-current animate-jump-dot [animation-delay:300ms]" />
+    </span>
+  )
+}
 
 export function PlaylistItemRow(props: {
   item: PlaylistItem
@@ -67,10 +71,27 @@ export function PlaylistItemRow(props: {
       <Item
         variant={isCurrent ? "outline" : "muted"}
         className={cn(
-          "items-center",
+          "relative items-center border",
+          isCurrent
+            ? "border-emerald-500/70"
+            : "border-border",
           item.ingestStatus === "error" && "border-destructive/60",
         )}
       >
+        <span
+          className={cn(
+            "absolute -top-2 left-2.5 z-10 inline-flex max-w-[calc(100%-1.25rem)] items-center gap-1 truncate rounded-sm bg-card px-1 text-[10px] leading-none font-medium",
+            isCurrent ? "text-emerald-500" : "text-muted-foreground",
+          )}
+        >
+          <span>{index + 1}.</span>
+          {isCurrent ? (
+            <span className="inline-flex items-center gap-1">
+              playing
+              <JumpingDots />
+            </span>
+          ) : null}
+        </span>
         {canControlPlaylist && (
           <ItemMedia>
             <Button
@@ -125,15 +146,10 @@ export function PlaylistItemRow(props: {
                 }
               }}
             >
-              {isCurrent && (
-                <PlayCircle className="size-4 shrink-0 text-emerald-500" />
-              )}
               {item.ingestStatus === "resolving" && (
                 <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
               )}
-              <span className="truncate">
-                {index + 1}. {item.name}
-              </span>
+              <span className="truncate">{item.name}</span>
               {itemDuration && (
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {itemDuration}

@@ -6,13 +6,6 @@ import type { ParticipantState } from "@/zod/types"
 import { Badge } from "../../ui/badge"
 import { Input } from "../../ui/input"
 import { Item, ItemActions, ItemContent } from "../../ui/item"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../ui/select"
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip"
 import { UserAvatar } from "./UserAvatar"
 
@@ -32,11 +25,37 @@ export function UserItem({
       send("participant:update", { username: nextValue }),
   })
 
+  const playbackStatus = user.localPlayback.error
+    ? "Error"
+    : user.localPlayback.loading
+      ? "Loading"
+      : "Ready"
+  const connectionLabel = user.connected ? "Online" : "Offline"
+  const canToggleRole =
+    isOwner && !isSelf && (user.role === "moderator" || user.role === "guest")
+
+  const toggleRole = () => {
+    if (!canToggleRole) return
+    const nextRole = user.role === "moderator" ? "guest" : "moderator"
+    send("participant:role:update", {
+      targetUserId: user.userId,
+      role: nextRole,
+    })
+  }
+
   return (
     <Item
       variant={isSelf ? "default" : "outline"}
-      className={cn("p-0 pr-2", isSelf && "border-primary/40")}
+      className={cn(
+        "relative border p-0 pr-2",
+        isSelf ? "border-primary/40" : "border-border",
+      )}
     >
+      {isSelf ? (
+        <span className="absolute -top-2 left-2.5 z-10 inline-flex items-center rounded-sm bg-card px-1 text-[10px] leading-none font-medium text-primary">
+          You
+        </span>
+      ) : null}
       <UserAvatar send={send} user={user} isSelf={isSelf} />
       <ItemContent className="py-2">
         {isSelf && inlineEdit.isEditing ? (
@@ -61,7 +80,6 @@ export function UserItem({
         ) : (
           <div>
             <div className="flex items-center gap-2">
-              {isSelf && <Badge>You</Badge>}
               <span
                 className={cn(
                   "truncate text-lg",
@@ -85,75 +103,64 @@ export function UserItem({
               >
                 {user.username}
               </span>
-              <Badge
-                variant={user.role === "owner" ? "default" : "outline"}
-                className="capitalize"
-              >
-                {user.role}
-              </Badge>
             </div>
             <div className="flex items-center gap-2">
               <div className="leading-tight text-muted-foreground">
                 {user.localPlayback.paused ? "Paused" : "Playing"} at{" "}
                 {formatClockMs(user.localPlayback.currentTimeMs)}
               </div>
-              <Badge
-                variant={
-                  user.localPlayback.error
-                    ? "destructive"
-                    : user.localPlayback.loading
-                      ? "outline"
-                      : "secondary"
-                }
-              >
-                {user.localPlayback.error
-                  ? "Error"
-                  : user.localPlayback.loading
-                    ? "Loading"
-                    : "Ready"}
-              </Badge>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Badge
+                    variant={
+                      user.localPlayback.error
+                        ? "destructive"
+                        : !user.connected
+                          ? "outline"
+                          : user.localPlayback.loading
+                            ? "outline"
+                            : "secondary"
+                    }
+                    className="h-5 px-1.5 text-[10px]"
+                  >
+                    {connectionLabel} · {playbackStatus}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {formatRelativeLastSeen(user.lastSeenAt)}
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         )}
       </ItemContent>
       <ItemActions>
-        <Tooltip>
-          <TooltipTrigger>
-            <Badge
-              variant={user.connected ? "secondary" : "outline"}
-              className="h-5 px-1.5 text-[10px]"
-            >
-              {user.connected ? "Online" : "Offline"}
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>
-            {formatRelativeLastSeen(user.lastSeenAt)}
-          </TooltipContent>
-        </Tooltip>
-        {isOwner && !isSelf && (
-          <Select
-            value={user.role}
-            onValueChange={(nextRole) => {
-              if (nextRole !== "moderator" && nextRole !== "guest") {
-                return
+        {user.role === "owner" ? (
+          <Badge variant="default" className="capitalize">
+            Owner
+          </Badge>
+        ) : canToggleRole ? (
+          <Badge
+            variant="outline"
+            className="h-5 cursor-pointer px-1.5 text-[10px] capitalize"
+            role="button"
+            tabIndex={0}
+            title="Click to toggle role"
+            aria-label={`Role ${user.role}, click to toggle`}
+            onClick={toggleRole}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                toggleRole()
               }
-              if (nextRole === user.role) {
-                return
-              }
-              send("participant:role:update", {
-                targetUserId: user.userId,
-                role: nextRole,
-              })
             }}
           >
-            <SelectTrigger size="sm">
-              <SelectValue className="capitalize" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="moderator">Moderator</SelectItem>
-              <SelectItem value="guest">Guest</SelectItem>
-            </SelectContent>
-          </Select>
+            {user.role}
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="capitalize">
+            {user.role}
+          </Badge>
         )}
       </ItemActions>
     </Item>
