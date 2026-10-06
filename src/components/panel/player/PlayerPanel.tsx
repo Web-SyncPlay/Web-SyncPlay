@@ -1142,12 +1142,12 @@ export function PlayerPanel({
 
         /* Rise above the control bar + progress slider while they are visible. */
         :has(.vds-controls[data-visible]) > .tap-to-unmute {
-          bottom: 5.75rem;
+          bottom: 6.5rem;
         }
 
         :has(.vds-video-layout[data-sm] .vds-controls[data-visible])
           > .tap-to-unmute {
-          bottom: 6.5rem;
+          bottom: 7.25rem;
         }
 
         .remote-seek-controls-hidden .vds-controls {
