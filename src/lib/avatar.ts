@@ -1,7 +1,7 @@
-import * as adventurer from "@dicebear/adventurer"
-import * as avataaars from "@dicebear/avataaars"
-import { createAvatar } from "@dicebear/core"
-import * as lorelei from "@dicebear/lorelei"
+import { Avatar, Style } from "@dicebear/core"
+import adventurer from "@dicebear/styles/adventurer.json" with { type: "json" }
+import avataaars from "@dicebear/styles/avataaars.json" with { type: "json" }
+import lorelei from "@dicebear/styles/lorelei.json" with { type: "json" }
 
 export const DEFAULT_AVATAR_STYLE = "adventurer" as const
 
@@ -13,13 +13,10 @@ export const avatarStyles = [
 
 export type AvatarStyleId = (typeof avatarStyles)[number]
 
-const styleModules: Record<
-  AvatarStyleId,
-  Parameters<typeof createAvatar>[0]
-> = {
-  adventurer,
-  avataaars,
-  lorelei,
+const styleModules: Record<AvatarStyleId, Style> = {
+  adventurer: new Style(adventurer),
+  avataaars: new Style(avataaars),
+  lorelei: new Style(lorelei),
 }
 
 const styleLabels: Record<AvatarStyleId, string> = {
@@ -41,8 +38,5 @@ export function resolveStyle(style: string): AvatarStyleId {
 
 /** Generate a same-origin SVG data URI (no third-party request). */
 export function avatarDataUri(style: string, seed: string): string {
-  const avatar = createAvatar(styleModules[resolveStyle(style)], {
-    seed,
-  })
-  return avatar.toDataUri()
+  return new Avatar(styleModules[resolveStyle(style)], { seed }).toDataUri()
 }

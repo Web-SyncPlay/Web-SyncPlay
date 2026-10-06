@@ -6,10 +6,8 @@
       "name": "web-syncplay",
       "dependencies": {
         "@base-ui/react": "^1.8.0",
-        "@dicebear/adventurer": "^9.4.3",
-        "@dicebear/avataaars": "^9.4.3",
-        "@dicebear/core": "^9.4.3",
-        "@dicebear/lorelei": "^9.4.3",
+        "@dicebear/core": "^10.7.0",
+        "@dicebear/styles": "^10.6.0",
         "@dnd-kit/react": "^0.5.0",
         "@ffmpeg/ffmpeg": "^0.12.15",
         "@ffmpeg/util": "^0.12.2",
@@ -96,13 +94,9 @@
 
     "@base-ui/utils": ["@base-ui/utils@0.4.0", "", { "dependencies": { "@babel/runtime": "^7.29.7", "@floating-ui/utils": "^0.2.12", "reselect": "^5.2.0", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "@types/react": "^17 || ^18 || ^19", "react": "^17 || ^18 || ^19", "react-dom": "^17 || ^18 || ^19" }, "optionalPeers": ["@types/react"] }, "sha512-bO9fz25kKtPf+aZVyfQrC0PDmJdmVni31W2hCS5/Owb+inwdIL3XU26pCPRPlt4LSxZrBgLwubXQXQlKaFEZzw=="],
 
-    "@dicebear/adventurer": ["@dicebear/adventurer@9.4.3", "", { "peerDependencies": { "@dicebear/core": "^9.0.0" } }, "sha512-LPzLiNBVSrzb2lBTwAP00+ew/VfqcImI/ULVFaL2LXEuY3QlAOLwvR4TpwX8AIqeo8JDQO4cVMHZsCm0c2uGdg=="],
+    "@dicebear/core": ["@dicebear/core@10.7.0", "", {}, "sha512-JUOzKOd8RUByJJo8ZL+C7YE/pvEsWewfpbWUmR8OIQZWv/PvUQHnohdevySC3icyyxe6EIU/8B/rQgA42us1QA=="],
 
-    "@dicebear/avataaars": ["@dicebear/avataaars@9.4.3", "", { "peerDependencies": { "@dicebear/core": "^9.0.0" } }, "sha512-LNIZNb1TaXhL2/OfJK+lmw8Kkbn6eot1FHiLoU2/AzOmjSQQVJC0ZvwrZ/tdQEIGeMPu5nhJLmNwH/kFMoF+Tw=="],
-
-    "@dicebear/core": ["@dicebear/core@9.4.3", "", { "dependencies": { "@types/json-schema": "^7.0.15" } }, "sha512-9ITrQI57k3p5hKuU8HZJ1d0kPdrmTKEJDOdlKQ8CpaChbtmnD1R+dtWmNz5IesYThXM8F64pJ0ZvJ2rsY8Hciw=="],
-
-    "@dicebear/lorelei": ["@dicebear/lorelei@9.4.3", "", { "peerDependencies": { "@dicebear/core": "^9.0.0" } }, "sha512-bpch2LRqrdL7gEgU2AW9NwoVKgBSrOUEQJx6FUV1UI6alM72BLaeu04uMqWQUXdh+Hc0SCnkj4Lg8nazSyI3oA=="],
+    "@dicebear/styles": ["@dicebear/styles@10.6.0", "", {}, "sha512-KhxbEVI+z8TaenX58+ZhIRFBt7adggu/F+8g6ZYLu43H2/lgLuWA3Kg8vHBrCVWdfTTTt1p2wUhQomIkkypTuQ=="],
 
     "@dnd-kit/abstract": ["@dnd-kit/abstract@0.5.0", "", { "dependencies": { "@dnd-kit/geometry": "^0.5.0", "@dnd-kit/state": "^0.5.0", "tslib": "^2.6.2" } }, "sha512-hi13iMJgjPX/KDYVKg5VeDIhmYiV6buc9bAX+tCLYf4QdyYjPbsXjn2sPo6m7fQ6SGJBEFgHJ2PemeKDUbwBaA=="],
 
