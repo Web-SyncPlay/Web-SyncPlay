@@ -36,9 +36,9 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
-# Other
-Dockerfile*
-docker-compose*
+# Local compose / editor tooling (Dockerfile is supplied via -f, not context)
+docker-compose*.yml
+compose*.yml
 .dockerignore
 .prettierignore
 components.json
