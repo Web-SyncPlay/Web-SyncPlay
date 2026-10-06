@@ -644,7 +644,7 @@ export function PlayerPanel({
         </div>
       )}
       {isMuted && Boolean(activePlaybackSrc) && (
-        <div className="absolute bottom-16 left-1/2 z-30 w-[min(100%-1.5rem,20rem)] -translate-x-1/2 sm:bottom-14">
+        <div className="tap-to-unmute absolute bottom-3 left-1/2 z-30 w-[min(100%-1.5rem,20rem)] -translate-x-1/2">
           <Button
             type="button"
             size="lg"
@@ -1136,6 +1136,20 @@ export function PlayerPanel({
         </div>
       )}
       <style jsx global>{`
+        .tap-to-unmute {
+          transition: bottom 0.2s ease;
+        }
+
+        /* Rise above the control bar + progress slider while they are visible. */
+        :has(.vds-controls[data-visible]) > .tap-to-unmute {
+          bottom: 5.75rem;
+        }
+
+        :has(.vds-video-layout[data-sm] .vds-controls[data-visible])
+          > .tap-to-unmute {
+          bottom: 6.5rem;
+        }
+
         .remote-seek-controls-hidden .vds-controls {
           opacity: 0 !important;
           visibility: hidden !important;
