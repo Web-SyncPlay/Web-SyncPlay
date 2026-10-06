@@ -55,19 +55,22 @@ export function PlaylistPanel({
     once: "Once",
     always: "Always",
   }
-  const totalDurationSeconds = roomState.playlist.reduce((sum, item) => {
-    if (
-      typeof item.durationSeconds === "number" &&
-      Number.isFinite(item.durationSeconds) &&
-      item.durationSeconds > 0
-    ) {
-      return sum + item.durationSeconds
-    }
-    return sum
-  }, 0)
   const resolvingCount = roomState.playlist.filter(
     (item) => item.ingestStatus === "resolving",
   ).length
+  const descriptionParts = [
+    !canManagePlaylist ? (
+      <span key="view-only">Playlist is view-only here.</span>
+    ) : null,
+    resolvingCount > 0 ? (
+      <span key="resolving" className="flex items-center gap-1">
+        <Loader2 className="animate-spin" />
+        Resolving {resolvingCount} new URL
+        {resolvingCount === 1 ? "" : "s"}
+        ...
+      </span>
+    ) : null,
+  ].filter(Boolean)
 
   const commitItemName = (itemId: string, currentName: string) => {
     const rawDraft = draftName[itemId]
@@ -119,20 +122,9 @@ export function PlaylistPanel({
             )}
           </div>
         </div>
-        <CardDescription>
-          {!canManagePlaylist && <span>Playlist is view-only here.</span>}
-          {resolvingCount > 0 && (
-            <span className="flex items-center gap-1">
-              <Loader2 className="animate-spin" />
-              Resolving {resolvingCount} new URL
-              {resolvingCount === 1 ? "" : "s"}
-              ...
-            </span>
-          )}
-          <span>
-            Total length: {formatDurationSeconds(totalDurationSeconds)}
-          </span>
-        </CardDescription>
+        {descriptionParts.length > 0 ? (
+          <CardDescription>{descriptionParts}</CardDescription>
+        ) : null}
         <PlaylistAddMediaControls
           send={send}
           canManagePlaylist={canManagePlaylist}
