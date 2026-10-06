@@ -19,6 +19,7 @@ import {
   roomJoinSchema,
   roomPasswordClearSchema,
   roomPasswordSetSchema,
+  roomDefaultRoleSetSchema,
   seekPreviewSchema,
   viewerMediaPreferencesSchema,
   wsEnvelopeSchema,
@@ -52,6 +53,7 @@ export const roomMessageSchemas = {
   "seek:preview": seekPreviewSchema,
   "room:password:set": roomPasswordSetSchema,
   "room:password:clear": roomPasswordClearSchema,
+  "room:default-role:set": roomDefaultRoleSetSchema,
 } as const satisfies Record<ClientEventType, z.ZodType>
 
 export type RoomMessageSchemaMap = typeof roomMessageSchemas

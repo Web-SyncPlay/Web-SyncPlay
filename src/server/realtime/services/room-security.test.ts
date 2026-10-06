@@ -5,6 +5,7 @@ import {
   createDefaultRoomSecurity,
   evaluateJoinAdmission,
   sanitizeRoomStateForClient,
+  setDefaultJoinRole,
   setJoinPassword,
 } from "./room-security"
 
@@ -77,9 +78,19 @@ test("sanitizes hashed password fields before broadcasting room state", () => {
   const sanitized = sanitizeRoomStateForClient(state)
 
   expect(sanitized.roomSecurity.joinPasswordEnabled).toBe(true)
+  expect(sanitized.roomSecurity.defaultJoinRole).toBe("moderator")
   expect(typeof sanitized.roomSecurity.joinPasswordUpdatedAt).toBe("number")
   expect("joinPasswordHash" in sanitized.roomSecurity).toBe(false)
   expect("joinPasswordSalt" in sanitized.roomSecurity).toBe(false)
+})
+
+test("default join role defaults to moderator and can be set to guest", () => {
+  const state = createState()
+  expect(state.roomSecurity.defaultJoinRole).toBe("moderator")
+
+  expect(setDefaultJoinRole(state, "guest")).toBe(true)
+  expect(state.roomSecurity.defaultJoinRole).toBe("guest")
+  expect(setDefaultJoinRole(state, "guest")).toBe(false)
 })
 
 test("clearing the password disables future admission checks", () => {

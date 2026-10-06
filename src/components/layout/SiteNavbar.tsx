@@ -1,5 +1,6 @@
 "use client"
 
+import { RoomDefaultJoinRoleSection } from "@/components/dialog/RoomDefaultJoinRoleSection"
 import { RoomJoinPasswordSection } from "@/components/dialog/RoomJoinPasswordSection"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -216,14 +217,17 @@ export function SiteNavbar(props: {
                 align="end"
                 className="w-[min(calc(100vw-1.5rem),22rem)] p-3"
               >
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Room settings</DropdownMenuLabel>
-                </DropdownMenuGroup>
                 <div
-                  className="mt-2"
+                  className="flex flex-col gap-4"
                   onPointerDown={(event) => event.preventDefault()}
                 >
                   <RoomJoinPasswordSection
+                    roomSecurity={roomSecurity}
+                    canManageRoomSecurity={canManageRoomSecurity}
+                    send={send}
+                  />
+                  <DropdownMenuSeparator />
+                  <RoomDefaultJoinRoleSection
                     roomSecurity={roomSecurity}
                     canManageRoomSecurity={canManageRoomSecurity}
                     send={send}

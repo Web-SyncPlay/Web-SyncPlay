@@ -35,4 +35,5 @@ export const roomMessageHandlers = {
   "participant:role:update": participant.handleParticipantRoleUpdate,
   "room:password:set": roomPassword.handleRoomPasswordSet,
   "room:password:clear": roomPassword.handleRoomPasswordClear,
+  "room:default-role:set": roomPassword.handleRoomDefaultRoleSet,
 } as const satisfies Record<ClientEventType, RoomMessageHandler>

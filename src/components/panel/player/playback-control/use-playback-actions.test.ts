@@ -10,6 +10,7 @@ function createRoomState(): RoomState {
       joinPasswordEnabled: false,
       joinPasswordUpdatedAt: null,
       admissionVersion: 1,
+      defaultJoinRole: "moderator",
     },
     playback: {
       paused: false,

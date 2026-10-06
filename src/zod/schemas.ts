@@ -21,6 +21,12 @@ export const roomPasswordSetSchema = z.object({
 
 export const roomPasswordClearSchema = z.object({})
 
+export const defaultJoinRoleSchema = z.enum(["moderator", "guest"])
+
+export const roomDefaultRoleSetSchema = z.object({
+  role: defaultJoinRoleSchema,
+})
+
 export const playbackSeekSchema = z.object({
   targetMs: z
     .number()

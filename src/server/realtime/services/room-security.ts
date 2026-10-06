@@ -1,4 +1,8 @@
-import type { RoomSecurityState, RoomState } from "@/zod/types"
+import type {
+  DefaultJoinRole,
+  RoomSecurityState,
+  RoomState,
+} from "@/zod/types"
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto"
 
 const JOIN_PASSWORD_KEY_LENGTH = 64
@@ -7,11 +11,18 @@ export type JoinAdmissionResult =
   | { allowed: true }
   | { allowed: false; reason: "password_required" | "invalid_password" }
 
+export function normalizeDefaultJoinRole(
+  value: unknown,
+): DefaultJoinRole {
+  return value === "guest" ? "guest" : "moderator"
+}
+
 export function createDefaultRoomSecurity(): RoomSecurityState {
   return {
     joinPasswordEnabled: false,
     joinPasswordUpdatedAt: null,
     admissionVersion: 0,
+    defaultJoinRole: "moderator",
   }
 }
 
@@ -30,6 +41,7 @@ export function ensureRoomSecurity(state: RoomState): RoomSecurityState {
       current.admissionVersion >= 0
         ? current.admissionVersion
         : 0,
+    defaultJoinRole: normalizeDefaultJoinRole(current?.defaultJoinRole),
     joinPasswordHash:
       typeof current?.joinPasswordHash === "string"
         ? current.joinPasswordHash
@@ -61,8 +73,21 @@ export function sanitizeRoomStateForClient(state: RoomState): RoomState {
       joinPasswordEnabled: security.joinPasswordEnabled,
       joinPasswordUpdatedAt: security.joinPasswordUpdatedAt,
       admissionVersion: security.admissionVersion,
+      defaultJoinRole: security.defaultJoinRole,
     },
   }
+}
+
+export function setDefaultJoinRole(
+  state: RoomState,
+  role: DefaultJoinRole,
+): boolean {
+  const security = ensureRoomSecurity(state)
+  if (security.defaultJoinRole === role) {
+    return false
+  }
+  security.defaultJoinRole = role
+  return true
 }
 
 export function setJoinPassword(state: RoomState, password: string): void {

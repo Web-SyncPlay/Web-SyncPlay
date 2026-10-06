@@ -51,6 +51,7 @@ export interface ClientEventPayloadMap {
   "seek:preview": { targetMs?: number; active?: boolean }
   "room:password:set": { password: string }
   "room:password:clear": Record<string, never>
+  "room:default-role:set": { role: Exclude<RoomRole, "owner"> }
 }
 
 export type ClientEventType = keyof ClientEventPayloadMap

@@ -122,10 +122,14 @@ export interface ActionLogEntry {
   error?: string
 }
 
+export type DefaultJoinRole = Exclude<RoomRole, "owner">
+
 export interface RoomSecurityState {
   joinPasswordEnabled: boolean
   joinPasswordUpdatedAt: number | null
   admissionVersion: number
+  /** Role assigned to first-time joiners (owner always stays owner). */
+  defaultJoinRole: DefaultJoinRole
   joinPasswordHash?: string
   joinPasswordSalt?: string
 }

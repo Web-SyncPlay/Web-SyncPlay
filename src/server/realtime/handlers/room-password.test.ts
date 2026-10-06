@@ -4,6 +4,7 @@ import {
   setRoomBroadcastBusForTests,
 } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
+  handleRoomDefaultRoleSet,
   handleRoomPasswordClear,
   handleRoomPasswordSet,
 } from "@/server/realtime/handlers/room-password"
@@ -37,6 +38,26 @@ describe("room password handler interfaces", () => {
     security = store.peek("room-1")?.roomSecurity
     expect(security?.joinPasswordEnabled).toBe(false)
     expect(security?.joinPasswordHash).toBeUndefined()
+  })
+
+  test("owner can change default join role", async () => {
+    const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
+    const ctx = createHandlerContext({ store, userId: "owner" })
+
+    expect(store.peek("room-1")?.roomSecurity.defaultJoinRole).toBe("moderator")
+
+    await handleRoomDefaultRoleSet(
+      ctx,
+      envelope("room:default-role:set", { role: "guest" }),
+    )
+    expect(store.peek("room-1")?.roomSecurity.defaultJoinRole).toBe("guest")
+
+    await handleRoomDefaultRoleSet(
+      createHandlerContext({ store, userId: "guest" }),
+      envelope("room:default-role:set", { role: "moderator" }),
+    )
+    expect(store.peek("room-1")?.roomSecurity.defaultJoinRole).toBe("guest")
   })
 
   test("non-owner and player session cannot set password", async () => {

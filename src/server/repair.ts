@@ -1,5 +1,8 @@
 import { env } from "@/env"
-import { createDefaultRoomSecurity } from "@/server/realtime/services/room-security"
+import {
+  createDefaultRoomSecurity,
+  normalizeDefaultJoinRole,
+} from "@/server/realtime/services/room-security"
 import type { PlaylistItem, RoomState } from "@/zod/types"
 import { randomUUID } from "node:crypto"
 import { trackedActionTypes } from "./log"
@@ -41,6 +44,9 @@ export function repairCleanupAndCheckRoomState(state: RoomState) {
         state.roomSecurity.admissionVersion >= 0
           ? state.roomSecurity.admissionVersion
           : 0,
+      defaultJoinRole: normalizeDefaultJoinRole(
+        state.roomSecurity.defaultJoinRole,
+      ),
     }
     if (
       state.roomSecurity.joinPasswordEnabled &&

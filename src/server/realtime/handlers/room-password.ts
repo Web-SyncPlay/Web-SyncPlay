@@ -1,7 +1,15 @@
 import { appendActionLog } from "@/server/log"
 import { canManageRoomSecurityFromConnectionContext } from "@/server/realtime/services/permissions"
-import { roomPasswordClearSchema, roomPasswordSetSchema } from "@/zod/schemas"
-import { clearJoinPassword, setJoinPassword } from "../services/room-security"
+import {
+  roomDefaultRoleSetSchema,
+  roomPasswordClearSchema,
+  roomPasswordSetSchema,
+} from "@/zod/schemas"
+import {
+  clearJoinPassword,
+  setDefaultJoinRole,
+  setJoinPassword,
+} from "../services/room-security"
 import { mutateRoomMessage } from "./mutate-room"
 import type { RoomMessageHandler } from "./types"
 
@@ -77,6 +85,49 @@ export const handleRoomPasswordClear: RoomMessageHandler = async (
         action: "room:password:cleared",
         payload: {
           joinPasswordEnabled: false,
+        },
+      })
+      return true
+    },
+    { kind: "snapshot" },
+  )
+}
+
+export const handleRoomDefaultRoleSet: RoomMessageHandler = async (
+  ctx,
+  data,
+) => {
+  const result = roomDefaultRoleSetSchema.safeParse(data.payload)
+  if (!result.success) {
+    return
+  }
+
+  await mutateRoomMessage(
+    ctx.store,
+    ctx.roomId,
+    ctx.userId,
+    (state, participant) => {
+      if (
+        !canManageRoomSecurityFromConnectionContext(state, ctx.userId, {
+          controlAuthorized: ctx.controlAuthorized,
+          isControlSession: ctx.isControlSession,
+          sessionKind: ctx.sessionKind,
+        })
+      ) {
+        return false
+      }
+
+      if (!setDefaultJoinRole(state, result.data.role)) {
+        return false
+      }
+
+      appendActionLog(state, {
+        roomId: ctx.roomId,
+        actorUserId: ctx.userId,
+        actorUsername: participant.username,
+        action: "room:default-role:set",
+        payload: {
+          defaultJoinRole: result.data.role,
         },
       })
       return true

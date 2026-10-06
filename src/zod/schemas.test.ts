@@ -26,6 +26,7 @@ import {
   roomJoinSchema,
   roomPasswordClearSchema,
   roomPasswordSetSchema,
+  roomDefaultRoleSetSchema,
   seekPreviewSchema,
   viewerMediaPreferencesSchema,
   wsEnvelopeSchema,
@@ -254,6 +255,18 @@ describe("participant / room / viewer interfaces", () => {
       false,
     )
     expect(roomPasswordClearSchema.safeParse({}).success).toBe(true)
+  })
+
+  test("room default role set", () => {
+    expect(
+      roomDefaultRoleSetSchema.safeParse({ role: "moderator" }).success,
+    ).toBe(true)
+    expect(roomDefaultRoleSetSchema.safeParse({ role: "guest" }).success).toBe(
+      true,
+    )
+    expect(roomDefaultRoleSetSchema.safeParse({ role: "owner" }).success).toBe(
+      false,
+    )
   })
 
   test("seek preview and viewer prefs", () => {

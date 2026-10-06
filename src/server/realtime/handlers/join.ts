@@ -30,7 +30,10 @@ import type { SessionCapabilities } from "@/server/realtime/services/permissions
 import type { ParticipantState, SessionKind, WsEnvelope } from "@/zod/types"
 import { randomUUID } from "node:crypto"
 import type { WebSocket } from "ws"
-import { evaluateJoinAdmission } from "../services/room-security"
+import {
+  ensureRoomSecurity,
+  evaluateJoinAdmission,
+} from "../services/room-security"
 import type { JoinHandler } from "./types"
 
 export function resolveJoinParticipantProfile(
@@ -179,9 +182,10 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
 
     await clearPrune(roomId, userId)
     const existingParticipant = state.participants[userId]
+    const security = ensureRoomSecurity(state)
     const role: ParticipantState["role"] =
       existingParticipant?.role ??
-      (state.ownerId === userId ? "owner" : "guest")
+      (state.ownerId === userId ? "owner" : security.defaultJoinRole)
     const now = Date.now()
     const participantProfile = resolveJoinParticipantProfile(
       existingParticipant,

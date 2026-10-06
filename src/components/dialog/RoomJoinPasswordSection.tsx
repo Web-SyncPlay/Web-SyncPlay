@@ -46,7 +46,7 @@ export function RoomJoinPasswordSection(props: {
     : "No password"
 
   return (
-    <FieldGroup className="rounded-lg border p-3">
+    <FieldGroup>
       <Field>
         <FieldContent>
           <FieldTitle className="flex items-center gap-2">

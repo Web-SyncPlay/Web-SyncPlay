@@ -70,6 +70,7 @@ export function createRoomState(overrides: Partial<RoomState> = {}): RoomState {
     roomSecurity: {
       joinPasswordEnabled: false,
       joinPasswordUpdatedAt: null,
+      defaultJoinRole: "moderator",
       admissionVersion: 0,
     },
     playback: {
