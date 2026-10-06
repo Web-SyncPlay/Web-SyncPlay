@@ -25,11 +25,11 @@ Watch videos or play music in sync with friends. Unified Next.js app with an emb
 
 Outbound WebSocket events are split for performance:
 
-| Event | When | Payload |
-|-------|------|---------|
-| `room:control` | Instant play/pause/seek/select + ephemeral seek preview | `playback`, `currentIndex`, `generation` |
-| `presence:batch` | Coalesced (~250ms) viewer clocks | per-user `localPlayback` patches |
-| `room:snapshot` | Coalesced (~100ms) structural changes + join catch-up | sanitized full room |
+| Event            | When                                                    | Payload                                  |
+| ---------------- | ------------------------------------------------------- | ---------------------------------------- |
+| `room:control`   | Instant play/pause/seek/select + ephemeral seek preview | `playback`, `currentIndex`, `generation` |
+| `presence:batch` | Coalesced (~250ms) viewer clocks                        | per-user `localPlayback` patches         |
+| `room:snapshot`  | Coalesced (~100ms) structural changes + join catch-up   | sanitized full room                      |
 
 Presence ticks never rewrite full Redis room state. Media relay caches yt-dlp extracts in Valkey and coalesces HLS playlist rewrites in-process (segment egress still scales with viewers).
 
@@ -46,11 +46,11 @@ Useful scripts: `bun run typecheck`, `bun run test`, `bun run lint`.
 
 ## Session kinds
 
-| Route | Kind | Room mutations | Own quality/captions |
-|-------|------|----------------|----------------------|
-| `/room/[id]` | `room` | owner/moderator by role | yes |
-| `/room/[id]/player` | `player` | no (OBS/display) | yes |
-| `/room/[id]/control` | `control` | role + control token | yes |
+| Route                | Kind      | Room mutations          | Own quality/captions |
+| -------------------- | --------- | ----------------------- | -------------------- |
+| `/room/[id]`         | `room`    | owner/moderator by role | yes                  |
+| `/room/[id]/player`  | `player`  | no (OBS/display)        | yes                  |
+| `/room/[id]/control` | `control` | role + control token    | yes                  |
 
 Control embed URLs are minted via `POST /api/control/token` and include `#uid=&secret=&ct=`. Hash is consumed into localStorage and stripped on load.
 
@@ -84,7 +84,7 @@ curl -X POST -H "Authorization: Bearer $OPS_SECRET" http://127.0.0.1:3000/api/pl
 
 Health check: `GET /api/health` (Valkey ping).
 
-Key env vars (see `.env.example`): `VALKEY_URL`, `YTDLP_*`, `OPS_SECRET`, `CONTROL_TOKEN_TTL_SECONDS`, `PROXY_ALLOW_PRIVATE_URLS`, `WS_HEARTBEAT_INTERVAL_MS`, room limits. Fixed in code: WS heartbeat timeout = 3× interval; yt-dlp lock/lease timings from `YTDLP_*`; room TTL 1h; proxy token 7d; coalesce / local-media / HLS cache intervals.
+Key env vars (see `.env.example`): `VALKEY_URL`, `YTDLP_*`, `OPS_SECRET`, `CONTROL_TOKEN_TTL_SECONDS`, `PROXY_ALLOW_PRIVATE_URLS`, `WS_HEARTBEAT_INTERVAL_MS`, room limits.
 
 ## Production (Docker Compose)
 
@@ -117,7 +117,7 @@ services:
       retries: 10
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Put a reverse proxy (TLS) in front for public internet. Optional knobs (`YTDLP_*`, room limits, etc.) go under `web.environment` — see `.env.example`.
+Open [http://localhost:3000](http://localhost:3000). Put a reverse proxy (TLS) in front for public internet.
 
 ### From this repo (build locally)
 
@@ -130,21 +130,6 @@ docker compose up -d --build
 Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
 The repo compose loads optional `.env` into the web service, then forces `VALKEY_URL=redis://valkey:6379` and `NODE_ENV=production` (so a local-dev `.env` stays safe to reuse). HTTP is published on `127.0.0.1:3000` and Valkey on `127.0.0.1:6379` — neither is reachable from other LAN machines. Use the Valkey publish when running `bun run dev` against compose Valkey (`VALKEY_URL=redis://localhost:6379`).
-
-### Troubleshooting: browser hangs, curl works
-
-On Windows, if Firefox/Chrome spin forever on `http://127.0.0.1:3000` while `curl http://localhost:3000` returns instantly, another process (often **VS Code / Cursor port forwarding**) is usually bound to `127.0.0.1:3000` and accepting TCP without answering HTTP. `localhost` may still work via IPv6 while IPv4 is broken.
-
-Check listeners:
-
-```powershell
-Get-NetTCPConnection -LocalPort 3000 -State Listen |
-  Select-Object LocalAddress, OwningProcess |
-  Format-Table -AutoSize
-Get-Process -Id <OwningProcess>
-```
-
-Stop the extra forwarder (or close that editor window’s Ports panel), then `docker compose up -d` again. Compose binds `127.0.0.1:3000` so a later `127.0.0.1`-only forwarder cannot silently steal IPv4. Prefer `http://127.0.0.1:3000` when testing locally.
 
 ### Runbook notes
 
