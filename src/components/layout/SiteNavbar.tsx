@@ -3,7 +3,7 @@
 import { RoomDefaultJoinRoleSection } from "@/components/dialog/RoomDefaultJoinRoleSection"
 import { RoomJoinPasswordSection } from "@/components/dialog/RoomJoinPasswordSection"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +14,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Separator } from "@/components/ui/separator"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { env } from "@/env"
 import type { RoomRailTab } from "@/hooks/use-room-rail"
 import type { TypedRoomEventSender } from "@/lib/room-events"
@@ -88,8 +93,11 @@ export function SiteNavbar(props: {
     }
   }
 
-  const navButtonClass =
-    "inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium shadow-xs transition-colors hover:bg-muted hover:text-foreground touch-manipulation sm:min-h-8"
+  const navControlClass = "min-h-10 touch-manipulation gap-1.5 sm:min-h-8"
+  const navTriggerClass = cn(
+    buttonVariants({ variant: "outline", size: "sm" }),
+    navControlClass,
+  )
 
   return (
     <header className="sticky top-0 z-20 border-b bg-background/95">
@@ -119,7 +127,7 @@ export function SiteNavbar(props: {
               type="button"
               variant="outline"
               size="sm"
-              className="min-h-8 shrink-0 touch-manipulation gap-1.5"
+              className={cn(navControlClass, "shrink-0")}
               onClick={onCopyShareUrl}
             >
               {copied ? (
@@ -135,7 +143,7 @@ export function SiteNavbar(props: {
           {showEmbedsMenu ? (
             <DropdownMenu>
               <DropdownMenuTrigger
-                className={navButtonClass}
+                className={navTriggerClass}
                 aria-label="Open embeds menu"
               >
                 <Rows3 className="size-4" />
@@ -207,7 +215,7 @@ export function SiteNavbar(props: {
           {canManageRoomSecurity && send && roomSecurity ? (
             <DropdownMenu>
               <DropdownMenuTrigger
-                className={navButtonClass}
+                className={navTriggerClass}
                 aria-label="Open room settings"
               >
                 <Settings className="size-4" />
@@ -238,35 +246,34 @@ export function SiteNavbar(props: {
           ) : null}
           {showRailControls ? (
             <>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="min-h-10 touch-manipulation sm:min-h-8"
-                aria-label={railOpen ? "Collapse side rail" : "Expand side rail"}
-                aria-pressed={railOpen}
-                onClick={onToggleRail}
-              >
-                {railOpen ? (
-                  <PanelRightClose className="size-4" />
-                ) : (
-                  <PanelRightOpen className="size-4" />
-                )}
-                <span className="hidden sm:inline">
+              <Tooltip>
+                <TooltipTrigger
+                  className={cn(navTriggerClass, "px-2")}
+                  aria-label={railOpen ? "Hide panel" : "Show panel"}
+                  aria-pressed={railOpen}
+                  onClick={onToggleRail}
+                >
+                  {railOpen ? (
+                    <PanelRightClose className="size-4" />
+                  ) : (
+                    <PanelRightOpen className="size-4" />
+                  )}
+                </TooltipTrigger>
+                <TooltipContent>
                   {railOpen ? "Hide panel" : "Show panel"}
-                </span>
-              </Button>
+                </TooltipContent>
+              </Tooltip>
               {railOpen ? (
                 <div
-                  className="inline-flex items-center rounded-lg border bg-background p-0.5"
+                  className="inline-flex h-10 items-center rounded-lg border border-border bg-background p-0.5 sm:h-8"
                   role="group"
                   aria-label="Side panel content"
                 >
                   <Button
                     size="sm"
-                    variant={railTab === "playlist" ? "default" : "ghost"}
+                    variant={railTab === "playlist" ? "secondary" : "ghost"}
                     className={cn(
-                      "min-h-9 touch-manipulation",
+                      "h-full min-h-0 touch-manipulation",
                       railTab !== "playlist" && "text-muted-foreground",
                     )}
                     aria-pressed={railTab === "playlist"}
@@ -276,9 +283,9 @@ export function SiteNavbar(props: {
                   </Button>
                   <Button
                     size="sm"
-                    variant={railTab === "log" ? "default" : "ghost"}
+                    variant={railTab === "log" ? "secondary" : "ghost"}
                     className={cn(
-                      "min-h-9 touch-manipulation",
+                      "h-full min-h-0 touch-manipulation",
                       railTab !== "log" && "text-muted-foreground",
                     )}
                     aria-pressed={railTab === "log"}

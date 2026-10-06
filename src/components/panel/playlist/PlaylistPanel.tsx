@@ -174,7 +174,6 @@ export function PlaylistPanel({
                   isCurrent={isCurrent}
                   itemDuration={itemDuration}
                   canControlPlaylist={canManagePlaylist}
-                  playlistLength={roomState.playlist.length}
                   draftValue={draftName[x.id] ?? x.name}
                   isEditing={editingItemId === x.id}
                   onDraftChange={(next) =>
@@ -191,19 +190,6 @@ export function PlaylistPanel({
                   }}
                   onSelect={() => send("playlist:select", { index: i })}
                   onRemove={() => send("playlist:remove", { itemId: x.id })}
-                  onMoveUp={() =>
-                    send("playlist:reorder", {
-                      from: i,
-                      to: Math.max(0, i - 1),
-                    })
-                  }
-                  onMoveDown={() =>
-                    send("playlist:reorder", {
-                      from: i,
-                      to: Math.min(roomState.playlist.length - 1, i + 1),
-                    })
-                  }
-                  onRetry={() => send("playlist:retry", { itemId: x.id })}
                 />
               )
             })}

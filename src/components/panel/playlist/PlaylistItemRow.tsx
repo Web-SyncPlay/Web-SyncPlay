@@ -1,11 +1,4 @@
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import {
   Item,
@@ -18,15 +11,10 @@ import { cn } from "@/lib/utils"
 import type { PlaylistItem } from "@/zod/types"
 import { useSortable } from "@dnd-kit/react/sortable"
 import {
-  ArrowDown,
-  ArrowUp,
   GripVertical,
   Loader2,
-  MoreVertical,
-  Pencil,
   Play,
   PlayCircle,
-  RefreshCw,
   Trash2,
 } from "lucide-react"
 
@@ -36,7 +24,6 @@ export function PlaylistItemRow(props: {
   isCurrent: boolean
   itemDuration: string | null
   canControlPlaylist: boolean
-  playlistLength: number
   draftValue: string
   isEditing: boolean
   onDraftChange: (next: string) => void
@@ -45,9 +32,6 @@ export function PlaylistItemRow(props: {
   onDraftCancel: () => void
   onSelect: () => void
   onRemove: () => void
-  onMoveUp: () => void
-  onMoveDown: () => void
-  onRetry: () => void
 }) {
   const {
     item,
@@ -55,7 +39,6 @@ export function PlaylistItemRow(props: {
     isCurrent,
     itemDuration,
     canControlPlaylist,
-    playlistLength,
     draftValue,
     isEditing,
     onDraftChange,
@@ -64,9 +47,6 @@ export function PlaylistItemRow(props: {
     onDraftCancel,
     onSelect,
     onRemove,
-    onMoveUp,
-    onMoveDown,
-    onRetry,
   } = props
 
   const { ref, handleRef, isDragging, isDropTarget } = useSortable({
@@ -74,11 +54,6 @@ export function PlaylistItemRow(props: {
     index,
     disabled: !canControlPlaylist,
   })
-
-  const canRetry =
-    canControlPlaylist &&
-    item.ingestStatus === "error" &&
-    item.blockedReason !== "local_owner_offline"
 
   return (
     <div
@@ -133,12 +108,21 @@ export function PlaylistItemRow(props: {
               className={cn(
                 "max-w-full",
                 canControlPlaylist &&
-                  !isCurrent &&
                   "cursor-pointer rounded-md active:bg-muted/80 sm:hover:bg-muted/60",
               )}
+              role={canControlPlaylist ? "button" : undefined}
+              tabIndex={canControlPlaylist ? 0 : undefined}
+              title={canControlPlaylist ? "Rename" : undefined}
               onClick={() => {
-                if (!canControlPlaylist || isCurrent) return
-                onSelect()
+                if (!canControlPlaylist) return
+                onEditStart()
+              }}
+              onKeyDown={(e) => {
+                if (!canControlPlaylist) return
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  onEditStart()
+                }
               }}
             >
               {isCurrent && (
@@ -186,38 +170,6 @@ export function PlaylistItemRow(props: {
             >
               <Trash2 className="size-4" />
             </Button>
-          ) : null}
-          {canControlPlaylist ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                aria-label="More playlist actions"
-                className="inline-flex size-10 items-center justify-center rounded-lg border border-transparent bg-secondary text-secondary-foreground sm:size-7"
-              >
-                <MoreVertical className="size-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-44">
-                <DropdownMenuItem onClick={onEditStart}>
-                  <Pencil />
-                  Rename
-                </DropdownMenuItem>
-                <DropdownMenuItem disabled={!canRetry} onClick={onRetry}>
-                  <RefreshCw />
-                  Retry
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem disabled={index === 0} onClick={onMoveUp}>
-                  <ArrowUp />
-                  Move up
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={index === playlistLength - 1}
-                  onClick={onMoveDown}
-                >
-                  <ArrowDown />
-                  Move down
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           ) : null}
         </ItemActions>
       </Item>

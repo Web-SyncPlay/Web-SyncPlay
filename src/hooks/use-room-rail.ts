@@ -50,7 +50,11 @@ function readTab(): RoomRailTab {
 
 export function useRoomRail() {
   const railOpen = useSyncExternalStore(subscribe, readOpen, () => true)
-  const railTab = useSyncExternalStore(subscribe, readTab, () => "playlist")
+  const railTab = useSyncExternalStore<RoomRailTab>(
+    subscribe,
+    readTab,
+    (): RoomRailTab => "playlist",
+  )
 
   const setRailOpen = useCallback((next: boolean) => {
     memoryOpen = next

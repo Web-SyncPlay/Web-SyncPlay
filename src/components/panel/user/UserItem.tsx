@@ -3,9 +3,7 @@ import type { TypedRoomEventSender } from "@/lib/room-events"
 import { formatClockMs, formatRelativeLastSeen } from "@/lib/time-format"
 import { cn } from "@/lib/utils"
 import type { ParticipantState } from "@/zod/types"
-import { Pencil } from "lucide-react"
 import { Badge } from "../../ui/badge"
-import { Button } from "../../ui/button"
 import { Input } from "../../ui/input"
 import { Item, ItemActions, ItemContent } from "../../ui/item"
 import {
@@ -64,17 +62,29 @@ export function UserItem({
           <div>
             <div className="flex items-center gap-2">
               {isSelf && <Badge>You</Badge>}
-              <span className="truncate text-lg">{user.username}</span>
-              {isSelf ? (
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label="Edit display name"
-                  onClick={() => inlineEdit.start(user.username)}
-                >
-                  <Pencil />
-                </Button>
-              ) : null}
+              <span
+                className={cn(
+                  "truncate text-lg",
+                  isSelf &&
+                    "cursor-pointer rounded-md px-1 -mx-1 active:bg-muted/80 sm:hover:bg-muted/60",
+                )}
+                role={isSelf ? "button" : undefined}
+                tabIndex={isSelf ? 0 : undefined}
+                title={isSelf ? "Edit display name" : undefined}
+                onClick={() => {
+                  if (!isSelf) return
+                  inlineEdit.start(user.username)
+                }}
+                onKeyDown={(e) => {
+                  if (!isSelf) return
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    inlineEdit.start(user.username)
+                  }
+                }}
+              >
+                {user.username}
+              </span>
               <Badge
                 variant={user.role === "owner" ? "default" : "outline"}
                 className="capitalize"
