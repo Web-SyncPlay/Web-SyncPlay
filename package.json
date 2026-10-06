@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "bun@1.4.2",
   "engines": {
-    "node": ">=22"
+    "node": ">=26"
   },
   "scripts": {
     "postinstall": "node scripts/vendor-ffmpeg-core.mjs",
@@ -30,15 +30,15 @@
     "@dicebear/core": "^9.4.3",
     "@dicebear/lorelei": "^9.4.3",
     "@dnd-kit/react": "^0.5.0",
-    "@ffmpeg/ffmpeg": "0.12.10",
-    "@ffmpeg/util": "0.12.1",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@t3-oss/env-nextjs": "^0.13.11",
-    "@vidstack/react": "^1.12.13",
+    "@vidstack/react": "^1.15.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.52.0",
-    "mediasoup": "3.28.0",
-    "mediasoup-client": "3.18.0",
+    "mediasoup": "^3.28.0",
+    "mediasoup-client": "^3.24.4",
     "next": "^16.3.8",
     "qrcode.react": "^4.2.0",
     "react": "^19.3.0",
@@ -52,7 +52,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@ffmpeg/core": "0.12.10",
+    "@ffmpeg/core": "^0.12.10",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/bun": "^1.4.2",
     "@types/node": "^26.6.4",
