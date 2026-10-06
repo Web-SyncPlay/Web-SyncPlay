@@ -1,2 +1,6 @@
+[install]
+# Only install package versions published at least 2 days ago (supply-chain hardening)
+minimumReleaseAge = 172800
+
 [test]
 preload = ["./src/server/realtime/test-utils/preload.ts"]
