@@ -30,6 +30,7 @@ export const roomMessageHandlers = {
   "playlist:item:error": playlist.handlePlaylistItemError,
   "local-media:chunk": localMedia.handleLocalMediaChunk,
   "local-media:ready": localMedia.handleLocalMediaReady,
+  "local-media:abr:publish": localMedia.handleLocalMediaAbrPublish,
   "local-media:webrtc:signal": localMedia.handleLocalMediaWebrtcSignal,
   "local-media:sfu:capabilities": localMediaSfu.handleLocalMediaSfuCapabilities,
   "local-media:sfu:create-transport":

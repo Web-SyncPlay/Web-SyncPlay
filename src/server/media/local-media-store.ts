@@ -3,6 +3,19 @@ import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
 import { invalidateLocalMediaBlockCache } from "@/server/media/local-media-block-cache"
 
+export type LocalMediaAbrVariant = {
+  localMediaId: string
+  height: number
+  bandwidth: number
+  label: string
+}
+
+export type LocalMediaAbrState = {
+  status: "ready"
+  durationSec: number
+  variants: LocalMediaAbrVariant[]
+}
+
 export type LocalMediaEntry = {
   id: string
   roomId: string
@@ -17,6 +30,10 @@ export type LocalMediaEntry = {
    * Cleared when providerReady becomes false.
    */
   providerNodeId?: string
+  /** Set when this entry is a transcoded child of another local media id. */
+  abrParentId?: string
+  /** ABR ladder metadata on the parent entry after provider packaging. */
+  abr?: LocalMediaAbrState
   createdAt: number
   expiresAt: number
 }
@@ -36,6 +53,7 @@ export async function createLocalMediaEntry(input: {
   providerReady?: boolean
   /** Defaults to this process when providerReady is true. */
   providerNodeId?: string
+  abrParentId?: string
 }) {
   const createdAt = Date.now()
   const providerReady = input.providerReady ?? false
@@ -50,6 +68,7 @@ export async function createLocalMediaEntry(input: {
     providerNodeId: providerReady
       ? (input.providerNodeId ?? getAppNodeId())
       : undefined,
+    abrParentId: input.abrParentId,
     createdAt,
     expiresAt: createdAt + LOCAL_MEDIA_TTL_MS,
   }
@@ -76,6 +95,29 @@ export async function createLocalMediaEntry(input: {
 }
 
 function normalizeEntry(entry: LocalMediaEntry): LocalMediaEntry {
+  const abr =
+    entry.abr &&
+    entry.abr.status === "ready" &&
+    Array.isArray(entry.abr.variants)
+      ? {
+          status: "ready" as const,
+          durationSec: Number(entry.abr.durationSec) || 0,
+          variants: entry.abr.variants
+            .filter(
+              (v) =>
+                typeof v?.localMediaId === "string" &&
+                typeof v.height === "number" &&
+                typeof v.bandwidth === "number",
+            )
+            .map((v) => ({
+              localMediaId: v.localMediaId,
+              height: v.height,
+              bandwidth: v.bandwidth,
+              label: typeof v.label === "string" ? v.label : `${v.height}p`,
+            })),
+        }
+      : undefined
+
   return {
     ...entry,
     providerReady: entry.providerReady === true,
@@ -83,6 +125,11 @@ function normalizeEntry(entry: LocalMediaEntry): LocalMediaEntry {
       typeof entry.providerNodeId === "string" && entry.providerNodeId.length > 0
         ? entry.providerNodeId
         : undefined,
+    abrParentId:
+      typeof entry.abrParentId === "string" && entry.abrParentId.length > 0
+        ? entry.abrParentId
+        : undefined,
+    abr: abr && abr.variants.length > 0 ? abr : undefined,
   }
 }
 
@@ -188,7 +235,14 @@ export async function deleteLocalMediaEntry(id: string) {
     const raw = await client.get(keys.localMediaEntry(id))
     if (raw) {
       try {
-        const entry = JSON.parse(raw) as LocalMediaEntry
+        const entry = normalizeEntry(JSON.parse(raw) as LocalMediaEntry)
+        // Cascade ABR children when deleting a parent.
+        if (entry.abr?.variants?.length) {
+          for (const variant of entry.abr.variants) {
+            if (variant.localMediaId === id) continue
+            await deleteLocalMediaEntry(variant.localMediaId)
+          }
+        }
         await client.del(keys.localMediaEntry(id))
         await client.sRem(
           keys.localMediaOwnerIndex(entry.roomId, entry.ownerUserId),
@@ -203,6 +257,31 @@ export async function deleteLocalMediaEntry(id: string) {
   } catch (error) {
     console.warn("[local-media] redis metadata delete failed", error)
   }
+}
+
+/** Replace ABR ladder metadata on a parent entry (caller manages children). */
+export async function setLocalMediaAbr(
+  id: string,
+  abr: LocalMediaAbrState | null,
+  opts?: { ownerUserId?: string },
+) {
+  const entry = await getLocalMediaEntry(id)
+  if (!entry) return null
+  if (opts?.ownerUserId && entry.ownerUserId !== opts.ownerUserId) {
+    return null
+  }
+  if (abr) {
+    entry.abr = abr
+  } else {
+    delete entry.abr
+  }
+  try {
+    await persistEntry(entry)
+  } catch (error) {
+    console.warn("[local-media] redis abr write failed", error)
+    return null
+  }
+  return entry
 }
 
 export async function deleteLocalMediaEntriesForOwner(

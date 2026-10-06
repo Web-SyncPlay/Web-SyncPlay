@@ -93,6 +93,29 @@ export const localMediaReadySchema = z.object({
   ready: z.boolean(),
 })
 
+export const localMediaAbrPublishSchema = z.object({
+  parentLocalMediaId: z.string().uuid(),
+  durationSec: z.number().positive().max(60 * 60 * 24),
+  variants: z
+    .array(
+      z.object({
+        localMediaId: z.string().uuid(),
+        height: z.number().int().min(1).max(16_384),
+        bandwidth: z.number().int().min(1).max(500_000_000),
+        label: z.string().min(1).max(64),
+        mimeType: z.string().min(1).max(128),
+        sizeBytes: z
+          .number()
+          .int()
+          .min(1)
+          .max(1024 * 1024 * 1024 * 1024),
+        name: z.string().min(1).max(256),
+      }),
+    )
+    .min(1)
+    .max(8),
+})
+
 /** WebRTC signaling for local-media P2P / SFU bootstrap (relayed by server). */
 export const localMediaWebrtcSignalSchema = z.object({
   localMediaId: z.string().uuid(),

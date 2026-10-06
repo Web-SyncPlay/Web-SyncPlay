@@ -66,15 +66,12 @@ Control embed URLs are minted via `POST /api/control/token` and include `#uid=&s
    - **Provider ready**: metadata is marked ready on share and on reconnect announce; GET fail-fasts with `provider_unavailable` when the sharer’s tab no longer holds the `File`.
    - **Binary LMC chunks**: provider replies use compact binary WebSocket frames (JSON/`dataBase64` remains as a fallback error path).
    - **Block cache**: aligned ranges use L1 in-process memory (singleflight + LRU) then L2 Valkey/Redis so concurrent viewers and multi-instance relays share one provider upload per block.
+   - **Sticky provider affinity**: `providerNodeId` + internal HTTP fetch (`INTERNAL_NODE_BASE_URL` / `LOCAL_MEDIA_INTERNAL_SECRET`) between local WS and Redis pub/sub; cluster-wide `local-media:reannounce` on partial disconnect.
+   - **FSA**: Chromium `showOpenFilePicker` + IndexedDB handle restore across refresh (falls back to `<input type="file">`).
+   - **ABR**: eligible videos (roughly 1–200 MiB) are packaged on the provider with ffmpeg.wasm into a 720p/480p ladder. When ready, `playableUrl` becomes `/api/media/local/{id}/hls` with an Auto adaptive stream plus combined rungs; progressive playback remains until packaging finishes (and for ineligible files).
+   - **WebRTC delivery**: range fetch order is **SFU → P2P mesh → HTTP relay** (Service Worker `/local-media-sw.js`). mediasoup runs **in-process** (UDP 40000); process-local only — cross-replica viewers use P2P or HTTP. STUN-only (no TURN); UDP-blocked clients stay on HTTP.
 
-## Local media architecture (roadmap)
-
-- **Phase now**: provider `File` + server HTTP range relay + L1 memory / L2 Redis block cache + binary WS chunk frames + `providerReady` fail-fast + **sticky provider affinity** (`providerNodeId` + internal HTTP fetch between local WS and Redis pub/sub) + cluster-wide `local-media:reannounce`.
-- **Elevate (shipping)**:
-  - **FSA**: Chromium `showOpenFilePicker` + IndexedDB handle restore across refresh (falls back to `<input type="file">`).
-  - **ABR scaffold**: `/api/media/local/{id}/hls` single-variant VOD wrapper (multi-bitrate packaging still to land).
-  - **WebRTC C0**: P2P DataChannel mesh + Service Worker range intercept (`/local-media-sw.js`) with HTTP relay fallback for the progressive URL path.
-  - **WebRTC C1**: **mediasoup** DataChannel SFU **in-process** in the app image (Node runtime) — single UDP port via `WebRtcServer`. Viewers fetch local-media ranges over the SFU DataChannel when available (`local-media:sfu:*` WS signaling, `src/lib/local-media-sfu.ts`). Range fetch order is **SFU → P2P mesh → HTTP relay**; if the worker cannot start or UDP is blocked, playback falls back automatically. The SFU is **process-local** (router/transports live in that Node process); cross-replica viewers use P2P or HTTP instead.
+## Operator / ops
 
 ### Multi-replica local media
 
@@ -89,7 +86,7 @@ Set both env vars on every `web` replica:
 
 Miss path order: local provider WS → internal HTTP to `providerNodeId` holder → Redis pub/sub. Keep the internal route off public ingress when possible.
 
-### Firewall / port forward (operators)
+### Firewall / port forward
 
 ICE uses **public Google + Cloudflare STUN only** (no TURN). Clients that cannot send **UDP** to this host cannot use the WebRTC SFU path; HTTP `/api/media/local` relay remains for progressive playback when that path is used.
 
@@ -102,7 +99,7 @@ mediasoup’s `WebRtcServer` uses a fixed **UDP 40000** for all SFU traffic. Whi
 
 Set `PUBLIC_DOMAIN` to the public hostname or origin clients use (e.g. `web-syncplay.de`). It drives mediasoup ICE `announcedAddress`, CORS allowlist, and CSP.
 
-## Operator / ops
+### Ops endpoints
 
 Set `OPS_SECRET` in production (ops routes return 503 if unset). Examples:
 

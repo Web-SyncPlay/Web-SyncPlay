@@ -1,5 +1,6 @@
 import type { ClientEventType } from "@/lib/room-events"
 import {
+  localMediaAbrPublishSchema,
   localMediaChunkSchema,
   localMediaReadySchema,
   localMediaSfuCapabilitiesSchema,
@@ -51,6 +52,7 @@ export const roomMessageSchemas = {
   "playlist:item:error": playlistItemErrorSchema,
   "local-media:chunk": localMediaChunkSchema,
   "local-media:ready": localMediaReadySchema,
+  "local-media:abr:publish": localMediaAbrPublishSchema,
   "local-media:webrtc:signal": localMediaWebrtcSignalSchema,
   "local-media:sfu:capabilities": localMediaSfuCapabilitiesSchema,
   "local-media:sfu:create-transport": localMediaSfuCreateTransportSchema,

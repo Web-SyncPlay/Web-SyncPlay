@@ -1,7 +1,4 @@
-import {
-  buildLocalMediaMasterPlaylist,
-  buildLocalMediaVariantPlaylist,
-} from "@/server/media/local-media-hls"
+import { buildLocalMediaVariantPlaylist } from "@/server/media/local-media-hls"
 import {
   getLocalMediaEntry,
   touchLocalMediaEntry,
@@ -13,16 +10,16 @@ import {
 } from "@/lib/local-media-errors"
 
 /**
- * GET /api/media/local/{id}/hls
- * Multi-variant master when ABR is ready; otherwise single-variant wrapper.
+ * GET /api/media/local/{id}/hls/{variantId}
+ * Single-segment VOD media playlist for one ladder rung.
  */
 export async function GET(
   _request: Request,
-  context: { params: Promise<{ id: string }> },
+  context: { params: Promise<{ id: string; variantId: string }> },
 ) {
-  const { id } = await context.params
+  const { id, variantId } = await context.params
   const entry = await getLocalMediaEntry(id)
-  if (!entry) {
+  if (!entry || entry.abrParentId) {
     return Response.json(
       {
         error: localMediaErrorMessage("not_found"),
@@ -32,8 +29,10 @@ export async function GET(
     )
   }
 
-  // Child entries are not ABR parents — redirect logic via not_found.
-  if (entry.abrParentId) {
+  const allowed =
+    variantId === id ||
+    entry.abr?.variants.some((v) => v.localMediaId === variantId) === true
+  if (!allowed) {
     return Response.json(
       {
         error: localMediaErrorMessage("not_found"),
@@ -57,9 +56,14 @@ export async function GET(
 
   void touchLocalMediaEntry(id)
 
-  const body = buildLocalMediaMasterPlaylist({
-    parentId: id,
-    variants: entry.abr?.status === "ready" ? entry.abr.variants : null,
+  const durationSec =
+    entry.abr?.status === "ready" && entry.abr.durationSec > 0
+      ? entry.abr.durationSec
+      : 1
+
+  const body = buildLocalMediaVariantPlaylist({
+    variantLocalMediaId: variantId,
+    durationSec,
   })
 
   return new Response(body, {

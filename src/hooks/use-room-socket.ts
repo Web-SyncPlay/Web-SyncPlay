@@ -466,6 +466,10 @@ export function useRoomSocket(
                 registerLocalMediaServiceWorker,
                 attachLocalMediaServiceWorkerBridge,
               } = await import("@/lib/local-media-sw")
+              const {
+                resolveLocalMediaProviderUserId,
+                resolveLocalMediaMeta,
+              } = await import("@/lib/local-media-resolve")
 
               if (ws.readyState !== WebSocket.OPEN) return
 
@@ -484,25 +488,13 @@ export function useRoomSocket(
               void registerLocalMediaServiceWorker()
               detachSwBridge?.()
               detachSwBridge = attachLocalMediaServiceWorkerBridge({
-                resolveProviderUserId: (localMediaId) => {
-                  const state = roomStateRef.current
-                  if (!state) return null
-                  const item = state.playlist.find(
-                    (p) => p.localMediaId === localMediaId,
-                  )
-                  return item?.localOriginUserId ?? null
-                },
-                resolveMediaMeta: (localMediaId) => {
-                  const item = roomStateRef.current?.playlist.find(
-                    (p) => p.localMediaId === localMediaId,
-                  )
-                  if (!item) return null
-                  const mimeType =
-                    item.localMimeType ??
-                    item.mediaStreams?.find((s) => s.type)?.type
-                  if (!mimeType || !item.localSizeBytes) return null
-                  return { mimeType, sizeBytes: item.localSizeBytes }
-                },
+                resolveProviderUserId: (localMediaId) =>
+                  resolveLocalMediaProviderUserId(
+                    roomStateRef.current,
+                    localMediaId,
+                  ),
+                resolveMediaMeta: (localMediaId) =>
+                  resolveLocalMediaMeta(roomStateRef.current, localMediaId),
               })
 
               await restoreLocalMediaHandles({
@@ -524,6 +516,45 @@ export function useRoomSocket(
                 payload,
                 identity.userId,
               )
+
+              // Re-package ABR ladder for restored Files (children are lost on refresh).
+              const sendTyped: import("@/lib/room-events").TypedRoomEventSender =
+                (type, eventPayload) => {
+                  if (ws.readyState !== WebSocket.OPEN) return
+                  ws.send(
+                    JSON.stringify({
+                      type,
+                      payload: eventPayload,
+                      requestId: crypto.randomUUID(),
+                    }),
+                  )
+                }
+              void (async () => {
+                const { runLocalMediaAbrPublish } = await import(
+                  "@/lib/local-media-abr"
+                )
+                const { getLocalMediaFile, getLocalMediaMimeType } =
+                  await import("@/lib/local-media-provider")
+                for (const item of payload.playlist) {
+                  if (item.sourceKind !== "local_file") continue
+                  if (item.localOriginUserId !== identity.userId) continue
+                  const parentId = item.localMediaId
+                  if (!parentId) continue
+                  const file = getLocalMediaFile(parentId)
+                  if (!file) continue
+                  const mime =
+                    getLocalMediaMimeType(parentId) ??
+                    item.localMimeType ??
+                    "video/mp4"
+                  void runLocalMediaAbrPublish({
+                    parentLocalMediaId: parentId,
+                    file,
+                    mimeType: mime,
+                    name: item.name || "Local media",
+                    send: sendTyped,
+                  })
+                }
+              })()
 
               // Provider invites other room members onto DataChannels (C0 mesh).
               const held = listLocalMediaIds()

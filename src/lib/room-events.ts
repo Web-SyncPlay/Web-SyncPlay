@@ -37,6 +37,19 @@ export interface ClientEventPayloadMap {
     localMediaId: string
     ready: boolean
   }
+  "local-media:abr:publish": {
+    parentLocalMediaId: string
+    durationSec: number
+    variants: Array<{
+      localMediaId: string
+      height: number
+      bandwidth: number
+      label: string
+      mimeType: string
+      sizeBytes: number
+      name: string
+    }>
+  }
   "local-media:webrtc:signal": {
     localMediaId: string
     targetUserId: string

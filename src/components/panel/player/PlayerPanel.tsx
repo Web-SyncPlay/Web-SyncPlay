@@ -278,15 +278,34 @@ export function PlayerPanel({
 
     // Provider plays from the in-tab File directly — no relay hop.
     // If blob playback fails (MediaError 4), fall back to the relay URL.
+    // Prefer the File for the selected progressive stream id (parent or ABR child).
+    // For Auto HLS, keep the source File blob for best local UX.
     if (
       !forceLocalRelaySrc &&
       current.sourceKind === "local_file" &&
-      current.localMediaId &&
       current.localOriginUserId === userId
     ) {
-      const localUrl = getLocalMediaObjectUrl(current.localMediaId)
-      if (localUrl) {
-        return localUrl
+      const streamSrc = activeStream?.src ?? ""
+      const isHlsAuto =
+        activeStream?.kind === "adaptive" ||
+        /\.m3u8(\?|$)/i.test(streamSrc) ||
+        /\/hls(\?|$)/i.test(streamSrc)
+      let blobId = current.localMediaId
+      if (!isHlsAuto && streamSrc) {
+        const match = /\/api\/media\/local\/([^/?#]+)/i.exec(streamSrc)
+        if (match?.[1]) {
+          try {
+            blobId = decodeURIComponent(match[1])
+          } catch {
+            blobId = match[1]
+          }
+        }
+      }
+      if (blobId) {
+        const localUrl = getLocalMediaObjectUrl(blobId)
+        if (localUrl) {
+          return localUrl
+        }
       }
     }
 
@@ -300,12 +319,29 @@ export function PlayerPanel({
     }
 
     return fromStream ?? current.playableUrl ?? ""
-  }, [activeStream?.src, current, forceLocalRelaySrc, userId])
+  }, [activeStream, current, forceLocalRelaySrc, userId])
 
-  const localMimeHint =
-    current?.sourceKind === "local_file" && current.localMediaId
+  const localMimeHint = (() => {
+    if (current?.sourceKind !== "local_file") return null
+    if (activePlaybackSrc.startsWith("blob:") && current.localMediaId) {
+      // Prefer mime for whichever File we are playing (parent or ABR child).
+      const streamSrc = activeStream?.src ?? ""
+      const match = /\/api\/media\/local\/([^/?#]+)/i.exec(streamSrc)
+      const id = match?.[1]
+        ? (() => {
+            try {
+              return decodeURIComponent(match[1])
+            } catch {
+              return match[1]
+            }
+          })()
+        : current.localMediaId
+      return getLocalMediaMimeType(id) ?? getLocalMediaMimeType(current.localMediaId)
+    }
+    return current.localMediaId
       ? getLocalMediaMimeType(current.localMediaId)
       : null
+  })()
 
   const playerSrc = useMemo(
     () =>

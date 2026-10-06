@@ -15,6 +15,7 @@ import {
   playbackSeekSchema,
   playbackSetPausedSchema,
   localMediaReadySchema,
+  localMediaAbrPublishSchema,
   playlistAddLocalSchema,
   playlistAddUrlSchema,
   playlistItemErrorSchema,
@@ -204,6 +205,30 @@ describe("playlist payload interfaces", () => {
       localMediaReadySchema.safeParse({
         localMediaId: "not-a-uuid",
         ready: false,
+      }).success,
+    ).toBe(false)
+    expect(
+      localMediaAbrPublishSchema.safeParse({
+        parentLocalMediaId: "00000000-0000-4000-8000-000000000001",
+        durationSec: 12.5,
+        variants: [
+          {
+            localMediaId: "00000000-0000-4000-8000-000000000001",
+            height: 1080,
+            bandwidth: 5_000_000,
+            label: "1080p",
+            mimeType: "video/mp4",
+            sizeBytes: 1_000_000,
+            name: "clip",
+          },
+        ],
+      }).success,
+    ).toBe(true)
+    expect(
+      localMediaAbrPublishSchema.safeParse({
+        parentLocalMediaId: "00000000-0000-4000-8000-000000000001",
+        durationSec: 12.5,
+        variants: [],
       }).success,
     ).toBe(false)
     expect(

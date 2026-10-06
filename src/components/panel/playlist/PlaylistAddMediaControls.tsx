@@ -79,6 +79,15 @@ export function PlaylistAddMediaControls(props: {
           ? "Sharing local media (survives refresh in this browser)"
           : "Sharing local media (streamed from this browser)",
       )
+      void import("@/lib/local-media-abr").then(({ runLocalMediaAbrPublish }) =>
+        runLocalMediaAbrPublish({
+          parentLocalMediaId: localMediaId,
+          file,
+          mimeType,
+          name: file.name || "Local media",
+          send,
+        }),
+      )
     } catch (error) {
       console.error("[playlist] failed local media share", error)
       toast.error("Could not share local media")
