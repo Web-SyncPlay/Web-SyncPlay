@@ -183,30 +183,28 @@ export function SiteNavbar(props: SiteNavbarProps) {
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
           <SiteNavbarBrand roomId={roomId} />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 shrink-0 touch-manipulation gap-1.5 max-lg:w-8 max-lg:px-0"
+            aria-label={copied ? "Copied" : "Copy room link"}
+            onClick={onCopyShareUrl}
+          >
+            {copied ? (
+              <Check className="size-3.5" />
+            ) : (
+              <Copy className="size-3.5" />
+            )}
+            <span className="hidden lg:inline">
+              {copied ? "Copied" : "Copy room link"}
+            </span>
+          </Button>
           <Badge variant={paused ? "outline" : "secondary"}>
             {paused ? "Paused" : "Playing"}
           </Badge>
-          <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-            <span className="hidden truncate xl:inline">
-              Playing: {currentName ?? "None"}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 shrink-0 touch-manipulation gap-1.5 max-lg:w-8 max-lg:px-0"
-              aria-label={copied ? "Copied" : "Copy room link"}
-              onClick={onCopyShareUrl}
-            >
-              {copied ? (
-                <Check className="size-3.5" />
-              ) : (
-                <Copy className="size-3.5" />
-              )}
-              <span className="hidden lg:inline">
-                {copied ? "Copied" : "Copy room link"}
-              </span>
-            </Button>
+          <span className="hidden min-w-0 truncate text-muted-foreground xl:inline">
+            {currentName ?? "None"}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
