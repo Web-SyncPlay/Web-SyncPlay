@@ -8,6 +8,10 @@ import {
   setLocalMediaProviderReady,
 } from "@/server/media/local-media-store"
 
+/**
+ * Uses the shared client (fail-fast reconnect). Missing Valkey rejects in
+ * milliseconds on ECONNREFUSED instead of hanging forever.
+ */
 async function redisAvailable(): Promise<boolean> {
   try {
     const client = await getCommandClient()
