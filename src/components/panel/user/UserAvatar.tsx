@@ -1,4 +1,10 @@
-import { avatarDataUri, avatarStyles } from "@/lib/avatar"
+import {
+  avatarDataUri,
+  avatarStyleLabel,
+  avatarStyles,
+  resolveStyle,
+  type AvatarStyleId,
+} from "@/lib/avatar"
 import type { TypedRoomEventSender } from "@/lib/room-events"
 import { cn } from "@/lib/utils"
 import type { ParticipantState } from "@/zod/types"
@@ -6,7 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "../../ui/dropdown-menu"
 import { ItemMedia } from "../../ui/item"
@@ -58,11 +65,12 @@ export function UserAvatar({
   compact?: boolean
 }) {
   const avatarClassName = compact ? "size-8 rounded-full" : "size-16"
+  const selectedStyle = resolveStyle(user.avatarStyle)
   const face = isSelf ? (
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(
-          "ring-offset-background transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "cursor-pointer ring-offset-background transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           compact
             ? "rounded-full hover:ring-2 hover:ring-primary/40"
             : "rounded-none hover:brightness-95",
@@ -75,14 +83,21 @@ export function UserAvatar({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        {avatarStyles.map((style) => (
-          <DropdownMenuItem
-            key={style}
-            onClick={() => send("participant:update", { avatarStyle: style })}
-          >
-            {style}
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuRadioGroup
+          value={selectedStyle}
+          onValueChange={(style) => {
+            if (!style) return
+            send("participant:update", {
+              avatarStyle: style as AvatarStyleId,
+            })
+          }}
+        >
+          {avatarStyles.map((style) => (
+            <DropdownMenuRadioItem key={style} value={style}>
+              {avatarStyleLabel(style)}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   ) : (

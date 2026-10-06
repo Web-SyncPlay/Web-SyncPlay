@@ -7,14 +7,9 @@
       "dependencies": {
         "@base-ui/react": "^1.8.0",
         "@dicebear/adventurer": "^9.4.3",
-        "@dicebear/adventurer-neutral": "^9.4.3",
         "@dicebear/avataaars": "^9.4.3",
-        "@dicebear/bottts": "^9.4.3",
         "@dicebear/core": "9.4.3",
-        "@dicebear/fun-emoji": "^9.4.3",
         "@dicebear/lorelei": "^9.4.3",
-        "@dicebear/micah": "^9.4.3",
-        "@dicebear/pixel-art": "^9.4.3",
         "@dnd-kit/react": "^0.5.0",
         "@t3-oss/env-nextjs": "^0.13.11",
         "@vidstack/react": "^1.12.13",
@@ -98,21 +93,11 @@
 
     "@dicebear/adventurer": ["@dicebear/adventurer@9.4.3", "", { "peerDependencies": { "@dicebear/core": "^9.0.0" } }, "sha512-LPzLiNBVSrzb2lBTwAP00+ew/VfqcImI/ULVFaL2LXEuY3QlAOLwvR4TpwX8AIqeo8JDQO4cVMHZsCm0c2uGdg=="],
 
-    "@dicebear/adventurer-neutral": ["@dicebear/adventurer-neutral@9.4.3", "", { "peerDependencies": { "@dicebear/core": "^9.0.0" } }, "sha512-G55yvlmc439YfE1tTmQaB6FB87kUiqc0vzi4ZiuXrfs9Hj0w5xKTJzox4eZKH7U3j6MujZV29qm+CozdtNJrpw=="],
-
     "@dicebear/avataaars": ["@dicebear/avataaars@9.4.3", "", { "peerDependencies": { "@dicebear/core": "^9.0.0" } }, "sha512-LNIZNb1TaXhL2/OfJK+lmw8Kkbn6eot1FHiLoU2/AzOmjSQQVJC0ZvwrZ/tdQEIGeMPu5nhJLmNwH/kFMoF+Tw=="],
-
-    "@dicebear/bottts": ["@dicebear/bottts@9.4.3", "", { "peerDependencies": { "@dicebear/core": "^9.0.0" } }, "sha512-yGQRsiLF6CBSUW9PdMByRvqVVpLZdiBHJNHG4HuY5Ka2FVZVONhgVOneXnroeMJsOV84UC1vU5ncXjLYV46J1Q=="],
 
     "@dicebear/core": ["@dicebear/core@9.4.3", "", { "dependencies": { "@types/json-schema": "^7.0.15" } }, "sha512-9ITrQI57k3p5hKuU8HZJ1d0kPdrmTKEJDOdlKQ8CpaChbtmnD1R+dtWmNz5IesYThXM8F64pJ0ZvJ2rsY8Hciw=="],
 
-    "@dicebear/fun-emoji": ["@dicebear/fun-emoji@9.4.3", "", { "peerDependencies": { "@dicebear/core": "^9.0.0" } }, "sha512-7zO+bJzKNbFAE0FOwP4IvP2sVnemGxYYsHVWYSXj5ZiWibcsEDLSmCanZZgbfzsHaDvh7Y8mKK6dynbnCUGJDA=="],
-
     "@dicebear/lorelei": ["@dicebear/lorelei@9.4.3", "", { "peerDependencies": { "@dicebear/core": "^9.0.0" } }, "sha512-bpch2LRqrdL7gEgU2AW9NwoVKgBSrOUEQJx6FUV1UI6alM72BLaeu04uMqWQUXdh+Hc0SCnkj4Lg8nazSyI3oA=="],
-
-    "@dicebear/micah": ["@dicebear/micah@9.4.3", "", { "peerDependencies": { "@dicebear/core": "^9.0.0" } }, "sha512-+76eH3Scu8jfiSbhGjK3OBWeTK+qiuKxrlZFimevaIUzNe6UjqEeaiBUg9R7LPAx3CNIXJOLhuzkHPEkOSnXtg=="],
-
-    "@dicebear/pixel-art": ["@dicebear/pixel-art@9.4.3", "", { "peerDependencies": { "@dicebear/core": "^9.0.0" } }, "sha512-sGoG6MEs9ZWD+5+7OObVjp7IrF3E/UEKTg7T4kou9UXl2YXLVy8u8hHnAgTqWhiVZuyYozAVsK2E/oYvMigYBw=="],
 
     "@dnd-kit/abstract": ["@dnd-kit/abstract@0.5.0", "", { "dependencies": { "@dnd-kit/geometry": "^0.5.0", "@dnd-kit/state": "^0.5.0", "tslib": "^2.6.2" } }, "sha512-hi13iMJgjPX/KDYVKg5VeDIhmYiV6buc9bAX+tCLYf4QdyYjPbsXjn2sPo6m7fQ6SGJBEFgHJ2PemeKDUbwBaA=="],
 

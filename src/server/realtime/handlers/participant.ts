@@ -1,3 +1,4 @@
+import { resolveStyle } from "@/lib/avatar"
 import { appendActionLog } from "@/server/log"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
@@ -31,8 +32,8 @@ export const handleParticipantUpdate: RoomMessageHandler = async (
   const nextUsername = String(
     participantResult.data.username ?? participant.username,
   )
-  const nextAvatarStyle = String(
-    participantResult.data.avatarStyle ?? participant.avatarStyle,
+  const nextAvatarStyle = resolveStyle(
+    String(participantResult.data.avatarStyle ?? participant.avatarStyle),
   )
   const nextPaused = Boolean(
     participantResult.data.paused ?? previousPlayback.paused,

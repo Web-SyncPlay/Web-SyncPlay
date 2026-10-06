@@ -1,3 +1,4 @@
+import { DEFAULT_AVATAR_STYLE, resolveStyle } from "@/lib/avatar"
 import { appendActionLog } from "@/server/log"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
@@ -74,7 +75,9 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
   const roomId = joinResult.data.roomId
   const userId = String(joinResult.data.userId || randomUUID())
   const username = String(joinResult.data.username || "guest")
-  const avatarStyle = String(joinResult.data.avatarStyle || "adventurer")
+  const avatarStyle = resolveStyle(
+    String(joinResult.data.avatarStyle || DEFAULT_AVATAR_STYLE),
+  )
   const userSecret = joinResult.data.userSecret
   const joinPassword = joinResult.data.joinPassword
   const sessionKind: SessionKind = joinResult.data.sessionKind ?? "room"

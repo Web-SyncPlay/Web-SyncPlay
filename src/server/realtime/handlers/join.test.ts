@@ -7,7 +7,7 @@ describe("join profile interface", () => {
     const existingParticipant = {
       userId: "user-1",
       username: "Existing Name",
-      avatarStyle: "thumbs",
+      avatarStyle: "avataaars",
       role: "guest",
       connected: false,
       joinedAt: 1,
@@ -29,7 +29,7 @@ describe("join profile interface", () => {
 
     expect(profile).toEqual({
       username: "Existing Name",
-      avatarStyle: "thumbs",
+      avatarStyle: "avataaars",
     })
   })
 

@@ -28,7 +28,7 @@ describe("participant handler interfaces", () => {
       ctx,
       envelope("participant:update", {
         username: "New Guest",
-        avatarStyle: "thumbs",
+        avatarStyle: "lorelei",
         paused: false,
         currentTimeMs: 1234,
         loading: true,
@@ -42,7 +42,7 @@ describe("participant handler interfaces", () => {
 
     const participant = store.peek("room-1")?.participants.guest
     expect(participant?.username).toBe("New Guest")
-    expect(participant?.avatarStyle).toBe("thumbs")
+    expect(participant?.avatarStyle).toBe("lorelei")
     expect(participant?.localPlayback.error).toBe("stall")
   })
 
