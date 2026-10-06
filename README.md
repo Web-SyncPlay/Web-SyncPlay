@@ -74,9 +74,11 @@ Control embed URLs are minted via `POST /api/control/token` and include `#uid=&s
   - **FSA**: Chromium `showOpenFilePicker` + IndexedDB handle restore across refresh (falls back to `<input type="file">`).
   - **ABR scaffold**: `/api/media/local/{id}/hls` single-variant VOD wrapper (multi-bitrate packaging still to land).
   - **WebRTC C0**: P2P DataChannel mesh + Service Worker range intercept (`/local-media-sw.js`) with HTTP relay fallback for the progressive URL path.
-  - **WebRTC C1**: **mediasoup** DataChannel SFU **in-process** in the app image (Node runtime) — single UDP port via `WebRtcServer`. Viewers fetch local-media ranges over the SFU DataChannel when available (`local-media:sfu:*` WS signaling, `src/lib/local-media-sfu.ts`). Range fetch order is **SFU → P2P mesh → HTTP relay**; if the worker cannot start or UDP is blocked, playback falls back automatically.
+  - **WebRTC C1**: **mediasoup** DataChannel SFU **in-process** in the app image (Node runtime) — single UDP port via `WebRtcServer`. Viewers fetch local-media ranges over the SFU DataChannel when available (`local-media:sfu:*` WS signaling, `src/lib/local-media-sfu.ts`). Range fetch order is **SFU → P2P mesh → HTTP relay**; if the worker cannot start or UDP is blocked, playback falls back automatically. The SFU is **process-local** (router/transports live in that Node process); cross-replica viewers use P2P or HTTP instead.
 
 ### Multi-replica local media
+
+Sticky **HTTP** affinity (`providerNodeId` + internal fetch) works across replicas. The mediasoup SFU does **not** span replicas — only peers on the same process can use the SFU DataChannel path.
 
 Set both env vars on every `web` replica:
 

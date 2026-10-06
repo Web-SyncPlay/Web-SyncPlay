@@ -41,3 +41,6 @@ bun.lockb
 # Next.js
 next-env.d.ts
 tsconfig.tsbuildinfo
+
+# Local scratch (e.g. SFU verify fixtures)
+tmp/
