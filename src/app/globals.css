@@ -186,6 +186,19 @@ summary {
   animation: jump-dot 1s ease-in-out infinite;
 }
 
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@utility animate-marquee {
+  animation: marquee 40s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-blob {
     animation: none;
@@ -194,5 +207,9 @@ summary {
   .animate-jump-dot {
     animation: none;
     opacity: 0.7;
+  }
+
+  .animate-marquee {
+    animation: none;
   }
 }

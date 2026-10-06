@@ -16,8 +16,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className="dark">
       <body>
         <AppProviders>
-          <div className="min-h-screen flex flex-col gap-2">
-            <main className="grow flex flex-col gap-2">{children}</main>
+          <div className="flex min-h-dvh flex-col gap-2">
+            <main className="flex min-h-0 grow flex-col gap-2">{children}</main>
             <SiteFooter />
           </div>
         </AppProviders>

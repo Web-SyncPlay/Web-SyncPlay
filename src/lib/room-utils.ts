@@ -9,23 +9,36 @@ import {
 } from "unique-names-generator"
 import { getRandomItem } from "./utils"
 
-export function randomRoomId(): string {
-  return `${Math.random().toString(36).slice(2, 10)}`
-}
-
 export const nameLists = [adjectives, animals, colors, starWars, names] as const
 
-export function getRandomName(words = 2): string {
+function pickNameDictionaries(words: number) {
   const dictionaries = []
   for (let i = 0; i < words; i++) {
     dictionaries.push(getRandomItem(nameLists))
   }
+  return dictionaries
+}
 
+/** URL-safe room id, e.g. `crimson-falcon`. */
+export function randomRoomId(words = 2): string {
   return uniqueNamesGenerator({
-    dictionaries,
+    dictionaries: pickNameDictionaries(words),
+    length: words,
+    style: "lowerCase",
+    separator: "-",
+  })
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+}
+
+export function getRandomName(words = 2): string {
+  return uniqueNamesGenerator({
+    dictionaries: pickNameDictionaries(words),
     length: words,
     style: "capital",
-  }).replace("_", " ")
+  }).replaceAll("_", " ")
 }
 
 export function normalizeRole(
