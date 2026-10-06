@@ -721,7 +721,10 @@ export function useRoomSocket(
       }
 
       ws.onclose = () => {
-        console.warn("[realtime] websocket closed")
+        // Intentional unmount/reconnect teardown — avoid noisy console warns.
+        if (!cancelled) {
+          console.warn("[realtime] websocket closed")
+        }
         sfuAvailable = false
         pendingSfuProvide.clear()
         detachSwBridge?.()

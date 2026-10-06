@@ -47,6 +47,9 @@ export async function mintControlEmbedUrl(input: {
   userId: string
   userSecret: string
 }): Promise<string> {
+  if (!input.roomId || !input.userId || !input.userSecret) {
+    return getControlEmbedUrl(input.roomId, input.userId, input.userSecret)
+  }
   try {
     const response = await fetch("/api/control/token", {
       method: "POST",

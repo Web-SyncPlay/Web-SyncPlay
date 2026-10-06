@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  getControlEmbedUrl,
   getPlayerEmbedUrl,
   getRoomUrl,
   mintControlEmbedUrl,
@@ -43,6 +44,17 @@ export function useRoomSession(
   const participantRole = roomState?.participants[userId]?.role
 
   useEffect(() => {
+    // Identity is empty until session storage/crypto finishes; minting then
+    // hits POST /api/control/token with "" fields and returns 400.
+    if (!userId || !userSecret) {
+      return
+    }
+    // Token mint is only allowed for owner/moderator.
+    if (participantRole !== "owner" && participantRole !== "moderator") {
+      setControlEmbedUrl(getControlEmbedUrl(roomId, userId, userSecret))
+      return
+    }
+
     let cancelled = false
     void mintControlEmbedUrl({ roomId, userId, userSecret }).then((url) => {
       if (!cancelled) setControlEmbedUrl(url)
