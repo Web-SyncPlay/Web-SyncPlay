@@ -42,11 +42,11 @@ import { toast } from "sonner"
 
 const navControlClass = cn(
   buttonVariants({ variant: "outline", size: "sm" }),
-  "h-8 touch-manipulation gap-1.5 max-md:w-8 max-md:px-0",
+  "h-8 touch-manipulation gap-1.5 max-lg:w-8 max-lg:px-0",
 )
 const navIconControlClass = cn(navControlClass, "w-8 px-0")
 const navTabClass =
-  "h-full min-h-0 touch-manipulation gap-1.5 rounded-[min(var(--radius-md),10px)] px-2 max-md:px-1.5"
+  "h-full min-h-0 touch-manipulation gap-1.5 rounded-[min(var(--radius-md),10px)] px-2 max-lg:px-1.5"
 
 export function SiteNavbar(props: {
   roomId: string
@@ -129,14 +129,14 @@ export function SiteNavbar(props: {
             {paused ? "Paused" : "Playing"}
           </Badge>
           <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-            <span className="hidden truncate md:inline">
+            <span className="hidden truncate xl:inline">
               Playing: {currentName ?? "None"}
             </span>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 shrink-0 touch-manipulation gap-1.5 max-md:w-8 max-md:px-0"
+              className="h-8 shrink-0 touch-manipulation gap-1.5 max-lg:w-8 max-lg:px-0"
               aria-label={copied ? "Copied" : "Copy room link"}
               onClick={onCopyShareUrl}
             >
@@ -145,7 +145,7 @@ export function SiteNavbar(props: {
               ) : (
                 <Copy className="size-3.5" />
               )}
-              <span className="hidden md:inline">
+              <span className="hidden lg:inline">
                 {copied ? "Copied" : "Copy room link"}
               </span>
             </Button>
@@ -159,7 +159,7 @@ export function SiteNavbar(props: {
                 aria-label="Open embeds menu"
               >
                 <Rows3 className="size-3.5" />
-                <span className="hidden md:inline">Embeds</span>
+                <span className="hidden lg:inline">Embeds</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
@@ -231,7 +231,7 @@ export function SiteNavbar(props: {
                 aria-label="Open room settings"
               >
                 <Settings className="size-3.5" />
-                <span className="hidden md:inline">Settings</span>
+                <span className="hidden lg:inline">Settings</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
@@ -304,7 +304,7 @@ export function SiteNavbar(props: {
                     onClick={() => onRailTabChange?.("playlist")}
                   >
                     <ListVideo className="size-3.5" />
-                    <span className="hidden md:inline">Playlist</span>
+                    <span className="hidden lg:inline">Playlist</span>
                   </Button>
                   <Button
                     size="sm"
@@ -318,7 +318,7 @@ export function SiteNavbar(props: {
                     onClick={() => onRailTabChange?.("log")}
                   >
                     <ScrollText className="size-3.5" />
-                    <span className="hidden md:inline">Logs</span>
+                    <span className="hidden lg:inline">Logs</span>
                   </Button>
                 </div>
               ) : null}
