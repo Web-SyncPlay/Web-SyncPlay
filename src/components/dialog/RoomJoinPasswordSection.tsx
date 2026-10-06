@@ -1,6 +1,5 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
 import {
   Field,
   FieldContent,
@@ -9,11 +8,16 @@ import {
   FieldGroup,
   FieldTitle,
 } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group"
 import type { TypedRoomEventSender } from "@/lib/room-events"
 import type { RoomSecurityState } from "@/zod/types"
 import { LockKeyhole, LockKeyholeOpen } from "lucide-react"
-import { useState, type SubmitEvent } from "react"
+import { useState, type FormEvent, type KeyboardEvent } from "react"
 
 export function RoomJoinPasswordSection(props: {
   roomSecurity: RoomSecurityState
@@ -24,7 +28,7 @@ export function RoomJoinPasswordSection(props: {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
 
-  const handleSetPassword = (event: SubmitEvent<HTMLFormElement>) => {
+  const handleSetPassword = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!password.trim()) {
       setError("Enter a password before saving.")
@@ -41,12 +45,12 @@ export function RoomJoinPasswordSection(props: {
     send("room:password:clear", {})
   }
 
-  const statusLabel = roomSecurity.joinPasswordEnabled
-    ? "Password protected"
-    : "No password"
+  const stopMenuKeyHandling = (event: KeyboardEvent<HTMLInputElement>) => {
+    event.stopPropagation()
+  }
 
   return (
-    <FieldGroup>
+    <FieldGroup className="gap-3">
       <Field>
         <FieldContent>
           <FieldTitle className="flex items-center gap-2">
@@ -62,44 +66,48 @@ export function RoomJoinPasswordSection(props: {
               ? "Require new users to enter a password before room details are sent."
               : "Only the room owner can change the join password."}
           </FieldDescription>
-          <div className="pt-1 text-sm text-muted-foreground">
-            {statusLabel}
-          </div>
         </FieldContent>
       </Field>
 
       {canManageRoomSecurity ? (
         <form onSubmit={handleSetPassword} className="flex flex-col gap-2">
-          <Input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder={
-              roomSecurity.joinPasswordEnabled
-                ? "Enter a new password"
-                : "Enter a room password"
-            }
-            autoComplete="new-password"
-          />
+          <InputGroup>
+            <InputGroupInput
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              onKeyDown={stopMenuKeyHandling}
+              placeholder={
+                roomSecurity.joinPasswordEnabled
+                  ? "New password"
+                  : "Room password"
+              }
+              autoComplete="new-password"
+            />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton type="submit" variant="secondary">
+                {roomSecurity.joinPasswordEnabled ? "Change" : "Set"}
+              </InputGroupButton>
+              {roomSecurity.joinPasswordEnabled ? (
+                <InputGroupButton
+                  type="button"
+                  variant="ghost"
+                  onClick={handleClearPassword}
+                >
+                  Remove
+                </InputGroupButton>
+              ) : null}
+            </InputGroupAddon>
+          </InputGroup>
           <FieldError>{error}</FieldError>
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit">
-              {roomSecurity.joinPasswordEnabled
-                ? "Change password"
-                : "Set password"}
-            </Button>
-            {roomSecurity.joinPasswordEnabled ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleClearPassword}
-              >
-                Remove password
-              </Button>
-            ) : null}
-          </div>
         </form>
-      ) : null}
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          {roomSecurity.joinPasswordEnabled
+            ? "Password protected"
+            : "No password"}
+        </p>
+      )}
     </FieldGroup>
   )
 }

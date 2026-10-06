@@ -28,15 +28,25 @@ import {
   Check,
   Copy,
   ExternalLink,
+  ListVideo,
   PanelRightClose,
   PanelRightOpen,
   Rows3,
+  ScrollText,
   Settings,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
+
+const navControlClass = cn(
+  buttonVariants({ variant: "outline", size: "sm" }),
+  "h-8 touch-manipulation gap-1.5 max-sm:w-8 max-sm:px-0",
+)
+const navIconControlClass = cn(navControlClass, "w-8 px-0")
+const navTabClass =
+  "h-full min-h-0 touch-manipulation gap-1.5 rounded-[min(var(--radius-md),10px)] px-2 max-sm:px-1.5"
 
 export function SiteNavbar(props: {
   roomId: string
@@ -93,12 +103,6 @@ export function SiteNavbar(props: {
     }
   }
 
-  const navControlClass = "min-h-10 touch-manipulation gap-1.5 sm:min-h-8"
-  const navTriggerClass = cn(
-    buttonVariants({ variant: "outline", size: "sm" }),
-    navControlClass,
-  )
-
   return (
     <header className="sticky top-0 z-20 border-b bg-background/95">
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
@@ -127,7 +131,8 @@ export function SiteNavbar(props: {
               type="button"
               variant="outline"
               size="sm"
-              className={cn(navControlClass, "shrink-0")}
+              className="h-8 shrink-0 touch-manipulation gap-1.5 max-sm:w-8 max-sm:px-0"
+              aria-label={copied ? "Copied" : "Copy room link"}
               onClick={onCopyShareUrl}
             >
               {copied ? (
@@ -135,7 +140,9 @@ export function SiteNavbar(props: {
               ) : (
                 <Copy className="size-3.5" />
               )}
-              <span>{copied ? "Copied" : "Copy room link"}</span>
+              <span className="hidden sm:inline">
+                {copied ? "Copied" : "Copy room link"}
+              </span>
             </Button>
           </span>
         </div>
@@ -143,11 +150,11 @@ export function SiteNavbar(props: {
           {showEmbedsMenu ? (
             <DropdownMenu>
               <DropdownMenuTrigger
-                className={navTriggerClass}
+                className={navControlClass}
                 aria-label="Open embeds menu"
               >
-                <Rows3 className="size-4" />
-                Embeds
+                <Rows3 className="size-3.5" />
+                <span className="hidden sm:inline">Embeds</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
@@ -215,10 +222,10 @@ export function SiteNavbar(props: {
           {canManageRoomSecurity && send && roomSecurity ? (
             <DropdownMenu>
               <DropdownMenuTrigger
-                className={navTriggerClass}
+                className={navControlClass}
                 aria-label="Open room settings"
               >
-                <Settings className="size-4" />
+                <Settings className="size-3.5" />
                 <span className="hidden sm:inline">Settings</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -227,7 +234,18 @@ export function SiteNavbar(props: {
               >
                 <div
                   className="flex flex-col gap-4"
-                  onPointerDown={(event) => event.preventDefault()}
+                  onPointerDown={(event) => {
+                    const target = event.target as HTMLElement
+                    // Keep the menu open for clicks, but allow inputs to take focus.
+                    if (
+                      target.closest(
+                        "input, textarea, [data-slot='input-group-control']",
+                      )
+                    ) {
+                      return
+                    }
+                    event.preventDefault()
+                  }}
                 >
                   <RoomJoinPasswordSection
                     roomSecurity={roomSecurity}
@@ -248,15 +266,15 @@ export function SiteNavbar(props: {
             <>
               <Tooltip>
                 <TooltipTrigger
-                  className={cn(navTriggerClass, "px-2")}
+                  className={navIconControlClass}
                   aria-label={railOpen ? "Hide panel" : "Show panel"}
                   aria-pressed={railOpen}
                   onClick={onToggleRail}
                 >
                   {railOpen ? (
-                    <PanelRightClose className="size-4" />
+                    <PanelRightClose className="size-3.5" />
                   ) : (
-                    <PanelRightOpen className="size-4" />
+                    <PanelRightOpen className="size-3.5" />
                   )}
                 </TooltipTrigger>
                 <TooltipContent>
@@ -265,7 +283,7 @@ export function SiteNavbar(props: {
               </Tooltip>
               {railOpen ? (
                 <div
-                  className="inline-flex h-10 items-center rounded-lg border border-border bg-background p-0.5 sm:h-8"
+                  className="inline-flex h-8 items-stretch rounded-lg border border-border bg-background p-0.5"
                   role="group"
                   aria-label="Side panel content"
                 >
@@ -273,25 +291,29 @@ export function SiteNavbar(props: {
                     size="sm"
                     variant={railTab === "playlist" ? "secondary" : "ghost"}
                     className={cn(
-                      "h-full min-h-0 touch-manipulation",
+                      navTabClass,
                       railTab !== "playlist" && "text-muted-foreground",
                     )}
+                    aria-label="Playlist"
                     aria-pressed={railTab === "playlist"}
                     onClick={() => onRailTabChange?.("playlist")}
                   >
-                    Playlist
+                    <ListVideo className="size-3.5" />
+                    <span className="hidden sm:inline">Playlist</span>
                   </Button>
                   <Button
                     size="sm"
                     variant={railTab === "log" ? "secondary" : "ghost"}
                     className={cn(
-                      "h-full min-h-0 touch-manipulation",
+                      navTabClass,
                       railTab !== "log" && "text-muted-foreground",
                     )}
+                    aria-label="Logs"
                     aria-pressed={railTab === "log"}
                     onClick={() => onRailTabChange?.("log")}
                   >
-                    Logs
+                    <ScrollText className="size-3.5" />
+                    <span className="hidden sm:inline">Logs</span>
                   </Button>
                 </div>
               ) : null}

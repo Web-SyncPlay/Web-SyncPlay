@@ -67,7 +67,7 @@ export function PlaylistItemRow(props: {
       <Item
         variant={isCurrent ? "outline" : "muted"}
         className={cn(
-          "items-start sm:items-center",
+          "items-center",
           item.ingestStatus === "error" && "border-destructive/60",
         )}
       >
@@ -77,17 +77,17 @@ export function PlaylistItemRow(props: {
               ref={handleRef}
               variant="ghost"
               aria-label="Drag to reorder"
-              className="touch-none cursor-grab active:cursor-grabbing size-10 sm:size-8"
-              size="icon"
+              className="touch-none cursor-grab active:cursor-grabbing size-8"
+              size="icon-sm"
             >
               <GripVertical />
             </Button>
           </ItemMedia>
         )}
-        <ItemContent className="min-w-0 py-1">
+        <ItemContent className="min-w-0 justify-center gap-0.5">
           {canControlPlaylist && isEditing ? (
             <Input
-              className="h-10 sm:h-8"
+              className="h-8 min-h-8 py-0 text-sm md:text-sm"
               autoFocus
               value={draftValue}
               onChange={(e) => onDraftChange(e.target.value)}
@@ -106,7 +106,7 @@ export function PlaylistItemRow(props: {
           ) : (
             <ItemTitle
               className={cn(
-                "max-w-full",
+                "h-8 max-w-full min-w-0",
                 canControlPlaylist &&
                   "cursor-pointer rounded-md active:bg-muted/80 sm:hover:bg-muted/60",
               )}
@@ -152,8 +152,8 @@ export function PlaylistItemRow(props: {
           {canControlPlaylist && !isCurrent ? (
             <Button
               variant="secondary"
-              size="icon"
-              className="size-10 sm:size-7"
+              size="icon-sm"
+              className="size-8"
               aria-label="Play this item"
               onClick={onSelect}
             >
@@ -163,8 +163,8 @@ export function PlaylistItemRow(props: {
           {canControlPlaylist ? (
             <Button
               variant="destructive"
-              size="icon"
-              className="size-10 sm:size-7"
+              size="icon-sm"
+              className="size-8"
               aria-label="Remove item"
               onClick={onRemove}
             >

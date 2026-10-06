@@ -1,5 +1,6 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
 import {
   Field,
   FieldContent,
@@ -7,13 +8,7 @@ import {
   FieldGroup,
   FieldTitle,
 } from "@/components/ui/field"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { cn } from "@/lib/utils"
 import type { TypedRoomEventSender } from "@/lib/room-events"
 import type { DefaultJoinRole, RoomSecurityState } from "@/zod/types"
 import { Shield } from "lucide-react"
@@ -26,15 +21,15 @@ export function RoomDefaultJoinRoleSection(props: {
   const { roomSecurity, canManageRoomSecurity, send } = props
   const defaultJoinRole = roomSecurity.defaultJoinRole ?? "moderator"
 
-  const handleRoleChange = (role: DefaultJoinRole | null) => {
-    if (!role || role === defaultJoinRole) {
+  const setRole = (role: DefaultJoinRole) => {
+    if (role === defaultJoinRole) {
       return
     }
     send("room:default-role:set", { role })
   }
 
   return (
-    <FieldGroup>
+    <FieldGroup className="gap-3">
       <Field>
         <FieldContent>
           <FieldTitle className="flex items-center gap-2">
@@ -50,23 +45,38 @@ export function RoomDefaultJoinRoleSection(props: {
       </Field>
 
       {canManageRoomSecurity ? (
-        <Select
-          value={defaultJoinRole}
-          onValueChange={(nextRole) => {
-            if (nextRole !== "moderator" && nextRole !== "guest") {
-              return
-            }
-            handleRoleChange(nextRole)
-          }}
+        <div
+          className="inline-flex w-full items-center rounded-lg border bg-background p-0.5"
+          role="group"
+          aria-label="Default join role"
         >
-          <SelectTrigger className="w-full">
-            <SelectValue className="capitalize" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="moderator">Moderator</SelectItem>
-            <SelectItem value="guest">Guest</SelectItem>
-          </SelectContent>
-        </Select>
+          <Button
+            type="button"
+            size="sm"
+            variant={defaultJoinRole === "moderator" ? "default" : "ghost"}
+            className={cn(
+              "min-h-8 flex-1 touch-manipulation",
+              defaultJoinRole !== "moderator" && "text-muted-foreground",
+            )}
+            aria-pressed={defaultJoinRole === "moderator"}
+            onClick={() => setRole("moderator")}
+          >
+            Moderator
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={defaultJoinRole === "guest" ? "default" : "ghost"}
+            className={cn(
+              "min-h-8 flex-1 touch-manipulation",
+              defaultJoinRole !== "guest" && "text-muted-foreground",
+            )}
+            aria-pressed={defaultJoinRole === "guest"}
+            onClick={() => setRole("guest")}
+          >
+            Guest
+          </Button>
+        </div>
       ) : (
         <p className="text-sm capitalize text-muted-foreground">
           {defaultJoinRole}
