@@ -6,11 +6,13 @@ WORKDIR /app
 # https://nextjs.org/telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
 
-LABEL org.opencontainers.image.url="https://web-syncplay.de" \
-    org.opencontainers.image.description="Watch videos or play music in sync with your friends" \
-    org.opencontainers.image.title="Web-SyncPlay" \
+LABEL org.opencontainers.image.title="Web-SyncPlay" \
+    org.opencontainers.image.description="Watch any yt-dlp source in sync—or stream local files to everyone" \
+    org.opencontainers.image.url="https://web-syncplay.de" \
+    org.opencontainers.image.documentation="https://github.com/Yasamato/Web-SyncPlay#readme" \
     org.opencontainers.image.source="https://github.com/Yasamato/Web-SyncPlay" \
-    maintainer="Yasamato <https://github.com/Yasamato>"
+    org.opencontainers.image.licenses="MIT" \
+    org.opencontainers.image.authors="Yasamato <https://github.com/Yasamato>"
 
 FROM base AS builder
 COPY package.json bun.lock ./

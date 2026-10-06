@@ -79,6 +79,19 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY_IMAGE }}
+          # Keep product URL/docs; metadata-action would otherwise use the GitHub repo URL.
+          labels: |
+            org.opencontainers.image.title=Web-SyncPlay
+            org.opencontainers.image.description=Watch any yt-dlp source in sync—or stream local files to everyone
+            org.opencontainers.image.url=https://web-syncplay.de
+            org.opencontainers.image.documentation=https://github.com/Yasamato/Web-SyncPlay#readme
+            org.opencontainers.image.authors=Yasamato <https://github.com/Yasamato>
+          annotations: |
+            org.opencontainers.image.title=Web-SyncPlay
+            org.opencontainers.image.description=Watch any yt-dlp source in sync—or stream local files to everyone
+            org.opencontainers.image.url=https://web-syncplay.de
+            org.opencontainers.image.documentation=https://github.com/Yasamato/Web-SyncPlay#readme
+            org.opencontainers.image.authors=Yasamato <https://github.com/Yasamato>
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -97,6 +110,7 @@ jobs:
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           cache-from: type=gha,scope=${{ env.PLATFORM_PAIR }}
           cache-to: type=gha,mode=max,scope=${{ env.PLATFORM_PAIR }}
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
@@ -138,10 +152,25 @@ jobs:
           images: ${{ env.REGISTRY_IMAGE }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch,enable={{is_not_default_branch}}
             type=ref,event=tag
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,format=short
+          labels: |
+            org.opencontainers.image.title=Web-SyncPlay
+            org.opencontainers.image.description=Watch any yt-dlp source in sync—or stream local files to everyone
+            org.opencontainers.image.url=https://web-syncplay.de
+            org.opencontainers.image.documentation=https://github.com/Yasamato/Web-SyncPlay#readme
+            org.opencontainers.image.authors=Yasamato <https://github.com/Yasamato>
+          annotations: |
+            org.opencontainers.image.title=Web-SyncPlay
+            org.opencontainers.image.description=Watch any yt-dlp source in sync—or stream local files to everyone
+            org.opencontainers.image.url=https://web-syncplay.de
+            org.opencontainers.image.documentation=https://github.com/Yasamato/Web-SyncPlay#readme
+            org.opencontainers.image.authors=Yasamato <https://github.com/Yasamato>
+        env:
+          # imagetools create only supports index / manifest-descriptor annotations.
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: index
 
       - name: Login to Docker Hub
         uses: docker/login-action@v4
@@ -152,9 +181,22 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create \
-            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+          tag_args=()
+          while IFS= read -r tag; do
+            tag_args+=(-t "$tag")
+          done < <(jq -cr '.tags[]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+
+          annotation_args=()
+          while IFS= read -r ann; do
+            annotation_args+=(--annotation "$ann")
+          done < <(jq -cr '.annotations[]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+
+          sources=()
+          for digest in *; do
+            sources+=("${{ env.REGISTRY_IMAGE }}@sha256:${digest}")
+          done
+
+          docker buildx imagetools create "${tag_args[@]}" "${annotation_args[@]}" "${sources[@]}"
 
       - name: Inspect image
         run: |
