@@ -8,7 +8,11 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { getAdjacentPlaylistIndex, inferMediaViewType } from "@/lib/playback-sync"
-import { getLocalMediaObjectUrl } from "@/lib/local-media-provider"
+import {
+  getLocalMediaMimeType,
+  getLocalMediaObjectUrl,
+} from "@/lib/local-media-provider"
+import { isProgressiveMediaMime } from "@/lib/media-mime"
 import { localMediaErrorMessage } from "@/lib/local-media-errors"
 import {
   MediaPlayer,
@@ -52,10 +56,8 @@ import { usePlaybackTimelineController } from "./playback-control/use-playback-t
 import { RemoteSeekOverlay } from "./RemoteSeekOverlay"
 import type { PlaylistItem, PlaylistMediaStream } from "@/zod/types"
 
-/** Vidstack needs an explicit HLS MIME when the URL has no `.m3u8` suffix (e.g. `/api/media/proxy/…`). */
-type PlayerSrcInput =
-  | string
-  | { src: string; type: "application/x-mpegurl" | "application/vnd.apple.mpegurl" }
+/** Vidstack needs an explicit MIME when the URL has no file extension (blob:/proxy/local). */
+type PlayerSrcInput = string | { src: string; type: string }
 
 function normalizeHlsMime(
   mime: string | undefined,
@@ -75,12 +77,14 @@ function buildPlayerSrc(
   activePlaybackSrc: string,
   current: PlaylistItem | undefined,
   activeStream: PlaylistMediaStream | null,
+  localMimeHint?: string | null,
 ): PlayerSrcInput {
   if (!activePlaybackSrc) {
     return ""
   }
 
   const rawMime =
+    localMimeHint ??
     activeStream?.type ??
     current?.mediaStreams?.find((s) => s.id === current.defaultStreamId)
       ?.type ??
@@ -101,6 +105,12 @@ function buildPlayerSrc(
     return { src: activePlaybackSrc, type: "application/x-mpegurl" }
   }
 
+  // blob: and extension-less `/api/media/local/…` need an explicit type or
+  // browsers report MediaError 4 ("Failed to load resource").
+  if (isProgressiveMediaMime(rawMime) && rawMime) {
+    return { src: activePlaybackSrc, type: rawMime }
+  }
+
   return activePlaybackSrc
 }
 
@@ -108,7 +118,8 @@ function isSameOriginPlaybackUrl(url: string): boolean {
   if (typeof window === "undefined") {
     return false
   }
-  if (url.startsWith("/")) {
+  // Relative and blob URLs are always same-origin for this document.
+  if (url.startsWith("/") || url.startsWith("blob:")) {
     return true
   }
   try {
@@ -116,6 +127,12 @@ function isSameOriginPlaybackUrl(url: string): boolean {
   } catch {
     return false
   }
+}
+
+function mediaErrorCode(detail: MediaErrorDetail): number | null {
+  if (!detail || typeof detail !== "object") return null
+  const code = (detail as unknown as Record<string, unknown>).code
+  return typeof code === "number" && Number.isFinite(code) ? code : null
 }
 
 function formatMediaErrorDetail(detail: MediaErrorDetail) {
@@ -180,6 +197,9 @@ export function PlayerPanel({
     MediaErrorDetail | undefined
   >(undefined)
   const [playerRemountNonce, setPlayerRemountNonce] = useState(0)
+  /** After a host blob: failure, fall back to the same relay URL viewers use. */
+  const [forceLocalRelaySrc, setForceLocalRelaySrc] = useState(false)
+  const localBlobFallbackAttemptedRef = useRef<string | null>(null)
 
   const playbackErrorLabel = useMemo(
     () => (playbackError ? formatMediaErrorDetail(playbackError) : undefined),
@@ -188,6 +208,18 @@ export function PlayerPanel({
 
   const { applyClockToPlayer, nudgeTransport } = usePlayerSync()
   const { preferredVolume, handleVolumeChange, isMuted } = usePlayerVolume()
+  useEffect(() => {
+    const player = playerRef.current
+    if (!player) {
+      return
+    }
+    if (Math.abs(player.volume - preferredVolume) > 0.001) {
+      player.volume = preferredVolume
+    }
+    if (player.muted !== isMuted) {
+      player.muted = isMuted
+    }
+  }, [preferredVolume, isMuted, playerRemountNonce])
   const { canControlPlayback: canControlByRole } = usePlayerPermissions(
     roomState,
     userId,
@@ -224,7 +256,9 @@ export function PlayerPanel({
     }
 
     // Provider plays from the in-tab File directly — no relay hop.
+    // If blob playback fails (MediaError 4), fall back to the relay URL.
     if (
+      !forceLocalRelaySrc &&
       current.sourceKind === "local_file" &&
       current.localMediaId &&
       current.localOriginUserId === userId
@@ -245,11 +279,22 @@ export function PlayerPanel({
     }
 
     return fromStream ?? current.playableUrl ?? ""
-  }, [activeStream?.src, current, userId])
+  }, [activeStream?.src, current, forceLocalRelaySrc, userId])
+
+  const localMimeHint =
+    current?.sourceKind === "local_file" && current.localMediaId
+      ? getLocalMediaMimeType(current.localMediaId)
+      : null
 
   const playerSrc = useMemo(
-    () => buildPlayerSrc(activePlaybackSrc, current, activeStream),
-    [activePlaybackSrc, activeStream, current],
+    () =>
+      buildPlayerSrc(
+        activePlaybackSrc,
+        current,
+        activeStream,
+        localMimeHint ?? activeStream?.type,
+      ),
+    [activePlaybackSrc, activeStream, current, localMimeHint],
   )
 
   const playbackUrlForOrigin =
@@ -299,6 +344,11 @@ export function PlayerPanel({
   useEffect(() => {
     playbackRef.current = roomState.playback
   }, [roomState.playback])
+
+  useEffect(() => {
+    setForceLocalRelaySrc(false)
+    localBlobFallbackAttemptedRef.current = null
+  }, [current?.id])
 
   useEffect(() => {
     isMediaReadyRef.current = false
@@ -834,12 +884,36 @@ export function PlayerPanel({
             applyRoomClock(player, pendingToApply)
           }}
           onError={(detail: MediaErrorDetail) => {
-            setPlaybackError(detail)
             setIsBuffering(false)
             participantStatusErrorRef.current = null
             bufferingSinceRef.current = null
 
             const message = formatMediaErrorDetail(detail)
+            const errorCode = mediaErrorCode(detail)
+            const isProviderLocalBlob =
+              current?.sourceKind === "local_file" &&
+              current.localOriginUserId === userId &&
+              activePlaybackSrc.startsWith("blob:")
+
+            // Host blob: path failed — retry once via the HTTP relay viewers use.
+            if (
+              isProviderLocalBlob &&
+              current &&
+              localBlobFallbackAttemptedRef.current !== current.id
+            ) {
+              localBlobFallbackAttemptedRef.current = current.id
+              console.warn(
+                "[player] local blob src failed; falling back to relay URL",
+                { itemId: current.id, errorCode, message },
+              )
+              setPlaybackError(undefined)
+              setForceLocalRelaySrc(true)
+              setPlayerRemountNonce((n) => n + 1)
+              return
+            }
+
+            setPlaybackError(detail)
+
             const usesProxyPath =
               activePlaybackSrc.includes("/api/media/proxy/") ||
               (current?.playableUrl?.includes("/api/media/proxy/") ?? false)
@@ -851,6 +925,11 @@ export function PlayerPanel({
 
             const localFileUserMessage = (() => {
               if (current?.sourceKind !== "local_file") return null
+              // Host still on blob (shouldn't reach here after fallback) —
+              // don't mislabel as a relay failure.
+              if (isProviderLocalBlob) {
+                return "Could not play this local file in your browser. Try a different format (e.g. MP4/H.264)."
+              }
               const lower = message.toLowerCase()
               if (/\b404\b/.test(message) || lower.includes("not found")) {
                 return localMediaErrorMessage("not_found")
@@ -929,6 +1008,11 @@ export function PlayerPanel({
               return
             }
 
+            // HTML `loop` already restarts when videoLoop is on.
+            if (roomState.playback.videoLoop !== "off") {
+              return
+            }
+
             const nextIndex = getAdjacentPlaylistIndex({
               currentIndex: roomState.currentIndex,
               totalItems,
@@ -936,6 +1020,13 @@ export function PlayerPanel({
               direction: "next",
             })
             if (nextIndex === null) {
+              // Pause at EOF so declarative autoPlay + sync don't thrash the
+              // last few frames while the room is still "playing".
+              if (!playbackRef.current.paused) {
+                send("playback:pause", {
+                  currentTimeMs: getCurrentTimeMs(),
+                })
+              }
               return
             }
 

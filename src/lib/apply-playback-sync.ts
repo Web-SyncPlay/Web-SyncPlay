@@ -7,6 +7,8 @@ import {
 export type SyncablePlayer = {
   playbackRate: number
   currentTime: number
+  /** Media duration in seconds when known; used to clamp EOF seeks. */
+  duration?: number
   paused?: boolean
   pause: () => void
   play: () => Promise<void> | void
@@ -55,7 +57,7 @@ export function applyPlaybackSyncToPlayer(config: {
 
 /** Rate + timeline only — use when `paused` / `autoPlay` are bound declaratively. */
 export function applyPlaybackClockToPlayer(config: {
-  player: Pick<SyncablePlayer, "playbackRate" | "currentTime">
+  player: Pick<SyncablePlayer, "playbackRate" | "currentTime" | "duration">
   syncState: PlaybackSyncState
   driftThresholdSec?: number
   nowMs?: number
@@ -73,18 +75,25 @@ export function applyPlaybackClockToPlayer(config: {
   }
 
   const expectedTimeSec = computeExpectedPlaybackTimeSec(syncState, nowMs)
+  const durationSec = Number(player.duration)
+  // Keep seeks inside the media so an unpaused room past EOF cannot restart
+  // the last few frames in a tight loop.
+  const clampedExpectedSec =
+    Number.isFinite(durationSec) && durationSec > 0
+      ? Math.min(expectedTimeSec, Math.max(0, durationSec - 0.05))
+      : expectedTimeSec
   const currentTimeSec = Number(player.currentTime ?? 0)
   if (
     Number.isFinite(currentTimeSec) &&
-    Number.isFinite(expectedTimeSec) &&
+    Number.isFinite(clampedExpectedSec) &&
     isPlaybackDriftBeyondThreshold(
       currentTimeSec,
-      expectedTimeSec,
+      clampedExpectedSec,
       driftThresholdSec,
     )
   ) {
     try {
-      player.currentTime = expectedTimeSec
+      player.currentTime = clampedExpectedSec
     } catch {
       // Ignore transient seek failures while provider is rebuilding.
     }

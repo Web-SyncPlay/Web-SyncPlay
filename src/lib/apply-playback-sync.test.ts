@@ -70,6 +70,36 @@ describe("applyPlaybackClockToPlayer", () => {
 
     expect(order).toEqual([])
   })
+
+  test("clamps seek to just before duration when clock is past EOF", () => {
+    const order: string[] = []
+    let currentTime = 0
+    const player = {
+      playbackRate: 1,
+      duration: 10,
+      get currentTime() {
+        return currentTime
+      },
+      set currentTime(value: number) {
+        currentTime = value
+        order.push(`seek:${value}`)
+      },
+    }
+
+    applyPlaybackClockToPlayer({
+      player,
+      syncState: {
+        paused: false,
+        playbackRate: 1,
+        timelineAnchorMs: 12_000,
+        serverNowMs: 100,
+      },
+      nowMs: 100,
+      driftThresholdSec: 0.8,
+    })
+
+    expect(order).toEqual(["seek:9.95"])
+  })
 })
 
 describe("nudgePlaybackTransport", () => {

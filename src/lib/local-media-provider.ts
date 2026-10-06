@@ -6,11 +6,14 @@
  * range reads. Blob object URLs are only for the provider's own player.
  */
 
+import { resolvePlayableMimeType } from "@/lib/media-mime"
 import type { TypedRoomEventSender } from "@/lib/room-events"
 import type { RoomState } from "@/zod/types"
 
 type LocalMediaRecord = {
   file: File
+  /** MIME used for the object URL / player type hint (may differ from File.type). */
+  mimeType: string
   objectUrl: string | null
 }
 
@@ -25,16 +28,28 @@ function store() {
   return g.__webSyncPlayLocalMediaFiles
 }
 
-export function registerLocalMediaFile(localMediaId: string, file: File) {
+export function registerLocalMediaFile(
+  localMediaId: string,
+  file: File,
+  mimeType?: string,
+) {
   const existing = store().get(localMediaId)
   if (existing?.objectUrl) {
     URL.revokeObjectURL(existing.objectUrl)
   }
-  store().set(localMediaId, { file, objectUrl: null })
+  const resolved =
+    mimeType?.trim() ||
+    resolvePlayableMimeType(file.type, file.name) ||
+    "application/octet-stream"
+  store().set(localMediaId, { file, mimeType: resolved, objectUrl: null })
 }
 
 export function getLocalMediaFile(localMediaId: string) {
   return store().get(localMediaId)?.file ?? null
+}
+
+export function getLocalMediaMimeType(localMediaId: string) {
+  return store().get(localMediaId)?.mimeType ?? null
 }
 
 export function listLocalMediaIds() {
@@ -45,7 +60,13 @@ export function getLocalMediaObjectUrl(localMediaId: string) {
   const record = store().get(localMediaId)
   if (!record) return null
   if (!record.objectUrl) {
-    record.objectUrl = URL.createObjectURL(record.file)
+    // Browsers often fail blob playback (MediaError 4) when File.type is empty
+    // or wrong; wrap with an explicit MIME so <video> can sniff correctly.
+    const source =
+      record.file.type === record.mimeType
+        ? record.file
+        : new Blob([record.file], { type: record.mimeType })
+    record.objectUrl = URL.createObjectURL(source)
   }
   return record.objectUrl
 }

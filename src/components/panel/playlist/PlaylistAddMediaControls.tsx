@@ -2,12 +2,11 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { resolvePlayableMimeType } from "@/lib/media-mime"
 import { registerLocalMediaFile } from "@/lib/local-media-provider"
 import type { TypedRoomEventSender } from "@/lib/room-events"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
-
-const ALLOWED_MIME_PREFIXES = ["video/", "audio/"]
 
 export function PlaylistAddMediaControls(props: {
   send: TypedRoomEventSender
@@ -30,8 +29,8 @@ export function PlaylistAddMediaControls(props: {
   const addLocalMedia = (file: File) => {
     if (!canManagePlaylist) return
 
-    const mimeType = file.type || "application/octet-stream"
-    if (!ALLOWED_MIME_PREFIXES.some((prefix) => mimeType.startsWith(prefix))) {
+    const mimeType = resolvePlayableMimeType(file.type, file.name)
+    if (!mimeType) {
       toast.error("Only video or audio files can be shared")
       return
     }
@@ -44,7 +43,7 @@ export function PlaylistAddMediaControls(props: {
     try {
       const localMediaId = crypto.randomUUID()
       // Keep the File in-tab — no upload. Viewers pull byte ranges via the server relay.
-      registerLocalMediaFile(localMediaId, file)
+      registerLocalMediaFile(localMediaId, file, mimeType)
       send("playlist:add:local", {
         localMediaId,
         name: file.name || "Local media",

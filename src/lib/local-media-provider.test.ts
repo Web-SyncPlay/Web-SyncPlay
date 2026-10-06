@@ -3,6 +3,7 @@ import {
   announceLocalMediaProviderReady,
   arrayBufferToBase64,
   getLocalMediaFile,
+  getLocalMediaMimeType,
   getLocalMediaObjectUrl,
   listLocalMediaIds,
   registerLocalMediaFile,
@@ -19,12 +20,22 @@ describe("local-media-provider", () => {
     })
     registerLocalMediaFile(id, file)
     expect(getLocalMediaFile(id)).toBe(file)
+    expect(getLocalMediaMimeType(id)).toBe("video/mp4")
     expect(listLocalMediaIds()).toContain(id)
     const url = getLocalMediaObjectUrl(id)
     expect(url?.startsWith("blob:")).toBe(true)
     expect(getLocalMediaObjectUrl(id)).toBe(url)
     unregisterLocalMediaFile(id)
     expect(getLocalMediaFile(id)).toBeNull()
+  })
+
+  test("infers MIME from filename when File.type is empty", () => {
+    const id = crypto.randomUUID()
+    const file = new File([new Uint8Array([1])], "movie.webm", { type: "" })
+    registerLocalMediaFile(id, file)
+    expect(getLocalMediaMimeType(id)).toBe("video/webm")
+    expect(getLocalMediaObjectUrl(id)?.startsWith("blob:")).toBe(true)
+    unregisterLocalMediaFile(id)
   })
 
   test("announceLocalMediaProviderReady reports held and missing files", () => {
