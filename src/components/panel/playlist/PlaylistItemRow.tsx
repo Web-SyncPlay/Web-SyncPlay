@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   Item,
@@ -7,10 +7,16 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import type { PlaylistItem } from "@/zod/types"
 import { useSortable } from "@dnd-kit/react/sortable"
-import { GripVertical, Loader2, Play, Trash2 } from "lucide-react"
+import { Copy, GripVertical, Loader2, Play, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 
 export function PlaylistItemRow(props: {
   item: PlaylistItem
@@ -143,10 +149,36 @@ export function PlaylistItemRow(props: {
             </ItemTitle>
           )}
           {item.ingestStatus === "resolving" || item.ingestError ? (
-            <p className="truncate text-xs text-muted-foreground">
-              {item.sourceUrl}
-              {item.ingestError && ` (${item.ingestError})`}
-            </p>
+            <div className="flex min-w-0 items-center gap-0.5">
+              <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                {item.sourceUrl}
+                {item.ingestError && ` (${item.ingestError})`}
+              </p>
+              <Tooltip>
+                <TooltipTrigger
+                  type="button"
+                  className={cn(
+                    buttonVariants({ variant: "ghost", size: "icon-xs" }),
+                    "size-4 shrink-0 text-muted-foreground",
+                  )}
+                  aria-label="Copy source URL"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    void (async () => {
+                      try {
+                        await navigator.clipboard.writeText(item.sourceUrl)
+                        toast.success("URL copied")
+                      } catch {
+                        toast.error("Could not copy URL")
+                      }
+                    })()
+                  }}
+                >
+                  <Copy className="size-3" />
+                </TooltipTrigger>
+                <TooltipContent>Copy URL</TooltipContent>
+              </Tooltip>
+            </div>
           ) : null}
         </ItemContent>
         <ItemActions className="shrink-0 gap-1 self-center">
