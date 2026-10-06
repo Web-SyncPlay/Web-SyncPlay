@@ -5,7 +5,7 @@ import {
 } from "@/lib/public-domain"
 import { NextResponse, type NextRequest } from "next/server"
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const response = NextResponse.next()
   const origin = request.headers.get("origin")
   const publicOrigin = getPublicOrigin()
