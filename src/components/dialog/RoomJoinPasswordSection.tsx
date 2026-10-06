@@ -32,36 +32,7 @@ import { useEffect, useState, type KeyboardEvent } from "react"
 import { toast } from "sonner"
 
 const PASSWORD_DISPLAY_WIDTH = 6
-const PASSWORD_STORAGE_PREFIX = "wsp:join-password:"
-
-function passwordStorageKey(roomId: string) {
-  return `${PASSWORD_STORAGE_PREFIX}${roomId}`
-}
-
-function readStoredPassword(roomId: string): string {
-  if (typeof window === "undefined") return ""
-  try {
-    return sessionStorage.getItem(passwordStorageKey(roomId)) ?? ""
-  } catch {
-    return ""
-  }
-}
-
-function writeStoredPassword(roomId: string, password: string) {
-  try {
-    sessionStorage.setItem(passwordStorageKey(roomId), password)
-  } catch {
-    // Ignore quota / private-mode failures.
-  }
-}
-
-function clearStoredPassword(roomId: string) {
-  try {
-    sessionStorage.removeItem(passwordStorageKey(roomId))
-  } catch {
-    // Ignore storage failures.
-  }
-}
+const LEGACY_PASSWORD_STORAGE_PREFIX = "wsp:join-password:"
 
 function generateJoinPassword(length = PASSWORD_DISPLAY_WIDTH): string {
   const alphabet =
@@ -92,29 +63,29 @@ export function RoomJoinPasswordSection(props: {
 }) {
   const { roomId, roomSecurity, canManageRoomSecurity, send } = props
   const passwordEnabled = roomSecurity.joinPasswordEnabled
-  const [knownPassword, setKnownPassword] = useState(() =>
-    passwordEnabled ? readStoredPassword(roomId) : "",
-  )
+  // Keep plaintext only in memory so the owner can show/copy it for sharing
+  // during this page lifetime — never persist to web storage.
+  const [knownPassword, setKnownPassword] = useState("")
   const [visible, setVisible] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem(`${LEGACY_PASSWORD_STORAGE_PREFIX}${roomId}`)
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [roomId])
 
   useEffect(() => {
     if (!passwordEnabled) {
       setKnownPassword("")
       setVisible(false)
-      clearStoredPassword(roomId)
-      return
     }
-
-    const stored = readStoredPassword(roomId)
-    if (stored) {
-      setKnownPassword(stored)
-    }
-  }, [passwordEnabled, roomId, roomSecurity.joinPasswordUpdatedAt])
+  }, [passwordEnabled])
 
   const rememberPassword = (password: string) => {
     setKnownPassword(password)
-    writeStoredPassword(roomId, password)
   }
 
   const applyPassword = (password: string) => {
@@ -139,7 +110,6 @@ export function RoomJoinPasswordSection(props: {
     setError(null)
     setKnownPassword("")
     setVisible(false)
-    clearStoredPassword(roomId)
     send("room:password:clear", {})
   }
 

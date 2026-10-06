@@ -49,8 +49,9 @@ export default function PrivacyPage() {
         </p>
         <ul>
           <li>
-            Temporary participant identity (ID, secret, display name, avatar
-            style) in your browser and in room state
+            Temporary participant identity (ID, encrypted secret, display name,
+            avatar style) in your browser; server stores a hash of the secret
+            with room state
           </li>
           <li>
             Room data: playlist metadata/URLs, playback state, roles, optional

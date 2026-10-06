@@ -22,7 +22,7 @@ import type {
   SessionKind,
   WsEnvelope,
 } from "@/zod/types"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 type SessionCapabilities = {
   canControlPlayback: boolean
@@ -44,7 +44,7 @@ type JoinRejectedReason = "password_required" | "invalid_password" | "rate_limit
 
 export function useRoomSocket(
   roomId: string,
-  options?: { sessionKind?: SessionKind },
+  options?: { sessionKind?: SessionKind; initialMediaUrl?: string },
 ): {
   roomState: RoomState | null
   sessionCapabilities: SessionCapabilities
@@ -56,6 +56,8 @@ export function useRoomSocket(
   submitJoinPassword: (password: string) => void
 } {
   const sessionKind = options?.sessionKind ?? "room"
+  const initialMediaUrlRef = useRef(options?.initialMediaUrl)
+  initialMediaUrlRef.current = options?.initialMediaUrl
   const [roomState, setRoomState] = useState<RoomState | null>(null)
   const [status, setStatus] = useState<JoinStatus>("connecting")
   const [joinError, setJoinError] = useState<string | null>(null)
@@ -77,20 +79,34 @@ export function useRoomSocket(
   const joinPasswordRef = useRef<string>("")
   const sendJoinRef = useRef<(() => void) | null>(null)
   const controlTokenRef = useRef<string | undefined>(undefined)
+  const [identity, setIdentity] = useState<{
+    userId: string
+    userSecret: string
+  } | null>(null)
 
-  const { userId, userSecret, controlTokenFromHash } = useMemo(() => {
-    const fromHash = consumeSessionIdentityFromHash()
-    return {
-      ...getOrCreateSessionIdentity(),
-      controlTokenFromHash: fromHash.controlToken,
-    }
-  }, [])
+  const userId = identity?.userId ?? ""
+  const userSecret = identity?.userSecret ?? ""
 
   useEffect(() => {
-    if (controlTokenFromHash) {
-      controlTokenRef.current = controlTokenFromHash
+    let cancelled = false
+    void (async () => {
+      const fromHash = await consumeSessionIdentityFromHash()
+      if (fromHash.controlToken) {
+        controlTokenRef.current = fromHash.controlToken
+      }
+      const session = await getOrCreateSessionIdentity()
+      if (cancelled) {
+        return
+      }
+      setIdentity({
+        userId: fromHash.userId ?? session.userId,
+        userSecret: fromHash.userSecret ?? session.userSecret,
+      })
+    })()
+    return () => {
+      cancelled = true
     }
-  }, [controlTokenFromHash])
+  }, [])
 
   useEffect(() => {
     // Some clients briefly re-apply the initial hash during hydration/history sync.
@@ -125,6 +141,10 @@ export function useRoomSocket(
   }, [])
 
   useEffect(() => {
+    if (!identity) {
+      return
+    }
+
     let cancelled = false
     let reconnectTimer: number | undefined
     const wsOrigin = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/api/ws`
@@ -220,12 +240,13 @@ export function useRoomSocket(
                   : undefined,
               payload: {
                 roomId,
-                userId,
-                userSecret,
+                userId: identity.userId,
+                userSecret: identity.userSecret,
                 joinPassword: joinPasswordRef.current || undefined,
                 username: usernameRef.current,
                 sessionKind,
                 controlToken: controlTokenRef.current,
+                initialMediaUrl: initialMediaUrlRef.current,
               },
             } satisfies WsEnvelope<string, Record<string, unknown>>),
           )
@@ -326,7 +347,7 @@ export function useRoomSocket(
           clearStateTimeout()
           setJoinError(null)
           const payload = envelope.payload as RoomSnapshotPayload
-          const selfParticipant = payload.participants[userId]
+          const selfParticipant = payload.participants[identity.userId]
           if (selfParticipant?.username) {
             usernameRef.current = selfParticipant.username
             persistUsername(selfParticipant.username)
@@ -351,7 +372,7 @@ export function useRoomSocket(
                     )
                   },
                   payload,
-                  userId,
+                  identity.userId,
                 )
               },
             )
@@ -374,7 +395,7 @@ export function useRoomSocket(
                   )
                 },
                 roomStateRef.current,
-                userId,
+                identity.userId,
               )
             },
           )
@@ -470,7 +491,7 @@ export function useRoomSocket(
       }
       wsRef.current?.close()
     }
-  }, [roomId, userId, userSecret, sessionKind])
+  }, [roomId, identity, sessionKind])
 
   const send = useCallback<TypedRoomEventSender>((type, payload) => {
     wsRef.current?.send(

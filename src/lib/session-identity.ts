@@ -1,5 +1,11 @@
 "use client"
 
+import {
+  decryptSecret,
+  encryptSecret,
+  isEncryptedSecret,
+} from "@/lib/secret-storage"
+
 const USER_ID_KEY = "web-syncplay:user-id"
 const USER_SECRET_KEY = "web-syncplay:user-secret"
 const USERNAME_KEY = "web-syncplay:username"
@@ -33,6 +39,30 @@ function clearUrlHash(): void {
   window.history.replaceState(window.history.state, "", cleanUrl)
 }
 
+async function persistEncryptedUserSecret(userSecret: string): Promise<void> {
+  const encrypted = await encryptSecret(userSecret)
+  window.localStorage.setItem(USER_SECRET_KEY, encrypted)
+}
+
+async function readUserSecretFromStorage(): Promise<string | null> {
+  const existingSecret = window.localStorage.getItem(USER_SECRET_KEY)
+  if (!isValidIdentityValue(existingSecret)) {
+    return null
+  }
+
+  const decrypted = await decryptSecret(existingSecret)
+  if (!isValidIdentityValue(decrypted)) {
+    return null
+  }
+
+  // Migrate legacy cleartext secrets to encrypted storage.
+  if (!isEncryptedSecret(existingSecret)) {
+    await persistEncryptedUserSecret(decrypted)
+  }
+
+  return decrypted
+}
+
 export function stripIdentityHashFromUrl(): boolean {
   if (typeof window === "undefined") {
     return false
@@ -47,10 +77,10 @@ export function stripIdentityHashFromUrl(): boolean {
   return true
 }
 
-export function getOrCreateSessionIdentity(): {
+export async function getOrCreateSessionIdentity(): Promise<{
   userId: string
   userSecret: string
-} {
+}> {
   if (typeof window === "undefined") {
     return {
       userId: crypto.randomUUID(),
@@ -66,22 +96,21 @@ export function getOrCreateSessionIdentity(): {
     window.localStorage.setItem(USER_ID_KEY, userId)
   }
 
-  const existingSecret = window.localStorage.getItem(USER_SECRET_KEY)
-  const userSecret = isValidIdentityValue(existingSecret)
-    ? existingSecret
-    : randomHex(32)
-  if (!isValidIdentityValue(existingSecret)) {
-    window.localStorage.setItem(USER_SECRET_KEY, userSecret)
+  const existingSecret = await readUserSecretFromStorage()
+  if (existingSecret) {
+    return { userId, userSecret: existingSecret }
   }
 
+  const userSecret = randomHex(32)
+  await persistEncryptedUserSecret(userSecret)
   return { userId, userSecret }
 }
 
-export function consumeSessionIdentityFromHash(): {
+export async function consumeSessionIdentityFromHash(): Promise<{
   userId?: string
   userSecret?: string
   controlToken?: string
-} {
+}> {
   if (typeof window === "undefined") {
     return {}
   }
@@ -103,7 +132,7 @@ export function consumeSessionIdentityFromHash(): {
   }
 
   window.localStorage.setItem(USER_ID_KEY, hashUserId)
-  window.localStorage.setItem(USER_SECRET_KEY, hashSecret)
+  await persistEncryptedUserSecret(hashSecret)
   clearUrlHash()
 
   return {

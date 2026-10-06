@@ -130,7 +130,7 @@ export const keys = {
     return `${ROOM_STATE_PREFIX}pending-prunes`
   },
 
-  /** HASH userId -> userSecret for participant identity continuity */
+  /** HASH userId -> hashed userSecret for participant identity continuity */
   roomIdentity(roomId: string) {
     return `${ROOM_IDENTITY_PREFIX}${roomId}${ROOM_IDENTITY_SUFFIX}`
   },

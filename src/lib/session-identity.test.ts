@@ -1,10 +1,15 @@
 import { expect, test } from "bun:test"
 import {
   consumeSessionIdentityFromHash,
+  getOrCreateSessionIdentity,
   getPersistedUsername,
   persistUsername,
   stripIdentityHashFromUrl,
 } from "./session-identity"
+import {
+  isEncryptedSecret,
+  resetSecretStorageCacheForTests,
+} from "./secret-storage"
 
 type MockStorage = {
   getItem: (key: string) => string | null
@@ -52,24 +57,46 @@ function createMockWindow(hash: string) {
 
 function cleanupWindow() {
   delete (globalThis as { window?: unknown }).window
+  resetSecretStorageCacheForTests()
 }
 
-test("consumeSessionIdentityFromHash stores valid identity and strips hash", () => {
+test("consumeSessionIdentityFromHash stores encrypted identity and strips hash", async () => {
   const mock = createMockWindow("#uid=user-1&secret=secret-1")
 
-  const consumed = consumeSessionIdentityFromHash()
+  const consumed = await consumeSessionIdentityFromHash()
 
   expect(consumed).toEqual({ userId: "user-1", userSecret: "secret-1" })
   expect(mock.storage.get("web-syncplay:user-id")).toBe("user-1")
-  expect(mock.storage.get("web-syncplay:user-secret")).toBe("secret-1")
+  const storedSecret = mock.storage.get("web-syncplay:user-secret")
+  expect(storedSecret).toBeTruthy()
+  expect(isEncryptedSecret(storedSecret!)).toBe(true)
+  expect(storedSecret).not.toContain("secret-1")
   expect(mock.getReplacedUrl()).toBe("/room/abc/player?embed=1")
   cleanupWindow()
 })
 
-test("consumeSessionIdentityFromHash strips malformed identity hash without storing credentials", () => {
+test("getOrCreateSessionIdentity migrates legacy cleartext secrets", async () => {
+  const mock = createMockWindow("")
+  mock.storage.set("web-syncplay:user-id", "user-legacy")
+  mock.storage.set("web-syncplay:user-secret", "legacy-secret-value")
+
+  const identity = await getOrCreateSessionIdentity()
+
+  expect(identity).toEqual({
+    userId: "user-legacy",
+    userSecret: "legacy-secret-value",
+  })
+  const storedSecret = mock.storage.get("web-syncplay:user-secret")
+  expect(storedSecret).toBeTruthy()
+  expect(isEncryptedSecret(storedSecret!)).toBe(true)
+  expect(storedSecret).not.toContain("legacy-secret-value")
+  cleanupWindow()
+})
+
+test("consumeSessionIdentityFromHash strips malformed identity hash without storing credentials", async () => {
   const mock = createMockWindow("#uid&secret")
 
-  const consumed = consumeSessionIdentityFromHash()
+  const consumed = await consumeSessionIdentityFromHash()
 
   expect(consumed).toEqual({})
   expect(mock.storage.has("web-syncplay:user-id")).toBe(false)
@@ -78,10 +105,10 @@ test("consumeSessionIdentityFromHash strips malformed identity hash without stor
   cleanupWindow()
 })
 
-test("consumeSessionIdentityFromHash strips partial identity hash without storing credentials", () => {
+test("consumeSessionIdentityFromHash strips partial identity hash without storing credentials", async () => {
   const mock = createMockWindow("#uid=user-1")
 
-  const consumed = consumeSessionIdentityFromHash()
+  const consumed = await consumeSessionIdentityFromHash()
 
   expect(consumed).toEqual({})
   expect(mock.storage.has("web-syncplay:user-id")).toBe(false)
