@@ -106,6 +106,8 @@ export function createRoomState(overrides: Partial<RoomState> = {}): RoomState {
     history: [],
     actionLog: [],
     updatedAt: now,
+    generation: 0,
+    structuralRevision: 0,
     ...overrides,
   }
 }
@@ -114,6 +116,7 @@ export class InMemoryRoomStateStore implements RoomStateStorePort {
   rooms = new Map<string, RoomState>()
   /** Mirrors Redis presence hash: userId → connection refcount. */
   presence = new Map<string, Map<string, number>>()
+  presenceData = new Map<string, Map<string, import("@/zod/types").PresencePatch>>()
   dailyDefaults: Array<{ title: string; url: string }> = []
 
   constructor(initial?: RoomState) {
@@ -152,6 +155,32 @@ export class InMemoryRoomStateStore implements RoomStateStorePort {
   async delete(roomId: string) {
     this.rooms.delete(roomId)
     this.presence.delete(roomId)
+    this.presenceData.delete(roomId)
+  }
+
+  async mergePresenceData(
+    roomId: string,
+    userId: string,
+    patch: import("@/zod/types").PresencePatch,
+  ) {
+    const map = this.presenceData.get(roomId) ?? new Map()
+    const prev = map.get(userId) ?? {}
+    map.set(userId, {
+      ...prev,
+      ...patch,
+      localPlayback: patch.localPlayback ?? prev.localPlayback,
+    })
+    this.presenceData.set(roomId, map)
+  }
+
+  async getPresenceDataAll(roomId: string) {
+    const map = this.presenceData.get(roomId)
+    if (!map) return {}
+    return Object.fromEntries(map.entries())
+  }
+
+  async clearPresenceData(roomId: string) {
+    this.presenceData.delete(roomId)
   }
 
   async listRoomIds() {

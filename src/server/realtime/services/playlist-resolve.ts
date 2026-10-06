@@ -2,6 +2,7 @@ import {
   resolveMediaSource,
   type ResolvedMedia,
 } from "@/server/media/resolve"
+import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
 import type { PlaylistItem } from "@/zod/types"
 
@@ -57,9 +58,16 @@ async function commitResolvingItem(
       }
       mutateItem(item)
       state.updatedAt = Date.now()
+      state.generation = (state.generation ?? 0) + 1
+      state.structuralRevision = (state.structuralRevision ?? 0) + 1
       return state
     })
-    if (written) return true
+    if (written) {
+      const bus = getRoomBroadcastBus()
+      bus.attachStore(store)
+      bus.markSnapshotDirty(roomId)
+      return true
+    }
     if (!options?.retryUntilPresent) return false
     await new Promise((resolve) =>
       setTimeout(resolve, Math.min(25 * 2 ** Math.min(attempt, 4), 200)),

@@ -1,6 +1,11 @@
-import { expect, test } from "bun:test"
+import { afterEach, expect, test } from "bun:test"
+import { setRoomBroadcastBusForTests } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type { RoomState } from "@/zod/types"
 import { cleanupInactiveRooms } from "./cleanup"
+
+afterEach(() => {
+  setRoomBroadcastBusForTests(null)
+})
 
 function createState(): RoomState {
   return {
@@ -55,6 +60,8 @@ function createState(): RoomState {
     history: [],
     actionLog: [],
     updatedAt: Date.now(),
+    generation: 0,
+    structuralRevision: 0,
   }
 }
 

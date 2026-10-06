@@ -1,4 +1,8 @@
-import { describe, expect, test } from "bun:test"
+﻿import { afterEach, describe, expect, test } from "bun:test"
+import {
+  createTestBroadcastBus,
+  setRoomBroadcastBusForTests,
+} from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
   handlePlaybackLoopPlaylist,
   handlePlaybackLoopVideo,
@@ -15,23 +19,32 @@ import {
 } from "@/server/realtime/test-utils/fixtures"
 
 describe("playback handler interfaces", () => {
+  afterEach(() => {
+    setRoomBroadcastBusForTests(null)
+  })
+
   test("seek updates timeline for owner and rejects invalid payload", async () => {
     const state = createRoomState()
     const store = new InMemoryRoomStateStore(state)
+    createTestBroadcastBus(store)
     const ctx = createHandlerContext({ store, userId: "owner" })
 
     await handlePlaybackSeek(ctx, envelope("playback:seek", { targetMs: -1 }))
     expect(store.peek("room-1")?.playback.timelineAnchorMs).toBe(0)
 
-    await handlePlaybackSeek(ctx, envelope("playback:seek", { targetMs: 12_000 }))
+    await handlePlaybackSeek(
+      ctx,
+      envelope("playback:seek", { targetMs: 12_000 }),
+    )
     const next = store.peek("room-1")
     expect(next?.playback.timelineAnchorMs).toBe(12_000)
-    expect(next?.playback.seekPreview?.active).toBe(false)
+    expect(next?.playback.seekPreview).toBeUndefined()
     expect(next?.actionLog.at(-1)?.action).toBe("playback:seek")
   })
 
   test("play/pause toggle paused flag and ignore guest control", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
     const ownerCtx = createHandlerContext({ store, userId: "owner" })
     const guestCtx = createHandlerContext({ store, userId: "guest" })
 
@@ -54,9 +67,13 @@ describe("playback handler interfaces", () => {
 
   test("rate and loop modes mutate playback state when authorized", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
     const ctx = createHandlerContext({ store, userId: "mod" })
 
-    await handlePlaybackRate(ctx, envelope("playback:rate", { playbackRate: 1.5 }))
+    await handlePlaybackRate(
+      ctx,
+      envelope("playback:rate", { playbackRate: 1.5 }),
+    )
     expect(store.peek("room-1")?.playback.playbackRate).toBe(1.5)
 
     await handlePlaybackLoopVideo(
@@ -74,6 +91,7 @@ describe("playback handler interfaces", () => {
 
   test("player session cannot control playback", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
     const ctx = createHandlerContext({
       store,
       userId: "owner",
@@ -86,6 +104,7 @@ describe("playback handler interfaces", () => {
 
   test("control session requires controlAuthorized", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
     const denied = createHandlerContext({
       store,
       userId: "owner",
@@ -101,10 +120,16 @@ describe("playback handler interfaces", () => {
       sessionKind: "control",
     })
 
-    await handlePlaybackSeek(denied, envelope("playback:seek", { targetMs: 50 }))
+    await handlePlaybackSeek(
+      denied,
+      envelope("playback:seek", { targetMs: 50 }),
+    )
     expect(store.peek("room-1")?.playback.timelineAnchorMs).toBe(0)
 
-    await handlePlaybackSeek(allowed, envelope("playback:seek", { targetMs: 50 }))
+    await handlePlaybackSeek(
+      allowed,
+      envelope("playback:seek", { targetMs: 50 }),
+    )
     expect(store.peek("room-1")?.playback.timelineAnchorMs).toBe(50)
   })
 })

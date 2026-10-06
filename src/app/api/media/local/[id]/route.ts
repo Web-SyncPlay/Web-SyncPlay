@@ -1,8 +1,12 @@
-import { getLocalMediaEntry } from "@/server/media/local-media-store"
+import {
+  createLocalMediaByteStream,
+  ensureRelaySubscriber,
+} from "@/server/media/local-media-relay"
+import {
+  getLocalMediaEntry,
+  touchLocalMediaEntry,
+} from "@/server/media/local-media-store"
 import { getRoomStateStore } from "@/server/redis/state-store"
-import { NextResponse } from "next/server"
-import { createReadStream } from "node:fs"
-import { Readable } from "node:stream"
 
 function parseRangeHeader(rangeHeader: string | null, totalLength: number) {
   if (!rangeHeader) {
@@ -31,20 +35,25 @@ async function handleLocalMediaRequest(
   context: { params: Promise<{ id: string }> },
   method: "GET" | "HEAD",
 ) {
+  void ensureRelaySubscriber()
+
   const { id } = await context.params
   const entry = await getLocalMediaEntry(id)
   if (!entry) {
-    return NextResponse.json({ error: "Local media not found" }, { status: 404 })
+    return Response.json({ error: "Local media not found" }, { status: 404 })
   }
 
   const store = await getRoomStateStore()
   const onlineUsers = await store.getWsPresenceUserIds(entry.roomId)
   if (!onlineUsers.has(entry.ownerUserId)) {
-    return NextResponse.json(
+    return Response.json(
       { error: "Local media owner is offline" },
       { status: 503 },
     )
   }
+
+  // Keep metadata alive while viewers are actively pulling ranges.
+  void touchLocalMediaEntry(id)
 
   const rangeInfo = parseRangeHeader(
     request.headers.get("range"),
@@ -65,46 +74,45 @@ async function handleLocalMediaRequest(
     "cache-control": "private, no-store",
   })
 
-  if (!rangeInfo) {
+  const start = rangeInfo?.start ?? 0
+  const end = rangeInfo?.end ?? entry.sizeBytes - 1
+  const chunkLength = end - start + 1
+
+  if (rangeInfo) {
+    headers.set("content-length", String(chunkLength))
+    headers.set(
+      "content-range",
+      `bytes ${start}-${end}/${entry.sizeBytes}`,
+    )
+  } else {
     headers.set("content-length", String(entry.sizeBytes))
-    if (method === "HEAD") {
-      return new Response(null, {
-        status: 200,
-        headers,
-      })
-    }
-    // Stream the file — never buffer entire uploads (up to LOCAL_MEDIA_MAX_BYTES) in RAM.
-    const stream = Readable.toWeb(
-      createReadStream(entry.tempFilePath),
-    ) as unknown as ReadableStream
-    return new Response(stream, {
-      status: 200,
+  }
+
+  if (method === "HEAD") {
+    return new Response(null, {
+      status: rangeInfo ? 206 : 200,
       headers,
     })
   }
 
-  const chunkLength = rangeInfo.end - rangeInfo.start + 1
-  headers.set("content-length", String(chunkLength))
-  headers.set(
-    "content-range",
-    `bytes ${rangeInfo.start}-${rangeInfo.end}/${entry.sizeBytes}`,
-  )
-  if (method === "HEAD") {
-    return new Response(null, {
-      status: 206,
+  try {
+    const stream = createLocalMediaByteStream(entry, start, end)
+    return new Response(stream, {
+      status: rangeInfo ? 206 : 200,
       headers,
     })
+  } catch (error) {
+    console.error("[local-media] relay failed", error)
+    return Response.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch bytes from provider",
+      },
+      { status: 503 },
+    )
   }
-  const stream = Readable.toWeb(
-    createReadStream(entry.tempFilePath, {
-      start: rangeInfo.start,
-      end: rangeInfo.end,
-    }),
-  ) as unknown as ReadableStream
-  return new Response(stream, {
-    status: 206,
-    headers,
-  })
 }
 
 export async function GET(

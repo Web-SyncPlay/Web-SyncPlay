@@ -26,47 +26,55 @@ export const handleViewerMediaPreferences: RoomMessageHandler = async (
   const parsed = viewerMediaPreferencesSchema.safeParse(data.payload)
   if (!parsed.success) return
 
-  await mutateRoomMessage(ctx.store, ctx.roomId, ctx.userId, (state) => {
-    const participant = state.participants[ctx.userId]
-    if (!participant) return false
+  await mutateRoomMessage(
+    ctx.store,
+    ctx.roomId,
+    ctx.userId,
+    (state) => {
+      const participant = state.participants[ctx.userId]
+      if (!participant) return false
 
-    const item = state.playlist.find((entry) => entry.id === parsed.data.itemId)
-    if (!item) return false
+      const item = state.playlist.find((entry) => entry.id === parsed.data.itemId)
+      if (!item) return false
 
-    const next: ViewerMediaItemPreference = {
-      ...(participant.viewerMedia?.byItemId[parsed.data.itemId] ?? {}),
-    }
-
-    if (parsed.data.streamId !== undefined) {
-      if (
-        parsed.data.streamId !== null &&
-        !item.mediaStreams?.some((stream) => stream.id === parsed.data.streamId)
-      ) {
-        return false
+      const next: ViewerMediaItemPreference = {
+        ...(participant.viewerMedia?.byItemId[parsed.data.itemId] ?? {}),
       }
-      next.streamId = parsed.data.streamId ?? undefined
-    }
 
-    if (parsed.data.textTrackId !== undefined) {
-      if (
-        parsed.data.textTrackId !== null &&
-        !item.textTracks?.some((track) => track.id === parsed.data.textTrackId)
-      ) {
-        return false
+      if (parsed.data.streamId !== undefined) {
+        if (
+          parsed.data.streamId !== null &&
+          !item.mediaStreams?.some(
+            (stream) => stream.id === parsed.data.streamId,
+          )
+        ) {
+          return false
+        }
+        next.streamId = parsed.data.streamId ?? undefined
       }
-      next.textTrackId = parsed.data.textTrackId
-    }
 
-    if (parsed.data.audioLanguage !== undefined) {
-      next.audioLanguage = parsed.data.audioLanguage || undefined
-    }
+      if (parsed.data.textTrackId !== undefined) {
+        if (
+          parsed.data.textTrackId !== null &&
+          !item.textTracks?.some((track) => track.id === parsed.data.textTrackId)
+        ) {
+          return false
+        }
+        next.textTrackId = parsed.data.textTrackId
+      }
 
-    const byItemId = {
-      ...(participant.viewerMedia?.byItemId ?? {}),
-      [parsed.data.itemId]: next,
-    }
-    participant.viewerMedia = capByItemId({ byItemId })
-    state.updatedAt = Date.now()
-    return true
-  })
+      if (parsed.data.audioLanguage !== undefined) {
+        next.audioLanguage = parsed.data.audioLanguage || undefined
+      }
+
+      const byItemId = {
+        ...(participant.viewerMedia?.byItemId ?? {}),
+        [parsed.data.itemId]: next,
+      }
+      participant.viewerMedia = capByItemId({ byItemId })
+      state.updatedAt = Date.now()
+      return true
+    },
+    { kind: "snapshot" },
+  )
 }

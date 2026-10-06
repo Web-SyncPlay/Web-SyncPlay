@@ -2,22 +2,21 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { registerLocalMediaFile } from "@/lib/local-media-provider"
 import type { TypedRoomEventSender } from "@/lib/room-events"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
 
+const ALLOWED_MIME_PREFIXES = ["video/", "audio/"]
+
 export function PlaylistAddMediaControls(props: {
-  roomId: string
-  userId: string
-  userSecret: string
   send: TypedRoomEventSender
   canManagePlaylist: boolean
   className?: string
 }) {
-  const { roomId, userId, userSecret, send, canManagePlaylist, className } =
-    props
+  const { send, canManagePlaylist, className } = props
   const [url, setUrl] = useState("")
-  const [uploadingLocal, setUploadingLocal] = useState(false)
+  const [sharingLocal, setSharingLocal] = useState(false)
   const localFileInputRef = useRef<HTMLInputElement>(null)
 
   const addMedia = () => {
@@ -28,40 +27,36 @@ export function PlaylistAddMediaControls(props: {
     toast.success("Added URL, resolving metadata in background")
   }
 
-  const addLocalMedia = async (file: File) => {
+  const addLocalMedia = (file: File) => {
     if (!canManagePlaylist) return
-    setUploadingLocal(true)
+
+    const mimeType = file.type || "application/octet-stream"
+    if (!ALLOWED_MIME_PREFIXES.some((prefix) => mimeType.startsWith(prefix))) {
+      toast.error("Only video or audio files can be shared")
+      return
+    }
+    if (file.size <= 0) {
+      toast.error("File is empty")
+      return
+    }
+
+    setSharingLocal(true)
     try {
-      const formData = new FormData()
-      formData.set("roomId", roomId)
-      formData.set("ownerUserId", userId)
-      formData.set("userSecret", userSecret)
-      formData.set("file", file)
-      const response = await fetch("/api/media/local", {
-        method: "POST",
-        body: formData,
-      })
-      if (!response.ok) {
-        throw new Error("Failed to register local media")
-      }
-      const payload = (await response.json()) as {
-        localMediaId: string
-        name: string
-        mimeType?: string
-        sizeBytes?: number
-      }
+      const localMediaId = crypto.randomUUID()
+      // Keep the File in-tab — no upload. Viewers pull byte ranges via the server relay.
+      registerLocalMediaFile(localMediaId, file)
       send("playlist:add:local", {
-        localMediaId: payload.localMediaId,
-        name: payload.name,
-        mimeType: payload.mimeType,
-        sizeBytes: payload.sizeBytes,
+        localMediaId,
+        name: file.name || "Local media",
+        mimeType,
+        sizeBytes: file.size,
       })
-      toast.success("Added local media")
+      toast.success("Sharing local media (streamed from this browser)")
     } catch (error) {
-      console.error("[playlist] failed local media upload", error)
-      toast.error("Could not add local media")
+      console.error("[playlist] failed local media share", error)
+      toast.error("Could not share local media")
     } finally {
-      setUploadingLocal(false)
+      setSharingLocal(false)
       if (localFileInputRef.current) localFileInputRef.current.value = ""
     }
   }
@@ -80,19 +75,20 @@ export function PlaylistAddMediaControls(props: {
       <input
         ref={localFileInputRef}
         type="file"
+        accept="video/*,audio/*"
         className="hidden"
         onChange={(event) => {
           const file = event.target.files?.[0]
           if (!file) return
-          void addLocalMedia(file)
+          addLocalMedia(file)
         }}
       />
       <Button
         variant="secondary"
-        disabled={!canManagePlaylist || uploadingLocal}
+        disabled={!canManagePlaylist || sharingLocal}
         onClick={() => localFileInputRef.current?.click()}
       >
-        {uploadingLocal ? "Uploading..." : "Add Local File"}
+        {sharingLocal ? "Sharing..." : "Share Local File"}
       </Button>
     </div>
   )

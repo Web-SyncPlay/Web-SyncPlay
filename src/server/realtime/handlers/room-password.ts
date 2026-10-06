@@ -38,6 +38,7 @@ export const handleRoomPasswordSet: RoomMessageHandler = async (ctx, data) => {
       })
       return true
     },
+    { kind: "snapshot" },
   )
 }
 
@@ -80,5 +81,6 @@ export const handleRoomPasswordClear: RoomMessageHandler = async (
       })
       return true
     },
+    { kind: "snapshot" },
   )
 }

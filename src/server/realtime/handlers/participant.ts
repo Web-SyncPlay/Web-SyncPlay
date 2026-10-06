@@ -1,8 +1,10 @@
 import { appendActionLog } from "@/server/log"
+import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
   participantRoleUpdateSchema,
   participantUpdateSchema,
 } from "@/zod/schemas"
+import type { PresencePatch } from "@/zod/types"
 import { mutateRoomMessage } from "./mutate-room"
 import type { RoomMessageHandler } from "./types"
 
@@ -15,89 +17,118 @@ export const handleParticipantUpdate: RoomMessageHandler = async (
     return
   }
 
-  await mutateRoomMessage(
-    ctx.store,
-    ctx.roomId,
-    ctx.userId,
-    (state, participant) => {
-      const previousUsername = participant.username
-      const previousError = participant.localPlayback.error
-      const previousAvatar = participant.avatarStyle
-      const previousPlayback = participant.localPlayback
+  const state = await ctx.store.get(ctx.roomId)
+  const participant = state?.participants[ctx.userId]
+  if (!state || !participant) {
+    return
+  }
 
-      const nextUsername = String(
-        participantResult.data.username ?? participant.username,
-      )
-      const nextAvatarStyle = String(
-        participantResult.data.avatarStyle ?? participant.avatarStyle,
-      )
-      const nextPaused = Boolean(
-        participantResult.data.paused ?? previousPlayback.paused,
-      )
-      const nextCurrentTimeMs = Number(
-        participantResult.data.currentTimeMs ?? previousPlayback.currentTimeMs,
-      )
-      const nextLoading = Boolean(
-        participantResult.data.loading ?? previousPlayback.loading,
-      )
-      const nextError =
-        typeof participantResult.data.error === "string"
-          ? participantResult.data.error
-          : previousPlayback.error
+  const previousUsername = participant.username
+  const previousError = participant.localPlayback.error
+  const previousAvatar = participant.avatarStyle
+  const previousPlayback = participant.localPlayback
 
-      // Skip Redis write + full-room fan-out when nothing meaningful changed.
-      // Clients can tick often; time drift under 750ms is not worth a broadcast.
-      const timeDirty =
-        Math.abs(nextCurrentTimeMs - previousPlayback.currentTimeMs) >= 750
-      const identityDirty =
-        nextUsername !== previousUsername || nextAvatarStyle !== previousAvatar
-      const playbackDirty =
-        nextPaused !== previousPlayback.paused ||
-        nextLoading !== previousPlayback.loading ||
-        nextError !== previousError ||
-        timeDirty
-      if (!identityDirty && !playbackDirty) {
-        return false
-      }
+  const nextUsername = String(
+    participantResult.data.username ?? participant.username,
+  )
+  const nextAvatarStyle = String(
+    participantResult.data.avatarStyle ?? participant.avatarStyle,
+  )
+  const nextPaused = Boolean(
+    participantResult.data.paused ?? previousPlayback.paused,
+  )
+  const nextCurrentTimeMs = Number(
+    participantResult.data.currentTimeMs ?? previousPlayback.currentTimeMs,
+  )
+  const nextLoading = Boolean(
+    participantResult.data.loading ?? previousPlayback.loading,
+  )
+  const nextError =
+    typeof participantResult.data.error === "string"
+      ? participantResult.data.error
+      : previousPlayback.error
 
-      participant.username = nextUsername
-      if (participant.username !== previousUsername) {
-        appendActionLog(state, {
-          roomId: ctx.roomId,
-          actorUserId: ctx.userId,
-          actorUsername: participant.username,
-          action: "participant:username",
-          payload: {
-            previousUsername,
-            nextUsername: participant.username,
-          },
-        })
-      }
-      participant.avatarStyle = nextAvatarStyle
-      participant.localPlayback = {
-        paused: nextPaused,
-        currentTimeMs: nextCurrentTimeMs,
-        loading: nextLoading,
-        error: nextError,
-        updatedAt: Date.now(),
-      }
-      if (typeof participantResult.data.error === "string") {
-        if (previousError !== participantResult.data.error) {
-          appendActionLog(state, {
+  const timeDirty =
+    Math.abs(nextCurrentTimeMs - previousPlayback.currentTimeMs) >= 750
+  const identityDirty =
+    nextUsername !== previousUsername || nextAvatarStyle !== previousAvatar
+  const playbackDirty =
+    nextPaused !== previousPlayback.paused ||
+    nextLoading !== previousPlayback.loading ||
+    nextError !== previousError ||
+    timeDirty
+
+  if (!identityDirty && !playbackDirty) {
+    return
+  }
+
+  const now = Date.now()
+  const localPlayback = {
+    paused: nextPaused,
+    currentTimeMs: nextCurrentTimeMs,
+    loading: nextLoading,
+    error: nextError,
+    updatedAt: now,
+  }
+
+  // Presence ticks never rewrite full room state.
+  if (playbackDirty) {
+    const patch: PresencePatch = {
+      connected: true,
+      lastSeenAt: now,
+      localPlayback,
+      username: nextUsername,
+      avatarStyle: nextAvatarStyle,
+    }
+    await ctx.store.mergePresenceData(ctx.roomId, ctx.userId, patch)
+    getRoomBroadcastBus().markPresenceDirty(ctx.roomId, ctx.userId, patch)
+  }
+
+  // Identity / error-log changes persist structurally.
+  if (identityDirty || (playbackDirty && nextError !== previousError)) {
+    await mutateRoomMessage(
+      ctx.store,
+      ctx.roomId,
+      ctx.userId,
+      (room, p) => {
+        if (identityDirty) {
+          p.username = nextUsername
+          if (p.username !== previousUsername) {
+            appendActionLog(room, {
+              roomId: ctx.roomId,
+              actorUserId: ctx.userId,
+              actorUsername: p.username,
+              action: "participant:username",
+              payload: {
+                previousUsername,
+                nextUsername: p.username,
+              },
+            })
+          }
+          p.avatarStyle = nextAvatarStyle
+        }
+        // Keep last-known localPlayback on room for repair/join seed.
+        p.localPlayback = localPlayback
+        if (
+          typeof participantResult.data.error === "string" &&
+          previousError !== participantResult.data.error
+        ) {
+          appendActionLog(room, {
             roomId: ctx.roomId,
             actorUserId: ctx.userId,
-            actorUsername: participant.username,
+            actorUsername: p.username,
             action: "participant:error",
             payload: {
-              currentTimeMs: participant.localPlayback.currentTimeMs,
+              currentTimeMs: localPlayback.currentTimeMs,
             },
             error: participantResult.data.error,
           })
         }
-      }
-      return true
-    },
-  )
+        return true
+      },
+      { kind: "snapshot" },
+    )
+  }
 }
 
 export const handleParticipantRoleUpdate: RoomMessageHandler = async (
@@ -146,5 +177,6 @@ export const handleParticipantRoleUpdate: RoomMessageHandler = async (
       }
       return true
     },
+    { kind: "snapshot" },
   )
 }

@@ -7,10 +7,8 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty"
-import {
-  getAdjacentPlaylistIndex,
-  inferMediaViewType,
-} from "@/lib/playback-sync"
+import { getAdjacentPlaylistIndex, inferMediaViewType } from "@/lib/playback-sync"
+import { getLocalMediaObjectUrl } from "@/lib/local-media-provider"
 import {
   MediaPlayer,
   MediaProvider,
@@ -151,7 +149,7 @@ export function PlayerPanel({
   roomState,
   send,
   userId,
-  userSecret,
+  userSecret: _userSecret,
   capabilities,
 }: RoomPanelProps) {
   const current = roomState.playlist[roomState.currentIndex]
@@ -221,6 +219,18 @@ export function PlayerPanel({
       return ""
     }
 
+    // Provider plays from the in-tab File directly — no relay hop.
+    if (
+      current.sourceKind === "local_file" &&
+      current.localMediaId &&
+      current.localOriginUserId === userId
+    ) {
+      const localUrl = getLocalMediaObjectUrl(current.localMediaId)
+      if (localUrl) {
+        return localUrl
+      }
+    }
+
     const fromStream = activeStream?.src
     if (
       current.playbackMode === "relay" &&
@@ -231,7 +241,7 @@ export function PlayerPanel({
     }
 
     return fromStream ?? current.playableUrl ?? ""
-  }, [activeStream?.src, current])
+  }, [activeStream?.src, current, userId])
 
   const playerSrc = useMemo(
     () => buildPlayerSrc(activePlaybackSrc, current, activeStream),
@@ -928,9 +938,6 @@ export function PlayerPanel({
           </EmptyHeader>
           <EmptyContent className="max-w-xl">
             <PlaylistAddMediaControls
-              roomId={roomState.roomId}
-              userId={userId}
-              userSecret={userSecret}
               send={send}
               canManagePlaylist={canControlPlayback}
               className="flex w-full flex-wrap items-center justify-center gap-2"

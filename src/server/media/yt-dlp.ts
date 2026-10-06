@@ -1,8 +1,12 @@
+import { env } from "@/env"
 import {
   classifyYtDlpStderr,
   type YtDlpFailureClassification,
 } from "@/server/media/yt-dlp/classify"
 import { runYtDlp } from "@/server/media/yt-dlp/runner"
+import { getCommandClient } from "@/server/redis/client"
+import { keys } from "@/server/redis/keys"
+import { createHash } from "node:crypto"
 
 export type YtDlpMetadata = {
   title: string | null
@@ -82,6 +86,10 @@ export type YtDlpExtractResult = YtDlpExtractSuccess | YtDlpExtractFailure
 
 const inflightByUrl = new Map<string, Promise<YtDlpExtractResult>>()
 
+function urlHash(url: string) {
+  return createHash("sha256").update(url).digest("hex")
+}
+
 function logHost(url: string): string {
   try {
     return new URL(url).hostname
@@ -90,12 +98,58 @@ function logHost(url: string): string {
   }
 }
 
+async function readExtractCache(
+  url: string,
+): Promise<YtDlpExtractResult | null> {
+  if (env.YTDLP_CACHE_TTL_SECONDS <= 0) return null
+  try {
+    const client = await getCommandClient()
+    const raw = await client.get(keys.mediaYtDlpExtract(urlHash(url)))
+    if (!raw) return null
+    return JSON.parse(raw) as YtDlpExtractResult
+  } catch {
+    return null
+  }
+}
+
+async function writeExtractCache(url: string, result: YtDlpExtractResult) {
+  if (env.YTDLP_CACHE_TTL_SECONDS <= 0) return
+  // Failures get a short TTL so transient blocks expire quickly.
+  const ttl = result.ok ? env.YTDLP_CACHE_TTL_SECONDS : 60
+  if (!result.ok && ttl <= 0) return
+  try {
+    const client = await getCommandClient()
+    await client.set(keys.mediaYtDlpExtract(urlHash(url)), JSON.stringify(result), {
+      EX: ttl,
+    })
+  } catch {
+    // Cache is best-effort.
+  }
+}
+
+export async function invalidateYtDlpExtractCache(url: string) {
+  try {
+    const client = await getCommandClient()
+    await client.del([keys.mediaYtDlpExtract(urlHash(url))])
+  } catch {
+    // ignore
+  }
+}
+
 export async function extractInfo(url: string): Promise<YtDlpExtractResult> {
   const inflight = inflightByUrl.get(url)
   if (inflight) {
     return await inflight
   }
-  const done = extractInfoUncached(url).finally(() => {
+  const done = (async () => {
+    const cached = await readExtractCache(url)
+    if (cached) {
+      return cached
+    }
+    const result = await extractInfoUncached(url)
+    await writeExtractCache(url, result)
+    return result
+  })().finally(() => {
     inflightByUrl.delete(url)
   })
   inflightByUrl.set(url, done)

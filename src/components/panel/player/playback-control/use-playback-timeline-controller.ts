@@ -38,7 +38,15 @@ export function usePlaybackTimelineController(config: {
 
   const projectedElapsedMs = useMemo(
     () => projectPlaybackMs(roomState, nowMs),
-    [nowMs, roomState],
+    // Depend on playback fields only — presence batches must not recompute.
+    [
+      nowMs,
+      roomState.playback.paused,
+      roomState.playback.playbackRate,
+      roomState.playback.timelineAnchorMs,
+      roomState.playback.serverNowMs,
+      roomState.currentIndex,
+    ],
   )
 
   useEffect(() => {

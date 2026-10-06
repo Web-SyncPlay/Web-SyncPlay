@@ -83,6 +83,8 @@ function createState(): RoomState {
     history: [],
     actionLog: [],
     updatedAt: Date.now(),
+    generation: 0,
+    structuralRevision: 0,
   }
 }
 

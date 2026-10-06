@@ -1,4 +1,4 @@
-import type { RoomState } from "@/zod/types"
+import type { PresencePatch, RoomState } from "@/zod/types"
 
 /**
  * Port used by realtime handlers/services so unit tests can supply an in-memory store
@@ -6,6 +6,9 @@ import type { RoomState } from "@/zod/types"
  */
 export interface RoomStateStorePort {
   get(roomId: string): Promise<RoomState | null>
+  /**
+   * Persist room state only — does not publish. Callers use RoomBroadcastBus.
+   */
   updateRoom(
     roomId: string,
     mutate: (
@@ -23,4 +26,13 @@ export interface RoomStateStorePort {
   touchWsPresence(roomId: string, userId: string): Promise<void>
   getWsPresenceUserIds(roomId: string): Promise<Set<string>>
   seedDailyDefaultsIfEmpty(): Promise<void>
+
+  /** Merge presence fields for one user into the presence HASH. */
+  mergePresenceData(
+    roomId: string,
+    userId: string,
+    patch: PresencePatch,
+  ): Promise<void>
+  getPresenceDataAll(roomId: string): Promise<Record<string, PresencePatch>>
+  clearPresenceData(roomId: string): Promise<void>
 }

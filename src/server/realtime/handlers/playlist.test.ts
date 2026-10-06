@@ -1,4 +1,8 @@
-import { describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "bun:test"
+import {
+  createTestBroadcastBus,
+  setRoomBroadcastBusForTests,
+} from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
   handlePlaylistAddLocal,
   handlePlaylistItemError,
@@ -14,6 +18,10 @@ import {
 } from "@/server/realtime/test-utils/fixtures"
 
 describe("playlist handler interfaces", () => {
+  afterEach(() => {
+    setRoomBroadcastBusForTests(null)
+  })
+
   test("select validates index and resets timeline", async () => {
     const store = new InMemoryRoomStateStore(
       createRoomState({
@@ -28,6 +36,7 @@ describe("playlist handler interfaces", () => {
         },
       }),
     )
+    createTestBroadcastBus(store)
     const ctx = createHandlerContext({ store })
 
     await handlePlaylistSelect(ctx, envelope("playlist:select", { index: -1 }))
@@ -46,6 +55,7 @@ describe("playlist handler interfaces", () => {
     const store = new InMemoryRoomStateStore(
       createRoomState({ currentIndex: 1 }),
     )
+    createTestBroadcastBus(store)
     const ctx = createHandlerContext({ store })
     const beforeId = store.peek("room-1")?.playlist[1]?.id
 
@@ -64,6 +74,7 @@ describe("playlist handler interfaces", () => {
 
   test("rename rejects empty/same name and updates when valid", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
     const ctx = createHandlerContext({ store })
 
     await handlePlaylistRename(
@@ -81,19 +92,22 @@ describe("playlist handler interfaces", () => {
 
   test("add local appends a ready local_file item", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
     const ctx = createHandlerContext({ store })
+    const localMediaId = "00000000-0000-4000-8000-0000000000aa"
 
     await handlePlaylistAddLocal(
       ctx,
       envelope("playlist:add:local", {
-        localMediaId: "local-1",
+        localMediaId,
         name: "My clip",
         mimeType: "video/mp4",
+        sizeBytes: 2048,
       }),
     )
     const item = store.peek("room-1")?.playlist.at(-1)
     expect(item?.sourceKind).toBe("local_file")
-    expect(item?.localMediaId).toBe("local-1")
+    expect(item?.localMediaId).toBe(localMediaId)
     expect(item?.ingestStatus).toBe("ready")
     expect(item?.defaultStreamId).toBe("local-default")
   })
@@ -102,6 +116,7 @@ describe("playlist handler interfaces", () => {
     const store = new InMemoryRoomStateStore(
       createRoomState({ currentIndex: 0 }),
     )
+    createTestBroadcastBus(store)
     const ctx = createHandlerContext({ store })
 
     await handlePlaylistItemError(
@@ -119,6 +134,7 @@ describe("playlist handler interfaces", () => {
 
   test("guest cannot mutate playlist", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
     const ctx = createHandlerContext({ store, userId: "guest" })
 
     await handlePlaylistSelect(ctx, envelope("playlist:select", { index: 1 }))

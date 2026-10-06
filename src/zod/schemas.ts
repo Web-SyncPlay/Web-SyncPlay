@@ -59,10 +59,21 @@ export const playlistAddUrlSchema = z.object({
 })
 
 export const playlistAddLocalSchema = z.object({
-  localMediaId: z.string().min(1),
+  localMediaId: z.string().uuid(),
   name: z.string().min(1).max(256),
-  mimeType: z.string().min(1).max(128).optional(),
-  sizeBytes: z.number().int().min(0).optional(),
+  mimeType: z.string().min(1).max(128),
+  sizeBytes: z
+    .number()
+    .int()
+    .min(1)
+    .max(1024 * 1024 * 1024 * 1024), // 1 TiB sanity bound (bytes stay on provider)
+})
+
+export const localMediaChunkSchema = z.object({
+  requestId: z.string().min(1),
+  ok: z.boolean(),
+  dataBase64: z.string().min(1).optional(),
+  error: z.string().max(300).optional(),
 })
 
 export const playlistRetrySchema = z.object({

@@ -226,6 +226,24 @@ export function repairCleanupAndCheckRoomState(state: RoomState) {
     findings.push("updated-at-repaired")
   }
 
+  if (
+    typeof state.generation !== "number" ||
+    !Number.isFinite(state.generation) ||
+    state.generation < 0
+  ) {
+    state.generation = 0
+    findings.push("generation-repaired")
+  }
+
+  if (
+    typeof state.structuralRevision !== "number" ||
+    !Number.isFinite(state.structuralRevision) ||
+    state.structuralRevision < 0
+  ) {
+    state.structuralRevision = 0
+    findings.push("structural-revision-repaired")
+  }
+
   return findings
 }
 

@@ -62,12 +62,48 @@ export const env = createEnv({
       .min(60)
       .max(60 * 60 * 48)
       .default(60 * 60 * 12),
-    LOCAL_MEDIA_MAX_BYTES: z.coerce
+    LOCAL_MEDIA_RELAY_CHUNK_BYTES: z.coerce
       .number()
       .int()
-      .min(1024)
-      .max(1024 * 1024 * 1024)
-      .default(100 * 1024 * 1024),
+      .min(16 * 1024)
+      .max(1024 * 1024)
+      .default(256 * 1024),
+    LOCAL_MEDIA_RELAY_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(60_000)
+      .default(15_000),
+    YTDLP_CACHE_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(86_400)
+      .default(1800),
+    HLS_REWRITE_CACHE_TTL_MS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(120_000)
+      .default(15_000),
+    PRESENCE_BATCH_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(50)
+      .max(5_000)
+      .default(250),
+    SNAPSHOT_COALESCE_MS: z.coerce
+      .number()
+      .int()
+      .min(20)
+      .max(2_000)
+      .default(100),
+    ACTION_LOG_SNAPSHOT_MAX_MS: z.coerce
+      .number()
+      .int()
+      .min(200)
+      .max(10_000)
+      .default(2_000),
   },
 
   /**
@@ -100,7 +136,13 @@ export const env = createEnv({
     OPS_SECRET: process.env.OPS_SECRET,
     PROXY_ALLOW_PRIVATE_URLS: process.env.PROXY_ALLOW_PRIVATE_URLS,
     CONTROL_TOKEN_TTL_SECONDS: process.env.CONTROL_TOKEN_TTL_SECONDS,
-    LOCAL_MEDIA_MAX_BYTES: process.env.LOCAL_MEDIA_MAX_BYTES,
+    LOCAL_MEDIA_RELAY_CHUNK_BYTES: process.env.LOCAL_MEDIA_RELAY_CHUNK_BYTES,
+    LOCAL_MEDIA_RELAY_TIMEOUT_MS: process.env.LOCAL_MEDIA_RELAY_TIMEOUT_MS,
+    YTDLP_CACHE_TTL_SECONDS: process.env.YTDLP_CACHE_TTL_SECONDS,
+    HLS_REWRITE_CACHE_TTL_MS: process.env.HLS_REWRITE_CACHE_TTL_MS,
+    PRESENCE_BATCH_INTERVAL_MS: process.env.PRESENCE_BATCH_INTERVAL_MS,
+    SNAPSHOT_COALESCE_MS: process.env.SNAPSHOT_COALESCE_MS,
+    ACTION_LOG_SNAPSHOT_MAX_MS: process.env.ACTION_LOG_SNAPSHOT_MAX_MS,
   },
 
   /**

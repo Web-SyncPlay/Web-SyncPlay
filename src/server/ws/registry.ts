@@ -103,6 +103,17 @@ export function getSocketsForRoom(roomId: string) {
   return getRegistrySlot().rooms.get(roomId) ?? new Set()
 }
 
+export function getSocketsForUser(roomId: string, userId: string) {
+  const sockets: WebSocket[] = []
+  for (const ws of getSocketsForRoom(roomId)) {
+    const meta = getSocketMeta(ws)
+    if (meta?.userId === userId) {
+      sockets.push(ws)
+    }
+  }
+  return sockets
+}
+
 export function hasAnySocketInRoom(roomId: string) {
   const set = getRegistrySlot().rooms.get(roomId)
   return (set?.size ?? 0) > 0

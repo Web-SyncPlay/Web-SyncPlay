@@ -3,6 +3,10 @@ import {
   shouldAttemptPlaylistRewrite,
 } from "@/server/media/hls-proxy-rewrite"
 import {
+  getOrComputeHlsRewrite,
+  peekHlsRewriteCache,
+} from "@/server/media/hls-rewrite-cache"
+import {
   getProxyTokenPayload,
   refreshProxyTokenTtl,
   roomStillExists,
@@ -95,6 +99,22 @@ function passthroughHeaders(response: Response, range: string | null) {
   return headers
 }
 
+function playlistResponse(
+  body: string,
+  contentType: string,
+): Response {
+  const headers = new Headers()
+  headers.set("content-type", contentType)
+  headers.set(
+    "cache-control",
+    contentType.includes("mpegurl")
+      ? "private, max-age=5, no-transform"
+      : "private, no-store, no-transform",
+  )
+  headers.set("access-control-allow-origin", "*")
+  return new Response(body, { status: 200, headers })
+}
+
 export async function GET(
   request: Request,
   context: { params: Promise<{ token: string }> },
@@ -119,6 +139,16 @@ export async function GET(
   }
 
   await refreshProxyTokenTtl(token)
+
+  const range = request.headers.get("range")
+
+  // Serve rewritten HLS playlists from LRU before hitting upstream.
+  if (!range) {
+    const cached = peekHlsRewriteCache(token, payload.url)
+    if (cached) {
+      return playlistResponse(cached.body, cached.contentType)
+    }
+  }
 
   let target = payload.url
   let response = await fetch(target, {
@@ -151,26 +181,34 @@ export async function GET(
   }
 
   const contentType = response.headers.get("content-type") ?? ""
-  const range = request.headers.get("range")
   const tryRewrite =
     response.status === 200 &&
     !range &&
     playlistTargetHint(target, contentType)
 
   if (tryRewrite) {
-    const text = await response.text()
-    if (shouldAttemptPlaylistRewrite(contentType, text)) {
-      const rewritten = await rewriteM3u8ForProxy(text, target)
-      const headers = new Headers()
-      headers.set("content-type", "application/vnd.apple.mpegurl; charset=utf-8")
-      headers.set("cache-control", "private, no-store, no-transform")
-      headers.set("access-control-allow-origin", "*")
-      return new Response(rewritten, { status: 200, headers })
-    }
-    return new Response(text, {
-      status: response.status,
-      headers: passthroughHeaders(response, range),
+    const rewritten = await getOrComputeHlsRewrite({
+      token,
+      upstreamUrl: payload.url,
+      compute: async () => {
+        const text = await response.text()
+        if (shouldAttemptPlaylistRewrite(contentType, text)) {
+          const body = await rewriteM3u8ForProxy(text, target)
+          return {
+            body,
+            contentType: "application/vnd.apple.mpegurl; charset=utf-8",
+          }
+        }
+        return {
+          body: text,
+          contentType: contentType || "application/octet-stream",
+        }
+      },
     })
+    if (rewritten.cacheHit) {
+      void response.body?.cancel()
+    }
+    return playlistResponse(rewritten.body, rewritten.contentType)
   }
 
   return new Response(response.body, {

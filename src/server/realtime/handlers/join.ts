@@ -1,4 +1,5 @@
 import { appendActionLog } from "@/server/log"
+import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
   applyOfflinePruning,
   clearPrune,
@@ -186,6 +187,8 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
       existingParticipant,
       { username, avatarStyle },
     )
+    const presenceOverlay = await ctx.store.getPresenceDataAll(roomId)
+    const overlayPlayback = presenceOverlay[userId]?.localPlayback
     state.participants[userId] = {
       userId,
       username: participantProfile.username,
@@ -197,10 +200,20 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
       disconnectedAt: undefined,
       lastSeenAt: now,
       localPlayback: {
-        paused: existingParticipant?.localPlayback.paused ?? true,
-        currentTimeMs: existingParticipant?.localPlayback.currentTimeMs ?? 0,
-        loading: existingParticipant?.localPlayback.loading ?? false,
-        error: existingParticipant?.localPlayback.error,
+        paused:
+          overlayPlayback?.paused ??
+          existingParticipant?.localPlayback.paused ??
+          true,
+        currentTimeMs:
+          overlayPlayback?.currentTimeMs ??
+          existingParticipant?.localPlayback.currentTimeMs ??
+          0,
+        loading:
+          overlayPlayback?.loading ??
+          existingParticipant?.localPlayback.loading ??
+          false,
+        error:
+          overlayPlayback?.error ?? existingParticipant?.localPlayback.error,
         updatedAt: now,
       },
       viewerMedia: existingParticipant?.viewerMedia,
@@ -222,12 +235,36 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
     })
     markCurrentMedia(state)
     state.updatedAt = Date.now()
+    state.generation = (state.generation ?? 0) + 1
+    state.structuralRevision = (state.structuralRevision ?? 0) + 1
     return state
   })
 
   // Persist-first: kick (or re-kick stuck) resolving items only after Redis write.
   if (committed) {
     scheduleResolvingPlaylistItems(ctx.store, roomId, committed.playlist)
+
+    const bus = getRoomBroadcastBus()
+    bus.attachStore(ctx.store)
+    await ctx.store.mergePresenceData(roomId, userId, {
+      connected: true,
+      lastSeenAt: Date.now(),
+      localPlayback: committed.participants[userId]?.localPlayback,
+      username: committed.participants[userId]?.username,
+      avatarStyle: committed.participants[userId]?.avatarStyle,
+    })
+
+    // Critical: joiner must receive state without relying on store publish.
+    const snapshot = await bus.buildSanitizedSnapshot(roomId)
+    if (snapshot) {
+      bus.sendToSocket(ctx.ws, { type: "room:snapshot", payload: snapshot })
+    }
+    bus.markSnapshotDirty(roomId)
+    bus.markPresenceDirty(roomId, userId, {
+      connected: true,
+      lastSeenAt: Date.now(),
+      localPlayback: committed.participants[userId]?.localPlayback,
+    })
   }
 
   if (sessionCapabilities) {

@@ -1,4 +1,8 @@
-import { describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "bun:test"
+import {
+  createTestBroadcastBus,
+  setRoomBroadcastBusForTests,
+} from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
   handleParticipantRoleUpdate,
   handleParticipantUpdate,
@@ -11,8 +15,13 @@ import {
 } from "@/server/realtime/test-utils/fixtures"
 
 describe("participant handler interfaces", () => {
-  test("update mutates self profile and local playback", async () => {
+  afterEach(() => {
+    setRoomBroadcastBusForTests(null)
+  })
+
+  test("update writes presence HASH for local playback and room for identity", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
     const ctx = createHandlerContext({ store, userId: "guest" })
 
     await handleParticipantUpdate(
@@ -27,17 +36,43 @@ describe("participant handler interfaces", () => {
       }),
     )
 
+    const presence = await store.getPresenceDataAll("room-1")
+    expect(presence.guest?.localPlayback?.currentTimeMs).toBe(1234)
+    expect(presence.guest?.localPlayback?.paused).toBe(false)
+
     const participant = store.peek("room-1")?.participants.guest
     expect(participant?.username).toBe("New Guest")
     expect(participant?.avatarStyle).toBe("thumbs")
-    expect(participant?.localPlayback.paused).toBe(false)
-    expect(participant?.localPlayback.currentTimeMs).toBe(1234)
-    expect(participant?.localPlayback.loading).toBe(true)
     expect(participant?.localPlayback.error).toBe("stall")
+  })
+
+  test("playback-only tick does not bump room generation", async () => {
+    const store = new InMemoryRoomStateStore(createRoomState())
+    const bus = createTestBroadcastBus(store)
+    const ctx = createHandlerContext({ store, userId: "guest" })
+    const beforeGen = store.peek("room-1")!.generation
+
+    await handleParticipantUpdate(
+      ctx,
+      envelope("participant:update", {
+        paused: false,
+        currentTimeMs: 5000,
+        loading: false,
+      }),
+    )
+
+    expect(store.peek("room-1")!.generation).toBe(beforeGen)
+    const presence = await store.getPresenceDataAll("room-1")
+    expect(presence.guest?.localPlayback?.currentTimeMs).toBe(5000)
+    await bus.flushPresence("room-1")
+    expect(bus.captured.some((c) => c.envelope.type === "presence:batch")).toBe(
+      true,
+    )
   })
 
   test("rejects invalid update payload", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
     const ctx = createHandlerContext({ store, userId: "guest" })
 
     await handleParticipantUpdate(
@@ -49,6 +84,7 @@ describe("participant handler interfaces", () => {
 
   test("only owner can change roles and cannot promote to owner", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
     const guestCtx = createHandlerContext({ store, userId: "guest" })
     const ownerCtx = createHandlerContext({ store, userId: "owner" })
 

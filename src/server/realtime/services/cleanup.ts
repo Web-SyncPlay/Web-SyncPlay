@@ -1,3 +1,4 @@
+import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { destroyRoom } from "@/server/realtime/services/disconnect"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
 import { transferOwnershipIfNeeded } from "./ownership"
@@ -18,12 +19,14 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
   const roomIds = await store.listRoomIds()
   let removedRooms = 0
   let removedParticipants = 0
+  const bus = getRoomBroadcastBus()
+  bus.attachStore(store)
 
   for (const roomId of roomIds) {
     let lastPruned = 0
     let lastDeleted = false
 
-    await store.updateRoom(roomId, async (current) => {
+    const written = await store.updateRoom(roomId, async (current) => {
       lastPruned = 0
       lastDeleted = false
       if (!current) {
@@ -61,8 +64,14 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
       }
 
       current.updatedAt = Date.now()
+      current.generation = (current.generation ?? 0) + 1
+      current.structuralRevision = (current.structuralRevision ?? 0) + 1
       return current
     })
+
+    if (written) {
+      bus.markSnapshotDirty(roomId)
+    }
 
     if (lastDeleted) {
       removedRooms += 1

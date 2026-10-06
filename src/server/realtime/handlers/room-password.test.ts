@@ -1,4 +1,8 @@
-import { describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "bun:test"
+import {
+  createTestBroadcastBus,
+  setRoomBroadcastBusForTests,
+} from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
   handleRoomPasswordClear,
   handleRoomPasswordSet,
@@ -11,8 +15,13 @@ import {
 } from "@/server/realtime/test-utils/fixtures"
 
 describe("room password handler interfaces", () => {
+  afterEach(() => {
+    setRoomBroadcastBusForTests(null)
+  })
+
   test("owner can set and clear join password", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
     const ctx = createHandlerContext({ store, userId: "owner" })
 
     await handleRoomPasswordSet(
@@ -32,6 +41,7 @@ describe("room password handler interfaces", () => {
 
   test("non-owner and player session cannot set password", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
 
     await handleRoomPasswordSet(
       createHandlerContext({ store, userId: "guest" }),

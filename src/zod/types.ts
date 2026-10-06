@@ -141,6 +141,37 @@ export interface RoomState {
   history: Array<{ mediaId: string; playedAt: number }>
   actionLog: ActionLogEntry[]
   updatedAt: number
+  /** Bumps on every persisted room write (control or structural). */
+  generation: number
+  /** Bumps when playlist / identity / security / logs change (snapshot-worthy). */
+  structuralRevision: number
+}
+
+/** Per-user fields carried on the coalesced presence channel. */
+export interface PresencePatch {
+  connected?: boolean
+  lastSeenAt?: number
+  disconnectedAt?: number
+  username?: string
+  avatarStyle?: string
+  localPlayback?: ParticipantState["localPlayback"]
+}
+
+export interface RoomControlPayload {
+  generation: number
+  playback: PlaybackState
+  currentIndex: number
+  updatedAt: number
+}
+
+export interface PresenceBatchPayload {
+  presenceRevision: number
+  participants: Record<string, PresencePatch>
+  serverNowMs: number
+}
+
+export interface RoomSnapshotPayload extends RoomState {
+  /** Snapshot omits password hash/salt via sanitize. */
 }
 
 export interface WsEnvelope<T extends string, P> {

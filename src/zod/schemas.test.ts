@@ -172,10 +172,18 @@ describe("playlist payload interfaces", () => {
   test("add local / rename / retry / item error", () => {
     expect(
       playlistAddLocalSchema.safeParse({
+        localMediaId: "00000000-0000-4000-8000-000000000001",
+        name: "clip",
+        mimeType: "video/mp4",
+        sizeBytes: 1024,
+      }).success,
+    ).toBe(true)
+    expect(
+      playlistAddLocalSchema.safeParse({
         localMediaId: "m1",
         name: "clip",
       }).success,
-    ).toBe(true)
+    ).toBe(false)
     expect(
       playlistRenameSchema.safeParse({ itemId: "i1", name: "" }).success,
     ).toBe(false)

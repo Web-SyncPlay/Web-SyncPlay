@@ -3,6 +3,7 @@ import type { WebSocket } from "ws"
 import {
   addSocket,
   getSocketMeta,
+  getSocketsForUser,
   removeSocket,
   setSocketPresenceTracked,
 } from "./registry"
@@ -61,4 +62,30 @@ test("replacing room metadata on same socket updates room/user", () => {
   expect(meta?.sessionKind).toBe("control")
 
   removeSocket(ws)
+})
+
+test("getSocketsForUser returns sockets for matching room+user", () => {
+  const wsA = createWs()
+  const wsB = createWs()
+  addSocket(wsA, {
+    roomId: "room-1",
+    userId: "u1",
+    controlAuthorized: false,
+    isControlSession: false,
+    sessionKind: "room",
+  })
+  addSocket(wsB, {
+    roomId: "room-1",
+    userId: "u2",
+    controlAuthorized: false,
+    isControlSession: false,
+    sessionKind: "room",
+  })
+
+  expect(getSocketsForUser("room-1", "u1")).toEqual([wsA])
+  expect(getSocketsForUser("room-1", "u2")).toEqual([wsB])
+  expect(getSocketsForUser("room-1", "missing")).toEqual([])
+
+  removeSocket(wsA)
+  removeSocket(wsB)
 })

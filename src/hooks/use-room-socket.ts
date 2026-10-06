@@ -1,6 +1,11 @@
 "use client"
 
 import type { TypedRoomEventSender } from "@/lib/room-events"
+import {
+  applyPresenceBatch,
+  applyRoomControl,
+  applyRoomSnapshot,
+} from "@/lib/room-state-merge"
 import { getRandomName } from "@/lib/room-utils"
 import {
   consumeSessionIdentityFromHash,
@@ -9,7 +14,14 @@ import {
   persistUsername,
   stripIdentityHashFromUrl,
 } from "@/lib/session-identity"
-import type { RoomState, SessionKind, WsEnvelope } from "@/zod/types"
+import type {
+  PresenceBatchPayload,
+  RoomControlPayload,
+  RoomSnapshotPayload,
+  RoomState,
+  SessionKind,
+  WsEnvelope,
+} from "@/zod/types"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 type SessionCapabilities = {
@@ -236,17 +248,95 @@ export function useRoomSocket(
       ws.onmessage = (event) => {
         const envelope = JSON.parse(event.data) as WsEnvelope<string, unknown>
 
-        if (envelope.type === "room:state") {
+        if (envelope.type === "local-media:read") {
+          const payload = envelope.payload as {
+            requestId?: string
+            localMediaId?: string
+            start?: number
+            end?: number
+          }
+          const requestId = payload.requestId
+          const localMediaId = payload.localMediaId
+          const start = payload.start
+          const end = payload.end
+          if (
+            !requestId ||
+            !localMediaId ||
+            typeof start !== "number" ||
+            typeof end !== "number"
+          ) {
+            return
+          }
+
+          void (async () => {
+            const {
+              arrayBufferToBase64,
+              getLocalMediaFile,
+            } = await import("@/lib/local-media-provider")
+            const file = getLocalMediaFile(localMediaId)
+            // Stay silent when this tab does not hold the File so another
+            // session for the same user can still answer the range request.
+            if (!file) {
+              return
+            }
+            try {
+              const slice = file.slice(start, end + 1)
+              const buffer = await slice.arrayBuffer()
+              ws.send(
+                JSON.stringify({
+                  type: "local-media:chunk",
+                  requestId: crypto.randomUUID(),
+                  payload: {
+                    requestId,
+                    ok: true,
+                    dataBase64: arrayBufferToBase64(buffer),
+                  },
+                }),
+              )
+            } catch (error) {
+              console.error("[local-media] failed to read range", error)
+              ws.send(
+                JSON.stringify({
+                  type: "local-media:chunk",
+                  requestId: crypto.randomUUID(),
+                  payload: {
+                    requestId,
+                    ok: false,
+                    error: "read_failed",
+                  },
+                }),
+              )
+            }
+          })()
+          return
+        }
+
+        if (envelope.type === "room:snapshot" || envelope.type === "room:state") {
           hasReceivedStateRef.current = true
           clearStateTimeout()
           setJoinError(null)
-          const nextRoomState = envelope.payload as RoomState
-          const selfParticipant = nextRoomState.participants[userId]
+          const payload = envelope.payload as RoomSnapshotPayload
+          const selfParticipant = payload.participants[userId]
           if (selfParticipant?.username) {
             usernameRef.current = selfParticipant.username
             persistUsername(selfParticipant.username)
           }
-          setRoomState(nextRoomState)
+          setRoomState((prev) => applyRoomSnapshot(prev, payload))
+          return
+        }
+
+        if (envelope.type === "room:control") {
+          hasReceivedStateRef.current = true
+          clearStateTimeout()
+          setJoinError(null)
+          const payload = envelope.payload as RoomControlPayload
+          setRoomState((prev) => applyRoomControl(prev, payload))
+          return
+        }
+
+        if (envelope.type === "presence:batch") {
+          const payload = envelope.payload as PresenceBatchPayload
+          setRoomState((prev) => applyPresenceBatch(prev, payload))
           return
         }
 

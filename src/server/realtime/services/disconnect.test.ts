@@ -1,4 +1,8 @@
-import { describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "bun:test"
+import {
+  createTestBroadcastBus,
+  setRoomBroadcastBusForTests,
+} from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
   applyUserWentOffline,
   handleSocketDisconnect,
@@ -10,6 +14,9 @@ import {
 } from "@/server/realtime/test-utils/fixtures"
 
 describe("disconnect lifecycle", () => {
+  afterEach(() => {
+    setRoomBroadcastBusForTests(null)
+  })
   test("applyUserWentOffline marks participant, invalidates local media, transfers ownership", () => {
     const state = createRoomState({
       playlist: [
@@ -47,6 +54,7 @@ describe("disconnect lifecycle", () => {
 
   test("handleSocketDisconnect deletes empty rooms", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
     store.presence.set("room-1", new Map())
 
     await handleSocketDisconnect(store, {
@@ -60,6 +68,7 @@ describe("disconnect lifecycle", () => {
 
   test("handleSocketDisconnect no-ops when user still has another connection", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
     // Owner has two sockets (refcount 2); closing one must leave them online.
     store.presence.set(
       "room-1",

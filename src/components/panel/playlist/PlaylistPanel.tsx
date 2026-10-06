@@ -41,7 +41,7 @@ export function PlaylistPanel({
   roomState,
   send,
   userId,
-  userSecret,
+  userSecret: _userSecret,
   capabilities,
 }: RoomPanelProps) {
   const [draftName, setDraftName] = useState<Record<string, string>>({})
@@ -125,9 +125,6 @@ export function PlaylistPanel({
           </span>
         </CardDescription>
         <PlaylistAddMediaControls
-          roomId={roomState.roomId}
-          userId={userId}
-          userSecret={userSecret}
           send={send}
           canManagePlaylist={canManagePlaylist}
         />

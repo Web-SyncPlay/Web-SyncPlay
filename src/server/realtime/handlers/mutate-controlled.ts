@@ -1,3 +1,4 @@
+import type { RoomPublishHint } from "@/server/realtime/broadcast/channels"
 import { canControlFromConnectionContext } from "@/server/realtime/services/permissions"
 import type { RoomState } from "@/zod/types"
 import { mutateRoomMessage } from "./mutate-room"
@@ -13,17 +14,24 @@ export async function mutateControlledRoomMessage(
     state: RoomState,
     participant: RoomState["participants"][string],
   ) => boolean,
-): Promise<void> {
-  await mutateRoomMessage(ctx.store, ctx.roomId, ctx.userId, (state, participant) => {
-    if (
-      !canControlFromConnectionContext(state, ctx.userId, {
-        controlAuthorized: ctx.controlAuthorized,
-        isControlSession: ctx.isControlSession,
-        sessionKind: ctx.sessionKind,
-      })
-    ) {
-      return false
-    }
-    return body(state, participant)
-  })
+  hint: RoomPublishHint = { kind: "control" },
+): Promise<RoomState | null> {
+  return await mutateRoomMessage(
+    ctx.store,
+    ctx.roomId,
+    ctx.userId,
+    (state, participant) => {
+      if (
+        !canControlFromConnectionContext(state, ctx.userId, {
+          controlAuthorized: ctx.controlAuthorized,
+          isControlSession: ctx.isControlSession,
+          sessionKind: ctx.sessionKind,
+        })
+      ) {
+        return false
+      }
+      return body(state, participant)
+    },
+    hint,
+  )
 }

@@ -19,29 +19,29 @@ export const handlePlaybackSeek: RoomMessageHandler = async (ctx, data) => {
     return
   }
 
-  await mutateControlledRoomMessage(ctx, (state, participant) => {
-    const fromMs = Math.max(
-      0,
-      Math.floor(resolveCurrentTimelineMs(state, Date.now())),
-    )
-    const nowMs = nextMonotonicMs(state.playback.serverNowMs, Date.now())
-    state.playback.timelineAnchorMs = Math.max(0, seekResult.data.targetMs)
-    state.playback.serverNowMs = nowMs
-    state.playback.seekPreview = {
-      userId: ctx.userId,
-      targetMs: state.playback.timelineAnchorMs,
-      active: false,
-      updatedAt: nowMs,
-    }
-    appendActionLog(state, {
-      roomId: ctx.roomId,
-      actorUserId: ctx.userId,
-      actorUsername: participant.username,
-      action: "playback:seek",
-      payload: { fromMs, toMs: state.playback.timelineAnchorMs },
-    })
-    return true
-  })
+  await mutateControlledRoomMessage(
+    ctx,
+    (state, participant) => {
+      const fromMs = Math.max(
+        0,
+        Math.floor(resolveCurrentTimelineMs(state, Date.now())),
+      )
+      const nowMs = nextMonotonicMs(state.playback.serverNowMs, Date.now())
+      state.playback.timelineAnchorMs = Math.max(0, seekResult.data.targetMs)
+      state.playback.serverNowMs = nowMs
+      // Clear persisted preview; live scrubbing is ephemeral on the control channel.
+      state.playback.seekPreview = undefined
+      appendActionLog(state, {
+        roomId: ctx.roomId,
+        actorUserId: ctx.userId,
+        actorUsername: participant.username,
+        action: "playback:seek",
+        payload: { fromMs, toMs: state.playback.timelineAnchorMs },
+      })
+      return true
+    },
+    { kind: "control" },
+  )
 }
 
 async function setPlaybackPausedState(
@@ -54,25 +54,29 @@ async function setPlaybackPausedState(
     return
   }
 
-  await mutateControlledRoomMessage(ctx, (state, participant) => {
-    const nowMs = Date.now()
-    const projectedMs = resolveCurrentTimelineMs(state, nowMs)
-    const nextAnchorMs = Number(
-      payloadResult.data.currentTimeMs ?? projectedMs,
-    )
-    const syncNow = nextMonotonicMs(state.playback.serverNowMs, nowMs)
-    state.playback.timelineAnchorMs = Math.max(0, nextAnchorMs)
-    state.playback.paused = paused
-    state.playback.serverNowMs = syncNow
-    appendActionLog(state, {
-      roomId: ctx.roomId,
-      actorUserId: ctx.userId,
-      actorUsername: participant.username,
-      action: paused ? "playback:pause" : "playback:unpause",
-      payload: { atMs: state.playback.timelineAnchorMs },
-    })
-    return true
-  })
+  await mutateControlledRoomMessage(
+    ctx,
+    (state, participant) => {
+      const nowMs = Date.now()
+      const projectedMs = resolveCurrentTimelineMs(state, nowMs)
+      const nextAnchorMs = Number(
+        payloadResult.data.currentTimeMs ?? projectedMs,
+      )
+      const syncNow = nextMonotonicMs(state.playback.serverNowMs, nowMs)
+      state.playback.timelineAnchorMs = Math.max(0, nextAnchorMs)
+      state.playback.paused = paused
+      state.playback.serverNowMs = syncNow
+      appendActionLog(state, {
+        roomId: ctx.roomId,
+        actorUserId: ctx.userId,
+        actorUsername: participant.username,
+        action: paused ? "playback:pause" : "playback:unpause",
+        payload: { atMs: state.playback.timelineAnchorMs },
+      })
+      return true
+    },
+    { kind: "control" },
+  )
 }
 
 export const handlePlaybackPlay: RoomMessageHandler = async (ctx, data) => {
@@ -89,21 +93,25 @@ export const handlePlaybackRate: RoomMessageHandler = async (ctx, data) => {
     return
   }
 
-  await mutateControlledRoomMessage(ctx, (state, participant) => {
-    const nowMs = Date.now()
-    const syncNow = nextMonotonicMs(state.playback.serverNowMs, nowMs)
-    state.playback.timelineAnchorMs = resolveCurrentTimelineMs(state, nowMs)
-    state.playback.serverNowMs = syncNow
-    state.playback.playbackRate = rateResult.data.playbackRate
-    appendActionLog(state, {
-      roomId: ctx.roomId,
-      actorUserId: ctx.userId,
-      actorUsername: participant.username,
-      action: "playback:rate",
-      payload: { playbackRate: rateResult.data.playbackRate },
-    })
-    return true
-  })
+  await mutateControlledRoomMessage(
+    ctx,
+    (state, participant) => {
+      const nowMs = Date.now()
+      const syncNow = nextMonotonicMs(state.playback.serverNowMs, nowMs)
+      state.playback.timelineAnchorMs = resolveCurrentTimelineMs(state, nowMs)
+      state.playback.serverNowMs = syncNow
+      state.playback.playbackRate = rateResult.data.playbackRate
+      appendActionLog(state, {
+        roomId: ctx.roomId,
+        actorUserId: ctx.userId,
+        actorUsername: participant.username,
+        action: "playback:rate",
+        payload: { playbackRate: rateResult.data.playbackRate },
+      })
+      return true
+    },
+    { kind: "control" },
+  )
 }
 
 export const handlePlaybackLoopVideo: RoomMessageHandler = async (
@@ -115,25 +123,29 @@ export const handlePlaybackLoopVideo: RoomMessageHandler = async (
     return
   }
 
-  await mutateControlledRoomMessage(ctx, (state, participant) => {
-    const previousMode = state.playback.videoLoop
-    state.playback.videoLoop = modeResult.data.mode as LoopMode
-    if (previousMode !== state.playback.videoLoop) {
-      appendActionLog(state, {
-        roomId: ctx.roomId,
-        actorUserId: ctx.userId,
-        actorUsername: participant.username,
-        action: "playback:loop",
-        payload: {
-          scope: "video",
-          previousMode,
-          nextMode: state.playback.videoLoop,
-          enabled: state.playback.videoLoop !== "off",
-        },
-      })
-    }
-    return true
-  })
+  await mutateControlledRoomMessage(
+    ctx,
+    (state, participant) => {
+      const previousMode = state.playback.videoLoop
+      state.playback.videoLoop = modeResult.data.mode as LoopMode
+      if (previousMode !== state.playback.videoLoop) {
+        appendActionLog(state, {
+          roomId: ctx.roomId,
+          actorUserId: ctx.userId,
+          actorUsername: participant.username,
+          action: "playback:loop",
+          payload: {
+            scope: "video",
+            previousMode,
+            nextMode: state.playback.videoLoop,
+            enabled: state.playback.videoLoop !== "off",
+          },
+        })
+      }
+      return true
+    },
+    { kind: "control" },
+  )
 }
 
 export const handlePlaybackLoopPlaylist: RoomMessageHandler = async (
@@ -145,23 +157,27 @@ export const handlePlaybackLoopPlaylist: RoomMessageHandler = async (
     return
   }
 
-  await mutateControlledRoomMessage(ctx, (state, participant) => {
-    const previousMode = state.playback.playlistLoop
-    state.playback.playlistLoop = modeResult.data.mode as LoopMode
-    if (previousMode !== state.playback.playlistLoop) {
-      appendActionLog(state, {
-        roomId: ctx.roomId,
-        actorUserId: ctx.userId,
-        actorUsername: participant.username,
-        action: "playback:loop",
-        payload: {
-          scope: "playlist",
-          previousMode,
-          nextMode: state.playback.playlistLoop,
-          enabled: state.playback.playlistLoop !== "off",
-        },
-      })
-    }
-    return true
-  })
+  await mutateControlledRoomMessage(
+    ctx,
+    (state, participant) => {
+      const previousMode = state.playback.playlistLoop
+      state.playback.playlistLoop = modeResult.data.mode as LoopMode
+      if (previousMode !== state.playback.playlistLoop) {
+        appendActionLog(state, {
+          roomId: ctx.roomId,
+          actorUserId: ctx.userId,
+          actorUsername: participant.username,
+          action: "playback:loop",
+          payload: {
+            scope: "playlist",
+            previousMode,
+            nextMode: state.playback.playlistLoop,
+            enabled: state.playback.playlistLoop !== "off",
+          },
+        })
+      }
+      return true
+    },
+    { kind: "control" },
+  )
 }

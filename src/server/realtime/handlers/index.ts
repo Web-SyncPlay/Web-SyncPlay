@@ -1,3 +1,4 @@
+import * as localMedia from "./local-media"
 import * as participant from "./participant"
 import * as playback from "./playback"
 import * as playlist from "./playlist"
@@ -25,6 +26,7 @@ export const roomMessageHandlers = {
   "playlist:rename": playlist.handlePlaylistRename,
   "playlist:retry": playlist.handlePlaylistRetry,
   "playlist:item:error": playlist.handlePlaylistItemError,
+  "local-media:chunk": localMedia.handleLocalMediaChunk,
   "viewer:media:preferences": viewerMedia.handleViewerMediaPreferences,
   "seek:preview": seekPreview.handleSeekPreview,
   "participant:update": participant.handleParticipantUpdate,

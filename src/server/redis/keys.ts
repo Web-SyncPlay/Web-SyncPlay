@@ -47,6 +47,54 @@ export const keys = {
     return `${ROOM_STATE_PREFIX}${roomId}:presenceRef`
   },
 
+  /** HASH userId -> JSON PresencePatch (localPlayback clocks, etc.) */
+  roomPresenceData(roomId: string) {
+    return `${ROOM_STATE_PREFIX}${roomId}:presenceData`
+  },
+
+  roomControlChannel(roomId: string) {
+    return `${ROOM_STATE_PREFIX}${roomId}:control`
+  },
+
+  roomPresenceChannel(roomId: string) {
+    return `${ROOM_STATE_PREFIX}${roomId}:presence`
+  },
+
+  roomSnapshotChannel(roomId: string) {
+    return `${ROOM_STATE_PREFIX}${roomId}:snapshot`
+  },
+
+  roomControlChannelPattern() {
+    return `${ROOM_STATE_PREFIX}*:control`
+  },
+
+  roomPresenceChannelPattern() {
+    return `${ROOM_STATE_PREFIX}*:presence`
+  },
+
+  roomSnapshotChannelPattern() {
+    return `${ROOM_STATE_PREFIX}*:snapshot`
+  },
+
+  parseRoomTypedChannel(
+    channel: string,
+    suffix: ":control" | ":presence" | ":snapshot",
+  ): string {
+    const trimmed = channel.trim()
+    if (!trimmed.startsWith(ROOM_STATE_PREFIX)) {
+      return ""
+    }
+    const withoutPrefix = trimmed.slice(ROOM_STATE_PREFIX.length)
+    if (!withoutPrefix.endsWith(suffix)) {
+      return ""
+    }
+    return withoutPrefix.slice(0, withoutPrefix.length - suffix.length)
+  },
+
+  mediaYtDlpExtract(urlHash: string) {
+    return `media:ytdlp:extract:${urlHash}`
+  },
+
   /** HASH userId -> userSecret for participant identity continuity */
   roomIdentity(roomId: string) {
     return `${ROOM_IDENTITY_PREFIX}${roomId}${ROOM_IDENTITY_SUFFIX}`
@@ -71,5 +119,15 @@ export const keys = {
   /** SET localMediaId for a given room+ownerUserId */
   localMediaOwnerIndex(roomId: string, ownerUserId: string) {
     return `${LOCAL_MEDIA_OWNER_INDEX_PREFIX}${roomId}:owner:${ownerUserId}`
+  },
+
+  /** Pub/sub: ask any node that holds the provider socket for a byte range */
+  localMediaRelayRequestChannel() {
+    return `${LOCAL_MEDIA_PREFIX}relay:request`
+  },
+
+  /** LIST: reply bytes for a single relay round-trip */
+  localMediaRelayReply(requestId: string) {
+    return `${LOCAL_MEDIA_PREFIX}relay:reply:${requestId}`
   },
 } as const

@@ -23,8 +23,14 @@ export interface ClientEventPayloadMap {
   "playlist:add:local": {
     localMediaId: string
     name: string
-    mimeType?: string
-    sizeBytes?: number
+    mimeType: string
+    sizeBytes: number
+  }
+  "local-media:chunk": {
+    requestId: string
+    ok: boolean
+    dataBase64?: string
+    error?: string
   }
   "playlist:retry": { itemId: string }
   "playlist:item:error": { itemId: string; error: string }

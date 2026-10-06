@@ -1,7 +1,12 @@
 import { env } from "@/env"
 import { extractMetadata } from "@/server/media/yt-dlp"
+import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
-import { roomStateTtlSeconds, type RoomState } from "@/zod/types"
+import {
+  roomStateTtlSeconds,
+  type PresencePatch,
+  type RoomState,
+} from "@/zod/types"
 import { getCommandClient } from "./client"
 import { keys } from "./keys"
 
@@ -17,7 +22,8 @@ export class RoomStateStore implements RoomStateStorePort {
   }
 
   /**
-   * Optimistic lock: WATCH room key, read, mutate, SET + PUBLISH in MULTI/EXEC.
+   * Optimistic lock: WATCH room key, read, mutate, SET in MULTI/EXEC.
+   * Persist-only — RoomBroadcastBus owns fan-out.
    * Retries on WATCH conflict. Returns null if mutate returns null (abort, no write).
    */
   async updateRoom(
@@ -28,7 +34,6 @@ export class RoomStateStore implements RoomStateStorePort {
   ) {
     const client = await getCommandClient()
     const stateKey = keys.roomState(roomId)
-    const channel = keys.roomChannel(roomId)
 
     const maxAttempts = 12
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -45,7 +50,6 @@ export class RoomStateStore implements RoomStateStorePort {
       const execResult = await client
         .multi()
         .set(stateKey, payload, { EX: roomStateTtlSeconds })
-        .publish(channel, payload)
         .exec()
 
       if (execResult !== null) {
@@ -65,8 +69,50 @@ export class RoomStateStore implements RoomStateStorePort {
     const client = await getCommandClient()
     const stateKey = keys.roomState(roomId)
     const presenceKey = keys.roomPresenceRef(roomId)
+    const presenceDataKey = keys.roomPresenceData(roomId)
     const identityKey = keys.roomIdentity(roomId)
-    await client.del([stateKey, presenceKey, identityKey])
+    await client.del([stateKey, presenceKey, presenceDataKey, identityKey])
+    getRoomBroadcastBus().clearRoom(roomId)
+  }
+
+  async mergePresenceData(
+    roomId: string,
+    userId: string,
+    patch: PresencePatch,
+  ) {
+    const client = await getCommandClient()
+    const hkey = keys.roomPresenceData(roomId)
+    const existingRaw = await client.hGet(hkey, userId)
+    const existing = existingRaw
+      ? (JSON.parse(existingRaw) as PresencePatch)
+      : {}
+    const merged: PresencePatch = {
+      ...existing,
+      ...patch,
+      localPlayback: patch.localPlayback ?? existing.localPlayback,
+    }
+    await client.hSet(hkey, { [userId]: JSON.stringify(merged) })
+    await client.expire(hkey, roomStateTtlSeconds)
+  }
+
+  async getPresenceDataAll(roomId: string) {
+    const client = await getCommandClient()
+    const hkey = keys.roomPresenceData(roomId)
+    const entries = await client.hGetAll(hkey)
+    const out: Record<string, PresencePatch> = {}
+    for (const [userId, raw] of Object.entries(entries)) {
+      try {
+        out[userId] = JSON.parse(raw) as PresencePatch
+      } catch {
+        // skip corrupt
+      }
+    }
+    return out
+  }
+
+  async clearPresenceData(roomId: string) {
+    const client = await getCommandClient()
+    await client.del([keys.roomPresenceData(roomId)])
   }
 
   async listRoomIds(): Promise<string[]> {
@@ -200,5 +246,6 @@ export async function getRoomStateStore() {
   }
   await getCommandClient()
   await storeSingleton.seedDailyDefaultsIfEmpty()
+  getRoomBroadcastBus().attachStore(storeSingleton)
   return storeSingleton
 }

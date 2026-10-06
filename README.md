@@ -21,6 +21,18 @@ Watch videos or play music in sync with friends. Unified Next.js app with an emb
 - `src/zod` — shared types and Zod schemas
 - `src/components` — room / player / control UI
 
+## Realtime channels
+
+Outbound WebSocket events are split for performance:
+
+| Event | When | Payload |
+|-------|------|---------|
+| `room:control` | Instant play/pause/seek/select + ephemeral seek preview | `playback`, `currentIndex`, `generation` |
+| `presence:batch` | Coalesced (~250ms) viewer clocks | per-user `localPlayback` patches |
+| `room:snapshot` | Coalesced (~100ms) structural changes + join catch-up | sanitized full room |
+
+Presence ticks never rewrite full Redis room state. Media relay caches yt-dlp extracts in Valkey and coalesces HLS playlist rewrites in-process (segment egress still scales with viewers).
+
 ## Development
 
 ```bash
@@ -48,6 +60,7 @@ Control embed URLs are minted via `POST /api/control/token` and include `#uid=&s
 3. If CORS blocks direct play, wrap catalog URLs in `/api/media/proxy/{token}`
 4. HLS playlists are rewritten so segments stay on same-origin proxy
 5. Quality / captions preferences live on **participant** state (`viewerMedia`), shared across that user’s sessions — not room-wide
+6. **Local files** stay on the providing browser’s `File` handle (no upload, no size cap). Viewers request `/api/media/local/{id}` ranges; the server asks the provider over WebSocket and proxies the bytes. The provider plays via a blob URL. Keep the tab that shared the file open.
 
 ## Operator / ops
 
@@ -60,7 +73,7 @@ curl -X POST -H "Authorization: Bearer $OPS_SECRET" http://localhost:3000/api/pl
 
 Health check: `GET /api/health` (Valkey ping).
 
-Key env vars (see `.env.example`): `VALKEY_URL`, `YTDLP_*`, `OPS_SECRET`, `CONTROL_TOKEN_TTL_SECONDS`, `PROXY_ALLOW_PRIVATE_URLS`, `LOCAL_MEDIA_MAX_BYTES`.
+Key env vars (see `.env.example`): `VALKEY_URL`, `YTDLP_*`, `OPS_SECRET`, `CONTROL_TOKEN_TTL_SECONDS`, `PROXY_ALLOW_PRIVATE_URLS`, `LOCAL_MEDIA_RELAY_CHUNK_BYTES`, `LOCAL_MEDIA_RELAY_TIMEOUT_MS`.
 
 ## Production
 

@@ -62,8 +62,41 @@ class RoomClient {
       })
       ws.on("message", (raw) => {
         const msg = JSON.parse(String(raw))
-        if (msg.type === "room:state") {
+        if (msg.type === "room:snapshot" || msg.type === "room:state") {
           this.roomState = msg.payload
+          this._flush()
+        } else if (msg.type === "room:control") {
+          if (this.roomState) {
+            this.roomState = {
+              ...this.roomState,
+              playback: msg.payload.playback,
+              currentIndex: msg.payload.currentIndex,
+              updatedAt: msg.payload.updatedAt,
+              generation: msg.payload.generation,
+            }
+          } else {
+            this.roomState = {
+              playback: msg.payload.playback,
+              currentIndex: msg.payload.currentIndex,
+              updatedAt: msg.payload.updatedAt,
+              generation: msg.payload.generation,
+              playlist: [],
+              participants: {},
+            }
+          }
+          this._flush()
+        } else if (msg.type === "presence:batch") {
+          if (this.roomState?.participants) {
+            for (const [uid, patch] of Object.entries(msg.payload.participants ?? {})) {
+              const existing = this.roomState.participants[uid]
+              if (!existing) continue
+              this.roomState.participants[uid] = {
+                ...existing,
+                ...patch,
+                localPlayback: patch.localPlayback ?? existing.localPlayback,
+              }
+            }
+          }
           this._flush()
         } else if (msg.type === "session:capabilities") {
           this.capabilities = msg.payload

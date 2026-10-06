@@ -1,5 +1,6 @@
 import { appendActionLog } from "@/server/log"
 import { deleteLocalMediaEntriesForOwner } from "@/server/media/local-media-store"
+import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
 import type { RoomState } from "@/zod/types"
 import { transferOwnershipIfNeeded } from "./ownership"
@@ -121,7 +122,10 @@ export async function handleSocketDisconnect(
     await store.removeWsConnectionRef(meta.roomId, meta.userId)
   }
 
-  await store.updateRoom(meta.roomId, async (state) => {
+  const before = await store.get(meta.roomId)
+  const pausedBefore = before?.playback.paused
+
+  const next = await store.updateRoom(meta.roomId, async (state) => {
     if (!state) {
       return null
     }
@@ -139,6 +143,34 @@ export async function handleSocketDisconnect(
     applyUserWentOffline(state, meta.roomId, meta.userId)
     await deleteLocalMediaEntriesForOwner(meta.roomId, meta.userId)
     schedulePrune(meta.roomId, meta.userId, store)
+    state.generation = (state.generation ?? 0) + 1
+    state.structuralRevision = (state.structuralRevision ?? 0) + 1
     return state
   })
+
+  if (!next) {
+    return
+  }
+
+  const bus = getRoomBroadcastBus()
+  bus.attachStore(store)
+  const now = Date.now()
+  await store.mergePresenceData(meta.roomId, meta.userId, {
+    connected: false,
+    lastSeenAt: now,
+    disconnectedAt: now,
+    localPlayback: next.participants[meta.userId]?.localPlayback,
+  })
+  bus.markPresenceDirty(meta.roomId, meta.userId, {
+    connected: false,
+    lastSeenAt: now,
+    disconnectedAt: now,
+    localPlayback: next.participants[meta.userId]?.localPlayback,
+  })
+
+  const playbackChanged = pausedBefore !== next.playback.paused
+  if (playbackChanged) {
+    await bus.publishControl(meta.roomId, bus.controlPayloadFromState(next))
+  }
+  bus.markSnapshotDirty(meta.roomId)
 }

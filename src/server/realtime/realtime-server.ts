@@ -1,47 +1,30 @@
+import { ensureRelaySubscriber } from "@/server/media/local-media-relay"
+import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { handleSocketDisconnect } from "@/server/realtime/services/disconnect"
 import { subscribeRoomUpdates } from "@/server/redis/pubsub"
 import { getRoomStateStore } from "@/server/redis/state-store"
-import {
-  getSocketMeta,
-  getSocketsForRoom,
-  removeSocket,
-} from "@/server/ws/registry"
+import { getSocketMeta, removeSocket } from "@/server/ws/registry"
 import { shouldSkipDuplicateRequest } from "@/server/ws/request-dedupe"
 import { attachWebSocketTransport, getLastPongMap } from "@/server/ws/transport"
 import { wsEnvelopeSchema } from "@/zod/schemas"
-import type { RoomState, WsEnvelope } from "@/zod/types"
+import type { WsEnvelope } from "@/zod/types"
 import type { Server as HttpServer } from "node:http"
 import type { WebSocket } from "ws"
 import { roomMessageHandlers } from "./handlers/index"
 import { handleRoomJoin } from "./handlers/join"
-import { sanitizeRoomStateForClient } from "./services/room-security"
-
-function broadcastRoomStateLocal(roomId: string, state: unknown) {
-  const payload = sanitizeRoomStateForClient(state as RoomState)
-  const event: WsEnvelope<"room:state", RoomState> = {
-    type: "room:state",
-    payload,
-  }
-  const raw = JSON.stringify(event)
-  for (const client of getSocketsForRoom(roomId)) {
-    if (client.readyState === client.OPEN) {
-      client.send(raw)
-    }
-  }
-}
 
 export async function createRealtimeServer(server: HttpServer) {
   const store = await getRoomStateStore()
+  getRoomBroadcastBus().attachStore(store)
   wirePubSubFanOut()
+  void ensureRelaySubscriber()
   attachWebSocketTransport(server, (ws) => {
     setupWebSocketConnection(ws, store)
   })
 }
 
 function wirePubSubFanOut() {
-  void subscribeRoomUpdates((roomId, state) => {
-    broadcastRoomStateLocal(roomId, state)
-  })
+  void subscribeRoomUpdates()
 }
 
 function setupWebSocketConnection(
