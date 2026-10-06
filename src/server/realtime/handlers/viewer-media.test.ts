@@ -40,6 +40,22 @@ describe("seek preview handler interface", () => {
     })
   })
 
+  test("ending seek preview persists timeline for peers", async () => {
+    const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
+    const ctx = createHandlerContext({ store, userId: "owner" })
+
+    await handleSeekPreview(
+      ctx,
+      envelope("seek:preview", { targetMs: 12_500, active: false }),
+    )
+
+    const next = store.peek("room-1")
+    expect(next?.playback.timelineAnchorMs).toBe(12_500)
+    expect(next?.playback.seekPreview).toBeUndefined()
+    expect(next?.actionLog.at(-1)?.action).toBe("playback:seek")
+  })
+
   test("guest cannot publish seek preview", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
     const bus = createTestBroadcastBus(store)

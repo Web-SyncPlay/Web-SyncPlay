@@ -113,15 +113,14 @@ function ControlClientReady(props: {
           onSelectAdjacent={timeline.selectAdjacent}
           onStepBy={timeline.stepBy}
           onSeekPreview={(targetMs, active) => {
-            if (active) {
-              if (timeline.seekPhase === "idle") {
-                timeline.beginSeek(targetMs)
-                return
-              }
-              timeline.updateSeek(targetMs)
+            if (!active) {
               return
             }
-            timeline.endSeekPreview(targetMs)
+            if (timeline.seekPhase === "idle") {
+              timeline.beginSeek(targetMs)
+              return
+            }
+            timeline.updateSeek(targetMs)
           }}
           onSeekCommit={timeline.commitSeek}
         />

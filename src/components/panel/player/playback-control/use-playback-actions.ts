@@ -96,9 +96,10 @@ export function createPlaybackActions(config: PlaybackControlContext) {
         seekPreviewTimer = null
       }
       pendingSeekPreviewMs = null
-      const nextTarget = Math.max(0, targetMs)
-      flushSeekPreview(nextTarget, false)
-      send("playback:seek", { targetMs: nextTarget })
+      // `playback:seek` clears any ephemeral seek preview on the server.
+      // Ending scrub via `seek:preview` active:false also persists — avoid
+      // sending both from this path so the action log is not duplicated.
+      send("playback:seek", { targetMs: Math.max(0, targetMs) })
     },
     selectAdjacent: (direction: "previous" | "next") => {
       if (controlsDisabled) {

@@ -24,6 +24,34 @@ export function isPlaybackDriftBeyondThreshold(
   return Math.abs(currentSec - expectedSec) > thresholdSec
 }
 
+/**
+ * Absolute drift between a local playhead and the room clock.
+ * Returns `null` when either side is non-finite.
+ */
+export function measurePlaybackDriftSec(
+  playerCurrentTimeSec: number,
+  syncState: PlaybackSyncState,
+  nowMs = Date.now(),
+  durationSec?: number,
+): number | null {
+  if (!Number.isFinite(playerCurrentTimeSec)) {
+    return null
+  }
+
+  let expectedSec = computeExpectedPlaybackTimeSec(syncState, nowMs)
+  if (Number.isFinite(durationSec) && (durationSec as number) > 0) {
+    expectedSec = Math.min(
+      expectedSec,
+      Math.max(0, (durationSec as number) - 0.05),
+    )
+  }
+  if (!Number.isFinite(expectedSec)) {
+    return null
+  }
+
+  return Math.abs(playerCurrentTimeSec - expectedSec)
+}
+
 export function inferMediaViewType(url?: string): "audio" | "video" {
   if (!url) {
     return "video"

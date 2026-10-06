@@ -53,7 +53,7 @@ function createRoomState(): RoomState {
   }
 }
 
-test("commitSeek ends preview and commits target", () => {
+test("commitSeek commits target without duplicate preview-end", () => {
   const sent: Array<{ type: string; payload: unknown }> = []
   const actions = createPlaybackActions({
     roomState: createRoomState(),
@@ -67,10 +67,6 @@ test("commitSeek ends preview and commits target", () => {
   actions.commitSeek(45_000)
 
   expect(sent).toEqual([
-    {
-      type: "seek:preview",
-      payload: { targetMs: 45_000, active: false },
-    },
     {
       type: "playback:seek",
       payload: { targetMs: 45_000 },

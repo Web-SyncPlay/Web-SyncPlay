@@ -1,8 +1,15 @@
 import {
   computeExpectedPlaybackTimeSec,
   isPlaybackDriftBeyondThreshold,
+  measurePlaybackDriftSec,
   type PlaybackSyncState,
 } from "@/lib/playback-sync"
+
+export type ApplyPlaybackClockResult = {
+  seekAttempted: boolean
+  /** Absolute drift after the apply attempt; `null` if unmeasurable. */
+  driftSec: number | null
+}
 
 export type SyncablePlayer = {
   playbackRate: number
@@ -29,7 +36,7 @@ export function applyPlaybackSyncToPlayer(config: {
   driftThresholdSec?: number
   nowMs?: number
   mode?: "clock" | "full"
-}): { playAttempt: Promise<void> | null } {
+}): ApplyPlaybackClockResult & { playAttempt: Promise<void> | null } {
   const {
     player,
     syncState,
@@ -38,7 +45,7 @@ export function applyPlaybackSyncToPlayer(config: {
     mode = "full",
   } = config
 
-  applyPlaybackClockToPlayer({
+  const clock = applyPlaybackClockToPlayer({
     player,
     syncState,
     driftThresholdSec,
@@ -46,13 +53,16 @@ export function applyPlaybackSyncToPlayer(config: {
   })
 
   if (mode === "clock") {
-    return { playAttempt: null }
+    return { ...clock, playAttempt: null }
   }
 
-  return nudgePlaybackTransport({
-    player,
-    paused: syncState.paused,
-  })
+  return {
+    ...clock,
+    ...nudgePlaybackTransport({
+      player,
+      paused: syncState.paused,
+    }),
+  }
 }
 
 /** Rate + timeline only — use when `paused` / `autoPlay` are bound declaratively. */
@@ -61,7 +71,7 @@ export function applyPlaybackClockToPlayer(config: {
   syncState: PlaybackSyncState
   driftThresholdSec?: number
   nowMs?: number
-}): void {
+}): ApplyPlaybackClockResult {
   const { player, syncState, driftThresholdSec = 0.8, nowMs = Date.now() } =
     config
 
@@ -83,6 +93,7 @@ export function applyPlaybackClockToPlayer(config: {
       ? Math.min(expectedTimeSec, Math.max(0, durationSec - 0.05))
       : expectedTimeSec
   const currentTimeSec = Number(player.currentTime ?? 0)
+  let seekAttempted = false
   if (
     Number.isFinite(currentTimeSec) &&
     Number.isFinite(clampedExpectedSec) &&
@@ -94,9 +105,21 @@ export function applyPlaybackClockToPlayer(config: {
   ) {
     try {
       player.currentTime = clampedExpectedSec
+      seekAttempted = true
     } catch {
       // Ignore transient seek failures while provider is rebuilding.
+      seekAttempted = true
     }
+  }
+
+  return {
+    seekAttempted,
+    driftSec: measurePlaybackDriftSec(
+      Number(player.currentTime ?? 0),
+      syncState,
+      nowMs,
+      durationSec,
+    ),
   }
 }
 

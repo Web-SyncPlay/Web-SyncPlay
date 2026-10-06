@@ -2,7 +2,10 @@
 
 import { formatClockMs } from "@/lib/time-format"
 import type { RoomState } from "@/zod/types"
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
+
+/** Drop stuck remote seek overlays when the final seek never arrives. */
+const REMOTE_SEEK_STALE_MS = 2_500
 
 export function useRemoteSeekOverlay(config: {
   roomState: RoomState
@@ -11,10 +14,28 @@ export function useRemoteSeekOverlay(config: {
 }) {
   const { roomState, userId, mediaDurationMs } = config
   const remoteSeekPreview = roomState.playback.seekPreview
+  const [nowMs, setNowMs] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (remoteSeekPreview?.active !== true) {
+      return
+    }
+    const timer = window.setInterval(() => {
+      setNowMs(Date.now())
+    }, 500)
+    return () => window.clearInterval(timer)
+  }, [remoteSeekPreview?.active])
 
   return useMemo(() => {
+    const updatedAt = Number(remoteSeekPreview?.updatedAt ?? 0)
+    const isFresh =
+      !Number.isFinite(updatedAt) ||
+      updatedAt <= 0 ||
+      nowMs - updatedAt <= REMOTE_SEEK_STALE_MS
     const isOtherUserSeeking =
-      remoteSeekPreview?.active === true && remoteSeekPreview.userId !== userId
+      remoteSeekPreview?.active === true &&
+      remoteSeekPreview.userId !== userId &&
+      isFresh
     const remoteSeekerName =
       remoteSeekPreview?.userId &&
       roomState.participants[remoteSeekPreview.userId]
@@ -39,5 +60,11 @@ export function useRemoteSeekOverlay(config: {
       seekProgressPercent,
       totalTimeLabel,
     }
-  }, [mediaDurationMs, remoteSeekPreview, roomState.participants, userId])
+  }, [
+    mediaDurationMs,
+    nowMs,
+    remoteSeekPreview,
+    roomState.participants,
+    userId,
+  ])
 }

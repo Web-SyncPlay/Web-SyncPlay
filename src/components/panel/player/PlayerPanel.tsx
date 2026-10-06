@@ -7,7 +7,11 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty"
-import { getAdjacentPlaylistIndex, inferMediaViewType } from "@/lib/playback-sync"
+import {
+  getAdjacentPlaylistIndex,
+  inferMediaViewType,
+  measurePlaybackDriftSec,
+} from "@/lib/playback-sync"
 import {
   getLocalMediaMimeType,
   getLocalMediaObjectUrl,
@@ -49,6 +53,7 @@ import {
   useBufferingWatchdog,
   type PendingSyncState,
 } from "./hooks/use-buffering-watchdog"
+import { usePlaybackDriftCorrection } from "./hooks/use-playback-drift-correction"
 import { usePlayerPermissions } from "./hooks/use-player-permissions"
 import { usePlayerSync } from "./hooks/use-player-sync"
 import { usePlayerVolume } from "./hooks/use-player-volume"
@@ -186,6 +191,7 @@ export function PlayerPanel({
   const participantStatusErrorRef = useRef<string | null>(null)
   const pendingSyncRef = useRef<PendingSyncState | null>(null)
   const playRetryTimerRef = useRef<number | undefined>(undefined)
+  const lastAppliedTimelineAnchorMsRef = useRef<number | null>(null)
   const roomPaused = roomState.playback.paused
   const roomPlaybackRate = roomState.playback.playbackRate
 
@@ -354,6 +360,7 @@ export function PlayerPanel({
   useEffect(() => {
     isMediaReadyRef.current = false
     pendingSyncRef.current = null
+    lastAppliedTimelineAnchorMsRef.current = null
     bufferingSinceRef.current = Date.now()
     participantStatusErrorRef.current = null
     proxyRenewAttemptedRef.current = null
@@ -398,10 +405,26 @@ export function PlayerPanel({
   )
 
   const applyRoomClock = useCallback(
-    (player: MediaPlayerInstance, syncState: PendingSyncState) => {
+    (
+      player: MediaPlayerInstance,
+      syncState: PendingSyncState,
+      driftThresholdSec?: number,
+    ) => {
       try {
-        applyClockToPlayer({ player, syncState })
-        pendingSyncRef.current = null
+        applyClockToPlayer({ player, syncState, driftThresholdSec })
+        lastAppliedTimelineAnchorMsRef.current = syncState.timelineAnchorMs
+
+        // HLS/proxy often accepts the write asynchronously (or no-ops once).
+        // Keep pending until drift correction verifies the playhead caught up.
+        const driftSec = measurePlaybackDriftSec(
+          Number(player.currentTime ?? 0),
+          syncState,
+          Date.now(),
+          Number(player.duration),
+        )
+        pendingSyncRef.current =
+          driftSec === null || driftSec > 0.8 ? syncState : null
+
         // Declarative `paused`/`autoPlay` own transport; only nudge when the
         // iframe provider drifts away from room authority.
         if (!syncState.paused && player.paused) {
@@ -432,6 +455,18 @@ export function PlayerPanel({
     ],
   )
 
+  usePlaybackDriftCorrection({
+    playerRef,
+    isMediaReadyRef,
+    playbackRef,
+    pendingSyncRef,
+    holdLocalSeek:
+      timeline.awaitingSeekTargetMs !== null ||
+      timeline.seekPhase === "previewing",
+    timelineAnchorMs: roomState.playback.timelineAnchorMs,
+    applyRoomClock,
+  })
+
   useEffect(() => {
     const player = playerRef.current
     if (!player) {
@@ -458,7 +493,12 @@ export function PlayerPanel({
       return
     }
 
-    applyRoomClock(player, syncState)
+    // Authority seeks must always apply — the default drift threshold can
+    // skip small jumps and leave peers on the previous timeline.
+    const anchorChanged =
+      lastAppliedTimelineAnchorMsRef.current !== null &&
+      lastAppliedTimelineAnchorMsRef.current !== syncState.timelineAnchorMs
+    applyRoomClock(player, syncState, anchorChanged ? 0 : undefined)
   }, [
     applyRoomClock,
     roomState.playback.paused,
@@ -641,7 +681,7 @@ export function PlayerPanel({
     >
       {!canControlPlayback && (
         <div className="guest-view-hint pointer-events-none absolute left-3 top-3 z-20 rounded-md bg-black/70 px-2 py-1 text-xs text-white/90">
-          Guest view — controls are disabled
+          Guest view — captions, language & quality only
         </div>
       )}
       {isMuted && Boolean(activePlaybackSrc) && (
@@ -789,7 +829,11 @@ export function PlayerPanel({
               enforceServerPlaybackState()
               return
             }
-            const targetMs = Math.max(0, Math.floor(Number(detail) * 1000))
+            const targetSec = Number(detail)
+            if (!Number.isFinite(targetSec)) {
+              return
+            }
+            const targetMs = Math.max(0, Math.floor(targetSec * 1000))
             if (timeline.seekPhase === "idle") {
               timeline.beginSeek(targetMs)
               return
@@ -801,9 +845,11 @@ export function PlayerPanel({
               enforceServerPlaybackState()
               return
             }
-            const targetMs = Math.max(0, Math.floor(Number(detail) * 1000))
-            timeline.endSeekPreview(targetMs)
-            timeline.commitSeek(targetMs)
+            const targetSec = Number(detail)
+            if (!Number.isFinite(targetSec)) {
+              return
+            }
+            timeline.commitSeek(Math.max(0, Math.floor(targetSec * 1000)))
           }}
           onMediaRateChangeRequest={(detail) => {
             if (!canControlPlayback) {
@@ -883,7 +929,8 @@ export function PlayerPanel({
                     serverNowMs: Date.now(),
                   }
                 : pending
-            applyRoomClock(player, pendingToApply)
+            // Force-snap after canplay — HLS often becomes seekable only here.
+            applyRoomClock(player, pendingToApply, 0)
           }}
           onError={(detail: MediaErrorDetail) => {
             setIsBuffering(false)
@@ -1063,16 +1110,20 @@ export function PlayerPanel({
           ))}
           <DefaultAudioLayout
             icons={defaultLayoutIcons}
+            {...(!canControlPlayback ? { playbackRates: [] as number[] } : {})}
             slots={{
               beforePlayButton: previousButtonSlot,
               afterPlayButton: nextButtonSlot,
+              ...(!canControlPlayback ? { playbackMenuLoop: null } : {}),
             }}
           />
           <DefaultVideoLayout
             icons={defaultLayoutIcons}
+            {...(!canControlPlayback ? { playbackRates: [] as number[] } : {})}
             slots={{
               beforePlayButton: previousButtonSlot,
               afterPlayButton: nextButtonSlot,
+              ...(!canControlPlayback ? { playbackMenuLoop: null } : {}),
             }}
           />
         </MediaPlayer>
@@ -1122,15 +1173,16 @@ export function PlayerPanel({
             onSelectAdjacent={handlePlaylistStep}
             onStepBy={timeline.stepBy}
             onSeekPreview={(targetMs, active) => {
-              if (active) {
-                if (timeline.seekPhase === "idle") {
-                  timeline.beginSeek(targetMs)
-                  return
-                }
-                timeline.updateSeek(targetMs)
+              if (!active) {
+                // Commit path handles persistence; ignore preview-end here so
+                // we do not double-write timeline via seek:preview active:false.
                 return
               }
-              timeline.endSeekPreview(targetMs)
+              if (timeline.seekPhase === "idle") {
+                timeline.beginSeek(targetMs)
+                return
+              }
+              timeline.updateSeek(targetMs)
             }}
             onSeekCommit={timeline.commitSeek}
           />
@@ -1173,10 +1225,13 @@ export function PlayerPanel({
           pointer-events: none !important;
         }
 
+        /* Local-only: volume, captions toggle, and settings (quality/audio/CC). */
         .guest-controls-guard .vds-controls .vds-mute-button,
         .guest-controls-guard .vds-controls .vds-volume-slider,
         .guest-controls-guard .vds-controls .vds-volume-popup,
         .guest-controls-guard .vds-controls .vds-volume-group,
+        .guest-controls-guard .vds-controls .vds-caption-button,
+        .guest-controls-guard .vds-controls .vds-menu-button,
         .guest-controls-guard .vds-controls [data-media-control="mute-button"],
         .guest-controls-guard
           .vds-controls
@@ -1184,15 +1239,24 @@ export function PlayerPanel({
         .guest-controls-guard .vds-controls [data-media-control="volume-popup"],
         .guest-controls-guard
           .vds-controls
-          [data-media-control="volume-group"] {
+          [data-media-control="volume-group"],
+        .guest-controls-guard
+          .vds-controls
+          [data-media-control="caption-button"],
+        .guest-controls-guard .vds-controls [data-media-control="settings"],
+        .guest-controls-guard
+          .vds-controls
+          [data-media-control="settings-menu"],
+        .guest-controls-guard .vds-controls [aria-label*="settings" i],
+        .guest-controls-guard .vds-controls [aria-label*="captions" i],
+        .guest-controls-guard .vds-controls [aria-label*="subtitles" i] {
           pointer-events: auto !important;
         }
 
+        /* Room-synced transport stays host/moderator-only. */
         .guest-controls-guard .vds-controls .vds-time-slider,
         .guest-controls-guard .vds-controls .vds-play-button,
         .guest-controls-guard .vds-controls .vds-seek-button,
-        .guest-controls-guard .vds-controls .vds-menu,
-        .guest-controls-guard .vds-controls .vds-menu-button,
         .guest-controls-guard .vds-controls .vds-playback-rate-slider,
         .guest-controls-guard .vds-controls .vds-playback-rate-radio-group,
         .guest-controls-guard .vds-controls .vds-loop-button,
@@ -1210,12 +1274,8 @@ export function PlayerPanel({
         .guest-controls-guard
           .vds-controls
           [data-media-control="playback-rate-menu"],
-        .guest-controls-guard .vds-controls [data-media-control="settings"],
-        .guest-controls-guard
-          .vds-controls
-          [data-media-control="settings-menu"],
-        .guest-controls-guard .vds-controls [aria-label*="settings" i],
         .guest-controls-guard .vds-controls [aria-label*="playback speed" i],
+        .guest-controls-guard .vds-controls [aria-label*="speed" i],
         .guest-controls-guard .vds-controls [aria-label*="loop" i] {
           display: none !important;
         }

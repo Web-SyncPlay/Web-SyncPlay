@@ -9,6 +9,8 @@ import { createPlaybackActions } from "./use-playback-actions"
 const SEEK_ACK_MATCH_THRESHOLD_MS = 450
 const SEEK_ACK_TIMEOUT_MS = 1_800
 const SEEK_PREVIEW_THROTTLE_MS = 80
+/** If scrubbing stops without a final seek-request, commit the last target. */
+const SEEK_PREVIEW_IDLE_COMMIT_MS = 750
 
 export type LocalSeekPhase = "idle" | "previewing" | "awaitingAck"
 
@@ -130,6 +132,28 @@ export function usePlaybackTimelineController(config: {
     },
     [playbackActions],
   )
+
+  const commitSeekRef = useRef(commitSeek)
+  commitSeekRef.current = commitSeek
+
+  // Vidstack sometimes applies a local scrub without emitting the final
+  // seek-request (notably after MediaError). Commit the last preview target
+  // once scrubbing goes idle so the room timeline still advances for peers.
+  useEffect(() => {
+    if (seekPhase !== "previewing" || localSeekTargetMs === null) {
+      return
+    }
+    if (controlsDisabled) {
+      return
+    }
+
+    const targetMs = localSeekTargetMs
+    const timer = window.setTimeout(() => {
+      commitSeekRef.current(targetMs)
+    }, SEEK_PREVIEW_IDLE_COMMIT_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [controlsDisabled, localSeekTargetMs, seekPhase])
 
   const selectAdjacent = useCallback(
     (direction: "previous" | "next") => {
