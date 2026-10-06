@@ -5,6 +5,7 @@
 .github
 .vscode
 .idea
+.cursor
 *.iml
 
 # Dependencies and package manager caches
@@ -21,6 +22,7 @@ build
 dist
 coverage
 .turbo
+tsconfig.tsbuildinfo
 
 # Logs
 *.log
@@ -36,9 +38,24 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
-# Local compose / editor tooling (Dockerfile is supplied via -f, not context)
+# Docs / agent (not needed for image build)
+*.md
+AGENTS.md
+LICENSE
+
+# Tests and e2e (not needed for next build)
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+scripts/e2e*
+scripts/verify-*
+
+# Local compose / lint-format tooling (not needed at build)
 docker-compose*.yml
 compose*.yml
 .dockerignore
 .prettierignore
+prettier.config.mjs
+eslint.config.mjs
 components.json

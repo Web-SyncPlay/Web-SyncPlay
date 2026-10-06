@@ -1,9 +1,61 @@
 # syntax=docker/dockerfile:1
 
 # Build with Bun; run with Node so mediasoup's native worker can spawn reliably.
-FROM oven/bun:1.4.2-alpine AS base
+FROM oven/bun:1.4.2-alpine AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+
+COPY package.json bun.lock ./
+# Skip mediasoup postinstall here: Alpine cannot run the glibc worker binary.
+# The mediasoup stage installs against Node/bookworm instead.
+RUN bun install --frozen-lockfile --ignore-scripts
+COPY . .
+RUN SKIP_ENV_VALIDATION=true bun run build
+
+# Install mediasoup on glibc Node. Prefer official prebuilt workers (no compilers).
+FROM node:26-bookworm-slim AS mediasoup
+WORKDIR /opt/mediasoup
+
+# Exact version resolved by bun.lock (present even with --ignore-scripts).
+COPY --from=builder /app/node_modules/mediasoup/package.json ./mediasoup.package.json
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && MEDIASOUP_VERSION="$(node -p "require('./mediasoup.package.json').version")" \
+    && npm init -y >/dev/null \
+    && printf 'allow-scripts=mediasoup\n' > .npmrc \
+    && npm install "mediasoup@${MEDIASOUP_VERSION}" --omit=dev --no-save \
+    && test -x node_modules/mediasoup/worker/out/Release/mediasoup-worker \
+    && cd node_modules/mediasoup \
+    && rm -rf \
+         worker/deps \
+         worker/src \
+         worker/include \
+         worker/fuzzer \
+         worker/test \
+         worker/subprojects \
+         worker/fbs \
+         worker/scripts \
+         worker/mocks \
+         worker/pip_invoke \
+         worker/prebuild \
+         worker/out/Debug \
+         worker/Makefile \
+         worker/meson.build \
+         worker/meson_options.txt \
+         worker/tasks.py \
+         npm-scripts.mjs \
+         README.md \
+         CHANGELOG.md \
+    && rm -f /opt/mediasoup/.npmrc \
+    && rm -rf /root/.npm /tmp/*
+
+FROM node:26-bookworm-slim AS runner
+WORKDIR /app
+
+ARG TARGETARCH
+ARG YTDLP_VERSION=2026.08.19
 
 LABEL org.opencontainers.image.title="Web-SyncPlay" \
     org.opencontainers.image.description="Watch any yt-dlp source in sync—or stream local files to everyone" \
@@ -12,20 +64,6 @@ LABEL org.opencontainers.image.title="Web-SyncPlay" \
     org.opencontainers.image.source="https://github.com/Yasamato/Web-SyncPlay" \
     org.opencontainers.image.licenses="MIT" \
     org.opencontainers.image.authors="Yasamato <https://github.com/Yasamato>"
-
-FROM base AS builder
-COPY package.json bun.lock ./
-# Skip mediasoup postinstall here: Alpine cannot run the glibc worker binary,
-# and the runner stage installs mediasoup against Node/bookworm instead.
-RUN bun install --frozen-lockfile --ignore-scripts
-COPY . .
-RUN SKIP_ENV_VALIDATION=true bun run build
-
-FROM node:26-bookworm-slim AS runner
-WORKDIR /app
-
-ARG TARGETARCH
-ARG YTDLP_VERSION=2026.08.19
 
 ENV NEXT_TELEMETRY_DISABLED=1 \
     NODE_ENV=production \
@@ -44,7 +82,7 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
     CONTROL_TOKEN_TTL_SECONDS=43200
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl python3 make g++ \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
     && case "$TARGETARCH" in \
          amd64) YTDLP_ASSET=yt-dlp_linux ;; \
          arm64) YTDLP_ASSET=yt-dlp_linux_aarch64 ;; \
@@ -54,6 +92,8 @@ RUN apt-get update \
          "https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/${YTDLP_ASSET}" \
     && chmod a+rx /usr/local/bin/yt-dlp \
     && yt-dlp --version \
+    && apt-get purge -y curl \
+    && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder --chown=node:node /app/public ./public
@@ -62,18 +102,9 @@ RUN mkdir -p .next && chown node:node .next
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 
-# Install mediasoup against glibc Node (Alpine/Bun build would not match this runtime).
-COPY --from=builder /app/package.json ./package.json
-# Force a clean glibc mediasoup install so postinstall builds the worker.
-# npm 11 blocks lifecycle scripts unless allowScripts / .npmrc permits them.
-RUN rm -rf node_modules/mediasoup \
-    && printf 'allow-scripts=mediasoup\n' > .npmrc \
-    && npm install mediasoup@3.28.0 --omit=dev --no-save \
-    && test -x node_modules/mediasoup/worker/out/Release/mediasoup-worker \
-    && rm -f .npmrc \
-    && apt-get purge -y python3 make g++ \
-    && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/* /root/.npm
+# Merge glibc mediasoup (+ its deps) into the standalone node_modules tree.
+COPY --from=mediasoup --chown=node:node /opt/mediasoup/node_modules/. ./node_modules/
+RUN test -x node_modules/mediasoup/worker/out/Release/mediasoup-worker
 
 USER node
 EXPOSE 3000/tcp
