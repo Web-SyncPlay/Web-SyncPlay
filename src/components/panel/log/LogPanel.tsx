@@ -5,7 +5,7 @@ import { getFilteredLogs, getLogUsers } from "@/lib/log-format"
 import { useMemo, useState } from "react"
 import type { RoomPanelProps } from "../../layout/page/types"
 import { LogFilters } from "./LogFilters"
-import { LogTable } from "./LogTable"
+import { LogList } from "./LogList"
 
 export function LogPanel({
   roomState,
@@ -40,8 +40,8 @@ export function LogPanel({
           />
         </div>
       </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto max-h-[60vh]">
-        <LogTable logs={filteredLogs} participants={roomState.participants} />
+      <CardContent className="flex min-h-0 flex-1 flex-col">
+        <LogList logs={filteredLogs} participants={roomState.participants} />
       </CardContent>
     </>
   )
