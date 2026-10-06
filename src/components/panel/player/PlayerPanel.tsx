@@ -362,9 +362,10 @@ export function PlayerPanel({
     toast.error(localMediaErrorMessage("owner_offline"))
   }, [current, roomState.participants])
 
-  useEffect(() => {
-    playbackRef.current = roomState.playback
-  }, [roomState.playback])
+  // Keep authority readable from media event handlers in the same commit.
+  // Updating in an effect leaves a window where onPause can still see the
+  // previous paused flag and re-nudge play after a room-driven pause.
+  playbackRef.current = roomState.playback
 
   useEffect(() => {
     setForceLocalRelaySrc(false)
@@ -922,8 +923,11 @@ export function PlayerPanel({
             event.stopPropagation()
           }}
           onMediaPlayRequest={(event) => {
+            // Room playback owns transport. Never let Vidstack gestures/buttons
+            // toggle the element locally — that races with onPause enforce and
+            // causes click-pause → brief spinner → resume, then desync.
+            event.preventDefault()
             if (!canControlPlayback) {
-              event.preventDefault()
               enforceServerPlaybackState()
               return
             }
@@ -932,8 +936,8 @@ export function PlayerPanel({
             }
           }}
           onMediaPauseRequest={(event) => {
+            event.preventDefault()
             if (!canControlPlayback) {
-              event.preventDefault()
               enforceServerPlaybackState()
               return
             }
@@ -999,7 +1003,9 @@ export function PlayerPanel({
           onPause={() => {
             setIsBuffering(false)
             bufferingSinceRef.current = null
-            // Provider pauses must not mutate room state. Re-follow authority.
+            // Unexpected provider pauses must not stick while room says playing.
+            // User gestures are preventDefault'd above, so this only recovers
+            // provider drift — not a controller click that already sent pause.
             if (!playbackRef.current.paused) {
               enforceServerPlaybackState()
             }
