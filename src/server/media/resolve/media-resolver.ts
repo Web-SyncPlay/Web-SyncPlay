@@ -39,6 +39,8 @@ export async function resolveMediaSource(input: {
   name?: string
   roomId?: string
   mediaId?: string
+  /** When false, skip minting proxy tokens (playability probes). Default true. */
+  mintRelay?: boolean
 }): Promise<ResolvedMedia> {
   const urlSafety = assertPublicHttpUrl(input.url)
   if (!urlSafety.ok) {
@@ -121,7 +123,7 @@ export async function resolveMediaSource(input: {
     corsAllowed,
   })
 
-  if (streamPlan.playbackMode === "relay") {
+  if (streamPlan.playbackMode === "relay" && input.mintRelay !== false) {
     try {
       const wrapped = await applyRelayToResolvedUrls({
         playableUrl,
