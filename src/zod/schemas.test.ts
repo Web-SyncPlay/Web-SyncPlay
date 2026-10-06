@@ -216,6 +216,12 @@ describe("playlist payload interfaces", () => {
         error: "x".repeat(301),
       }).success,
     ).toBe(false)
+    expect(
+      playlistItemErrorSchema.safeParse({
+        itemId: "i1",
+        error: null,
+      }).success,
+    ).toBe(true)
   })
 })
 

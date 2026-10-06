@@ -2,6 +2,7 @@ import {
   computeExpectedPlaybackTimeSec,
   isPlaybackDriftBeyondThreshold,
   measurePlaybackDriftSec,
+  resolveSeekCeilingSec,
   type PlaybackSyncState,
 } from "@/lib/playback-sync"
 
@@ -16,6 +17,13 @@ export type SyncablePlayer = {
   currentTime: number
   /** Media duration in seconds when known; used to clamp EOF seeks. */
   duration?: number
+  /**
+   * Live/DVR seekable window end. When set, preferred over `duration` so
+   * room sync can reach the live edge even if duration lags.
+   */
+  seekableEnd?: number
+  /** Underlying media element — used when the player wrapper no-ops seeks. */
+  mediaEl?: Pick<HTMLMediaElement, "currentTime"> | null
   paused?: boolean
   pause: () => void
   play: () => Promise<void> | void
@@ -36,6 +44,7 @@ export function applyPlaybackSyncToPlayer(config: {
   driftThresholdSec?: number
   nowMs?: number
   mode?: "clock" | "full"
+  seekableEndSec?: number
 }): ApplyPlaybackClockResult & { playAttempt: Promise<void> | null } {
   const {
     player,
@@ -43,6 +52,7 @@ export function applyPlaybackSyncToPlayer(config: {
     driftThresholdSec = 0.8,
     nowMs = Date.now(),
     mode = "full",
+    seekableEndSec,
   } = config
 
   const clock = applyPlaybackClockToPlayer({
@@ -50,6 +60,7 @@ export function applyPlaybackSyncToPlayer(config: {
     syncState,
     driftThresholdSec,
     nowMs,
+    seekableEndSec,
   })
 
   if (mode === "clock") {
@@ -67,13 +78,22 @@ export function applyPlaybackSyncToPlayer(config: {
 
 /** Rate + timeline only — use when `paused` / `autoPlay` are bound declaratively. */
 export function applyPlaybackClockToPlayer(config: {
-  player: Pick<SyncablePlayer, "playbackRate" | "currentTime" | "duration">
+  player: Pick<
+    SyncablePlayer,
+    "playbackRate" | "currentTime" | "duration" | "seekableEnd" | "mediaEl"
+  >
   syncState: PlaybackSyncState
   driftThresholdSec?: number
   nowMs?: number
+  seekableEndSec?: number
 }): ApplyPlaybackClockResult {
-  const { player, syncState, driftThresholdSec = 0.8, nowMs = Date.now() } =
-    config
+  const {
+    player,
+    syncState,
+    driftThresholdSec = 0.8,
+    nowMs = Date.now(),
+    seekableEndSec,
+  } = config
 
   const nextRate = Number(syncState.playbackRate)
   if (Number.isFinite(nextRate)) {
@@ -86,12 +106,17 @@ export function applyPlaybackClockToPlayer(config: {
 
   const expectedTimeSec = computeExpectedPlaybackTimeSec(syncState, nowMs)
   const durationSec = Number(player.duration)
+  const resolvedSeekableEnd = Number.isFinite(Number(seekableEndSec))
+    ? Number(seekableEndSec)
+    : Number(player.seekableEnd)
   // Keep seeks inside the media so an unpaused room past EOF cannot restart
-  // the last few frames in a tight loop.
+  // the last few frames in a tight loop. Prefer seekableEnd for live/DVR.
+  const ceiling = resolveSeekCeilingSec({
+    durationSec,
+    seekableEndSec: resolvedSeekableEnd,
+  })
   const clampedExpectedSec =
-    Number.isFinite(durationSec) && durationSec > 0
-      ? Math.min(expectedTimeSec, Math.max(0, durationSec - 0.05))
-      : expectedTimeSec
+    ceiling !== null ? Math.min(expectedTimeSec, ceiling) : expectedTimeSec
   const currentTimeSec = Number(player.currentTime ?? 0)
   let seekAttempted = false
   if (
@@ -105,6 +130,11 @@ export function applyPlaybackClockToPlayer(config: {
   ) {
     try {
       player.currentTime = clampedExpectedSec
+      // Vidstack live players often report canSeek=false and no-op the wrapper
+      // setter; the underlying media element still accepts DVR seeks.
+      if (player.mediaEl) {
+        player.mediaEl.currentTime = clampedExpectedSec
+      }
       seekAttempted = true
     } catch {
       // Ignore transient seek failures while provider is rebuilding.
@@ -119,6 +149,7 @@ export function applyPlaybackClockToPlayer(config: {
       syncState,
       nowMs,
       durationSec,
+      resolvedSeekableEnd,
     ),
   }
 }

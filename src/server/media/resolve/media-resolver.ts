@@ -119,6 +119,7 @@ export async function resolveMediaSource(input: {
 
   const streamPlan = buildStreamPlan({
     playableUrl,
+    sourceUrl: input.url,
     isNativeProvider: native.isNativeProvider,
     corsAllowed,
   })

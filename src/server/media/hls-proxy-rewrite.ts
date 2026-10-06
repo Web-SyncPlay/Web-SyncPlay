@@ -1,4 +1,9 @@
-import { createProxyUrl } from "@/server/media/proxy-token"
+import {
+  createProxyUrl,
+  type ProxyTokenPayload,
+} from "@/server/media/proxy-token"
+
+export type HlsRewriteProxyMeta = Omit<ProxyTokenPayload, "url" | "createdAt">
 
 /**
  * Collect every absolute http(s) URL referenced by an HLS playlist (master or media).
@@ -97,16 +102,18 @@ function looksLikeHlsPlaylist(body: string, contentType: string): boolean {
 /**
  * Rewrites all referenced http(s) URLs in an HLS playlist to same-origin proxy paths
  * so the browser never loads Twitch/CDN URLs directly (avoids CORS / status 0).
+ * Child tokens inherit parent referer / room meta so hotlink-protected CDNs keep working.
  */
 export async function rewriteM3u8ForProxy(
   body: string,
   baseUrl: string,
+  meta?: HlsRewriteProxyMeta,
 ): Promise<string> {
   const urls = [...collectM3u8ReferencedUrls(body, baseUrl)]
   const proxyMap = new Map<string, string>()
   await Promise.all(
     urls.map(async (u) => {
-      proxyMap.set(u, await createProxyUrl(u))
+      proxyMap.set(u, await createProxyUrl(u, meta))
     }),
   )
 

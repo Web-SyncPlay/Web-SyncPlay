@@ -13,6 +13,7 @@ import {
 } from "@/server/realtime/handlers/playlist"
 import {
   createHandlerContext,
+  createPlaylistItem,
   createRoomState,
   envelope,
   InMemoryRoomStateStore,
@@ -158,6 +159,34 @@ describe("playlist handler interfaces", () => {
     expect(next?.playlist[0]?.ingestStatus).toBe("error")
     expect(next?.playlist[0]?.ingestError).toBe("decode failed")
     expect(next?.currentIndex).toBe(1)
+  })
+
+  test("clearing item error restores ready ingest status", async () => {
+    const errored = createPlaylistItem({
+      id: "item-a",
+      name: "A",
+      ingestStatus: "error",
+      ingestError: "decode failed",
+    })
+    const store = new InMemoryRoomStateStore(
+      createRoomState({
+        currentIndex: 0,
+        playlist: [errored],
+      }),
+    )
+    createTestBroadcastBus(store)
+    const ctx = createHandlerContext({ store })
+
+    await handlePlaylistItemError(
+      ctx,
+      envelope("playlist:item:error", {
+        itemId: "item-a",
+        error: null,
+      }),
+    )
+    const next = store.peek("room-1")
+    expect(next?.playlist[0]?.ingestStatus).toBe("ready")
+    expect(next?.playlist[0]?.ingestError).toBeUndefined()
   })
 
   test("guest cannot mutate playlist", async () => {

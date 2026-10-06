@@ -252,6 +252,16 @@ export const handlePlaylistItemError: RoomMessageHandler = async (
       if (index < 0) return false
       const item = state.playlist[index]
       if (!item) return false
+
+      if (parsed.data.error === null) {
+        if (item.ingestStatus !== "error" && !item.ingestError) {
+          return false
+        }
+        item.ingestStatus = "ready"
+        item.ingestError = undefined
+        return true
+      }
+
       item.ingestStatus = "error"
       item.ingestError = parsed.data.error
 

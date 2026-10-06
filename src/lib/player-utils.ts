@@ -54,3 +54,70 @@ export function resolvePlayerDurationSec(item?: {
   }
   return durationSec
 }
+
+/**
+ * Resolve a seek target near the live edge.
+ *
+ * Prefer the media seekable window end (minus a small safety margin). HLS
+ * `liveSyncPosition` is often stale or far behind the DVR edge for proxied
+ * Twitch/live streams, so only fall back to it when seekableEnd is unusable.
+ * Returns null when no usable live edge is available.
+ */
+export function resolveLiveEdgeSec(input: {
+  seekableEnd?: number | null
+  liveSyncPosition?: number | null
+}): number | null {
+  const seekableEnd = Number(input.seekableEnd)
+  const liveSync = Number(input.liveSyncPosition)
+  const fromSeekable =
+    Number.isFinite(seekableEnd) && seekableEnd > 0 ? seekableEnd - 2 : null
+  const fromLiveSync =
+    Number.isFinite(liveSync) && liveSync > 0 ? liveSync : null
+
+  if (fromSeekable !== null) {
+    // Clamp liveSync when it is ahead of the seekable window; otherwise trust
+    // seekableEnd so Skip To Live actually reaches the DVR edge.
+    if (fromLiveSync !== null && fromLiveSync > fromSeekable) {
+      return Math.max(0, fromSeekable)
+    }
+    return Math.max(0, fromSeekable)
+  }
+  if (fromLiveSync !== null) {
+    return Math.max(0, fromLiveSync)
+  }
+  return null
+}
+
+/** Prefer a finite media-element seekable end over Vidstack's Infinity store. */
+export function readMediaSeekableEndSec(
+  media: Pick<HTMLMediaElement, "seekable"> | null | undefined,
+): number | null {
+  try {
+    const ranges = media?.seekable
+    if (!ranges || ranges.length === 0) {
+      return null
+    }
+    const end = ranges.end(ranges.length - 1)
+    return Number.isFinite(end) && end > 0 ? end : null
+  } catch {
+    return null
+  }
+}
+
+export function queryPlayerMediaElement(
+  root?: ParentNode | null,
+): HTMLMediaElement | null {
+  const scope = root ?? (typeof document !== "undefined" ? document : null)
+  if (!scope) {
+    return null
+  }
+  return (
+    (scope.querySelector("video, audio") as HTMLMediaElement | null) ??
+    (typeof document !== "undefined"
+      ? (document.querySelector(
+          "media-player video, media-player audio, [data-media-player] video, [data-media-player] audio, video, audio",
+        ) as HTMLMediaElement | null)
+      : null)
+  )
+}
+

@@ -205,7 +205,12 @@ export async function GET(
       compute: async () => {
         const text = await response.text()
         if (shouldAttemptPlaylistRewrite(contentType, text)) {
-          const body = await rewriteM3u8ForProxy(text, target)
+          const body = await rewriteM3u8ForProxy(text, target, {
+            referer: payload.referer,
+            userAgent: payload.userAgent,
+            roomId: payload.roomId,
+            mediaId: payload.mediaId,
+          })
           return {
             body,
             contentType: "application/vnd.apple.mpegurl; charset=utf-8",

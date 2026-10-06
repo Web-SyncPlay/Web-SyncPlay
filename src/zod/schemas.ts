@@ -99,7 +99,8 @@ export const playlistRetrySchema = z.object({
 
 export const playlistItemErrorSchema = z.object({
   itemId: z.string().min(1),
-  error: z.string().min(1).max(300),
+  /** `null` clears a previously reported ingest error after recovery. */
+  error: z.string().min(1).max(300).nullable(),
 })
 
 export const viewerMediaPreferencesSchema = z.object({

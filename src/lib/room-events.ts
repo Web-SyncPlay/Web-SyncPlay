@@ -38,7 +38,7 @@ export interface ClientEventPayloadMap {
     ready: boolean
   }
   "playlist:retry": { itemId: string }
-  "playlist:item:error": { itemId: string; error: string }
+  "playlist:item:error": { itemId: string; error: string | null }
   "viewer:media:preferences": {
     itemId: string
     streamId?: string | null

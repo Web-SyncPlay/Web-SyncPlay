@@ -14,6 +14,7 @@ export function usePlayerSync() {
       player: SyncablePlayer
       syncState: PlaybackSyncState
       driftThresholdSec?: number
+      seekableEndSec?: number
     }) => {
       try {
         return applyPlaybackSyncToPlayer({ ...config, mode: "clock" })

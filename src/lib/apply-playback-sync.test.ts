@@ -100,6 +100,42 @@ describe("applyPlaybackClockToPlayer", () => {
 
     expect(order).toEqual(["seek:9.95"])
   })
+
+  test("prefers seekableEnd over a lagging duration for live/DVR", () => {
+    const order: string[] = []
+    let currentTime = 40
+    const mediaEl = {
+      currentTime: 40,
+    }
+    const player = {
+      playbackRate: 1,
+      duration: 40,
+      seekableEnd: 52,
+      mediaEl,
+      get currentTime() {
+        return currentTime
+      },
+      set currentTime(value: number) {
+        currentTime = value
+        order.push(`seek:${value}`)
+      },
+    }
+
+    applyPlaybackClockToPlayer({
+      player,
+      syncState: {
+        paused: false,
+        playbackRate: 1,
+        timelineAnchorMs: 50_000,
+        serverNowMs: 100,
+      },
+      nowMs: 100,
+      driftThresholdSec: 0.8,
+    })
+
+    expect(order).toEqual(["seek:50"])
+    expect(mediaEl.currentTime).toBe(50)
+  })
 })
 
 describe("nudgePlaybackTransport", () => {

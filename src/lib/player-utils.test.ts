@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import {
+  readMediaSeekableEndSec,
+  resolveLiveEdgeSec,
   resolvePlayerDurationSec,
   resolvePlayerStreamType,
 } from "./player-utils"
@@ -29,5 +31,60 @@ describe("resolvePlayerDurationSec", () => {
     ).toBeUndefined()
     expect(resolvePlayerDurationSec({ durationSeconds: 0 })).toBeUndefined()
     expect(resolvePlayerDurationSec({})).toBeUndefined()
+  })
+})
+
+describe("resolveLiveEdgeSec", () => {
+  test("uses seekableEnd minus 2 seconds", () => {
+    expect(resolveLiveEdgeSec({ seekableEnd: 120 })).toBe(118)
+  })
+
+  test("prefers seekableEnd over a stale liveSyncPosition", () => {
+    expect(
+      resolveLiveEdgeSec({ seekableEnd: 120, liveSyncPosition: 100 }),
+    ).toBe(118)
+  })
+
+  test("clamps liveSyncPosition that is ahead of seekableEnd", () => {
+    expect(
+      resolveLiveEdgeSec({ seekableEnd: 120, liveSyncPosition: 130 }),
+    ).toBe(118)
+  })
+
+  test("falls back to liveSyncPosition when seekableEnd is unusable", () => {
+    expect(
+      resolveLiveEdgeSec({ seekableEnd: Infinity, liveSyncPosition: 90 }),
+    ).toBe(90)
+  })
+
+  test("returns null without a usable edge", () => {
+    expect(resolveLiveEdgeSec({})).toBeNull()
+    expect(resolveLiveEdgeSec({ seekableEnd: Infinity })).toBeNull()
+  })
+})
+
+describe("readMediaSeekableEndSec", () => {
+  test("reads the last seekable range end", () => {
+    const media = {
+      seekable: {
+        length: 1,
+        start: () => 0,
+        end: () => 42.5,
+      },
+    } as Pick<HTMLMediaElement, "seekable">
+    expect(readMediaSeekableEndSec(media)).toBe(42.5)
+  })
+
+  test("returns null for empty or non-finite ranges", () => {
+    expect(
+      readMediaSeekableEndSec({
+        seekable: { length: 0, start: () => 0, end: () => 0 },
+      } as Pick<HTMLMediaElement, "seekable">),
+    ).toBeNull()
+    expect(
+      readMediaSeekableEndSec({
+        seekable: { length: 1, start: () => 0, end: () => Number.NaN },
+      } as Pick<HTMLMediaElement, "seekable">),
+    ).toBeNull()
   })
 })

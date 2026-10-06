@@ -37,9 +37,60 @@ export async function createProxyUrl(
   const byUrlKey = keys.mediaProxyByUrl(urlHash)
   const existingToken = await client.get(byUrlKey)
   if (existingToken) {
-    const existingRaw = await client.get(keys.mediaProxyToken(existingToken))
+    const tokenKey = keys.mediaProxyToken(existingToken)
+    const existingRaw = await client.get(tokenKey)
     if (existingRaw) {
-      await client.expire(keys.mediaProxyToken(existingToken), PROXY_TOKEN_TTL_SECONDS)
+      let existing: ProxyTokenPayload | null = null
+      try {
+        const parsed = JSON.parse(existingRaw) as Partial<ProxyTokenPayload>
+        if (typeof parsed.url === "string") {
+          existing = {
+            url: parsed.url,
+            referer:
+              typeof parsed.referer === "string" ? parsed.referer : undefined,
+            userAgent:
+              typeof parsed.userAgent === "string"
+                ? parsed.userAgent
+                : undefined,
+            roomId:
+              typeof parsed.roomId === "string" ? parsed.roomId : undefined,
+            mediaId:
+              typeof parsed.mediaId === "string" ? parsed.mediaId : undefined,
+            createdAt:
+              typeof parsed.createdAt === "number"
+                ? parsed.createdAt
+                : Date.now(),
+          }
+        }
+      } catch {
+        existing = null
+      }
+
+      // Upgrade a bare token when a later mint carries Referer / room meta
+      // (HLS child rewrite must not stick with a no-referer first mint).
+      if (existing && meta) {
+        const next: ProxyTokenPayload = {
+          ...existing,
+          referer: meta.referer ?? existing.referer,
+          userAgent: meta.userAgent ?? existing.userAgent,
+          roomId: meta.roomId ?? existing.roomId,
+          mediaId: meta.mediaId ?? existing.mediaId,
+        }
+        const upgraded =
+          next.referer !== existing.referer ||
+          next.userAgent !== existing.userAgent ||
+          next.roomId !== existing.roomId ||
+          next.mediaId !== existing.mediaId
+        if (upgraded) {
+          await client.set(tokenKey, JSON.stringify(next), {
+            EX: PROXY_TOKEN_TTL_SECONDS,
+          })
+        } else {
+          await client.expire(tokenKey, PROXY_TOKEN_TTL_SECONDS)
+        }
+      } else {
+        await client.expire(tokenKey, PROXY_TOKEN_TTL_SECONDS)
+      }
       await client.expire(byUrlKey, PROXY_TOKEN_TTL_SECONDS)
       return `/api/media/proxy/${existingToken}`
     }

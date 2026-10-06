@@ -1,6 +1,10 @@
 "use client"
 
 import { measurePlaybackDriftSec } from "@/lib/playback-sync"
+import {
+  queryPlayerMediaElement,
+  readMediaSeekableEndSec,
+} from "@/lib/player-utils"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import {
   useEffect,
@@ -13,6 +17,25 @@ const DRIFT_THRESHOLD_SEC = 0.8
 const WATCHDOG_INTERVAL_MS = 1_000
 /** HLS often no-ops the first currentTime write; retry while the anchor is fresh. */
 const ANCHOR_RETRY_DELAYS_MS = [200, 600, 1_200, 2_400] as const
+
+function readPlayerPlayheadSec(player: MediaPlayerInstance) {
+  const mediaEl = queryPlayerMediaElement(player.el)
+  const mediaTime = Number(mediaEl?.currentTime)
+  if (Number.isFinite(mediaTime)) {
+    return mediaTime
+  }
+  return Number(player.currentTime ?? 0)
+}
+
+function readPlayerSeekableEndSec(player: MediaPlayerInstance) {
+  const mediaEl = queryPlayerMediaElement(player.el)
+  return (
+    readMediaSeekableEndSec(mediaEl) ??
+    (Number.isFinite(Number(player.state.seekableEnd))
+      ? Number(player.state.seekableEnd)
+      : undefined)
+  )
+}
 
 export function usePlaybackDriftCorrection(config: {
   playerRef: RefObject<MediaPlayerInstance | null>
@@ -89,10 +112,11 @@ export function usePlaybackDriftCorrection(config: {
           videoLoop: playbackRef.current.videoLoop !== "off",
         }
         const driftSec = measurePlaybackDriftSec(
-          Number(player.currentTime ?? 0),
+          readPlayerPlayheadSec(player),
           syncState,
           Date.now(),
           Number(player.duration),
+          readPlayerSeekableEndSec(player),
         )
         if (driftSec === null || driftSec <= DRIFT_THRESHOLD_SEC) {
           pendingSyncRef.current = null
@@ -138,10 +162,11 @@ export function usePlaybackDriftCorrection(config: {
           videoLoop: playbackRef.current.videoLoop !== "off",
         } satisfies PendingSyncState)
       const driftSec = measurePlaybackDriftSec(
-        Number(player.currentTime ?? 0),
+        readPlayerPlayheadSec(player),
         syncState,
         Date.now(),
         Number(player.duration),
+        readPlayerSeekableEndSec(player),
       )
       if (driftSec === null) {
         return

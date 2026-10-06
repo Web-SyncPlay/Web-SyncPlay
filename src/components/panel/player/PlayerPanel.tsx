@@ -13,8 +13,11 @@ import {
   measurePlaybackDriftSec,
 } from "@/lib/playback-sync"
 import {
+  resolveLiveEdgeSec,
   resolvePlayerDurationSec,
   resolvePlayerStreamType,
+  queryPlayerMediaElement,
+  readMediaSeekableEndSec,
 } from "@/lib/player-utils"
 import {
   getLocalMediaMimeType,
@@ -267,6 +270,11 @@ export function PlayerPanel({
       return ""
     }
 
+    // Avoid loading the unresolved page URL (MediaError 4) while yt-dlp runs.
+    if (current.ingestStatus === "resolving") {
+      return ""
+    }
+
     // Provider plays from the in-tab File directly — no relay hop.
     // If blob playback fails (MediaError 4), fall back to the relay URL.
     if (
@@ -381,6 +389,11 @@ export function PlayerPanel({
       return 0
     }
 
+    const mediaEl = queryPlayerMediaElement(player.el)
+    const mediaTime = Number(mediaEl?.currentTime)
+    if (Number.isFinite(mediaTime) && mediaTime >= 0) {
+      return Math.max(0, Math.floor(mediaTime * 1000))
+    }
     return Math.max(0, Math.floor(Number(player.currentTime ?? 0) * 1000))
   }, [])
 
@@ -416,16 +429,42 @@ export function PlayerPanel({
       driftThresholdSec?: number,
     ) => {
       try {
-        applyClockToPlayer({ player, syncState, driftThresholdSec })
+        const mediaEl = queryPlayerMediaElement(player.el)
+        const seekableEndSec =
+          readMediaSeekableEndSec(mediaEl) ??
+          (Number.isFinite(Number(player.state.seekableEnd))
+            ? Number(player.state.seekableEnd)
+            : undefined)
+        applyClockToPlayer({
+          player: {
+            playbackRate: player.playbackRate,
+            get currentTime() {
+              return player.currentTime
+            },
+            set currentTime(value: number) {
+              player.currentTime = value
+            },
+            duration: player.duration,
+            seekableEnd: seekableEndSec,
+            mediaEl,
+            paused: player.paused,
+            pause: () => player.pause(),
+            play: () => player.play(),
+          },
+          syncState,
+          driftThresholdSec,
+          seekableEndSec,
+        })
         lastAppliedTimelineAnchorMsRef.current = syncState.timelineAnchorMs
 
         // HLS/proxy often accepts the write asynchronously (or no-ops once).
         // Keep pending until drift correction verifies the playhead caught up.
         const driftSec = measurePlaybackDriftSec(
-          Number(player.currentTime ?? 0),
+          Number(mediaEl?.currentTime ?? player.currentTime ?? 0),
           syncState,
           Date.now(),
           Number(player.duration),
+          seekableEndSec,
         )
         pendingSyncRef.current =
           driftSec === null || driftSec > 0.8 ? syncState : null
@@ -580,6 +619,75 @@ export function PlayerPanel({
     }
     applyRoomClock(player, syncState)
   }, [applyRoomClock])
+
+  const commitLiveEdgeSeek = useCallback(() => {
+    if (!canControlPlayback) {
+      enforceServerPlaybackState()
+      return
+    }
+    const player = playerRef.current
+    if (!player) {
+      return
+    }
+
+    let seekableEnd = Number(player.state.seekableEnd)
+    const liveSyncPosition =
+      player.state.liveSyncPosition === null ||
+      player.state.liveSyncPosition === undefined
+        ? null
+        : Number(player.state.liveSyncPosition)
+
+    // Prefer the media element's finite DVR window — Vidstack often keeps
+    // store seekableEnd at Infinity for live HLS.
+    const media = queryPlayerMediaElement(player.el)
+    const elementEnd = readMediaSeekableEndSec(media)
+    if (elementEnd !== null) {
+      seekableEnd = elementEnd
+    }
+
+    const edgeSec = resolveLiveEdgeSec({
+      seekableEnd,
+      liveSyncPosition,
+    })
+    if (edgeSec === null) {
+      return
+    }
+    // Optimistic local seek: live Vidstack wrappers often no-op currentTime
+    // while canSeek is false; the media element still accepts DVR seeks.
+    try {
+      player.currentTime = edgeSec
+      if (media) {
+        media.currentTime = edgeSec
+      }
+    } catch {
+      // Room commit below remains the authority.
+    }
+    timeline.commitSeek(Math.floor(edgeSec * 1000))
+  }, [canControlPlayback, enforceServerPlaybackState, timeline])
+
+  // Vidstack's LiveButton no-ops when its store thinks `liveEdge` is already
+  // true (common with Infinity seekableEnd / DVR lag). Capture the click so
+  // room sync still jumps to the real media seekable end.
+  useEffect(() => {
+    if (!canControlPlayback) {
+      return
+    }
+    const onClickCapture = (event: Event) => {
+      const target = event.target
+      if (!(target instanceof Element)) {
+        return
+      }
+      const liveButton = target.closest(
+        '[aria-label="Skip To Live"], [data-media-tooltip="live"]',
+      )
+      if (!liveButton) {
+        return
+      }
+      commitLiveEdgeSeek()
+    }
+    document.addEventListener("click", onClickCapture, true)
+    return () => document.removeEventListener("click", onClickCapture, true)
+  }, [canControlPlayback, commitLiveEdgeSeek])
 
   useBufferingWatchdog({
     currentItem: current ? { id: current.id, name: current.name } : null,
@@ -839,6 +947,7 @@ export function PlayerPanel({
             }
             const targetSec = Number(detail)
             if (!Number.isFinite(targetSec)) {
+              commitLiveEdgeSeek()
               return
             }
             const targetMs = Math.max(0, Math.floor(targetSec * 1000))
@@ -855,9 +964,13 @@ export function PlayerPanel({
             }
             const targetSec = Number(detail)
             if (!Number.isFinite(targetSec)) {
+              commitLiveEdgeSeek()
               return
             }
             timeline.commitSeek(Math.max(0, Math.floor(targetSec * 1000)))
+          }}
+          onMediaLiveEdgeRequest={() => {
+            commitLiveEdgeSeek()
           }}
           onMediaRateChangeRequest={(detail) => {
             if (!canControlPlayback) {
@@ -895,6 +1008,17 @@ export function PlayerPanel({
             setPlaybackError(undefined)
             participantStatusErrorRef.current = null
             bufferingSinceRef.current = null
+            if (
+              current &&
+              canControlPlayback &&
+              (current.ingestStatus === "error" || Boolean(current.ingestError))
+            ) {
+              reportedItemErrorRef.current = null
+              send("playlist:item:error", {
+                itemId: current.id,
+                error: null,
+              })
+            }
           }}
           onWaiting={() => {
             setIsBuffering(true)
@@ -1030,6 +1154,7 @@ export function PlayerPanel({
             if (
               current &&
               canControlPlayback &&
+              current.ingestStatus !== "resolving" &&
               reportedItemErrorRef.current !== current.id
             ) {
               reportedItemErrorRef.current = current.id
