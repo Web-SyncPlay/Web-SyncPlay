@@ -20,6 +20,7 @@ import {
   Track,
   type MediaErrorDetail,
   type MediaPlayerInstance,
+  type PlayerSrc,
 } from "@vidstack/react"
 import {
   DefaultAudioLayout,
@@ -736,7 +737,7 @@ export function PlayerPanel({
         <MediaPlayer
           key={`${current?.id ?? "no-media"}:${activeStream?.id ?? "auto"}:${playerRemountNonce}`}
           ref={playerRef}
-          src={playerSrc}
+          src={playerSrc as PlayerSrc}
           title={current?.name ?? "Web-SyncPlay"}
           viewType={viewType}
           loop={roomState.playback.videoLoop !== "off"}
