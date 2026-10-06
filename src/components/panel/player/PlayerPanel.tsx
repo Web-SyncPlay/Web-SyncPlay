@@ -218,7 +218,8 @@ export function PlayerPanel({
   )
 
   const { applyClockToPlayer, nudgeTransport } = usePlayerSync()
-  const { preferredVolume, handleVolumeChange, isMuted } = usePlayerVolume()
+  const { preferredVolume, handleVolumeChange, isMuted, unmute } =
+    usePlayerVolume()
   useEffect(() => {
     const player = playerRef.current
     if (!player) {
@@ -700,14 +701,9 @@ export function PlayerPanel({
             onClick={() => {
               const player = playerRef.current
               if (!player) return
+              const volume = unmute()
+              player.volume = volume
               player.muted = false
-              if (player.volume <= 0.01) {
-                player.volume = preferredVolume > 0 ? preferredVolume : 0.4
-              }
-              handleVolumeChange({
-                volume: player.volume,
-                muted: false,
-              })
             }}
           >
             <Volume2 className="size-4" />
@@ -943,6 +939,13 @@ export function PlayerPanel({
                 : pending
             // Force-snap after canplay — HLS often becomes seekable only here.
             applyRoomClock(player, pendingToApply, 0)
+            // Providers may reset volume on load; re-apply preferred level.
+            if (Math.abs(player.volume - preferredVolume) > 0.001) {
+              player.volume = preferredVolume
+            }
+            if (player.muted !== isMuted) {
+              player.muted = isMuted
+            }
           }}
           onError={(detail: MediaErrorDetail) => {
             setIsBuffering(false)
@@ -1048,6 +1051,16 @@ export function PlayerPanel({
           }}
           volume={preferredVolume}
           onVolumeChange={(detail) => {
+            // Native mute toggle: restore preferred volume so unmute is never 100% by default.
+            if (!detail.muted && isMuted) {
+              const player = playerRef.current
+              const volume = unmute()
+              if (player) {
+                player.volume = volume
+                player.muted = false
+              }
+              return
+            }
             handleVolumeChange(detail)
           }}
           onMediaUserLoopChangeRequest={(detail) => {
