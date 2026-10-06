@@ -79,6 +79,7 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
   const joinPassword = joinResult.data.joinPassword
   const sessionKind: SessionKind = joinResult.data.sessionKind ?? "room"
   const controlToken = joinResult.data.controlToken
+  const initialMediaUrl = joinResult.data.initialMediaUrl
 
   const joinLimit = await consumeRateLimit({
     key: `join:${roomId}`,
@@ -163,7 +164,10 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
 
   const committed = await ctx.store.updateRoom(roomId, async (existing) => {
     const state =
-      existing ?? (await createInitialRoomState(ctx.store, roomId, userId))
+      existing ??
+      (await createInitialRoomState(ctx.store, roomId, userId, {
+        initialMediaUrl,
+      }))
     normalizeParticipantRoles(state)
     const findings = repairCleanupAndCheckRoomState(state)
     if (findings.length > 0) {

@@ -13,6 +13,8 @@ export const roomJoinSchema = z.object({
   avatarStyle: z.string().min(1).max(64).optional(),
   sessionKind: sessionKindSchema.default("room"),
   controlToken: z.string().min(1).max(512).optional(),
+  /** Used only when the room is created by this join; ignored for existing rooms. */
+  initialMediaUrl: z.url().optional(),
 })
 
 export const roomPasswordSetSchema = z.object({

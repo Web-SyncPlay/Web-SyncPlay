@@ -11,9 +11,19 @@ import { useRoomSession } from "@/hooks/use-room-session"
 import { getRoomUrl } from "@/lib/control-url"
 import { canControlPlayback } from "@/lib/permissions-utils"
 import { cn } from "@/lib/utils"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import type { RoomPanelProps } from "./types"
 
-export function RoomClient({ roomId }: { roomId: string }) {
+export function RoomClient({
+  roomId,
+  initialMediaUrl,
+}: {
+  roomId: string
+  initialMediaUrl?: string
+}) {
+  const router = useRouter()
+  const [seedMediaUrl] = useState(initialMediaUrl)
   const {
     roomState,
     sessionCapabilities,
@@ -28,7 +38,20 @@ export function RoomClient({ roomId }: { roomId: string }) {
     handleCopyShareUrl,
     playerEmbedUrl,
     controlEmbedUrl,
-  } = useRoomSession(roomId, { sessionKind: "room" })
+  } = useRoomSession(roomId, {
+    sessionKind: "room",
+    initialMediaUrl: seedMediaUrl,
+  })
+
+  useEffect(() => {
+    if (!roomState || !seedMediaUrl) return
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    if (!url.searchParams.has("media")) return
+    url.searchParams.delete("media")
+    const next = `${url.pathname}${url.search}${url.hash}`
+    router.replace(next)
+  }, [roomState, seedMediaUrl, router])
 
   if (!roomState) {
     if (status === "awaiting_password") {

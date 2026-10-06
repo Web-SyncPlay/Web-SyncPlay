@@ -11,7 +11,7 @@ import { useRoomSocket } from "./use-room-socket"
 
 export function useRoomSession(
   roomId: string,
-  options?: { sessionKind?: SessionKind },
+  options?: { sessionKind?: SessionKind; initialMediaUrl?: string },
 ) {
   const sessionKind = options?.sessionKind ?? "room"
   const {
@@ -23,7 +23,10 @@ export function useRoomSession(
     status,
     joinError,
     submitJoinPassword,
-  } = useRoomSocket(roomId, { sessionKind })
+  } = useRoomSocket(roomId, {
+    sessionKind,
+    initialMediaUrl: options?.initialMediaUrl,
+  })
   const [copied, setCopied] = useState(false)
   const [controlEmbedUrl, setControlEmbedUrl] = useState(() =>
     typeof window === "undefined"

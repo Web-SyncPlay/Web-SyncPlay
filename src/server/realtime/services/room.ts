@@ -1,31 +1,53 @@
 import type { RoomStateStorePort } from "@/server/realtime/ports"
 import { scheduleResolvingPlaylistItems } from "@/server/realtime/services/playlist-resolve"
+import { assertPublicHttpUrl } from "@/server/security/url-safety"
 import type { RoomState } from "@/zod/types"
 import { randomUUID } from "node:crypto"
 import { createDefaultRoomSecurity } from "./room-security"
 
 export { scheduleResolvingPlaylistItems }
 
+function playlistItemFromUrl(input: {
+  url: string
+  name: string
+  ownerId: string
+}) {
+  return {
+    id: randomUUID(),
+    name: input.name,
+    sourceKind: "remote_url" as const,
+    playbackMode: "direct" as const,
+    sourceUrl: input.url,
+    playableUrl: input.url,
+    ingestStatus: "resolving" as const,
+    createdBy: input.ownerId,
+    createdAt: Date.now(),
+  }
+}
+
 export async function createInitialRoomState(
   store: RoomStateStorePort,
   roomId: string,
   ownerId: string,
+  options?: { initialMediaUrl?: string },
 ): Promise<RoomState> {
-  const defaults = await store.getDailyDefaults()
-  const playlist = defaults.map((entry) => {
-    const itemId = randomUUID()
-    return {
-      id: itemId,
-      name: entry.title,
-      sourceKind: "remote_url" as const,
-      playbackMode: "direct" as const,
-      sourceUrl: entry.url,
-      playableUrl: entry.url,
-      ingestStatus: "resolving" as const,
-      createdBy: ownerId,
-      createdAt: Date.now(),
-    }
-  })
+  const seededUrl = options?.initialMediaUrl?.trim()
+  const playlist =
+    seededUrl && assertPublicHttpUrl(seededUrl).ok
+      ? [
+          playlistItemFromUrl({
+            url: seededUrl,
+            name: seededUrl,
+            ownerId,
+          }),
+        ]
+      : (await store.getDailyDefaults()).map((entry) =>
+          playlistItemFromUrl({
+            url: entry.url,
+            name: entry.title,
+            ownerId,
+          }),
+        )
 
   // Do not resolve here — callers must persist the room first, then call
   // scheduleResolvingPlaylistItems. Starting resolve inside create races the
