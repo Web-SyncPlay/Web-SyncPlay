@@ -3,81 +3,66 @@ import type { Metadata } from "next"
 
 export const metadata: Metadata = {
   title: "Imprint | Web-SyncPlay",
-  description: "Legal imprint and provider information for Web-SyncPlay.",
+  description: "Legal imprint for the Web-SyncPlay hobby project.",
 }
 
 export default function ImprintPage() {
   return (
     <LegalPage
       title="Imprint"
-      description="Information pursuant to § 5 DDG (Digitale-Dienste-Gesetz) / formerly TMG."
+      description="Provider information for the public instance at https://web-syncplay.de (§ 5 DDG). Web-SyncPlay is a free hobby project; anyone may self-host their own copy."
     >
       <section className="space-y-2">
-        <h2>Service provider</h2>
+        <h2>Operator of this instance</h2>
         <p>
-          <strong>[TODO: Full legal name]</strong>
-          <br />
-          [TODO: Street and house number]
-          <br />
-          [TODO: Postal code and city]
-          <br />
-          [TODO: Country]
+          Public instance:{" "}
+          <a
+            href="https://web-syncplay.de"
+            className="text-foreground underline underline-offset-4"
+          >
+            https://web-syncplay.de
+          </a>
+        </p>
+        <p>
+          Operator / contact:{" "}
+          <a
+            href="https://github.com/Yasamato"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="text-foreground underline underline-offset-4"
+          >
+            github.com/Yasamato
+          </a>
+        </p>
+        <p>
+          This is a non-commercial hobby project. No VAT identification number
+          is issued.
         </p>
       </section>
 
       <section className="space-y-2">
-        <h2>Contact</h2>
+        <h2>Self-hosting</h2>
         <p>
-          Email: <strong>[TODO: Contact email]</strong>
-        </p>
-      </section>
-
-      <section className="space-y-2">
-        <h2>VAT identification number</h2>
-        <p>
-          VAT ID pursuant to § 27a of the German VAT Act (UStG), if applicable:{" "}
-          <strong>[TODO: USt-IdNr. or “not applicable”]</strong>
-        </p>
-      </section>
-
-      <section className="space-y-2">
-        <h2>Responsible for content</h2>
-        <p>
-          Responsible for journalistic/editorial content pursuant to § 18 Abs. 2
-          MStV, if applicable: <strong>[TODO: Name and address]</strong>
+          The software is open source. If you run your own instance,{" "}
+          <strong>you</strong> are the service provider for that deployment.
+          This imprint applies only to{" "}
+          <a
+            href="https://web-syncplay.de"
+            className="text-foreground underline underline-offset-4"
+          >
+            https://web-syncplay.de
+          </a>
+          .
         </p>
       </section>
 
       <section className="space-y-2">
         <h2>Third-party media</h2>
         <p>
-          Web-SyncPlay is a synchronization service. Playlist items are typically
-          loaded from external sources chosen by room users (for example video
-          platforms or direct media URLs). We do not create, curate, or control
-          that third-party media. Liability for external information is governed
-          by §§ 7–10 DDG: we are not obligated to monitor transmitted or stored
-          third-party information, or to investigate circumstances indicating
-          illegal activity. Obligations to remove or block information under
-          general law remain unaffected once we become aware of a specific
-          infringement.
-        </p>
-      </section>
-
-      <section className="space-y-2">
-        <h2>Dispute resolution</h2>
-        <p>
-          The European Commission provides a platform for online dispute
-          resolution (ODR):{" "}
-          <a
-            href="https://ec.europa.eu/consumers/odr"
-            target="_blank"
-            rel="noreferrer noopener"
-            className="text-foreground underline underline-offset-4"
-          >
-            https://ec.europa.eu/consumers/odr
-          </a>
-          . We are neither obligated nor willing to participate in dispute
-          resolution proceedings before a consumer arbitration board.
+          Rooms sync playback of media chosen by users (external URLs or files
+          on a participant’s device). We do not operate a media library or
+          curate that content. Liability for third-party information follows
+          §§ 7–10 DDG.
         </p>
       </section>
     </LegalPage>

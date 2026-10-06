@@ -3,9 +3,13 @@ import {
   createDefaultRoomSecurity,
   normalizeDefaultJoinRole,
 } from "@/server/realtime/services/room-security"
-import type { PlaylistItem, RoomState } from "@/zod/types"
+import {
+  roomActionLogMaxAgeMs,
+  type PlaylistItem,
+  type RoomState,
+} from "@/zod/types"
 import { randomUUID } from "node:crypto"
-import { trackedActionTypes } from "./log"
+import { pruneActionLog, trackedActionTypes } from "./log"
 
 export function normalizeFiniteNumber(value: unknown, fallback: number) {
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -188,29 +192,49 @@ export function repairCleanupAndCheckRoomState(state: RoomState) {
     findings.push("action-log-repaired")
   } else {
     const beforeLength = state.actionLog.length
-    state.actionLog = state.actionLog.filter(
+    const now = Date.now()
+    const cutoff = now - roomActionLogMaxAgeMs
+    const valid = state.actionLog.filter(
       (entry) =>
         entry &&
         typeof entry === "object" &&
         typeof entry.action === "string" &&
         typeof entry.actorUserId === "string" &&
+        typeof entry.at === "number" &&
+        entry.at >= cutoff &&
         trackedActionTypes.has(entry.action),
     )
-    if (state.actionLog.length !== beforeLength) {
+    if (valid.length !== beforeLength) {
       findings.push("action-log-filtered")
     }
-    if (state.actionLog.length > env.ROOM_ACTION_LOG_LIMIT) {
-      state.actionLog = state.actionLog.slice(-env.ROOM_ACTION_LOG_LIMIT)
+    const pruned = pruneActionLog(valid, now)
+    if (pruned.length < valid.length) {
       findings.push("action-log-trimmed")
     }
+    state.actionLog = pruned
   }
 
   if (!Array.isArray(state.history)) {
     state.history = []
     findings.push("history-repaired")
-  } else if (state.history.length > env.ROOM_HISTORY_LIMIT) {
-    state.history = state.history.slice(-env.ROOM_HISTORY_LIMIT)
-    findings.push("history-trimmed")
+  } else {
+    const now = Date.now()
+    const cutoff = now - roomActionLogMaxAgeMs
+    const beforeLength = state.history.length
+    state.history = state.history.filter(
+      (entry) =>
+        entry &&
+        typeof entry === "object" &&
+        typeof entry.playedAt === "number" &&
+        entry.playedAt >= cutoff,
+    )
+    if (state.history.length !== beforeLength) {
+      findings.push("history-expired")
+    }
+    if (state.history.length > env.ROOM_HISTORY_LIMIT) {
+      state.history = state.history.slice(-env.ROOM_HISTORY_LIMIT)
+      findings.push("history-trimmed")
+    }
   }
 
   if (Array.isArray(state.playlist) && state.playlist.length > env.ROOM_PLAYLIST_LIMIT) {

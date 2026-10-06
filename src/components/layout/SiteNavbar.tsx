@@ -37,6 +37,7 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import type { ReactNode } from "react"
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
 
@@ -48,15 +49,22 @@ const navIconControlClass = cn(navControlClass, "w-8 px-0")
 const navTabClass =
   "h-full min-h-0 touch-manipulation gap-1.5 rounded-[min(var(--radius-md),10px)] px-2 max-lg:px-1.5"
 
+type SiteNavbarHomeProps = {
+  /** Logo + app name only (legal pages and other non-room surfaces). */
+  home: true
+}
+
 type SiteNavbarBareProps = {
   roomId: string
   /** Brand + room name only (e.g. while awaiting a join password). */
   bare: true
+  home?: false
 }
 
 type SiteNavbarFullProps = {
   roomId: string
   bare?: false
+  home?: false
   paused: boolean
   currentName?: string
   viewMode: "room" | "player" | "control"
@@ -77,9 +85,12 @@ type SiteNavbarFullProps = {
   onRailTabChange?: (tab: RoomRailTab) => void
 }
 
-export type SiteNavbarProps = SiteNavbarBareProps | SiteNavbarFullProps
+export type SiteNavbarProps =
+  | SiteNavbarHomeProps
+  | SiteNavbarBareProps
+  | SiteNavbarFullProps
 
-function SiteNavbarBrand(props: { roomId: string }) {
+function SiteNavbarBrand(props: { roomId?: string }) {
   const { roomId } = props
   return (
     <>
@@ -92,25 +103,45 @@ function SiteNavbarBrand(props: { roomId: string }) {
         />
         <span className="hidden sm:block">{env.NEXT_PUBLIC_APP_NAME}</span>
       </Link>
-      <Separator
-        orientation="vertical"
-        className="mx-1 h-6 self-center sm:mx-4"
-      />
-      <span className="ml-0.5 text-base font-semibold tracking-tight">
-        Room {roomId}
-      </span>
+      {roomId ? (
+        <>
+          <Separator
+            orientation="vertical"
+            className="mx-1 h-6 self-center sm:mx-4"
+          />
+          <span className="ml-0.5 text-base font-semibold tracking-tight">
+            Room {roomId}
+          </span>
+        </>
+      ) : null}
     </>
   )
 }
 
+function SiteNavbarChrome(props: { children: ReactNode }) {
+  return (
+    <header className="sticky top-0 z-20 border-b bg-background/95">
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
+        {props.children}
+      </div>
+    </header>
+  )
+}
+
 export function SiteNavbar(props: SiteNavbarProps) {
+  if ("home" in props && props.home) {
+    return (
+      <SiteNavbarChrome>
+        <SiteNavbarBrand />
+      </SiteNavbarChrome>
+    )
+  }
+
   if (props.bare) {
     return (
-      <header className="sticky top-0 z-20 border-b bg-background/95">
-        <div className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
-          <SiteNavbarBrand roomId={props.roomId} />
-        </div>
-      </header>
+      <SiteNavbarChrome>
+        <SiteNavbarBrand roomId={props.roomId} />
+      </SiteNavbarChrome>
     )
   }
 

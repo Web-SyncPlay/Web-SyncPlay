@@ -186,6 +186,8 @@ export interface WsEnvelope<T extends string, P> {
 }
 
 export const roomStateTtlSeconds = 3600
+/** Ephemeral room action-log / play-history max age (matches room Redis TTL). */
+export const roomActionLogMaxAgeMs = roomStateTtlSeconds * 1000
 export const VIEWER_MEDIA_BY_ITEM_LIMIT = 32
 export const MEDIA_STREAM_CATALOG_LIMIT = 12
 export const MEDIA_TEXT_TRACK_CATALOG_LIMIT = 20

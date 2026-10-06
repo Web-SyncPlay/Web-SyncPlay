@@ -4,181 +4,139 @@ import type { Metadata } from "next"
 export const metadata: Metadata = {
   title: "Privacy Policy | Web-SyncPlay",
   description:
-    "How Web-SyncPlay processes personal data when you use the service.",
+    "How the web-syncplay.de instance processes data (hobby project, short retention).",
 }
 
 export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      description="Information pursuant to Art. 13 and 14 GDPR about how this service processes personal data."
+      description="Short notice for the free hobby instance at https://web-syncplay.de (Art. 13 GDPR). No accounts, no ads, no analytics."
     >
       <section className="space-y-2">
-        <h2>1. Controller</h2>
+        <h2>Who is responsible?</h2>
         <p>
-          The controller responsible for processing personal data is:
-          <br />
-          <strong>[TODO: Full legal name]</strong>
-          <br />
-          [TODO: Postal address]
-          <br />
-          Email: <strong>[TODO: Contact email]</strong>
+          For the public instance{" "}
+          <a
+            href="https://web-syncplay.de"
+            className="text-foreground underline underline-offset-4"
+          >
+            https://web-syncplay.de
+          </a>
+          :{" "}
+          <a
+            href="https://github.com/Yasamato"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="text-foreground underline underline-offset-4"
+          >
+            github.com/Yasamato
+          </a>
+          .
+        </p>
+        <p>
+          If you self-host Web-SyncPlay, the operator of that instance is the
+          controller — not us.
         </p>
       </section>
 
       <section className="space-y-2">
-        <h2>2. What this service does</h2>
+        <h2>What we process (and why)</h2>
         <p>
-          Web-SyncPlay lets people create or join sync rooms to watch or listen
-          to media together. There is no traditional user account. Participants
-          are identified by a randomly generated identifier and optional display
-          name stored in the browser and associated with the room session.
+          Processing is limited to running sync rooms (Art. 6(1)(f) GDPR —
+          legitimate interest in offering a free hobby service) and keeping the
+          service stable (rate limits / abuse protection).
         </p>
-      </section>
-
-      <section className="space-y-2">
-        <h2>3. Categories of data</h2>
         <ul>
           <li>
-            <strong>Session identity:</strong> user ID and secret, display name
-            (username), avatar style preference
+            Temporary participant identity (ID, secret, display name, avatar
+            style) in your browser and in room state
           </li>
           <li>
-            <strong>Room data:</strong> room ID, playlist metadata and media
-            URLs you add, playback state, roles, optional join password
+            Room data: playlist metadata/URLs, playback state, roles, optional
+            join password, short in-room activity log
           </li>
           <li>
-            <strong>Connection data:</strong> IP address and technical
-            connection metadata when you connect via HTTP/WebSocket (processed by
-            the hosting infrastructure and application server)
+            Connection data (e.g. IP) via normal HTTP/WebSocket handling
           </li>
+          <li>Player preferences in localStorage (volume/mute)</li>
           <li>
-            <strong>Local preferences:</strong> e.g. player volume / mute state
-            in your browser
-          </li>
-          <li>
-            <strong>Operational logs:</strong> limited server-side action logs
-            for room operations and abuse prevention
+            Short-lived rate-limit counters (~60 seconds) for DDoS/abuse
+            protection only
           </li>
         </ul>
       </section>
 
       <section className="space-y-2">
-        <h2>4. Purposes and legal bases</h2>
+        <h2>How long</h2>
         <ul>
           <li>
-            Providing rooms, realtime sync, and media playback — Art. 6(1)(b)
-            GDPR (contract / requested service) or Art. 6(1)(f) (legitimate
-            interest in operating the free service)
+            <strong>Room state</strong> (including activity log): Redis/Valkey
+            TTL of <strong>1 hour</strong> while inactive; log entries older
+            than 1 hour are pruned even if the room stays busy. No separate
+            long-term log archive
           </li>
           <li>
-            Security, rate limiting, and abuse prevention — Art. 6(1)(f) GDPR
+            <strong>Rate limits:</strong> ~60-second windows, then gone
           </li>
           <li>
-            Essential local storage required to keep your session and playback
-            preferences — Art. 6(1)(f) GDPR; storage/access under TTDSG/TDDDG §
-            25(2) (technically necessary)
+            <strong>Browser storage:</strong> until you clear site data
           </li>
         </ul>
       </section>
 
       <section className="space-y-2">
-        <h2>5. Storage and retention</h2>
-        <ul>
-          <li>
-            <strong>Browser (localStorage):</strong> session identity and player
-            preferences remain until you clear site data or they are overwritten
-          </li>
-          <li>
-            <strong>Server (Valkey/Redis):</strong> room state, identities, and
-            related tokens are stored with a short TTL (approximately 1 hour of
-            inactivity / configured room lifetime) and then expire
-          </li>
-          <li>
-            <strong>Logs:</strong> retained only as long as needed for
-            operations and security, then deleted or anonymized
-          </li>
-        </ul>
+        <h2>Local media</h2>
+        <p>
+          Files you share from your device are <strong>not uploaded</strong> as
+          a stored library. They stay on the providing browser; we only relay
+          bytes to other viewers and may keep short-lived metadata (~1 hour) and
+          an ephemeral relay cache (~2 minutes).
+        </p>
       </section>
 
       <section className="space-y-2">
-        <h2>6. Recipients / third parties</h2>
+        <h2>Who else sees data</h2>
         <ul>
           <li>
-            <strong>Hosting / infrastructure provider:</strong>{" "}
-            [TODO: Name your hoster, e.g. VPS or cloud provider] processes
-            connection data as a processor or under their own responsibility as
-            infrastructure provider
+            Other people in the same room (names, presence, playlist/playback)
           </li>
           <li>
-            <strong>Other participants in your room:</strong> display name,
-            avatar appearance, presence, and playlist/playback state are shared
-            with others in the same room
-          </li>
-          <li>
-            <strong>Upstream media hosts:</strong> when you add a remote media
-            URL, your browser and/or our media proxy may request that URL from
-            the third-party host (e.g. a video platform or file host). Those
-            providers process the request under their own policies
+            Upstream media sites when someone adds a remote URL (their own
+            policies apply)
           </li>
         </ul>
         <p>
-          Avatars are generated locally in your browser (Dicebear libraries
-          bundled with this app). No avatar request is sent to a third-party
-          avatar CDN.
+          Avatars are generated in your browser (bundled{" "}
+          <a
+            href="https://www.dicebear.com"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="text-foreground underline underline-offset-4"
+          >
+            Dicebear
+          </a>
+          ). No marketing cookies or analytics. Essential localStorage only — no
+          cookie banner.
         </p>
       </section>
 
       <section className="space-y-2">
-        <h2>7. Cookies and similar technologies</h2>
+        <h2>Your rights</h2>
         <p>
-          This service does not use marketing or analytics cookies. It uses
-          essential browser storage (localStorage) for session identity and
-          player preferences. No cookie consent banner is shown for these
-          technically necessary functions. If non-essential trackers are added
-          later, this policy and consent handling will be updated.
-        </p>
-      </section>
-
-      <section className="space-y-2">
-        <h2>8. International transfers</h2>
-        <p>
-          [TODO: Describe whether hosting or upstream media requests may involve
-          transfers outside the EU/EEA and the safeguards used.]
-        </p>
-      </section>
-
-      <section className="space-y-2">
-        <h2>9. Your rights</h2>
-        <p>
-          Under the GDPR you may have the right to access, rectification,
-          erasure, restriction, data portability, and to object to processing
-          based on legitimate interests. You also have the right to lodge a
-          complaint with a supervisory authority. Because the service is largely
-          session-based with short server retention, many requests are fulfilled
-          by clearing your browser storage or letting rooms expire.
-        </p>
-        <p>
-          Contact: <strong>[TODO: Contact email]</strong>
-        </p>
-      </section>
-
-      <section className="space-y-2">
-        <h2>10. No obligation to provide data</h2>
-        <p>
-          You are not legally required to provide personal data. Without a
-          working connection and a session identity, you cannot use sync rooms.
-        </p>
-      </section>
-
-      <section className="space-y-2">
-        <h2>11. Updates</h2>
-        <p>
-          We may update this privacy policy when the service or legal
-          requirements change. The version published on this page applies.
-        </p>
-        <p>
-          Last updated: <strong>[TODO: Date]</strong>
+          You may request access, correction, deletion, restriction, or object
+          to legitimate-interest processing, and complain to a data protection
+          authority. In practice, clearing browser data or letting a room expire
+          removes most data. Contact:{" "}
+          <a
+            href="https://github.com/Yasamato"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="text-foreground underline underline-offset-4"
+          >
+            github.com/Yasamato
+          </a>
+          .
         </p>
       </section>
     </LegalPage>
