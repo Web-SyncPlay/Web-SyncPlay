@@ -119,7 +119,7 @@ export function LandingHero(): React.JSX.Element {
   }
 
   return (
-    <section className="relative isolate flex h-[calc(100dvh-6.5rem)] w-full flex-col overflow-hidden sm:h-[calc(100dvh-4.5rem)]">
+    <section className="relative isolate flex h-[calc(100dvh-5.5rem)] w-full flex-col overflow-hidden sm:h-[calc(100dvh-3.75rem)]">
       <div
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,oklch(0.55_0.18_230/0.22),transparent)]"
         aria-hidden

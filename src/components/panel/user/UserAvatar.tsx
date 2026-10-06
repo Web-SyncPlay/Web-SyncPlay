@@ -1,3 +1,4 @@
+import { avatarDataUri, avatarStyles } from "@/lib/avatar"
 import type { TypedRoomEventSender } from "@/lib/room-events"
 import { cn } from "@/lib/utils"
 import type { ParticipantState } from "@/zod/types"
@@ -14,17 +15,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "../../ui/tooltip"
-
-const avatarStyles = [
-  "adventurer",
-  "adventurer-neutral",
-  "avataaars",
-  "bottts",
-  "fun-emoji",
-  "lorelei",
-  "micah",
-  "pixel-art",
-] as const
 
 function AvatarFace({
   user,
@@ -46,7 +36,7 @@ function AvatarFace({
     >
       <AvatarImage
         className={bare ? "rounded-none" : undefined}
-        src={`https://api.dicebear.com/9.x/${user.avatarStyle}/svg?seed=${encodeURIComponent(user.username)}`}
+        src={avatarDataUri(user.avatarStyle, user.username)}
         alt={user.username}
       />
       <AvatarFallback className={bare ? "rounded-none" : undefined}>
