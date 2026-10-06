@@ -60,7 +60,7 @@ export default function PrivacyPage() {
           <li>
             Connection data (e.g. IP) via normal HTTP/WebSocket handling
           </li>
-          <li>Player preferences in localStorage (volume/mute)</li>
+          <li>Player preferences in localStorage (volume)</li>
           <li>
             Short-lived rate-limit counters (~60 seconds) for DDoS/abuse
             protection only
