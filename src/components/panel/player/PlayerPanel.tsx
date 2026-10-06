@@ -160,13 +160,14 @@ export function PlayerPanel({
   ]
 
   const playerRef = useRef<MediaPlayerInstance>(null)
-  const suppressOutgoingRef = useRef(false)
   const playbackRef = useRef(roomState.playback)
   const isMediaReadyRef = useRef(false)
   const bufferingSinceRef = useRef<number | null>(null)
   const participantStatusErrorRef = useRef<string | null>(null)
   const pendingSyncRef = useRef<PendingSyncState | null>(null)
   const playRetryTimerRef = useRef<number | undefined>(undefined)
+  const roomPaused = roomState.playback.paused
+  const roomPlaybackRate = roomState.playback.playbackRate
 
   const reportedItemErrorRef = useRef<string | null>(null)
   const proxyRenewAttemptedRef = useRef<string | null>(null)
@@ -183,7 +184,7 @@ export function PlayerPanel({
     [playbackError],
   )
 
-  const { applySyncToPlayer } = usePlayerSync()
+  const { applyClockToPlayer, nudgeTransport } = usePlayerSync()
   const { preferredVolume, handleVolumeChange, isMuted } = usePlayerVolume()
   const { canControlPlayback: canControlByRole } = usePlayerPermissions(
     roomState,
@@ -297,30 +298,6 @@ export function PlayerPanel({
     }
   }, [current?.id, playerSrc])
 
-  useEffect(() => {
-    if (canControlPlayback) {
-      return
-    }
-    const player = playerRef.current
-    if (!player) {
-      return
-    }
-
-    suppressOutgoingRef.current = true
-    try {
-      player.playbackRate = roomState.playback.playbackRate
-    } finally {
-      const timer = window.setTimeout(() => {
-        suppressOutgoingRef.current = false
-      }, 50)
-      return () => window.clearTimeout(timer)
-    }
-  }, [
-    canControlPlayback,
-    roomState.playback.playbackRate,
-    roomState.playback.videoLoop,
-  ])
-
   const getCurrentTimeMs = useCallback(() => {
     const player = playerRef.current
     if (!player) {
@@ -330,9 +307,9 @@ export function PlayerPanel({
     return Math.max(0, Math.floor(Number(player.currentTime ?? 0) * 1000))
   }, [])
 
-  const schedulePlayRetry = useCallback(
-    (player: MediaPlayerInstance, syncState: PendingSyncState) => {
-      if (syncState.paused) {
+  const scheduleTransportNudge = useCallback(
+    (player: MediaPlayerInstance) => {
+      if (playbackRef.current.paused) {
         return
       }
       if (playRetryTimerRef.current) {
@@ -349,25 +326,45 @@ export function PlayerPanel({
         if (!player.paused) {
           return
         }
-        suppressOutgoingRef.current = true
-        try {
-          void applySyncToPlayer({
-            player,
-            syncState: {
-              paused: false,
-              playbackRate: playbackRef.current.playbackRate,
-              timelineAnchorMs: playbackRef.current.timelineAnchorMs,
-              serverNowMs: playbackRef.current.serverNowMs,
-            },
-          }).playAttempt
-        } finally {
-          window.setTimeout(() => {
-            suppressOutgoingRef.current = false
-          }, 80)
-        }
+        void nudgeTransport({ player, paused: false }).playAttempt
       }, 350)
     },
-    [applySyncToPlayer],
+    [nudgeTransport],
+  )
+
+  const applyRoomClock = useCallback(
+    (player: MediaPlayerInstance, syncState: PendingSyncState) => {
+      try {
+        applyClockToPlayer({ player, syncState })
+        pendingSyncRef.current = null
+        // Declarative `paused`/`autoPlay` own transport; only nudge when the
+        // iframe provider drifts away from room authority.
+        if (!syncState.paused && player.paused) {
+          void nudgeTransport({ player, paused: false }).playAttempt
+          scheduleTransportNudge(player)
+        } else if (syncState.paused && player.paused === false) {
+          void nudgeTransport({ player, paused: true }).playAttempt
+        }
+      } catch {
+        pendingSyncRef.current = syncState
+        console.warn("[player] applyRoomClock failed", {
+          itemId: current?.id,
+          itemName: current?.name,
+          src: activePlaybackSrc,
+          viewType,
+          syncState,
+        })
+      }
+    },
+    [
+      activePlaybackSrc,
+      applyClockToPlayer,
+      current?.id,
+      current?.name,
+      nudgeTransport,
+      scheduleTransportNudge,
+      viewType,
+    ],
   )
 
   useEffect(() => {
@@ -376,7 +373,7 @@ export function PlayerPanel({
       return
     }
 
-    const syncState = {
+    const syncState: PendingSyncState = {
       paused: roomState.playback.paused,
       playbackRate: roomState.playback.playbackRate,
       timelineAnchorMs: roomState.playback.timelineAnchorMs,
@@ -396,43 +393,15 @@ export function PlayerPanel({
       return
     }
 
-    suppressOutgoingRef.current = true
-
-    try {
-      const result = applySyncToPlayer({ player, syncState })
-      pendingSyncRef.current = null
-      void result.playAttempt?.then(() => {
-        schedulePlayRetry(player, syncState)
-      })
-      schedulePlayRetry(player, syncState)
-    } catch {
-      pendingSyncRef.current = syncState
-      console.warn("[player] applySyncToPlayer failed (effect)", {
-        itemId: current?.id,
-        itemName: current?.name,
-        src: activePlaybackSrc,
-        viewType,
-        syncState,
-      })
-    }
-
-    const release = window.setTimeout(() => {
-      suppressOutgoingRef.current = false
-    }, 80)
-    return () => window.clearTimeout(release)
+    applyRoomClock(player, syncState)
   }, [
-    activePlaybackSrc,
-    applySyncToPlayer,
-    current?.id,
-    current?.name,
+    applyRoomClock,
     roomState.playback.paused,
     roomState.playback.playbackRate,
     roomState.playback.serverNowMs,
     roomState.playback.timelineAnchorMs,
     roomState.playback.videoLoop,
-    schedulePlayRetry,
     timeline.awaitingSeekTargetMs,
-    viewType,
   ])
 
   useEffect(() => {
@@ -441,9 +410,8 @@ export function PlayerPanel({
       return
     }
 
-    // Presence ticks used to fire every 250ms and rewrite full room state for
-    // every viewer. Only send when paused/loading/error change, time drifts
-    // meaningfully, or a slow heartbeat keeps lastSeen fresh.
+    // Presence ticks: only send when paused/loading/error change, time drifts,
+    // or a slow heartbeat keeps lastSeen fresh.
     const HEARTBEAT_MS = 2_000
     const TIME_DIRTY_MS = 750
     let lastSent = {
@@ -459,10 +427,6 @@ export function PlayerPanel({
     }
 
     const timer = window.setInterval(() => {
-      if (suppressOutgoingRef.current) {
-        return
-      }
-
       const next = {
         paused: Boolean(player.paused),
         currentTimeMs: Math.max(
@@ -492,56 +456,19 @@ export function PlayerPanel({
 
   const enforceServerPlaybackState = useCallback(() => {
     const player = playerRef.current
-    if (!player) {
-      return
-    }
-    if (!isMediaReadyRef.current) {
+    if (!player || !isMediaReadyRef.current) {
       return
     }
 
-    const syncState = playbackRef.current
-    suppressOutgoingRef.current = true
-
-    try {
-      const result = applySyncToPlayer({ player, syncState })
-      void result.playAttempt?.then(() => {
-        schedulePlayRetry(player, {
-          paused: syncState.paused,
-          playbackRate: syncState.playbackRate,
-          timelineAnchorMs: syncState.timelineAnchorMs,
-          serverNowMs: syncState.serverNowMs,
-          videoLoop: syncState.videoLoop !== "off",
-        })
-      })
-      schedulePlayRetry(player, {
-        paused: syncState.paused,
-        playbackRate: syncState.playbackRate,
-        timelineAnchorMs: syncState.timelineAnchorMs,
-        serverNowMs: syncState.serverNowMs,
-        videoLoop: syncState.videoLoop !== "off",
-      })
-    } catch {
-      // Ignore transient sync errors while provider is rebuilding.
-      console.warn("[player] applySyncToPlayer failed (enforce)", {
-        itemId: current?.id,
-        itemName: current?.name,
-        src: activePlaybackSrc,
-        viewType,
-        syncState,
-      })
-    } finally {
-      window.setTimeout(() => {
-        suppressOutgoingRef.current = false
-      }, 80)
+    const syncState: PendingSyncState = {
+      paused: playbackRef.current.paused,
+      playbackRate: playbackRef.current.playbackRate,
+      timelineAnchorMs: playbackRef.current.timelineAnchorMs,
+      serverNowMs: playbackRef.current.serverNowMs,
+      videoLoop: playbackRef.current.videoLoop !== "off",
     }
-  }, [
-    activePlaybackSrc,
-    applySyncToPlayer,
-    current?.id,
-    current?.name,
-    schedulePlayRetry,
-    viewType,
-  ])
+    applyRoomClock(player, syncState)
+  }, [applyRoomClock])
 
   useBufferingWatchdog({
     currentItem: current ? { id: current.id, name: current.name } : null,
@@ -552,7 +479,6 @@ export function PlayerPanel({
     bufferingSinceRef,
     participantStatusErrorRef,
     pendingSyncRef,
-    suppressOutgoingRef,
     roomPlayback: roomState.playback,
     setIsBuffering,
     setPlayerRemountNonce,
@@ -723,7 +649,10 @@ export function PlayerPanel({
           loop={roomState.playback.videoLoop !== "off"}
           crossOrigin={useCrossOriginAnonymous ? "anonymous" : undefined}
           playsInline
-          autoPlay={!roomState.playback.paused}
+          // Room playback is the transport authority — player follows.
+          paused={roomPaused}
+          autoPlay={!roomPaused}
+          playbackRate={roomPlaybackRate}
           {...(current?.isLive ? { streamType: "live" as const } : {})}
           muted={isMuted}
           className={`size-full ${isOtherUserSeeking ? "remote-seek-controls-hidden" : ""} ${!canControlPlayback ? "guest-controls-guard" : ""}`}
@@ -746,8 +675,6 @@ export function PlayerPanel({
               enforceServerPlaybackState()
               return
             }
-            // User-initiated control surface — update room authority here so
-            // transient provider play/pause events cannot own shared state.
             if (playbackRef.current.paused) {
               send("playback:play", { currentTimeMs: getCurrentTimeMs() })
             }
@@ -762,33 +689,54 @@ export function PlayerPanel({
               send("playback:pause", { currentTimeMs: getCurrentTimeMs() })
             }
           }}
+          onMediaSeekingRequest={(detail) => {
+            if (!canControlPlayback) {
+              enforceServerPlaybackState()
+              return
+            }
+            const targetMs = Math.max(0, Math.floor(Number(detail) * 1000))
+            if (timeline.seekPhase === "idle") {
+              timeline.beginSeek(targetMs)
+              return
+            }
+            timeline.updateSeek(targetMs)
+          }}
+          onMediaSeekRequest={(detail) => {
+            if (!canControlPlayback) {
+              enforceServerPlaybackState()
+              return
+            }
+            const targetMs = Math.max(0, Math.floor(Number(detail) * 1000))
+            timeline.endSeekPreview(targetMs)
+            timeline.commitSeek(targetMs)
+          }}
+          onMediaRateChangeRequest={(detail) => {
+            if (!canControlPlayback) {
+              enforceServerPlaybackState()
+              return
+            }
+            const nextRate = Number(detail)
+            if (!Number.isFinite(nextRate)) {
+              return
+            }
+            if (Math.abs(nextRate - playbackRef.current.playbackRate) < 0.001) {
+              return
+            }
+            send("playback:rate", { playbackRate: nextRate })
+          }}
           onPlay={() => {
             setIsBuffering(false)
             setPlaybackError(undefined)
             participantStatusErrorRef.current = null
             bufferingSinceRef.current = null
-
-            if (suppressOutgoingRef.current) {
-              return
-            }
-            if (!canControlPlayback) {
+            if (!canControlPlayback && playbackRef.current.paused) {
               enforceServerPlaybackState()
             }
-            // Do not send playback:play from media events — YouTube/autoplay
-            // echoes are not authoritative. User intent goes through request handlers.
           }}
           onPause={() => {
             setIsBuffering(false)
             bufferingSinceRef.current = null
-            if (suppressOutgoingRef.current) {
-              return
-            }
-            if (!canControlPlayback) {
-              enforceServerPlaybackState()
-              return
-            }
-            // Provider-driven pauses (buffer stalls, iframe quirks) must not
-            // rewrite room state. Pull local player back to room authority.
+            // Provider pauses must not mutate room state. Re-follow authority.
             if (!playbackRef.current.paused) {
               enforceServerPlaybackState()
             }
@@ -840,61 +788,7 @@ export function PlayerPanel({
                     serverNowMs: Date.now(),
                   }
                 : pending
-            suppressOutgoingRef.current = true
-
-            try {
-              const result = applySyncToPlayer({
-                player,
-                syncState: pendingToApply,
-              })
-              pendingSyncRef.current = null
-              void result.playAttempt?.then(() => {
-                schedulePlayRetry(player, pendingToApply)
-              })
-              schedulePlayRetry(player, pendingToApply)
-            } catch {
-              pendingSyncRef.current = pendingToApply
-              console.warn("[player] applySyncToPlayer failed (onCanPlay)", {
-                itemId: current?.id,
-                itemName: current?.name,
-                src: activePlaybackSrc,
-                viewType,
-                pendingToApply,
-              })
-            } finally {
-              window.setTimeout(() => {
-                suppressOutgoingRef.current = false
-              }, 80)
-            }
-          }}
-          onSeeked={(detail) => {
-            if (suppressOutgoingRef.current) {
-              return
-            }
-            if (!canControlPlayback) {
-              enforceServerPlaybackState()
-              return
-            }
-
-            const targetMs = Math.max(0, Math.floor(Number(detail) * 1000))
-            timeline.endSeekPreview(targetMs)
-            timeline.commitSeek(targetMs)
-          }}
-          onSeeking={(detail) => {
-            if (suppressOutgoingRef.current) {
-              return
-            }
-            if (!canControlPlayback) {
-              enforceServerPlaybackState()
-              return
-            }
-
-            const targetMs = Math.max(0, Math.floor(Number(detail) * 1000))
-            if (timeline.seekPhase === "idle") {
-              timeline.beginSeek(targetMs)
-              return
-            }
-            timeline.updateSeek(targetMs)
+            applyRoomClock(player, pendingToApply)
           }}
           onError={(detail: MediaErrorDetail) => {
             setPlaybackError(detail)
@@ -947,33 +841,11 @@ export function PlayerPanel({
               playerSrc,
             })
           }}
-          onRateChange={(detail) => {
-            if (suppressOutgoingRef.current) {
-              return
-            }
-            if (!canControlPlayback) {
-              enforceServerPlaybackState()
-              return
-            }
-
-            const nextRate = Number(detail)
-            if (!Number.isFinite(nextRate)) {
-              return
-            }
-            if (Math.abs(nextRate - playbackRef.current.playbackRate) < 0.001) {
-              return
-            }
-
-            send("playback:rate", { playbackRate: nextRate })
-          }}
           volume={preferredVolume}
           onVolumeChange={(detail) => {
             handleVolumeChange(detail)
           }}
           onMediaUserLoopChangeRequest={(detail) => {
-            if (suppressOutgoingRef.current) {
-              return
-            }
             if (!canControlPlayback) {
               enforceServerPlaybackState()
               return
@@ -987,9 +859,6 @@ export function PlayerPanel({
             send("playback:loop:video", { mode: nextMode })
           }}
           onEnded={() => {
-            if (suppressOutgoingRef.current) {
-              return
-            }
             if (!canControlPlayback) {
               enforceServerPlaybackState()
               return

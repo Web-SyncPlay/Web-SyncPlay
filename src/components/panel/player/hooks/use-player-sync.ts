@@ -2,27 +2,38 @@
 
 import {
   applyPlaybackSyncToPlayer,
+  nudgePlaybackTransport,
   type SyncablePlayer,
 } from "@/lib/apply-playback-sync"
 import type { PlaybackSyncState } from "@/lib/playback-sync"
 import { useCallback } from "react"
 
 export function usePlayerSync() {
-  const applySyncToPlayer = useCallback(
+  const applyClockToPlayer = useCallback(
     (config: {
       player: SyncablePlayer
       syncState: PlaybackSyncState
       driftThresholdSec?: number
     }) => {
       try {
-        return applyPlaybackSyncToPlayer(config)
+        return applyPlaybackSyncToPlayer({ ...config, mode: "clock" })
       } catch {
-        // Never allow sync application to crash event handlers.
         return { playAttempt: null }
       }
     },
     [],
   )
 
-  return { applySyncToPlayer }
+  const nudgeTransport = useCallback(
+    (config: { player: SyncablePlayer; paused: boolean }) => {
+      try {
+        return nudgePlaybackTransport(config)
+      } catch {
+        return { playAttempt: null }
+      }
+    },
+    [],
+  )
+
+  return { applyClockToPlayer, nudgeTransport }
 }

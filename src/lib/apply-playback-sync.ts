@@ -13,18 +13,53 @@ export type SyncablePlayer = {
 }
 
 /**
- * Apply authoritative room playback state to a local media element.
+ * Apply authoritative room playback clock to a local media element.
  *
- * Order matters for iframe providers (YouTube/Vimeo): seek before play/pause,
- * otherwise play() can resolve while the provider stays visually stuck, and a
- * post-play seek often cancels the just-started playback.
+ * Seek runs before any transport nudge: iframe providers (YouTube/Vimeo) often
+ * cancel a just-started play() when currentTime is assigned afterwards.
+ *
+ * `mode: "clock"` — rate + seek only (room transport is declarative via paused/autoPlay).
+ * `mode: "full"` — also imperatively play/pause (recovery / tests).
  */
 export function applyPlaybackSyncToPlayer(config: {
   player: SyncablePlayer
   syncState: PlaybackSyncState
   driftThresholdSec?: number
   nowMs?: number
+  mode?: "clock" | "full"
 }): { playAttempt: Promise<void> | null } {
+  const {
+    player,
+    syncState,
+    driftThresholdSec = 0.8,
+    nowMs = Date.now(),
+    mode = "full",
+  } = config
+
+  applyPlaybackClockToPlayer({
+    player,
+    syncState,
+    driftThresholdSec,
+    nowMs,
+  })
+
+  if (mode === "clock") {
+    return { playAttempt: null }
+  }
+
+  return nudgePlaybackTransport({
+    player,
+    paused: syncState.paused,
+  })
+}
+
+/** Rate + timeline only — use when `paused` / `autoPlay` are bound declaratively. */
+export function applyPlaybackClockToPlayer(config: {
+  player: Pick<SyncablePlayer, "playbackRate" | "currentTime">
+  syncState: PlaybackSyncState
+  driftThresholdSec?: number
+  nowMs?: number
+}): void {
   const { player, syncState, driftThresholdSec = 0.8, nowMs = Date.now() } =
     config
 
@@ -54,13 +89,27 @@ export function applyPlaybackSyncToPlayer(config: {
       // Ignore transient seek failures while provider is rebuilding.
     }
   }
+}
 
-  if (syncState.paused) {
-    try {
-      player.pause()
-    } catch {
-      // Ignore transient pause failures while provider is rebuilding.
+/** Imperative play/pause when local transport drifts from room authority. */
+export function nudgePlaybackTransport(config: {
+  player: Pick<SyncablePlayer, "paused" | "pause" | "play">
+  paused: boolean
+}): { playAttempt: Promise<void> | null } {
+  const { player, paused } = config
+
+  if (paused) {
+    if (player.paused === false || player.paused === undefined) {
+      try {
+        player.pause()
+      } catch {
+        // Ignore transient pause failures while provider is rebuilding.
+      }
     }
+    return { playAttempt: null }
+  }
+
+  if (player.paused === false) {
     return { playAttempt: null }
   }
 

@@ -24,7 +24,6 @@ export function useBufferingWatchdog(config: {
   bufferingSinceRef: RefObject<number | null>
   participantStatusErrorRef: RefObject<string | null>
   pendingSyncRef: RefObject<PendingSyncState | null>
-  suppressOutgoingRef: RefObject<boolean>
   roomPlayback: {
     paused: boolean
     playbackRate: number
@@ -44,7 +43,6 @@ export function useBufferingWatchdog(config: {
     bufferingSinceRef,
     participantStatusErrorRef,
     pendingSyncRef,
-    suppressOutgoingRef,
     roomPlayback,
     setIsBuffering,
     setPlayerRemountNonce,
@@ -99,12 +97,8 @@ export function useBufferingWatchdog(config: {
         }
 
         isMediaReadyRef.current = false
-        suppressOutgoingRef.current = true
         setIsBuffering(true)
         setPlayerRemountNonce((n) => n + 1)
-        window.setTimeout(() => {
-          suppressOutgoingRef.current = false
-        }, 200)
       },
       Math.max(250, remainingMs),
     )
@@ -125,7 +119,6 @@ export function useBufferingWatchdog(config: {
     roomPlayback.videoLoop,
     setIsBuffering,
     setPlayerRemountNonce,
-    suppressOutgoingRef,
     viewType,
   ])
 }
