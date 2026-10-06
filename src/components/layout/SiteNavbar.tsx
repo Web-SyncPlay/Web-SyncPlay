@@ -19,7 +19,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { env } from "@/env"
 import type { RoomRailTab } from "@/hooks/use-room-rail"
 import type { TypedRoomEventSender } from "@/lib/room-events"
 import { cn } from "@/lib/utils"
@@ -101,7 +100,7 @@ function SiteNavbarBrand(props: { roomId?: string }) {
           width={36}
           height={36}
         />
-        <span className="hidden sm:block">{env.NEXT_PUBLIC_APP_NAME}</span>
+        <span className="hidden sm:block">Web-SyncPlay</span>
       </Link>
       {roomId ? (
         <>

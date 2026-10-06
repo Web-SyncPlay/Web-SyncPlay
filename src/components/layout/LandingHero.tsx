@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { env } from "@/env"
 import { randomRoomId } from "@/lib/room-utils"
 import { cn } from "@/lib/utils"
 import { ArrowRight, Dice5, Play } from "lucide-react"
@@ -131,7 +130,7 @@ export function LandingHero(): React.JSX.Element {
             priority
           />
           <span className="font-heading text-3xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
-            {env.NEXT_PUBLIC_APP_NAME}
+            Web-SyncPlay
           </span>
         </Link>
 

@@ -2,26 +2,30 @@ services:
   web:
     build: .
     restart: unless-stopped
+    # Optional project `.env` (copy from `.env.example`). Not required to start.
+    env_file:
+      - path: .env
+        required: false
     environment:
+      # Always use the compose Valkey service (overrides VALKEY_URL from `.env`).
       VALKEY_URL: redis://valkey:6379
-      FALLBACK_DEFAULT_MEDIA_URL: https://youtu.be/uD4izuDMUQA
-      ROOM_PARTICIPANTS_LIMIT: 100
-      ROOM_HISTORY_LIMIT: 100
-      ROOM_ACTION_LOG_LIMIT: 500
-      WS_HEARTBEAT_INTERVAL_MS: 5000
+      # Image is production; do not inherit NODE_ENV=development from a local `.env`.
+      NODE_ENV: production
     ports:
       # Bind IPv4 loopback explicitly so another local forwarder (e.g. VS Code
       # "Ports" on 127.0.0.1:3000) cannot steal IPv4 traffic from Docker's
       # 0.0.0.0 publish — that makes browsers hang while curl localhost (IPv6) works.
       - "127.0.0.1:3000:3000"
     depends_on:
-      - valkey
+      valkey:
+        condition: service_healthy
 
   valkey:
     image: valkey/valkey:9
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      # Loopback only — for `bun run dev` against compose Valkey; not LAN-reachable.
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "sh", "-c", "valkey-cli ping"]
       interval: 10s

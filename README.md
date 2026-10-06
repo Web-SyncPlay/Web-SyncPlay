@@ -38,6 +38,7 @@ Presence ticks never rewrite full Redis room state. Media relay caches yt-dlp ex
 ```bash
 bun install
 cp .env.example .env
+# Needs Valkey at VALKEY_URL — e.g. docker compose up -d valkey
 bun run dev
 ```
 
@@ -74,24 +75,61 @@ Control embed URLs are minted via `POST /api/control/token` and include `#uid=&s
 
 ## Operator / ops
 
-Set `OPS_SECRET` in production. Examples:
+Set `OPS_SECRET` in production (ops routes return 503 if unset). Examples:
 
 ```bash
-curl -X POST -H "Authorization: Bearer $OPS_SECRET" http://localhost:3000/api/rooms/cleanup
-curl -X POST -H "Authorization: Bearer $OPS_SECRET" http://localhost:3000/api/playlist/defaults/refresh
+curl -X POST -H "Authorization: Bearer $OPS_SECRET" http://127.0.0.1:3000/api/rooms/cleanup
+curl -X POST -H "Authorization: Bearer $OPS_SECRET" http://127.0.0.1:3000/api/playlist/defaults/refresh
 ```
 
 Health check: `GET /api/health` (Valkey ping).
 
 Key env vars (see `.env.example`): `VALKEY_URL`, `YTDLP_*`, `OPS_SECRET`, `CONTROL_TOKEN_TTL_SECONDS`, `PROXY_ALLOW_PRIVATE_URLS`, `WS_HEARTBEAT_INTERVAL_MS`, room limits. Fixed in code: WS heartbeat timeout = 3× interval; yt-dlp lock/lease timings from `YTDLP_*`; room TTL 1h; proxy token 7d; coalesce / local-media / HLS cache intervals.
 
-## Production
+## Production (Docker Compose)
+
+### Quick deploy (pull image)
+
+Save as `docker-compose.yml`, set `OPS_SECRET`, then run `docker compose up -d`:
+
+```yaml
+services:
+  web:
+    image: websyncplay/websyncplay:latest
+    restart: unless-stopped
+    environment:
+      VALKEY_URL: redis://valkey:6379
+      # Required for /api ops endpoints in production
+      OPS_SECRET: change-me-to-a-long-random-string
+    ports:
+      - "3000:3000"
+    depends_on:
+      valkey:
+        condition: service_healthy
+
+  valkey:
+    image: valkey/valkey:9
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "sh", "-c", "valkey-cli ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+```
+
+Open [http://localhost:3000](http://localhost:3000). Put a reverse proxy (TLS) in front for public internet. Optional knobs (`YTDLP_*`, room limits, etc.) go under `web.environment` — see `.env.example`.
+
+### From this repo (build locally)
 
 ```bash
+cp .env.example .env
+# Uncomment and set OPS_SECRET in .env (required for ops endpoints in production)
 docker compose up -d --build
 ```
 
-Open [http://127.0.0.1:3000](http://127.0.0.1:3000). Compose publishes IPv4 loopback only, so the stack is not reachable from other machines on the LAN.
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
+
+The repo compose loads optional `.env` into the web service, then forces `VALKEY_URL=redis://valkey:6379` and `NODE_ENV=production` (so a local-dev `.env` stays safe to reuse). HTTP is published on `127.0.0.1:3000` and Valkey on `127.0.0.1:6379` — neither is reachable from other LAN machines. Use the Valkey publish when running `bun run dev` against compose Valkey (`VALKEY_URL=redis://localhost:6379`).
 
 ### Troubleshooting: browser hangs, curl works
 
@@ -110,7 +148,7 @@ Stop the extra forwarder (or close that editor window’s Ports panel), then `do
 
 ### Runbook notes
 
-- Rotate `OPS_SECRET` by updating env and restarting
+- Rotate `OPS_SECRET` by updating `.env` and restarting (`docker compose up -d`)
 - Control tokens expire with `CONTROL_TOKEN_TTL_SECONDS` (default 12h); mint again from the room View menu
 - Proxy tokens reuse by upstream URL hash; abandoned keys expire (7d sliding TTL)
 - Raise `YTDLP_MAX_CONCURRENT` carefully under load; prefer horizontal Valkey + sticky or shared identity keys (already Redis-backed)
