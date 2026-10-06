@@ -1,3 +1,5 @@
+"use client"
+
 import {
   avatarDataUri,
   avatarStyleLabel,
@@ -8,6 +10,7 @@ import {
 import type { TypedRoomEventSender } from "@/lib/room-events"
 import { cn } from "@/lib/utils"
 import type { ParticipantState } from "@/zod/types"
+import { useEffect, useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar"
 import {
   DropdownMenu,
@@ -17,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "../../ui/dropdown-menu"
 import { ItemMedia } from "../../ui/item"
+import { Spinner } from "../../ui/spinner"
 import {
   Tooltip,
   TooltipContent,
@@ -25,30 +29,51 @@ import {
 
 function AvatarFace({
   user,
+  style,
   className,
   /** Drop the default Avatar edge ring so it doesn't fight the card border. */
   bare = false,
+  pending = false,
+  compact = false,
 }: {
   user: ParticipantState
+  style: string
   className?: string
   bare?: boolean
+  pending?: boolean
+  compact?: boolean
 }) {
   return (
     <Avatar
       className={cn(
-        "size-16 rounded-none",
+        "relative size-16 rounded-none",
         bare && "after:hidden",
         className,
       )}
     >
       <AvatarImage
-        className={bare ? "rounded-none" : undefined}
-        src={avatarDataUri(user.avatarStyle, user.username)}
+        key={style}
+        className={cn(
+          "animate-in fade-in-0 duration-200",
+          bare ? "rounded-none" : undefined,
+          pending && "opacity-50 transition-opacity duration-200",
+        )}
+        src={avatarDataUri(style, user.username)}
         alt={user.username}
       />
       <AvatarFallback className={bare ? "rounded-none" : undefined}>
         {user.username.slice(0, 2).toUpperCase()}
       </AvatarFallback>
+      {pending ? (
+        <span
+          className="absolute inset-0 z-10 flex items-center justify-center bg-background/35 animate-in fade-in-0 duration-150"
+          aria-hidden
+        >
+          <Spinner
+            className={cn("text-foreground", compact ? "size-3.5" : "size-5")}
+          />
+        </span>
+      ) : null}
     </Avatar>
   )
 }
@@ -65,7 +90,19 @@ export function UserAvatar({
   compact?: boolean
 }) {
   const avatarClassName = compact ? "size-8 rounded-full" : "size-16"
-  const selectedStyle = resolveStyle(user.avatarStyle)
+  const confirmedStyle = resolveStyle(user.avatarStyle)
+  const [pendingStyle, setPendingStyle] = useState<AvatarStyleId | null>(null)
+
+  useEffect(() => {
+    if (pendingStyle === null) return
+    if (confirmedStyle === pendingStyle) {
+      setPendingStyle(null)
+    }
+  }, [confirmedStyle, pendingStyle])
+
+  const displayStyle = pendingStyle ?? confirmedStyle
+  const isPending = pendingStyle !== null
+
   const face = isSelf ? (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -75,20 +112,27 @@ export function UserAvatar({
             ? "rounded-full hover:ring-2 hover:ring-primary/40"
             : "rounded-none hover:brightness-95",
         )}
+        aria-busy={isPending || undefined}
       >
         <AvatarFace
           user={user}
+          style={displayStyle}
           className={avatarClassName}
           bare={!compact}
+          pending={isPending}
+          compact={compact}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         <DropdownMenuRadioGroup
-          value={selectedStyle}
+          value={displayStyle}
           onValueChange={(style) => {
             if (!style) return
+            const next = style as AvatarStyleId
+            if (next === displayStyle) return
+            setPendingStyle(next)
             send("participant:update", {
-              avatarStyle: style as AvatarStyleId,
+              avatarStyle: next,
             })
           }}
         >
@@ -101,7 +145,13 @@ export function UserAvatar({
       </DropdownMenuContent>
     </DropdownMenu>
   ) : (
-    <AvatarFace user={user} className={avatarClassName} bare={!compact} />
+    <AvatarFace
+      user={user}
+      style={displayStyle}
+      className={avatarClassName}
+      bare={!compact}
+      compact={compact}
+    />
   )
 
   if (compact) {
