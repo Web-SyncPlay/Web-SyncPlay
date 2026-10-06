@@ -1,12 +1,17 @@
 import {
   createLocalMediaByteStream,
   ensureRelaySubscriber,
+  LocalMediaRelayError,
 } from "@/server/media/local-media-relay"
 import {
   getLocalMediaEntry,
   touchLocalMediaEntry,
 } from "@/server/media/local-media-store"
 import { getRoomStateStore } from "@/server/redis/state-store"
+import {
+  httpStatusForLocalMediaError,
+  localMediaErrorMessage,
+} from "@/lib/local-media-errors"
 
 function parseRangeHeader(rangeHeader: string | null, totalLength: number) {
   if (!rangeHeader) {
@@ -30,6 +35,20 @@ function parseRangeHeader(rangeHeader: string | null, totalLength: number) {
   }
 }
 
+function errorResponse(
+  code: Parameters<typeof localMediaErrorMessage>[0],
+  extra?: Record<string, string>,
+) {
+  return Response.json(
+    {
+      error: localMediaErrorMessage(code),
+      code,
+      ...extra,
+    },
+    { status: httpStatusForLocalMediaError(code) },
+  )
+}
+
 async function handleLocalMediaRequest(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -40,16 +59,17 @@ async function handleLocalMediaRequest(
   const { id } = await context.params
   const entry = await getLocalMediaEntry(id)
   if (!entry) {
-    return Response.json({ error: "Local media not found" }, { status: 404 })
+    return errorResponse("not_found")
   }
 
   const store = await getRoomStateStore()
   const onlineUsers = await store.getWsPresenceUserIds(entry.roomId)
   if (!onlineUsers.has(entry.ownerUserId)) {
-    return Response.json(
-      { error: "Local media owner is offline" },
-      { status: 503 },
-    )
+    return errorResponse("owner_offline")
+  }
+
+  if (!entry.providerReady) {
+    return errorResponse("provider_unavailable")
   }
 
   // Keep metadata alive while viewers are actively pulling ranges.
@@ -64,6 +84,7 @@ async function handleLocalMediaRequest(
       status: 416,
       headers: {
         "content-range": `bytes */${entry.sizeBytes}`,
+        "x-local-media-code": "invalid_range",
       },
     })
   }
@@ -71,7 +92,9 @@ async function handleLocalMediaRequest(
   const headers = new Headers({
     "content-type": entry.mimeType,
     "accept-ranges": "bytes",
-    "cache-control": "private, no-store",
+    // Short private cache helps the same viewer rebuffer without re-hitting relay;
+    // cross-viewer sharing is handled by the server block cache.
+    "cache-control": "private, max-age=15",
   })
 
   const start = rangeInfo?.start ?? 0
@@ -102,16 +125,18 @@ async function handleLocalMediaRequest(
       headers,
     })
   } catch (error) {
-    console.error("[local-media] relay failed", error)
-    return Response.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to fetch bytes from provider",
-      },
-      { status: 503 },
-    )
+    const code =
+      error instanceof LocalMediaRelayError ? error.code : "relay_failed"
+    console.error("[local-media] relay failed", {
+      mediaId: id,
+      roomId: entry.roomId,
+      ownerUserId: entry.ownerUserId,
+      start,
+      end,
+      code,
+      error,
+    })
+    return errorResponse(code)
   }
 }
 

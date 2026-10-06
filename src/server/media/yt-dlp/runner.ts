@@ -23,10 +23,14 @@ function releaseSlot() {
   if (next) next()
 }
 
+export type YtDlpRunFailureKind = "timeout" | "spawn_error" | "truncated"
+
 export type YtDlpRunResult = {
   code: number
   stdout: string
   stderr: string
+  failureKind?: YtDlpRunFailureKind | null
+  spawnErrorCode?: string
 }
 
 /**
@@ -52,6 +56,15 @@ async function runYtDlpInner(args: string[]): Promise<YtDlpRunResult> {
     let stdout = ""
     let stderr = ""
     let truncated = false
+    let timedOut = false
+    let spawnErrorCode: string | undefined
+    let settled = false
+
+    const settle = (result: YtDlpRunResult) => {
+      if (settled) return
+      settled = true
+      resolve(result)
+    }
 
     const appendCapped = (target: "stdout" | "stderr", chunk: Buffer) => {
       const text = chunk.toString()
@@ -85,6 +98,7 @@ async function runYtDlpInner(args: string[]): Promise<YtDlpRunResult> {
     })
 
     const timer = setTimeout(() => {
+      timedOut = true
       try {
         proc.kill("SIGKILL")
       } catch {
@@ -97,11 +111,31 @@ async function runYtDlpInner(args: string[]): Promise<YtDlpRunResult> {
       if (truncated && !stderr.includes("output truncated")) {
         stderr = `${stderr}\nyt-dlp output truncated after ${MAX_OUTPUT_BYTES} bytes`.trim()
       }
-      resolve({ code: code ?? 1, stdout, stderr })
+      const failureKind: YtDlpRunFailureKind | null = timedOut
+        ? "timeout"
+        : truncated
+          ? "truncated"
+          : spawnErrorCode
+            ? "spawn_error"
+            : null
+      settle({
+        code: code ?? 1,
+        stdout,
+        stderr,
+        failureKind,
+        spawnErrorCode,
+      })
     })
-    proc.on("error", () => {
+    proc.on("error", (err: NodeJS.ErrnoException) => {
       clearTimeout(timer)
-      resolve({ code: 1, stdout, stderr })
+      spawnErrorCode = err.code ?? "SPAWN_ERROR"
+      settle({
+        code: 1,
+        stdout,
+        stderr: stderr || err.message,
+        failureKind: "spawn_error",
+        spawnErrorCode,
+      })
     })
   })
 }

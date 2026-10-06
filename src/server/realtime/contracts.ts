@@ -1,6 +1,7 @@
 import type { ClientEventType } from "@/lib/room-events"
 import {
   localMediaChunkSchema,
+  localMediaReadySchema,
   participantRoleUpdateSchema,
   participantUpdateSchema,
   playbackLoopModeSchema,
@@ -41,6 +42,7 @@ export const roomMessageSchemas = {
   "playlist:retry": playlistRetrySchema,
   "playlist:item:error": playlistItemErrorSchema,
   "local-media:chunk": localMediaChunkSchema,
+  "local-media:ready": localMediaReadySchema,
   "viewer:media:preferences": viewerMediaPreferencesSchema,
   "playlist:rename": playlistRenameSchema,
   "playlist:reorder": playlistReorderSchema,

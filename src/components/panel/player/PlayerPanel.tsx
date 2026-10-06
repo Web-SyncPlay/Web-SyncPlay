@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/empty"
 import { getAdjacentPlaylistIndex, inferMediaViewType } from "@/lib/playback-sync"
 import { getLocalMediaObjectUrl } from "@/lib/local-media-provider"
+import { localMediaErrorMessage } from "@/lib/local-media-errors"
 import {
   MediaPlayer,
   MediaProvider,
@@ -289,7 +290,7 @@ export function PlayerPanel({
 
     if (reportedItemErrorRef.current === current.id) return
     reportedItemErrorRef.current = current.id
-    toast.error("Local media owner is offline")
+    toast.error(localMediaErrorMessage("owner_offline"))
   }, [current, roomState.participants])
 
   useEffect(() => {
@@ -811,9 +812,28 @@ export function PlayerPanel({
               activePlaybackSrc.includes("/api/media/proxy/") ||
               (current?.playableUrl?.includes("/api/media/proxy/") ?? false)
             const looksExpiredOrMissing =
-              /\b404\b/i.test(message) ||
-              message.toLowerCase().includes("not found") ||
-              message.toLowerCase().includes("expired")
+              /\b(401|403|404|409)\b/i.test(message) ||
+              /not found|expired|upstream_expired|failed to fetch upstream/i.test(
+                message,
+              )
+
+            const localFileUserMessage = (() => {
+              if (current?.sourceKind !== "local_file") return null
+              const lower = message.toLowerCase()
+              if (/\b404\b/.test(message) || lower.includes("not found")) {
+                return localMediaErrorMessage("not_found")
+              }
+              if (/\b503\b/.test(message) || lower.includes("unavailable")) {
+                if (lower.includes("offline")) {
+                  return localMediaErrorMessage("owner_offline")
+                }
+                if (lower.includes("timed out") || lower.includes("timeout")) {
+                  return localMediaErrorMessage("provider_timeout")
+                }
+                return localMediaErrorMessage("provider_unavailable")
+              }
+              return localMediaErrorMessage("relay_failed")
+            })()
 
             if (
               current &&
@@ -838,15 +858,18 @@ export function PlayerPanel({
               reportedItemErrorRef.current !== current.id
             ) {
               reportedItemErrorRef.current = current.id
-              toast.error(message)
+              const userMessage = localFileUserMessage ?? message
+              toast.error(userMessage)
               send("playlist:item:error", {
                 itemId: current.id,
-                error: message,
+                error: userMessage,
               })
             }
             console.error("[player] playback error", {
               detail,
               message,
+              userMessage: localFileUserMessage ?? message,
+              sourceKind: current?.sourceKind,
               source: activePlaybackSrc,
               playerSrc,
             })

@@ -14,6 +14,7 @@ import {
   playbackRateSchema,
   playbackSeekSchema,
   playbackSetPausedSchema,
+  localMediaReadySchema,
   playlistAddLocalSchema,
   playlistAddUrlSchema,
   playlistItemErrorSchema,
@@ -182,6 +183,18 @@ describe("playlist payload interfaces", () => {
       playlistAddLocalSchema.safeParse({
         localMediaId: "m1",
         name: "clip",
+      }).success,
+    ).toBe(false)
+    expect(
+      localMediaReadySchema.safeParse({
+        localMediaId: "00000000-0000-4000-8000-000000000001",
+        ready: true,
+      }).success,
+    ).toBe(true)
+    expect(
+      localMediaReadySchema.safeParse({
+        localMediaId: "not-a-uuid",
+        ready: false,
       }).success,
     ).toBe(false)
     expect(

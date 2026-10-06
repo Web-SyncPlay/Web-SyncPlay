@@ -12,6 +12,10 @@ import {
   roomStillExists,
 } from "@/server/media/proxy-token"
 import {
+  isStaleUpstreamStatus,
+  scheduleStaleUpstreamRefresh,
+} from "@/server/media/stale-upstream-refresh"
+import {
   clientIpFromRequest,
   consumeRateLimit,
 } from "@/server/security/rate-limit"
@@ -171,6 +175,14 @@ export async function GET(
       headers: buildUpstreamHeaders(request, payload),
       redirect: "manual",
     })
+  }
+
+  if (isStaleUpstreamStatus(response.status)) {
+    void scheduleStaleUpstreamRefresh(payload)
+    return NextResponse.json(
+      { error: "upstream_expired", retryable: true },
+      { status: 409 },
+    )
   }
 
   if (!response.ok || !response.body) {

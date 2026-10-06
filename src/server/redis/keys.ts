@@ -95,6 +95,21 @@ export const keys = {
     return `media:ytdlp:extract:${urlHash}`
   },
 
+  /** Short-lived SET NX lock so only one instance runs yt-dlp per URL. */
+  mediaYtDlpLock(urlHash: string) {
+    return `media:ytdlp:lock:${urlHash}`
+  },
+
+  /** Heartbeat lease while a playlist item resolve is in progress. */
+  mediaYtDlpResolveLease(roomId: string, itemId: string) {
+    return `media:ytdlp:resolve-lease:${roomId}:${itemId}`
+  },
+
+  /** SET of `roomId\\titemId` pending resolves for crash reclaim. */
+  mediaYtDlpPendingResolves() {
+    return "media:ytdlp:pending-resolves"
+  },
+
   /** HASH userId -> userSecret for participant identity continuity */
   roomIdentity(roomId: string) {
     return `${ROOM_IDENTITY_PREFIX}${roomId}${ROOM_IDENTITY_SUFFIX}`
@@ -114,6 +129,16 @@ export const keys = {
 
   localMediaEntry(id: string) {
     return `${LOCAL_MEDIA_PREFIX}${id}`
+  },
+
+  /** Raw aligned media block bytes shared across instances */
+  localMediaBlock(mediaId: string, blockStart: number) {
+    return `${LOCAL_MEDIA_PREFIX}block:${mediaId}:${blockStart}`
+  },
+
+  /** SET of blockStart values for a media id (for invalidate without SCAN) */
+  localMediaBlockIndex(mediaId: string) {
+    return `${LOCAL_MEDIA_PREFIX}blocks:${mediaId}`
   },
 
   /** SET localMediaId for a given room+ownerUserId */

@@ -51,6 +51,7 @@ export function PlaylistAddMediaControls(props: {
         mimeType,
         sizeBytes: file.size,
       })
+      send("local-media:ready", { localMediaId, ready: true })
       toast.success("Sharing local media (streamed from this browser)")
     } catch (error) {
       console.error("[playlist] failed local media share", error)

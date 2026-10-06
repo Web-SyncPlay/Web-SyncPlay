@@ -1,8 +1,10 @@
 import { env } from "@/env"
 import { appendActionLog } from "@/server/log"
 import { createLocalMediaEntry } from "@/server/media/local-media-store"
-import { invalidateYtDlpExtractCache } from "@/server/media/yt-dlp"
-import { resolvePlaylistItem } from "@/server/realtime/services/playlist-resolve"
+import {
+  resolvePlaylistItem,
+  reresolveRemotePlaylistItem,
+} from "@/server/realtime/services/playlist-resolve"
 import { nextMonotonicMs } from "@/server/realtime/services/timeline"
 import { consumeRateLimit } from "@/server/security/rate-limit"
 import {
@@ -140,6 +142,8 @@ export const handlePlaylistAddLocal: RoomMessageHandler = async (ctx, data) => {
       filename: parsed.data.name,
       mimeType: parsed.data.mimeType,
       sizeBytes: parsed.data.sizeBytes,
+      // Client registers the File before sending playlist:add:local.
+      providerReady: true,
     })
   } catch (error) {
     console.error("[playlist] failed to register local media metadata", error)
@@ -209,40 +213,25 @@ export const handlePlaylistRetry: RoomMessageHandler = async (ctx, data) => {
     return
   }
 
-  let sourceUrl: string | undefined
-  let itemId: string | undefined
+  // Permission / item gate only — mutation happens in reresolveRemotePlaylistItem.
+  let canRetry = false
+  await mutateControlledRoomMessage(ctx, (state) => {
+    const item = state.playlist.find(
+      (entry) => entry.id === parsed.data.itemId,
+    )
+    if (!item) return false
+    if (item.blockedReason === "local_owner_offline") return false
+    if (item.sourceKind !== "remote_url") return false
+    canRetry = true
+    return false
+  })
 
-  await mutateControlledRoomMessage(
-    ctx,
-    (state) => {
-      const item = state.playlist.find((entry) => entry.id === parsed.data.itemId)
-      if (!item) return false
-      if (item.blockedReason === "local_owner_offline") {
-        return false
-      }
-      if (item.sourceKind !== "remote_url") {
-        return false
-      }
-      itemId = item.id
-      sourceUrl = item.sourceUrl
-      item.ingestStatus = "resolving"
-      item.ingestError = undefined
-      return true
-    },
-    { kind: "snapshot" },
-  )
+  if (!canRetry) return
 
-  if (!itemId || !sourceUrl) {
-    return
-  }
-
-  await invalidateYtDlpExtractCache(sourceUrl)
-
-  await resolvePlaylistItem({
+  await reresolveRemotePlaylistItem({
     store: ctx.store,
     roomId: ctx.roomId,
-    itemId,
-    sourceUrl,
+    itemId: parsed.data.itemId,
   })
 }
 

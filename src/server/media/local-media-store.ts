@@ -1,5 +1,6 @@
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
+import { invalidateLocalMediaBlockCache } from "@/server/media/local-media-block-cache"
 
 export type LocalMediaEntry = {
   id: string
@@ -8,6 +9,8 @@ export type LocalMediaEntry = {
   filename: string
   mimeType: string
   sizeBytes: number
+  /** True while the owning browser tab still holds the File for relay. */
+  providerReady: boolean
   createdAt: number
   expiresAt: number
 }
@@ -68,6 +71,8 @@ export async function createLocalMediaEntry(input: {
   filename: string
   mimeType: string
   sizeBytes: number
+  /** Defaults false; set true when the provider already holds the File. */
+  providerReady?: boolean
 }) {
   const createdAt = Date.now()
   const entry: LocalMediaEntry = {
@@ -77,6 +82,7 @@ export async function createLocalMediaEntry(input: {
     filename: input.filename,
     mimeType: input.mimeType,
     sizeBytes: input.sizeBytes,
+    providerReady: input.providerReady ?? false,
     createdAt,
     expiresAt: createdAt + LOCAL_MEDIA_TTL_MS,
   }
@@ -104,12 +110,19 @@ export async function createLocalMediaEntry(input: {
   return entry
 }
 
+function normalizeEntry(entry: LocalMediaEntry): LocalMediaEntry {
+  return {
+    ...entry,
+    providerReady: entry.providerReady === true,
+  }
+}
+
 export async function getLocalMediaEntry(id: string) {
   try {
     const client = await getCommandClient()
     const raw = await client.get(keys.localMediaEntry(id))
     if (raw) {
-      const entry = JSON.parse(raw) as LocalMediaEntry
+      const entry = normalizeEntry(JSON.parse(raw) as LocalMediaEntry)
       if (entry.expiresAt <= Date.now()) {
         await client.del(keys.localMediaEntry(id))
         forget(id)
@@ -128,12 +141,70 @@ export async function getLocalMediaEntry(id: string) {
     forget(id)
     return null
   }
-  return cached
+  return normalizeEntry(cached)
+}
+
+async function persistEntry(entry: LocalMediaEntry) {
+  remember(entry)
+  try {
+    const client = await getCommandClient()
+    await client.set(keys.localMediaEntry(entry.id), JSON.stringify(entry), {
+      EX: LOCAL_MEDIA_TTL_SECONDS,
+    })
+    await client.expire(
+      keys.localMediaOwnerIndex(entry.roomId, entry.ownerUserId),
+      LOCAL_MEDIA_TTL_SECONDS,
+    )
+  } catch (error) {
+    console.warn("[local-media] redis metadata write failed", error)
+  }
+}
+
+export async function setLocalMediaProviderReady(
+  id: string,
+  ready: boolean,
+  opts?: { ownerUserId?: string },
+) {
+  const entry = await getLocalMediaEntry(id)
+  if (!entry) return null
+  if (opts?.ownerUserId && entry.ownerUserId !== opts.ownerUserId) {
+    return null
+  }
+  if (entry.providerReady === ready) return entry
+  entry.providerReady = ready
+  await persistEntry(entry)
+  return entry
+}
+
+/** Mark all of an owner's entries as not ready (e.g. any providing socket closed). */
+export async function clearLocalMediaProviderReadyForOwner(
+  roomId: string,
+  ownerUserId: string,
+) {
+  const key = ownerIndexKey(roomId, ownerUserId)
+  const memoryIds = [...(memory().ownerIndex.get(key) ?? new Set<string>())]
+  let redisIds: string[] = []
+
+  try {
+    const client = await getCommandClient()
+    redisIds = await client.sMembers(
+      keys.localMediaOwnerIndex(roomId, ownerUserId),
+    )
+  } catch {
+    // Memory index is enough for same-node.
+  }
+
+  const ids = new Set([...memoryIds, ...redisIds])
+  await Promise.all(
+    [...ids].map((id) => setLocalMediaProviderReady(id, false, { ownerUserId })),
+  )
+  return ids.size
 }
 
 export async function deleteLocalMediaEntry(id: string) {
   const cached = memory().entries.get(id)
   forget(id)
+  await invalidateLocalMediaBlockCache(id)
 
   try {
     const client = await getCommandClient()

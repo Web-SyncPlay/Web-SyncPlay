@@ -76,6 +76,11 @@ export const localMediaChunkSchema = z.object({
   error: z.string().max(300).optional(),
 })
 
+export const localMediaReadySchema = z.object({
+  localMediaId: z.string().uuid(),
+  ready: z.boolean(),
+})
+
 export const playlistRetrySchema = z.object({
   itemId: z.string().min(1),
 })

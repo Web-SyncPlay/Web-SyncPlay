@@ -3,10 +3,12 @@ export type YtDlpFailureClassification =
   | "not_found"
   | "login_required"
   | "network"
+  | "timeout"
+  | "binary_missing"
   | "unknown"
 
 const NOT_LIVE_PATTERNS = [
-  /not live/i,
+  /not(?:\s+\w+){0,2}\s+live/i,
   /offline/i,
   /UserNotLive/i,
   /does not have a live stream/i,
@@ -81,4 +83,39 @@ export function classifyYtDlpStderr(stderr: string): {
     classification: "unknown",
     userMessage: snippet,
   }
+}
+
+export function classifyYtDlpRunFailure(input: {
+  stderr: string
+  failureKind?: "timeout" | "spawn_error" | "truncated" | null
+  spawnErrorCode?: string
+}): {
+  classification: YtDlpFailureClassification
+  userMessage: string
+} {
+  if (input.failureKind === "timeout") {
+    return {
+      classification: "timeout",
+      userMessage: "Timed out while resolving media. Try again.",
+    }
+  }
+  if (input.failureKind === "spawn_error") {
+    if (input.spawnErrorCode === "ENOENT") {
+      return {
+        classification: "binary_missing",
+        userMessage: "Media resolver is not available on this server.",
+      }
+    }
+    return {
+      classification: "unknown",
+      userMessage: "Could not start media resolver on this server.",
+    }
+  }
+  if (input.failureKind === "truncated") {
+    return {
+      classification: "unknown",
+      userMessage: "Media metadata from this URL was too large to process.",
+    }
+  }
+  return classifyYtDlpStderr(input.stderr)
 }

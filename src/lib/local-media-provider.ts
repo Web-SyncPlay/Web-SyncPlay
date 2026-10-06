@@ -6,6 +6,9 @@
  * range reads. Blob object URLs are only for the provider's own player.
  */
 
+import type { TypedRoomEventSender } from "@/lib/room-events"
+import type { RoomState } from "@/zod/types"
+
 type LocalMediaRecord = {
   file: File
   objectUrl: string | null
@@ -34,6 +37,10 @@ export function getLocalMediaFile(localMediaId: string) {
   return store().get(localMediaId)?.file ?? null
 }
 
+export function listLocalMediaIds() {
+  return [...store().keys()]
+}
+
 export function getLocalMediaObjectUrl(localMediaId: string) {
   const record = store().get(localMediaId)
   if (!record) return null
@@ -50,6 +57,30 @@ export function unregisterLocalMediaFile(localMediaId: string) {
     URL.revokeObjectURL(record.objectUrl)
   }
   store().delete(localMediaId)
+}
+
+/**
+ * After join/reconnect: announce ready for Files we still hold, and
+ * ready:false for playlist local items we own but no longer have.
+ */
+export function announceLocalMediaProviderReady(
+  send: TypedRoomEventSender,
+  roomState: RoomState | null,
+  userId: string,
+) {
+  const held = new Set(listLocalMediaIds())
+  for (const localMediaId of held) {
+    send("local-media:ready", { localMediaId, ready: true })
+  }
+
+  if (!roomState) return
+  for (const item of roomState.playlist) {
+    if (item.sourceKind !== "local_file") continue
+    if (item.localOriginUserId !== userId) continue
+    const localMediaId = item.localMediaId
+    if (!localMediaId || held.has(localMediaId)) continue
+    send("local-media:ready", { localMediaId, ready: false })
+  }
 }
 
 export function arrayBufferToBase64(buffer: ArrayBuffer) {

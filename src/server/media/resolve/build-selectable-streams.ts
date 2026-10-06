@@ -5,8 +5,9 @@ import {
   type PlaylistTextTrack,
 } from "@/zod/types"
 import type { YtDlpNormalizedVariant, YtDlpStream, YtDlpTextTrack } from "@/server/media/yt-dlp"
+import { PLAYBACK_LADDER_HEIGHTS } from "@/server/media/yt-dlp/policy"
 
-const LADDER_HEIGHTS = [360, 480, 720, 1080]
+const LADDER_HEIGHTS = PLAYBACK_LADDER_HEIGHTS
 
 function isNoneCodec(value: string | undefined): boolean {
   if (!value) return true

@@ -1,4 +1,9 @@
-import { ensureRelaySubscriber } from "@/server/media/local-media-relay"
+import { decodeLocalMediaChunkFrame } from "@/lib/local-media-binary"
+import {
+  ensureRelaySubscriber,
+  resolveLocalMediaChunk,
+} from "@/server/media/local-media-relay"
+import { startResolveReclaimLoop } from "@/server/media/yt-dlp/resolve-reclaim"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { handleSocketDisconnect } from "@/server/realtime/services/disconnect"
 import { subscribeRoomUpdates } from "@/server/redis/pubsub"
@@ -9,15 +14,23 @@ import { attachWebSocketTransport, getLastPongMap } from "@/server/ws/transport"
 import { wsEnvelopeSchema } from "@/zod/schemas"
 import type { WsEnvelope } from "@/zod/types"
 import type { Server as HttpServer } from "node:http"
-import type { WebSocket } from "ws"
+import type { RawData, WebSocket } from "ws"
 import { roomMessageHandlers } from "./handlers/index"
 import { handleRoomJoin } from "./handlers/join"
+
+function rawDataToBuffer(message: RawData): Buffer {
+  if (Buffer.isBuffer(message)) return message
+  if (message instanceof ArrayBuffer) return Buffer.from(message)
+  if (Array.isArray(message)) return Buffer.concat(message)
+  return Buffer.from(message as Uint8Array)
+}
 
 export async function createRealtimeServer(server: HttpServer) {
   const store = await getRoomStateStore()
   getRoomBroadcastBus().attachStore(store)
   wirePubSubFanOut()
   void ensureRelaySubscriber()
+  startResolveReclaimLoop(store)
   attachWebSocketTransport(server, (ws) => {
     setupWebSocketConnection(ws, store)
   })
@@ -49,9 +62,27 @@ function setupWebSocketConnection(
     }
   })
 
-  ws.on("message", async (message) => {
+  ws.on("message", async (message, isBinary) => {
     try {
-      const raw = message.toString()
+      const buf = rawDataToBuffer(message)
+
+      // Binary LMC frames bypass the JSON envelope / zod path.
+      const decoded = decodeLocalMediaChunkFrame(buf)
+      if (decoded) {
+        resolveLocalMediaChunk({
+          requestId: decoded.requestId,
+          ok: decoded.ok,
+          data: decoded.data,
+          error: decoded.error,
+        })
+        return
+      }
+      // Non-LMC binary: ignore (do not UTF-8 decode as JSON).
+      if (isBinary) {
+        return
+      }
+
+      const raw = buf.toString("utf8")
       const parsed = JSON.parse(raw) as unknown
       const envelopeResult = wsEnvelopeSchema.safeParse(parsed)
       if (!envelopeResult.success) {

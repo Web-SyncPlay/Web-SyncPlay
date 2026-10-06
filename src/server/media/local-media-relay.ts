@@ -1,8 +1,16 @@
 import { env } from "@/env"
+import {
+  getOrFetchLocalMediaBlock,
+  invalidateLocalMediaBlockCache,
+} from "@/server/media/local-media-block-cache"
 import type { LocalMediaEntry } from "@/server/media/local-media-store"
 import { getCommandClient, getSubscriberClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
 import { getSocketsForUser } from "@/server/ws/registry"
+import {
+  localMediaErrorFromMessage,
+  type LocalMediaErrorCode,
+} from "@/lib/local-media-errors"
 import { randomUUID } from "node:crypto"
 import type { WebSocket } from "ws"
 
@@ -16,8 +24,21 @@ export type LocalMediaReadRequest = {
 export type LocalMediaChunkPayload = {
   requestId: string
   ok: boolean
+  /** Raw chunk bytes from binary LMC frames (preferred; avoids base64). */
+  data?: Uint8Array
+  /** Legacy JSON path / Redis serialization. */
   dataBase64?: string
   error?: string
+}
+
+export class LocalMediaRelayError extends Error {
+  readonly code: LocalMediaErrorCode
+
+  constructor(code: LocalMediaErrorCode, message?: string) {
+    super(message ?? code)
+    this.name = "LocalMediaRelayError"
+    this.code = code
+  }
 }
 
 type PendingLocal = {
@@ -64,9 +85,25 @@ export function resolveLocalMediaChunk(payload: LocalMediaChunkPayload) {
   if (settlePending(payload.requestId, payload)) {
     return
   }
-  // Chunk arrived on a node that forwarded a cross-instance request —
-  // push onto the reply list for the waiting HTTP handler.
   void pushRelayReply(payload.requestId, payload)
+}
+
+/** JSON-safe payload for Redis (Uint8Array → dataBase64). */
+function serializeRelayReplyPayload(payload: LocalMediaChunkPayload) {
+  if (payload.data !== undefined && !payload.dataBase64) {
+    return {
+      requestId: payload.requestId,
+      ok: payload.ok,
+      dataBase64: Buffer.from(payload.data).toString("base64"),
+      error: payload.error,
+    }
+  }
+  return {
+    requestId: payload.requestId,
+    ok: payload.ok,
+    dataBase64: payload.dataBase64,
+    error: payload.error,
+  }
 }
 
 async function pushRelayReply(
@@ -76,18 +113,33 @@ async function pushRelayReply(
   try {
     const client = await getCommandClient()
     const key = keys.localMediaRelayReply(requestId)
-    await client.rPush(key, JSON.stringify(payload))
+    await client.rPush(key, JSON.stringify(serializeRelayReplyPayload(payload)))
     await client.expire(key, 60)
   } catch (error) {
-    console.warn("[local-media-relay] reply push failed", error)
+    console.warn("[local-media-relay] reply push failed", {
+      requestId,
+      error,
+    })
   }
+}
+
+function bytesFromChunkPayload(
+  payload: LocalMediaChunkPayload,
+): Uint8Array | null {
+  if (payload.data !== undefined) {
+    return payload.data
+  }
+  if (payload.dataBase64) {
+    return Uint8Array.from(Buffer.from(payload.dataBase64, "base64"))
+  }
+  return null
 }
 
 function createPending(requestId: string, timeoutMs: number) {
   return new Promise<LocalMediaChunkPayload>((resolve, reject) => {
     const timer = setTimeout(() => {
       pendingMap().delete(requestId)
-      reject(new Error("Local media provider timed out"))
+      reject(new LocalMediaRelayError("provider_timeout"))
     }, timeoutMs)
     pendingMap().set(requestId, { resolve, reject, timer })
   })
@@ -109,6 +161,11 @@ function sendReadToSockets(
     }
   }
   return sent
+}
+
+function throwFromChunkPayload(payload: LocalMediaChunkPayload): never {
+  const code = localMediaErrorFromMessage(payload.error)
+  throw new LocalMediaRelayError(code, payload.error)
 }
 
 async function fetchChunkViaLocalSockets(
@@ -139,10 +196,14 @@ async function fetchChunkViaLocalSockets(
   }
 
   const response = await pending
-  if (!response.ok || !response.dataBase64) {
-    throw new Error(response.error ?? "Local media provider unavailable")
+  if (!response.ok) {
+    throwFromChunkPayload(response)
   }
-  return Uint8Array.from(Buffer.from(response.dataBase64, "base64"))
+  const bytes = bytesFromChunkPayload(response)
+  if (!bytes) {
+    throwFromChunkPayload(response)
+  }
+  return bytes
 }
 
 async function fetchChunkViaRedis(
@@ -166,7 +227,10 @@ async function fetchChunkViaRedis(
     end,
     originNodeId: RELAY_NODE_ID,
   }
-  await client.publish(keys.localMediaRelayRequestChannel(), JSON.stringify(message))
+  await client.publish(
+    keys.localMediaRelayRequestChannel(),
+    JSON.stringify(message),
+  )
 
   const timeoutSeconds = Math.max(
     1,
@@ -174,14 +238,18 @@ async function fetchChunkViaRedis(
   )
   const result = await client.blPop(replyKey, timeoutSeconds)
   if (!result) {
-    throw new Error("Local media provider timed out")
+    throw new LocalMediaRelayError("provider_timeout")
   }
 
   const payload = JSON.parse(result.element) as LocalMediaChunkPayload
-  if (!payload.ok || !payload.dataBase64) {
-    throw new Error(payload.error ?? "Local media provider unavailable")
+  if (!payload.ok) {
+    throwFromChunkPayload(payload)
   }
-  return Uint8Array.from(Buffer.from(payload.dataBase64, "base64"))
+  const bytes = bytesFromChunkPayload(payload)
+  if (!bytes) {
+    throwFromChunkPayload(payload)
+  }
+  return bytes
 }
 
 async function handleRelayPubSubRequest(raw: string) {
@@ -198,7 +266,6 @@ async function handleRelayPubSubRequest(raw: string) {
   }
 
   const requestId = message.requestId
-  // Origin node already tried local sockets; only foreign nodes should answer.
   if (message.originNodeId === RELAY_NODE_ID) {
     return
   }
@@ -251,8 +318,8 @@ export async function ensureRelaySubscriber() {
 }
 
 /**
- * Fetch a single inclusive byte range from the providing user's browser
- * (local WS first, Redis pub/sub relay for multi-instance).
+ * Fetch bytes from the providing browser (no cache). Prefer
+ * {@link fetchLocalMediaAlignedBlock} for shared viewer traffic.
  */
 export async function fetchLocalMediaRangeBytes(
   entry: LocalMediaEntry,
@@ -260,26 +327,79 @@ export async function fetchLocalMediaRangeBytes(
   end: number,
 ): Promise<Uint8Array> {
   if (start < 0 || end < start || start >= entry.sizeBytes) {
-    throw new Error("Invalid byte range")
+    throw new LocalMediaRelayError("invalid_range")
   }
   const clampedEnd = Math.min(end, entry.sizeBytes - 1)
-  const local = await fetchChunkViaLocalSockets(entry, start, clampedEnd)
-  if (local) {
-    return local
+  try {
+    const local = await fetchChunkViaLocalSockets(entry, start, clampedEnd)
+    if (local) {
+      return local
+    }
+    return await fetchChunkViaRedis(entry, start, clampedEnd)
+  } catch (error) {
+    if (error instanceof LocalMediaRelayError) throw error
+    console.error("[local-media-relay] provider fetch failed", {
+      mediaId: entry.id,
+      roomId: entry.roomId,
+      ownerUserId: entry.ownerUserId,
+      start,
+      end: clampedEnd,
+      error,
+    })
+    throw new LocalMediaRelayError(
+      "relay_failed",
+      error instanceof Error ? error.message : undefined,
+    )
   }
-  return await fetchChunkViaRedis(entry, start, clampedEnd)
+}
+
+/** Inclusive aligned block start for a byte offset. */
+export function alignedBlockStart(offset: number, chunkBytes: number) {
+  return Math.floor(offset / chunkBytes) * chunkBytes
 }
 
 /**
- * Stream an inclusive byte range by chaining provider chunk fetches.
- * Keeps each WebSocket JSON payload bounded by LOCAL_MEDIA_RELAY_CHUNK_BYTES.
+ * One cacheable provider block. Concurrent viewers coalesce via singleflight;
+ * later viewers hit the process-local LRU so the sharer’s upload is ~1× per block.
+ */
+function relayChunkBytes() {
+  const raw = env.LOCAL_MEDIA_RELAY_CHUNK_BYTES
+  return typeof raw === "number" && Number.isFinite(raw) && raw > 0
+    ? raw
+    : 256 * 1024
+}
+
+export async function fetchLocalMediaAlignedBlock(
+  entry: LocalMediaEntry,
+  blockStart: number,
+): Promise<{ bytes: Uint8Array; cacheHit: boolean }> {
+  const chunkBytes = relayChunkBytes()
+  const aligned = alignedBlockStart(blockStart, chunkBytes)
+  if (aligned !== blockStart) {
+    throw new LocalMediaRelayError(
+      "invalid_range",
+      `blockStart must be aligned to ${chunkBytes}`,
+    )
+  }
+  const blockEnd = Math.min(aligned + chunkBytes - 1, entry.sizeBytes - 1)
+
+  return await getOrFetchLocalMediaBlock({
+    mediaId: entry.id,
+    blockStart: aligned,
+    fetch: () => fetchLocalMediaRangeBytes(entry, aligned, blockEnd),
+  })
+}
+
+/**
+ * Stream an inclusive byte range using aligned cached blocks so overlapping
+ * viewer Ranges share provider uploads.
  */
 export function createLocalMediaByteStream(
   entry: LocalMediaEntry,
   start: number,
   end: number,
 ): ReadableStream<Uint8Array> {
-  const chunkBytes = env.LOCAL_MEDIA_RELAY_CHUNK_BYTES
+  const chunkBytes = relayChunkBytes()
   let offset = start
   const last = Math.min(end, entry.sizeBytes - 1)
 
@@ -289,11 +409,25 @@ export function createLocalMediaByteStream(
         controller.close()
         return
       }
-      const chunkEnd = Math.min(offset + chunkBytes - 1, last)
+      const blockStart = alignedBlockStart(offset, chunkBytes)
       try {
-        const bytes = await fetchLocalMediaRangeBytes(entry, offset, chunkEnd)
-        offset = chunkEnd + 1
-        controller.enqueue(bytes)
+        const { bytes, cacheHit } = await fetchLocalMediaAlignedBlock(
+          entry,
+          blockStart,
+        )
+        const blockEnd = blockStart + bytes.byteLength - 1
+        const sliceFrom = offset - blockStart
+        const sliceTo = Math.min(last, blockEnd) - blockStart + 1
+        const slice = bytes.subarray(sliceFrom, sliceTo)
+        offset = blockStart + sliceTo
+        if (!cacheHit) {
+          console.info("[local-media-relay] block fetched from provider", {
+            mediaId: entry.id,
+            blockStart,
+            bytes: bytes.byteLength,
+          })
+        }
+        controller.enqueue(slice)
       } catch (error) {
         controller.error(error)
       }
@@ -303,3 +437,5 @@ export function createLocalMediaByteStream(
     },
   })
 }
+
+export { invalidateLocalMediaBlockCache }

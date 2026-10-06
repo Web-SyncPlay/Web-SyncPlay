@@ -72,6 +72,7 @@ export function useRoomSocket(
   const wsRef = useRef<WebSocket | null>(null)
   const stateTimeoutRef = useRef<number | undefined>(undefined)
   const hasReceivedStateRef = useRef(false)
+  const roomStateRef = useRef<RoomState | null>(null)
   const usernameRef = useRef<string>("guest")
   const joinPasswordRef = useRef<string>("")
   const sendJoinRef = useRef<(() => void) | null>(null)
@@ -269,10 +270,12 @@ export function useRoomSocket(
           }
 
           void (async () => {
-            const {
-              arrayBufferToBase64,
-              getLocalMediaFile,
-            } = await import("@/lib/local-media-provider")
+            const { getLocalMediaFile } = await import(
+              "@/lib/local-media-provider"
+            )
+            const { encodeLocalMediaChunkFrame } = await import(
+              "@/lib/local-media-binary"
+            )
             const file = getLocalMediaFile(localMediaId)
             // Stay silent when this tab does not hold the File so another
             // session for the same user can still answer the range request.
@@ -282,19 +285,25 @@ export function useRoomSocket(
             try {
               const slice = file.slice(start, end + 1)
               const buffer = await slice.arrayBuffer()
-              ws.send(
-                JSON.stringify({
-                  type: "local-media:chunk",
-                  requestId: crypto.randomUUID(),
-                  payload: {
-                    requestId,
-                    ok: true,
-                    dataBase64: arrayBufferToBase64(buffer),
-                  },
-                }),
-              )
+              // Binary LMC frame avoids ~33% base64 overhead on the wire.
+              const frame = encodeLocalMediaChunkFrame({
+                requestId,
+                ok: true,
+                data: new Uint8Array(buffer),
+              })
+              // Fresh ArrayBuffer-backed view satisfies DOM WebSocket BufferSource typings.
+              const wire = new Uint8Array(frame.byteLength)
+              wire.set(frame)
+              ws.send(wire)
             } catch (error) {
-              console.error("[local-media] failed to read range", error)
+              console.error("[local-media] failed to read range", {
+                localMediaId,
+                requestId,
+                start,
+                end,
+                error,
+              })
+              // Keep JSON error path for simplicity / older server compat.
               ws.send(
                 JSON.stringify({
                   type: "local-media:chunk",
@@ -312,6 +321,7 @@ export function useRoomSocket(
         }
 
         if (envelope.type === "room:snapshot" || envelope.type === "room:state") {
+          const firstStateAfterJoin = !hasReceivedStateRef.current
           hasReceivedStateRef.current = true
           clearStateTimeout()
           setJoinError(null)
@@ -321,7 +331,53 @@ export function useRoomSocket(
             usernameRef.current = selfParticipant.username
             persistUsername(selfParticipant.username)
           }
-          setRoomState((prev) => applyRoomSnapshot(prev, payload))
+          setRoomState((prev) => {
+            const next = applyRoomSnapshot(prev, payload)
+            roomStateRef.current = next
+            return next
+          })
+          if (firstStateAfterJoin) {
+            void import("@/lib/local-media-provider").then(
+              ({ announceLocalMediaProviderReady }) => {
+                if (ws.readyState !== WebSocket.OPEN) return
+                announceLocalMediaProviderReady(
+                  (type, readyPayload) => {
+                    ws.send(
+                      JSON.stringify({
+                        type,
+                        payload: readyPayload,
+                        requestId: crypto.randomUUID(),
+                      }),
+                    )
+                  },
+                  payload,
+                  userId,
+                )
+              },
+            )
+          }
+          return
+        }
+
+        if (envelope.type === "local-media:reannounce") {
+          void import("@/lib/local-media-provider").then(
+            ({ announceLocalMediaProviderReady }) => {
+              if (ws.readyState !== WebSocket.OPEN) return
+              announceLocalMediaProviderReady(
+                (type, readyPayload) => {
+                  ws.send(
+                    JSON.stringify({
+                      type,
+                      payload: readyPayload,
+                      requestId: crypto.randomUUID(),
+                    }),
+                  )
+                },
+                roomStateRef.current,
+                userId,
+              )
+            },
+          )
           return
         }
 
@@ -330,13 +386,21 @@ export function useRoomSocket(
           clearStateTimeout()
           setJoinError(null)
           const payload = envelope.payload as RoomControlPayload
-          setRoomState((prev) => applyRoomControl(prev, payload))
+          setRoomState((prev) => {
+            const next = applyRoomControl(prev, payload)
+            roomStateRef.current = next
+            return next
+          })
           return
         }
 
         if (envelope.type === "presence:batch") {
           const payload = envelope.payload as PresenceBatchPayload
-          setRoomState((prev) => applyPresenceBatch(prev, payload))
+          setRoomState((prev) => {
+            const next = applyPresenceBatch(prev, payload)
+            roomStateRef.current = next
+            return next
+          })
           return
         }
 

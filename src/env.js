@@ -74,6 +74,20 @@ export const env = createEnv({
       .min(1_000)
       .max(60_000)
       .default(15_000),
+    /** How long aligned provider blocks stay in the process-local fan-out cache (0 disables). */
+    LOCAL_MEDIA_BLOCK_CACHE_TTL_MS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(600_000)
+      .default(120_000),
+    /** Soft memory budget for cached local-media blocks (default 64 MiB). */
+    LOCAL_MEDIA_BLOCK_CACHE_MAX_BYTES: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(1024 * 1024 * 1024)
+      .default(64 * 1024 * 1024),
     YTDLP_CACHE_TTL_SECONDS: z.coerce
       .number()
       .int()
@@ -138,6 +152,9 @@ export const env = createEnv({
     CONTROL_TOKEN_TTL_SECONDS: process.env.CONTROL_TOKEN_TTL_SECONDS,
     LOCAL_MEDIA_RELAY_CHUNK_BYTES: process.env.LOCAL_MEDIA_RELAY_CHUNK_BYTES,
     LOCAL_MEDIA_RELAY_TIMEOUT_MS: process.env.LOCAL_MEDIA_RELAY_TIMEOUT_MS,
+    LOCAL_MEDIA_BLOCK_CACHE_TTL_MS: process.env.LOCAL_MEDIA_BLOCK_CACHE_TTL_MS,
+    LOCAL_MEDIA_BLOCK_CACHE_MAX_BYTES:
+      process.env.LOCAL_MEDIA_BLOCK_CACHE_MAX_BYTES,
     YTDLP_CACHE_TTL_SECONDS: process.env.YTDLP_CACHE_TTL_SECONDS,
     HLS_REWRITE_CACHE_TTL_MS: process.env.HLS_REWRITE_CACHE_TTL_MS,
     PRESENCE_BATCH_INTERVAL_MS: process.env.PRESENCE_BATCH_INTERVAL_MS,

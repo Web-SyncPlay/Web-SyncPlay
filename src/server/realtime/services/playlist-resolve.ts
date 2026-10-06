@@ -1,3 +1,5 @@
+import { invalidateYtDlpExtractCache } from "@/server/media/yt-dlp"
+import { beginResolveLease } from "@/server/media/yt-dlp/resolve-lease"
 import {
   resolveMediaSource,
   type ResolvedMedia,
@@ -103,6 +105,13 @@ export async function resolvePlaylistItem(params: {
   if (inflightPlaylistResolves.has(key)) return
   inflightPlaylistResolves.add(key)
 
+  const lease = await beginResolveLease({
+    roomId,
+    itemId,
+    sourceUrl,
+    title,
+  })
+
   try {
     const resolved = await resolveMediaSource({
       url: sourceUrl,
@@ -147,6 +156,7 @@ export async function resolvePlaylistItem(params: {
       { retryUntilPresent },
     )
   } finally {
+    lease?.stop()
     inflightPlaylistResolves.delete(key)
   }
 }
@@ -170,4 +180,56 @@ export function scheduleResolvingPlaylistItems(
       failureMessage: "Failed to resolve default media",
     })
   }
+}
+
+/**
+ * Invalidate extract cache and re-run resolve for a remote playlist item.
+ * Used by explicit retry and by proxy 401/403 stale-upstream recovery.
+ */
+export async function reresolveRemotePlaylistItem(params: {
+  store: RoomStateStorePort
+  roomId: string
+  itemId: string
+}): Promise<boolean> {
+  const { store, roomId, itemId } = params
+  let sourceUrl: string | undefined
+  let title: string | undefined
+
+  const written = await store.updateRoom(roomId, async (state) => {
+    if (!state) return null
+    const item = state.playlist.find((entry) => entry.id === itemId)
+    if (!item || item.sourceKind !== "remote_url") return null
+    if (item.blockedReason === "local_owner_offline") return null
+    sourceUrl = item.sourceUrl
+    title = item.name
+    if (item.ingestStatus === "resolving") {
+      // Already in flight — still invalidate cache so the next pass is fresh.
+      return null
+    }
+    item.ingestStatus = "resolving"
+    item.ingestError = undefined
+    state.updatedAt = Date.now()
+    state.generation = (state.generation ?? 0) + 1
+    state.structuralRevision = (state.structuralRevision ?? 0) + 1
+    return state
+  })
+
+  if (!sourceUrl) return false
+
+  await invalidateYtDlpExtractCache(sourceUrl)
+
+  if (written) {
+    const bus = getRoomBroadcastBus()
+    bus.attachStore(store)
+    bus.markSnapshotDirty(roomId)
+  }
+
+  await resolvePlaylistItem({
+    store,
+    roomId,
+    itemId,
+    sourceUrl,
+    title,
+  })
+  return true
 }

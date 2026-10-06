@@ -55,12 +55,22 @@ Control embed URLs are minted via `POST /api/control/token` and include `#uid=&s
 
 ## Media pipeline
 
-1. Resolve remote URLs with yt-dlp (or native host detection)
-2. Build a bounded catalog of adaptive + combined streams
-3. If CORS blocks direct play, wrap catalog URLs in `/api/media/proxy/{token}`
-4. HLS playlists are rewritten so segments stay on same-origin proxy
-5. Quality / captions preferences live on **participant** state (`viewerMedia`), shared across that user’s sessions — not room-wide
-6. **Local files** stay on the providing browser’s `File` handle (no upload, no size cap). Viewers request `/api/media/local/{id}` ranges; the server asks the provider over WebSocket and proxies the bytes. The provider plays via a blob URL. Keep the tab that shared the file open.
+1. Resolve remote URLs with yt-dlp (or native host detection). YouTube/Vimeo and direct file URLs skip yt-dlp.
+2. Cache extracts in Valkey with a versioned envelope. Stream URL freshness, heartbeat locks, and dump format bounds are derived from `YTDLP_CACHE_TTL_SECONDS` / `YTDLP_TIMEOUT_MS` (no extra knobs). Across instances, only the Valkey lock holder runs yt-dlp; waiters poll the shared cache and failover if the holder’s heartbeat lease expires. Playlist resolves also take a Valkey lease so a crashed server’s in-flight item is reclaimed and redone.
+3. Build a bounded catalog of adaptive + combined streams
+4. If CORS blocks direct play, wrap catalog URLs in `/api/media/proxy/{token}`
+5. HLS playlists are rewritten so segments stay on same-origin proxy. Upstream 401/403 triggers cache invalidation + playlist re-resolve (`409 upstream_expired`).
+6. Quality / captions preferences live on **participant** state (`viewerMedia`), shared across that user’s sessions — not room-wide
+7. **Local files** stay on the providing browser’s `File` handle (no upload, no size cap). Viewers request `/api/media/local/{id}` ranges; the server asks the provider over WebSocket and proxies the bytes. Keep the tab that shared the file open.
+   - **Provider ready**: metadata is marked ready on share and on reconnect announce; GET fail-fasts with `provider_unavailable` when the sharer’s tab no longer holds the `File`.
+   - **Binary LMC chunks**: provider replies use compact binary WebSocket frames (JSON/`dataBase64` remains as a fallback error path).
+   - **Block cache**: aligned ranges use L1 in-process memory (singleflight + LRU) then L2 Valkey/Redis so concurrent viewers and multi-instance relays share one provider upload per block.
+
+## Local media architecture (roadmap)
+
+- **Phase now**: provider `File` + server HTTP range relay + L1 memory / L2 Redis block cache + binary WS chunk frames + `providerReady` fail-fast.
+- **Next**: Redis/shared cache is already in place; optional sticky provider affinity so range requests prefer the node holding the provider socket.
+- **Elevate**: SFU / WebRTC datachannels or an edge cache so server egress is not N× viewers; optional File System Access API to persist the handle across refresh; adaptive bitrate packaging of local files for smoother multi-viewer playback.
 
 ## Operator / ops
 
@@ -73,7 +83,7 @@ curl -X POST -H "Authorization: Bearer $OPS_SECRET" http://localhost:3000/api/pl
 
 Health check: `GET /api/health` (Valkey ping).
 
-Key env vars (see `.env.example`): `VALKEY_URL`, `YTDLP_*`, `OPS_SECRET`, `CONTROL_TOKEN_TTL_SECONDS`, `PROXY_ALLOW_PRIVATE_URLS`, `LOCAL_MEDIA_RELAY_CHUNK_BYTES`, `LOCAL_MEDIA_RELAY_TIMEOUT_MS`.
+Key env vars (see `.env.example`): `VALKEY_URL`, `YTDLP_*`, `OPS_SECRET`, `CONTROL_TOKEN_TTL_SECONDS`, `PROXY_ALLOW_PRIVATE_URLS`, `LOCAL_MEDIA_RELAY_*`, `LOCAL_MEDIA_BLOCK_CACHE_*`.
 
 ## Production
 

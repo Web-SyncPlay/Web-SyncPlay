@@ -32,6 +32,10 @@ export interface ClientEventPayloadMap {
     dataBase64?: string
     error?: string
   }
+  "local-media:ready": {
+    localMediaId: string
+    ready: boolean
+  }
   "playlist:retry": { itemId: string }
   "playlist:item:error": { itemId: string; error: string }
   "viewer:media:preferences": {

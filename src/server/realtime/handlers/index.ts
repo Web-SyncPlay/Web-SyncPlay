@@ -27,6 +27,7 @@ export const roomMessageHandlers = {
   "playlist:retry": playlist.handlePlaylistRetry,
   "playlist:item:error": playlist.handlePlaylistItemError,
   "local-media:chunk": localMedia.handleLocalMediaChunk,
+  "local-media:ready": localMedia.handleLocalMediaReady,
   "viewer:media:preferences": viewerMedia.handleViewerMediaPreferences,
   "seek:preview": seekPreview.handleSeekPreview,
   "participant:update": participant.handleParticipantUpdate,

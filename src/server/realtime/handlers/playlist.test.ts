@@ -110,6 +110,13 @@ describe("playlist handler interfaces", () => {
     expect(item?.localMediaId).toBe(localMediaId)
     expect(item?.ingestStatus).toBe("ready")
     expect(item?.defaultStreamId).toBe("local-default")
+
+    const { getLocalMediaEntry, deleteLocalMediaEntry } = await import(
+      "@/server/media/local-media-store"
+    )
+    const meta = await getLocalMediaEntry(localMediaId)
+    expect(meta?.providerReady).toBe(true)
+    await deleteLocalMediaEntry(localMediaId)
   })
 
   test("item error marks ingest error and may advance current index", async () => {
