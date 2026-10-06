@@ -37,6 +37,47 @@ export interface ClientEventPayloadMap {
     localMediaId: string
     ready: boolean
   }
+  "local-media:webrtc:signal": {
+    localMediaId: string
+    targetUserId: string
+    signal: {
+      type: "offer" | "answer" | "ice" | "hangup"
+      sdp?: string
+      candidate?: string
+      sdpMid?: string
+      sdpMLineIndex?: number
+    }
+  }
+  "local-media:sfu:capabilities": Record<string, never>
+  "local-media:sfu:create-transport": {
+    direction: "send" | "recv"
+    localMediaId?: string
+  }
+  "local-media:sfu:connect-transport": {
+    transportId: string
+    dtlsParameters: {
+      role?: "auto" | "client" | "server"
+      fingerprints: Array<{ algorithm: string; value: string }>
+    }
+  }
+  "local-media:sfu:produce-data": {
+    transportId: string
+    localMediaId: string
+    sctpStreamParameters: {
+      streamId: number
+      ordered?: boolean
+      maxPacketLifeTime?: number
+      maxRetransmits?: number
+    }
+    label?: string
+    protocol?: string
+    role?: "provider" | "requests"
+  }
+  "local-media:sfu:consume-data": {
+    transportId: string
+    localMediaId: string
+    dataProducerId?: string
+  }
   "playlist:retry": { itemId: string }
   "playlist:item:error": { itemId: string; error: string | null }
   "viewer:media:preferences": {

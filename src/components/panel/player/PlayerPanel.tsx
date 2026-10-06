@@ -180,6 +180,7 @@ function formatMediaErrorDetail(detail: MediaErrorDetail) {
 
 export function PlayerPanel({
   roomState,
+  roomId,
   send,
   userId,
   userSecret: _userSecret,
@@ -1289,6 +1290,8 @@ export function PlayerPanel({
             <PlaylistAddMediaControls
               send={send}
               canManagePlaylist={canControlPlayback}
+              roomId={roomId}
+              userId={userId}
               className="flex w-full flex-wrap items-center justify-center gap-2"
             />
           </EmptyContent>

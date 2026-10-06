@@ -175,4 +175,14 @@ export const keys = {
   localMediaRelayReply(requestId: string) {
     return `${LOCAL_MEDIA_PREFIX}relay:reply:${requestId}`
   },
+
+  /** JSON { nodeId, baseUrl, lastSeen } for multi-replica internal range fetch */
+  localMediaNode(nodeId: string) {
+    return `${LOCAL_MEDIA_PREFIX}node:${nodeId}`
+  },
+
+  /** Pub/sub: ask all nodes to reannounce local-media ready for a user */
+  localMediaReannounceChannel() {
+    return `${LOCAL_MEDIA_PREFIX}reannounce`
+  },
 } as const

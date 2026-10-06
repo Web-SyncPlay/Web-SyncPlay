@@ -4,7 +4,13 @@ import {
 } from "@/server/media/local-media-relay"
 import { setLocalMediaProviderReady } from "@/server/media/local-media-store"
 import type { RoomMessageHandler } from "@/server/realtime/handlers/types"
-import { localMediaChunkSchema, localMediaReadySchema } from "@/zod/schemas"
+import { getSocketsForUser } from "@/server/ws/registry"
+import {
+  localMediaChunkSchema,
+  localMediaReadySchema,
+  localMediaWebrtcSignalSchema,
+} from "@/zod/schemas"
+import { randomUUID } from "node:crypto"
 
 export const handleLocalMediaChunk: RoomMessageHandler = async (_ctx, data) => {
   const parsed = localMediaChunkSchema.safeParse(data.payload)
@@ -26,4 +32,33 @@ export const handleLocalMediaReady: RoomMessageHandler = async (ctx, data) => {
   await setLocalMediaProviderReady(parsed.data.localMediaId, parsed.data.ready, {
     ownerUserId: ctx.userId,
   })
+}
+
+/**
+ * Relay WebRTC signaling between peers in the same room.
+ * Does not interpret SDP — only fan-out to the target user's sockets.
+ */
+export const handleLocalMediaWebrtcSignal: RoomMessageHandler = async (
+  ctx,
+  data,
+) => {
+  const parsed = localMediaWebrtcSignalSchema.safeParse(data.payload)
+  if (!parsed.success) return
+  if (parsed.data.targetUserId === ctx.userId) return
+
+  const envelope = JSON.stringify({
+    type: "local-media:webrtc:signal",
+    requestId: randomUUID(),
+    payload: {
+      localMediaId: parsed.data.localMediaId,
+      fromUserId: ctx.userId,
+      signal: parsed.data.signal,
+    },
+  })
+
+  for (const socket of getSocketsForUser(ctx.roomId, parsed.data.targetUserId)) {
+    if (socket.readyState === socket.OPEN) {
+      socket.send(envelope)
+    }
+  }
 }

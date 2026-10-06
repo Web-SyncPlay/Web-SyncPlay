@@ -10,6 +10,8 @@ const config: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
   reactCompiler: true,
+  // Native C++ worker — keep out of the webpack/turbopack bundle.
+  serverExternalPackages: ["mediasoup"],
   experimental: {
     turbopackFileSystemCacheForDev: true,
   },

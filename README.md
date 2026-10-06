@@ -69,9 +69,36 @@ Control embed URLs are minted via `POST /api/control/token` and include `#uid=&s
 
 ## Local media architecture (roadmap)
 
-- **Phase now**: provider `File` + server HTTP range relay + L1 memory / L2 Redis block cache + binary WS chunk frames + `providerReady` fail-fast.
-- **Next**: Redis/shared cache is already in place; optional sticky provider affinity so range requests prefer the node holding the provider socket.
-- **Elevate**: SFU / WebRTC datachannels or an edge cache so server egress is not N× viewers; optional File System Access API to persist the handle across refresh; adaptive bitrate packaging of local files for smoother multi-viewer playback.
+- **Phase now**: provider `File` + server HTTP range relay + L1 memory / L2 Redis block cache + binary WS chunk frames + `providerReady` fail-fast + **sticky provider affinity** (`providerNodeId` + internal HTTP fetch between local WS and Redis pub/sub) + cluster-wide `local-media:reannounce`.
+- **Elevate (shipping)**:
+  - **FSA**: Chromium `showOpenFilePicker` + IndexedDB handle restore across refresh (falls back to `<input type="file">`).
+  - **ABR scaffold**: `/api/media/local/{id}/hls` single-variant VOD wrapper (multi-bitrate packaging still to land).
+  - **WebRTC C0**: P2P DataChannel mesh + Service Worker range intercept (`/local-media-sw.js`) with HTTP relay fallback for the progressive URL path.
+  - **WebRTC C1**: **mediasoup** DataChannel SFU **in-process** in the app image (Node runtime) — single UDP port via `WebRtcServer`. Viewers fetch local-media ranges over the SFU DataChannel when available (`local-media:sfu:*` WS signaling, `src/lib/local-media-sfu.ts`). Range fetch order is **SFU → P2P mesh → HTTP relay**; if the worker cannot start or UDP is blocked, playback falls back automatically.
+
+### Multi-replica local media
+
+Set both env vars on every `web` replica:
+
+| Var                           | Purpose                                                              |
+| ----------------------------- | -------------------------------------------------------------------- |
+| `INTERNAL_NODE_BASE_URL`      | This replica’s reachable URL (e.g. `http://web:3000` or per-pod DNS) |
+| `LOCAL_MEDIA_INTERNAL_SECRET` | Shared secret (≥16 chars) for `/api/media/local/internal/{id}`       |
+
+Miss path order: local provider WS → internal HTTP to `providerNodeId` holder → Redis pub/sub. Keep the internal route off public ingress when possible.
+
+### Firewall / port forward (operators)
+
+ICE uses **public Google + Cloudflare STUN only** (no TURN). Clients that cannot send **UDP** to this host cannot use the WebRTC SFU path; HTTP `/api/media/local` relay remains for progressive playback when that path is used.
+
+mediasoup’s `WebRtcServer` uses a fixed **UDP 40000** for all SFU traffic. Whitelist and forward only:
+
+| Forward | Proto   | Purpose                                                          |
+| ------- | ------- | ---------------------------------------------------------------- |
+| `3000`  | TCP     | App HTTP + WebSocket signaling (prefer TLS reverse proxy on 443) |
+| `40000` | **UDP** | mediasoup WebRTC / SCTP (SFU)                                    |
+
+Set `PUBLIC_DOMAIN` to the public hostname or origin clients use (e.g. `web-syncplay.de`). It drives mediasoup ICE `announcedAddress`, CORS allowlist, and CSP.
 
 ## Operator / ops
 
@@ -83,8 +110,6 @@ curl -X POST -H "Authorization: Bearer $OPS_SECRET" http://127.0.0.1:3000/api/pl
 ```
 
 Health check: `GET /api/health` (Valkey ping).
-
-Key env vars (see `.env.example`): `VALKEY_URL`, `YTDLP_*`, `OPS_SECRET`, `CONTROL_TOKEN_TTL_SECONDS`, `PROXY_ALLOW_PRIVATE_URLS`, `WS_HEARTBEAT_INTERVAL_MS`, room limits.
 
 ## Production (Docker Compose)
 
@@ -99,10 +124,12 @@ services:
     restart: unless-stopped
     environment:
       VALKEY_URL: redis://valkey:6379
-      # Required for /api ops endpoints in production
       OPS_SECRET: change-me-to-a-long-random-string
+      # Public hostname/origin for ICE, CORS, and CSP
+      PUBLIC_DOMAIN: web-syncplay.example
     ports:
       - "3000:3000"
+      - "40000:40000/udp"
     depends_on:
       valkey:
         condition: service_healthy
@@ -117,19 +144,20 @@ services:
       retries: 10
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Put a reverse proxy (TLS) in front for public internet.
+Open [http://localhost:3000](http://localhost:3000). Put a reverse proxy (TLS) in front for public HTTP/WS. On the host firewall / security group, allow **TCP 443** (or 3000) and **UDP 40000**. No TURN — UDP-blocked clients cannot use the WebRTC SFU.
 
 ### From this repo (build locally)
 
 ```bash
 cp .env.example .env
 # Uncomment and set OPS_SECRET in .env (required for ops endpoints in production)
+# For remote browsers set PUBLIC_DOMAIN to your public hostname
 docker compose up -d --build
 ```
 
 Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
-The repo compose loads optional `.env` into the web service, then forces `VALKEY_URL=redis://valkey:6379` and `NODE_ENV=production` (so a local-dev `.env` stays safe to reuse). HTTP is published on `127.0.0.1:3000` and Valkey on `127.0.0.1:6379` — neither is reachable from other LAN machines. Use the Valkey publish when running `bun run dev` against compose Valkey (`VALKEY_URL=redis://localhost:6379`).
+The repo compose loads optional `.env` into the web service, then forces `VALKEY_URL=redis://valkey:6379` and `NODE_ENV=production` (so a local-dev `.env` stays safe to reuse). For local compose, HTTP is on `127.0.0.1:3000` and Valkey on `127.0.0.1:6379`. Publish **UDP 40000** for WebRTC. Use the Valkey publish when running `bun run dev` against compose Valkey (`VALKEY_URL=redis://localhost:6379`). Local Bun dev may skip mediasoup (native worker); the Docker image runs Node and starts the in-process SFU.
 
 ### Runbook notes
 

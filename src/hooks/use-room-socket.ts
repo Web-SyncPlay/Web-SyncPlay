@@ -1,6 +1,10 @@
 "use client"
 
-import type { TypedRoomEventSender } from "@/lib/room-events"
+import type { SfuResult, SfuSendRequest } from "@/lib/local-media-sfu"
+import type {
+  ClientEventPayloadMap,
+  TypedRoomEventSender,
+} from "@/lib/room-events"
 import {
   applyPresenceBatch,
   applyRoomControl,
@@ -79,6 +83,7 @@ export function useRoomSocket(
   const joinPasswordRef = useRef<string>("")
   const sendJoinRef = useRef<(() => void) | null>(null)
   const controlTokenRef = useRef<string | undefined>(undefined)
+  const sfuProvideRef = useRef<((localMediaId: string) => void) | null>(null)
   const [identity, setIdentity] = useState<{
     userId: string
     userSecret: string
@@ -147,6 +152,7 @@ export function useRoomSocket(
 
     let cancelled = false
     let reconnectTimer: number | undefined
+    let detachSwBridge: (() => void) | null = null
     const wsOrigin = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/api/ws`
 
     const connect = async (): Promise<void> => {
@@ -262,6 +268,44 @@ export function useRoomSocket(
       }
       sendJoinRef.current = sendJoin
 
+      const sfuPending = new Map<string, (result: SfuResult) => void>()
+      let sfuAvailable = false
+      const pendingSfuProvide = new Set<string>()
+      const sendSfuRequest: SfuSendRequest = (type, payload) =>
+        new Promise<SfuResult>((resolve) => {
+          if (ws.readyState !== WebSocket.OPEN) {
+            resolve({ ok: false, error: "socket_closed" })
+            return
+          }
+          const requestId = crypto.randomUUID()
+          const timer = window.setTimeout(() => {
+            sfuPending.delete(requestId)
+            resolve({ ok: false, error: "sfu_request_timeout" })
+          }, 15_000)
+          sfuPending.set(requestId, (result) => {
+            window.clearTimeout(timer)
+            resolve(result)
+          })
+          ws.send(JSON.stringify({ type, payload, requestId }))
+        })
+      const flushSfuPending = () => {
+        for (const [id, resolve] of sfuPending) {
+          sfuPending.delete(id)
+          resolve({ ok: false, error: "socket_closed" })
+        }
+      }
+      const provideViaSfu = (localMediaId: string) => {
+        if (!sfuAvailable) {
+          pendingSfuProvide.add(localMediaId)
+          return
+        }
+        void import("@/lib/local-media-sfu").then(
+          ({ ensureLocalMediaSfuProvider }) =>
+            ensureLocalMediaSfuProvider(localMediaId, sendSfuRequest),
+        )
+      }
+      sfuProvideRef.current = provideViaSfu
+
       ws.onopen = () => {
         setStatus("connected")
         sendJoin()
@@ -358,31 +402,114 @@ export function useRoomSocket(
             return next
           })
           if (firstStateAfterJoin) {
-            void import("@/lib/local-media-provider").then(
-              ({ announceLocalMediaProviderReady }) => {
-                if (ws.readyState !== WebSocket.OPEN) return
-                announceLocalMediaProviderReady(
-                  (type, readyPayload) => {
-                    ws.send(
-                      JSON.stringify({
-                        type,
-                        payload: readyPayload,
-                        requestId: crypto.randomUUID(),
-                      }),
-                    )
-                  },
-                  payload,
-                  identity.userId,
-                )
-              },
-            )
-          }
-          return
-        }
+            void (async () => {
+              // Ask for SFU capabilities now so IndexedDB restore does not delay it.
+              const capabilitiesRequest =
+                ws.readyState === WebSocket.OPEN
+                  ? sendSfuRequest("local-media:sfu:capabilities", {})
+                  : null
+              if (capabilitiesRequest) {
+                void capabilitiesRequest.then(async (capabilities) => {
+                  if (!capabilities.ok || ws.readyState !== WebSocket.OPEN) {
+                    return
+                  }
+                  const [
+                    { configureLocalMediaSfu, ensureLocalMediaSfuViewer },
+                    { listLocalMediaIds, getLocalMediaFile },
+                  ] = await Promise.all([
+                    import("@/lib/local-media-sfu"),
+                    import("@/lib/local-media-provider"),
+                  ])
+                  if (ws.readyState !== WebSocket.OPEN) return
+                  sfuAvailable = true
+                  configureLocalMediaSfu(sendSfuRequest)
+                  const toProvide = new Set([
+                    ...pendingSfuProvide,
+                    ...listLocalMediaIds(),
+                  ])
+                  pendingSfuProvide.clear()
+                  for (const localMediaId of toProvide) {
+                    provideViaSfu(localMediaId)
+                  }
+                  // Late joiners missed produce broadcasts; consume existing SFU producers.
+                  const announced = Array.isArray(capabilities.producers)
+                    ? (capabilities.producers as Array<{
+                        localMediaId?: string
+                      }>)
+                    : []
+                  const fromPlaylist = (roomStateRef.current?.playlist ?? [])
+                    .map((item) => item.localMediaId)
+                    .filter((id): id is string => Boolean(id))
+                  for (const localMediaId of new Set([
+                    ...announced
+                      .map((p) => p.localMediaId)
+                      .filter((id): id is string => Boolean(id)),
+                    ...fromPlaylist,
+                  ])) {
+                    if (getLocalMediaFile(localMediaId)) continue
+                    void ensureLocalMediaSfuViewer(localMediaId, sendSfuRequest)
+                  }
+                })
+              }
 
-        if (envelope.type === "local-media:reannounce") {
-          void import("@/lib/local-media-provider").then(
-            ({ announceLocalMediaProviderReady }) => {
+              const {
+                announceLocalMediaProviderReady,
+                registerLocalMediaFile,
+                listLocalMediaIds,
+              } = await import("@/lib/local-media-provider")
+              const { restoreLocalMediaHandles } = await import(
+                "@/lib/local-media-handles"
+              )
+              const { inviteLocalMediaWebrtcViewer, configureLocalMediaWebrtc } =
+                await import("@/lib/local-media-webrtc")
+              const {
+                registerLocalMediaServiceWorker,
+                attachLocalMediaServiceWorkerBridge,
+              } = await import("@/lib/local-media-sw")
+
+              if (ws.readyState !== WebSocket.OPEN) return
+
+              configureLocalMediaWebrtc({
+                sendSignal: (targetUserId, localMediaId, signal) => {
+                  if (ws.readyState !== WebSocket.OPEN) return
+                  ws.send(
+                    JSON.stringify({
+                      type: "local-media:webrtc:signal",
+                      requestId: crypto.randomUUID(),
+                      payload: { localMediaId, targetUserId, signal },
+                    }),
+                  )
+                },
+              })
+              void registerLocalMediaServiceWorker()
+              detachSwBridge?.()
+              detachSwBridge = attachLocalMediaServiceWorkerBridge({
+                resolveProviderUserId: (localMediaId) => {
+                  const state = roomStateRef.current
+                  if (!state) return null
+                  const item = state.playlist.find(
+                    (p) => p.localMediaId === localMediaId,
+                  )
+                  return item?.localOriginUserId ?? null
+                },
+                resolveMediaMeta: (localMediaId) => {
+                  const item = roomStateRef.current?.playlist.find(
+                    (p) => p.localMediaId === localMediaId,
+                  )
+                  if (!item) return null
+                  const mimeType =
+                    item.localMimeType ??
+                    item.mediaStreams?.find((s) => s.type)?.type
+                  if (!mimeType || !item.localSizeBytes) return null
+                  return { mimeType, sizeBytes: item.localSizeBytes }
+                },
+              })
+
+              await restoreLocalMediaHandles({
+                roomId,
+                userId: identity.userId,
+                register: registerLocalMediaFile,
+              })
               if (ws.readyState !== WebSocket.OPEN) return
               announceLocalMediaProviderReady(
                 (type, readyPayload) => {
@@ -394,11 +521,144 @@ export function useRoomSocket(
                     }),
                   )
                 },
-                roomStateRef.current,
+                payload,
                 identity.userId,
               )
+
+              // Provider invites other room members onto DataChannels (C0 mesh).
+              const held = listLocalMediaIds()
+              if (held.length > 0) {
+                for (const participant of Object.values(payload.participants)) {
+                  if (participant.userId === identity.userId) continue
+                  if (!participant.connected) continue
+                  for (const localMediaId of held) {
+                    void inviteLocalMediaWebrtcViewer({
+                      localMediaId,
+                      viewerUserId: participant.userId,
+                    })
+                  }
+                }
+              }
+
+              // Files restored from IndexedDB are published once the SFU is
+              // available (queued if capabilities are still pending).
+              for (const localMediaId of held) {
+                provideViaSfu(localMediaId)
+              }
+            })()
+          }
+          return
+        }
+
+        if (envelope.type === "local-media:sfu:result") {
+          const requestId = envelope.requestId
+          const resolve = requestId ? sfuPending.get(requestId) : undefined
+          if (!requestId || !resolve) return
+          sfuPending.delete(requestId)
+          resolve(envelope.payload as SfuResult)
+          return
+        }
+
+        if (envelope.type === "local-media:sfu:producer") {
+          if (!sfuAvailable) return
+          const payload = envelope.payload as {
+            localMediaId?: string
+            dataProducerId?: string
+            ownerUserId?: string
+            kind?: "provider" | "requests"
+          }
+          const { localMediaId, dataProducerId, ownerUserId } = payload
+          if (!localMediaId || !dataProducerId || !ownerUserId) return
+          const isSelfOwner = ownerUserId === identity.userId
+
+          void (async () => {
+            const sfu = await import("@/lib/local-media-sfu")
+            const { getLocalMediaFile } = await import(
+              "@/lib/local-media-provider"
+            )
+            const holdsFile = Boolean(getLocalMediaFile(localMediaId))
+            if (payload.kind === "requests") {
+              if (isSelfOwner && holdsFile) {
+                await sfu.ensureLocalMediaSfuRequestConsumer(
+                  localMediaId,
+                  dataProducerId,
+                  sendSfuRequest,
+                )
+              }
+              return
+            }
+            if (!holdsFile) {
+              await sfu.ensureLocalMediaSfuViewer(localMediaId, sendSfuRequest)
+            }
+          })()
+          return
+        }
+
+        if (envelope.type === "local-media:webrtc:signal") {
+          const payload = envelope.payload as {
+            localMediaId?: string
+            fromUserId?: string
+            signal?: {
+              type: "offer" | "answer" | "ice" | "hangup"
+              sdp?: string
+              candidate?: string
+              sdpMid?: string
+              sdpMLineIndex?: number
+            }
+          }
+          if (
+            !payload.localMediaId ||
+            !payload.fromUserId ||
+            !payload.signal
+          ) {
+            return
+          }
+          void import("@/lib/local-media-webrtc").then(
+            async ({ handleLocalMediaWebrtcSignalFromPeer }) => {
+              const { getLocalMediaFile } = await import(
+                "@/lib/local-media-provider"
+              )
+              await handleLocalMediaWebrtcSignalFromPeer({
+                localMediaId: payload.localMediaId!,
+                fromUserId: payload.fromUserId!,
+                signal: payload.signal!,
+                isProvider: Boolean(getLocalMediaFile(payload.localMediaId!)),
+              })
             },
           )
+          return
+        }
+
+        if (envelope.type === "local-media:reannounce") {
+          void (async () => {
+            const {
+              announceLocalMediaProviderReady,
+              registerLocalMediaFile,
+            } = await import("@/lib/local-media-provider")
+            const { restoreLocalMediaHandles } = await import(
+              "@/lib/local-media-handles"
+            )
+            if (ws.readyState !== WebSocket.OPEN) return
+            await restoreLocalMediaHandles({
+              roomId,
+              userId: identity.userId,
+              register: registerLocalMediaFile,
+            })
+            if (ws.readyState !== WebSocket.OPEN) return
+            announceLocalMediaProviderReady(
+              (type, readyPayload) => {
+                ws.send(
+                  JSON.stringify({
+                    type,
+                    payload: readyPayload,
+                    requestId: crypto.randomUUID(),
+                  }),
+                )
+              },
+              roomStateRef.current,
+              identity.userId,
+            )
+          })()
           return
         }
 
@@ -462,6 +722,17 @@ export function useRoomSocket(
 
       ws.onclose = () => {
         console.warn("[realtime] websocket closed")
+        sfuAvailable = false
+        pendingSfuProvide.clear()
+        detachSwBridge?.()
+        detachSwBridge = null
+        if (sfuProvideRef.current === provideViaSfu) {
+          sfuProvideRef.current = null
+        }
+        flushSfuPending()
+        void import("@/lib/local-media-sfu").then(({ closeLocalMediaSfu }) =>
+          closeLocalMediaSfu(sendSfuRequest),
+        )
         if (joinRetryTimer) {
           window.clearTimeout(joinRetryTimer)
         }
@@ -481,6 +752,9 @@ export function useRoomSocket(
       cancelled = true
       hasReceivedStateRef.current = false
       sendJoinRef.current = null
+      sfuProvideRef.current = null
+      detachSwBridge?.()
+      detachSwBridge = null
       if (reconnectTimer) {
         window.clearTimeout(reconnectTimer)
       }
@@ -497,6 +771,11 @@ export function useRoomSocket(
     wsRef.current?.send(
       JSON.stringify({ type, payload, requestId: crypto.randomUUID() }),
     )
+    // A freshly shared File announces ready here; publish it on the SFU too.
+    if (type === "local-media:ready") {
+      const ready = payload as ClientEventPayloadMap["local-media:ready"]
+      if (ready.ready) sfuProvideRef.current?.(ready.localMediaId)
+    }
   }, [])
 
   const submitJoinPassword = useCallback((password: string) => {

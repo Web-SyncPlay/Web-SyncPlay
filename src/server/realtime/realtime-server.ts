@@ -1,8 +1,11 @@
+import { ensureMediasoupRuntime } from "@/server/media/mediasoup-runtime"
 import { decodeLocalMediaChunkFrame } from "@/lib/local-media-binary"
 import {
   ensureRelaySubscriber,
   resolveLocalMediaChunk,
 } from "@/server/media/local-media-relay"
+import { ensureLocalMediaReannounceSubscriber } from "@/server/media/local-media-reannounce"
+import { startLocalMediaNodeHeartbeat } from "@/server/media/local-media-node-registry"
 import { startResolveReclaimLoop } from "@/server/media/yt-dlp/resolve-reclaim"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { handleSocketDisconnect } from "@/server/realtime/services/disconnect"
@@ -30,6 +33,10 @@ export async function createRealtimeServer(server: HttpServer) {
   getRoomBroadcastBus().attachStore(store)
   wirePubSubFanOut()
   void ensureRelaySubscriber()
+  void ensureLocalMediaReannounceSubscriber()
+  startLocalMediaNodeHeartbeat()
+  // In-process mediasoup SFU (UDP 40000). Warns and continues if worker cannot start.
+  void ensureMediasoupRuntime()
   startResolveReclaimLoop(store)
   attachWebSocketTransport(server, (ws) => {
     setupWebSocketConnection(ws, store)

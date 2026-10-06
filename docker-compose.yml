@@ -11,11 +11,13 @@ services:
       VALKEY_URL: redis://valkey:6379
       # Image is production; do not inherit NODE_ENV=development from a local `.env`.
       NODE_ENV: production
+      # Public hostname/origin for ICE + CORS + CSP (set in `.env` for real deploys).
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-}
     ports:
-      # Bind IPv4 loopback explicitly so another local forwarder (e.g. VS Code
-      # "Ports" on 127.0.0.1:3000) cannot steal IPv4 traffic from Docker's
-      # 0.0.0.0 publish — that makes browsers hang while curl localhost (IPv6) works.
+      # HTTP/WS — loopback for local compose; operators publish via reverse proxy.
       - "127.0.0.1:3000:3000"
+      # mediasoup WebRtcServer — fixed UDP 40000 browsers must reach.
+      - "40000:40000/udp"
     depends_on:
       valkey:
         condition: service_healthy

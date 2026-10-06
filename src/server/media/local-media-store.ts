@@ -1,3 +1,4 @@
+import { getAppNodeId } from "@/server/node-id"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
 import { invalidateLocalMediaBlockCache } from "@/server/media/local-media-block-cache"
@@ -11,6 +12,11 @@ export type LocalMediaEntry = {
   sizeBytes: number
   /** True while the owning browser tab still holds the File for relay. */
   providerReady: boolean
+  /**
+   * APP_NODE_ID of the process that last marked this entry ready (provider WS).
+   * Cleared when providerReady becomes false.
+   */
+  providerNodeId?: string
   createdAt: number
   expiresAt: number
 }
@@ -28,8 +34,11 @@ export async function createLocalMediaEntry(input: {
   sizeBytes: number
   /** Defaults false; set true when the provider already holds the File. */
   providerReady?: boolean
+  /** Defaults to this process when providerReady is true. */
+  providerNodeId?: string
 }) {
   const createdAt = Date.now()
+  const providerReady = input.providerReady ?? false
   const entry: LocalMediaEntry = {
     id: input.id,
     roomId: input.roomId,
@@ -37,7 +46,10 @@ export async function createLocalMediaEntry(input: {
     filename: input.filename,
     mimeType: input.mimeType,
     sizeBytes: input.sizeBytes,
-    providerReady: input.providerReady ?? false,
+    providerReady,
+    providerNodeId: providerReady
+      ? (input.providerNodeId ?? getAppNodeId())
+      : undefined,
     createdAt,
     expiresAt: createdAt + LOCAL_MEDIA_TTL_MS,
   }
@@ -67,6 +79,10 @@ function normalizeEntry(entry: LocalMediaEntry): LocalMediaEntry {
   return {
     ...entry,
     providerReady: entry.providerReady === true,
+    providerNodeId:
+      typeof entry.providerNodeId === "string" && entry.providerNodeId.length > 0
+        ? entry.providerNodeId
+        : undefined,
   }
 }
 
@@ -98,18 +114,38 @@ async function persistEntry(entry: LocalMediaEntry) {
   )
 }
 
+/**
+ * Update provider readiness. When `ready` is true, always stamps
+ * `providerNodeId` to this process (even if already ready) so reconnects
+ * onto a new replica update affinity.
+ */
 export async function setLocalMediaProviderReady(
   id: string,
   ready: boolean,
-  opts?: { ownerUserId?: string },
+  opts?: { ownerUserId?: string; providerNodeId?: string },
 ) {
   const entry = await getLocalMediaEntry(id)
   if (!entry) return null
   if (opts?.ownerUserId && entry.ownerUserId !== opts.ownerUserId) {
     return null
   }
-  if (entry.providerReady === ready) return entry
+
+  const nextNodeId = ready
+    ? (opts?.providerNodeId ?? getAppNodeId())
+    : undefined
+  const readyUnchanged = entry.providerReady === ready
+  const nodeUnchanged = entry.providerNodeId === nextNodeId
+  if (readyUnchanged && nodeUnchanged) {
+    return entry
+  }
+
   entry.providerReady = ready
+  if (ready) {
+    entry.providerNodeId = nextNodeId
+  } else {
+    delete entry.providerNodeId
+  }
+
   try {
     await persistEntry(entry)
   } catch (error) {

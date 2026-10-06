@@ -2,6 +2,7 @@ import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
 import { sanitizeRoomStateForClient } from "@/server/realtime/services/room-security"
+import { getAppNodeId } from "@/server/node-id"
 import { getSocketsForRoom } from "@/server/ws/registry"
 import type {
   PresenceBatchPayload,
@@ -10,7 +11,6 @@ import type {
   RoomSnapshotPayload,
   RoomState,
 } from "@/zod/types"
-import { randomUUID } from "node:crypto"
 import type { WebSocket } from "ws"
 import type {
   ControlEnvelope,
@@ -20,7 +20,7 @@ import type {
 } from "./channels"
 
 /** Identifies this process so Redis pub/sub echoes are not double-delivered. */
-export const BROADCAST_NODE_ID = randomUUID()
+export const BROADCAST_NODE_ID = getAppNodeId()
 
 const PRESENCE_BATCH_INTERVAL_MS = 250
 const SNAPSHOT_COALESCE_MS = 100

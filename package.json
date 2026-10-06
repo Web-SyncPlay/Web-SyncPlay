@@ -2,6 +2,9 @@
   "name": "web-syncplay",
   "private": true,
   "packageManager": "bun@1.4.2",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "NEXT_TELEMETRY_DISABLED=1 next dev",
     "build": "NEXT_TELEMETRY_DISABLED=1 next build",
@@ -14,11 +17,14 @@
     "test:e2e:ws": "node scripts/e2e-ws-concurrent.mjs",
     "format": "prettier --write ."
   },
+  "allowScripts": {
+    "mediasoup@3.28.0": true
+  },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
     "@dicebear/adventurer": "^9.4.3",
     "@dicebear/avataaars": "^9.4.3",
-    "@dicebear/core": "9.4.3",
+    "@dicebear/core": "^9.4.3",
     "@dicebear/lorelei": "^9.4.3",
     "@dnd-kit/react": "^0.5.0",
     "@t3-oss/env-nextjs": "^0.13.11",
@@ -26,6 +32,8 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.52.0",
+    "mediasoup": "3.28.0",
+    "mediasoup-client": "3.18.0",
     "next": "^16.3.8",
     "qrcode.react": "^4.2.0",
     "react": "^19.3.0",

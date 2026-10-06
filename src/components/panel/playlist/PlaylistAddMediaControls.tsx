@@ -2,6 +2,11 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  canUseFileSystemAccess,
+  persistLocalMediaHandle,
+  pickLocalMediaFileWithFsa,
+} from "@/lib/local-media-handles"
 import { resolvePlayableMimeType } from "@/lib/media-mime"
 import { registerLocalMediaFile } from "@/lib/local-media-provider"
 import type { TypedRoomEventSender } from "@/lib/room-events"
@@ -11,10 +16,13 @@ import { toast } from "sonner"
 export function PlaylistAddMediaControls(props: {
   send: TypedRoomEventSender
   canManagePlaylist: boolean
+  roomId: string
+  userId: string
   className?: string
   endAddon?: ReactNode
 }) {
-  const { send, canManagePlaylist, className, endAddon } = props
+  const { send, canManagePlaylist, roomId, userId, className, endAddon } =
+    props
   const [url, setUrl] = useState("")
   const [sharingLocal, setSharingLocal] = useState(false)
   const localFileInputRef = useRef<HTMLInputElement>(null)
@@ -27,7 +35,10 @@ export function PlaylistAddMediaControls(props: {
     toast.success("Added URL, resolving metadata in background")
   }
 
-  const addLocalMedia = (file: File) => {
+  const shareLocalFile = async (
+    file: File,
+    handle?: FileSystemFileHandle,
+  ) => {
     if (!canManagePlaylist) return
 
     const mimeType = resolvePlayableMimeType(file.type, file.name)
@@ -45,6 +56,17 @@ export function PlaylistAddMediaControls(props: {
       const localMediaId = crypto.randomUUID()
       // Keep the File in-tab — no upload. Viewers pull byte ranges via the server relay.
       registerLocalMediaFile(localMediaId, file, mimeType)
+      if (handle) {
+        await persistLocalMediaHandle({
+          localMediaId,
+          roomId,
+          userId,
+          filename: file.name || "Local media",
+          mimeType,
+          sizeBytes: file.size,
+          handle,
+        })
+      }
       send("playlist:add:local", {
         localMediaId,
         name: file.name || "Local media",
@@ -52,7 +74,11 @@ export function PlaylistAddMediaControls(props: {
         sizeBytes: file.size,
       })
       send("local-media:ready", { localMediaId, ready: true })
-      toast.success("Sharing local media (streamed from this browser)")
+      toast.success(
+        handle
+          ? "Sharing local media (survives refresh in this browser)"
+          : "Sharing local media (streamed from this browser)",
+      )
     } catch (error) {
       console.error("[playlist] failed local media share", error)
       toast.error("Could not share local media")
@@ -60,6 +86,24 @@ export function PlaylistAddMediaControls(props: {
       setSharingLocal(false)
       if (localFileInputRef.current) localFileInputRef.current.value = ""
     }
+  }
+
+  const onShareLocalClick = async () => {
+    if (!canManagePlaylist || sharingLocal) return
+    if (canUseFileSystemAccess()) {
+      try {
+        const picked = await pickLocalMediaFileWithFsa()
+        if (!picked) return
+        await shareLocalFile(picked.file, picked.handle)
+        return
+      } catch (error) {
+        console.warn(
+          "[playlist] File System Access failed; falling back to input",
+          error,
+        )
+      }
+    }
+    localFileInputRef.current?.click()
   }
 
   return (
@@ -97,14 +141,14 @@ export function PlaylistAddMediaControls(props: {
           onChange={(event) => {
             const file = event.target.files?.[0]
             if (!file) return
-            addLocalMedia(file)
+            void shareLocalFile(file)
           }}
         />
         <Button
           variant="secondary"
           className="min-h-11 touch-manipulation sm:min-h-8"
           disabled={!canManagePlaylist || sharingLocal}
-          onClick={() => localFileInputRef.current?.click()}
+          onClick={() => void onShareLocalClick()}
         >
           {sharingLocal ? "Sharing..." : "Share Local File"}
         </Button>

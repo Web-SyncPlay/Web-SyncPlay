@@ -5,7 +5,6 @@ import {
 } from "@/server/media/local-media-store"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
-import { getSocketsForUser } from "@/server/ws/registry"
 import type { RoomState } from "@/zod/types"
 import { transferOwnershipIfNeeded } from "./ownership"
 import {
@@ -174,16 +173,11 @@ export async function handleSocketDisconnect(
     await clearLocalMediaProviderReadyForOwner(meta.roomId, meta.userId)
 
     if (activeUsers.has(meta.userId)) {
-      // Remaining tabs for this user should re-declare which Files they still hold.
-      const raw = JSON.stringify({
-        type: "local-media:reannounce",
-        payload: {},
-      })
-      for (const socket of getSocketsForUser(meta.roomId, meta.userId)) {
-        if (socket.readyState === socket.OPEN) {
-          socket.send(raw)
-        }
-      }
+      // Remaining tabs (any node) should re-declare which Files they still hold.
+      const { publishLocalMediaReannounce } = await import(
+        "@/server/media/local-media-reannounce"
+      )
+      await publishLocalMediaReannounce(meta.roomId, meta.userId)
       return null
     }
 

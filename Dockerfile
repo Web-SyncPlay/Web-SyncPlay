@@ -1,9 +1,8 @@
 # syntax=docker/dockerfile:1
 
+# Build with Bun; run with Node so mediasoup's native worker can spawn reliably.
 FROM oven/bun:1.4.2-alpine AS base
 WORKDIR /app
-
-# https://nextjs.org/telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
 
 LABEL org.opencontainers.image.title="Web-SyncPlay" \
@@ -16,30 +15,20 @@ LABEL org.opencontainers.image.title="Web-SyncPlay" \
 
 FROM base AS builder
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+# Skip mediasoup postinstall here: Alpine cannot run the glibc worker binary,
+# and the runner stage installs mediasoup against Node/bookworm instead.
+RUN bun install --frozen-lockfile --ignore-scripts
 COPY . .
 RUN SKIP_ENV_VALIDATION=true bun run build
 
-# Bun >= 1.4 ships the node:http upgrade-socket fix (oven-sh/bun#30664), so the
-# `ws` handshake in src/server/ws/transport.ts works under Bun in production.
-FROM base AS runner
+FROM node:26-bookworm-slim AS runner
+WORKDIR /app
 
 ARG TARGETARCH
-# Pin for reproducible builds; bump when upgrading yt-dlp.
 ARG YTDLP_VERSION=2026.08.19
 
-RUN apk add --no-cache ca-certificates \
-    && case "$TARGETARCH" in \
-         amd64) YTDLP_ASSET=yt-dlp_musllinux ;; \
-         arm64) YTDLP_ASSET=yt-dlp_musllinux_aarch64 ;; \
-         *) echo "unsupported TARGETARCH=$TARGETARCH" >&2; exit 1 ;; \
-       esac \
-    && wget -qO /usr/local/bin/yt-dlp \
-         "https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/${YTDLP_ASSET}" \
-    && chmod a+rx /usr/local/bin/yt-dlp \
-    && yt-dlp --version
-
-ENV NODE_ENV=production \
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    NODE_ENV=production \
     HOSTNAME=0.0.0.0 \
     PORT=3000 \
     VALKEY_URL=redis://valkey:6379 \
@@ -54,26 +43,41 @@ ENV NODE_ENV=production \
     PROXY_ALLOW_PRIVATE_URLS=false \
     CONTROL_TOKEN_TTL_SECONDS=43200
 
-COPY --from=builder --chown=bun:bun /app/public ./public
-RUN mkdir -p .next && chown bun:bun .next
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl python3 make g++ \
+    && case "$TARGETARCH" in \
+         amd64) YTDLP_ASSET=yt-dlp_linux ;; \
+         arm64) YTDLP_ASSET=yt-dlp_linux_aarch64 ;; \
+         *) echo "unsupported TARGETARCH=$TARGETARCH" >&2; exit 1 ;; \
+       esac \
+    && curl -fsSL -o /usr/local/bin/yt-dlp \
+         "https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/${YTDLP_ASSET}" \
+    && chmod a+rx /usr/local/bin/yt-dlp \
+    && yt-dlp --version \
+    && rm -rf /var/lib/apt/lists/*
 
-# File-traced server only — excludes .next/cache and unused node_modules.
-COPY --from=builder --chown=bun:bun /app/.next/standalone ./
-COPY --from=builder --chown=bun:bun /app/.next/static ./.next/static
+COPY --from=builder --chown=node:node /app/public ./public
+RUN mkdir -p .next && chown node:node .next
 
-# Drop glibc-only native bindings if the tracer ever includes them on Alpine.
-RUN rm -rf \
-      ./node_modules/@next/swc-linux-x64-gnu \
-      ./node_modules/@img/sharp-libvips-linux-x64 \
-      ./node_modules/@img/sharp-linux-x64 \
-    && find ./node_modules -type d \( \
-         -name 'swc-linux-x64-gnu' -o \
-         -name 'sharp-libvips-linux-x64' -o \
-         -name 'sharp-linux-x64' \
-       \) -prune -exec rm -rf {} + 2>/dev/null || true
+COPY --from=builder --chown=node:node /app/.next/standalone ./
+COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 
-USER bun
+# Install mediasoup against glibc Node (Alpine/Bun build would not match this runtime).
+COPY --from=builder /app/package.json ./package.json
+# Force a clean glibc mediasoup install so postinstall builds the worker.
+# npm 11 blocks lifecycle scripts unless allowScripts / .npmrc permits them.
+RUN rm -rf node_modules/mediasoup \
+    && printf 'allow-scripts=mediasoup\n' > .npmrc \
+    && npm install mediasoup@3.28.0 --omit=dev --no-save \
+    && test -x node_modules/mediasoup/worker/out/Release/mediasoup-worker \
+    && rm -f .npmrc \
+    && apt-get purge -y python3 make g++ \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/* /root/.npm
+
+USER node
 EXPOSE 3000/tcp
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD ["bun", "-e", "fetch('http://127.0.0.1:3000/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-CMD ["bun", "server.js"]
+EXPOSE 40000/udp
+HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:3000/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+CMD ["node", "server.js"]

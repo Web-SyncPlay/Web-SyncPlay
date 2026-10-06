@@ -93,6 +93,68 @@ export const localMediaReadySchema = z.object({
   ready: z.boolean(),
 })
 
+/** WebRTC signaling for local-media P2P / SFU bootstrap (relayed by server). */
+export const localMediaWebrtcSignalSchema = z.object({
+  localMediaId: z.string().uuid(),
+  targetUserId: z.string().min(1).max(128),
+  signal: z.object({
+    type: z.enum(["offer", "answer", "ice", "hangup"]),
+    sdp: z.string().max(256_000).optional(),
+    candidate: z.string().max(8_000).optional(),
+    sdpMid: z.string().max(64).optional(),
+    sdpMLineIndex: z.number().int().min(0).max(64).optional(),
+  }),
+})
+
+const sfuSctpStreamParametersSchema = z.object({
+  streamId: z.number().int().min(0).max(65_535),
+  ordered: z.boolean().optional(),
+  maxPacketLifeTime: z.number().int().min(0).max(65_535).optional(),
+  maxRetransmits: z.number().int().min(0).max(65_535).optional(),
+})
+
+const sfuDtlsParametersSchema = z.object({
+  role: z.enum(["auto", "client", "server"]).optional(),
+  fingerprints: z
+    .array(
+      z.object({
+        algorithm: z.string().min(1).max(32),
+        value: z.string().min(1).max(256),
+      }),
+    )
+    .min(1)
+    .max(8),
+})
+
+export const localMediaSfuCapabilitiesSchema = z.object({})
+
+export const localMediaSfuCreateTransportSchema = z.object({
+  direction: z.enum(["send", "recv"]),
+  localMediaId: z.string().uuid().optional(),
+})
+
+export const localMediaSfuConnectTransportSchema = z.object({
+  transportId: z.string().min(1).max(128),
+  dtlsParameters: sfuDtlsParametersSchema,
+})
+
+export const localMediaSfuProduceDataSchema = z.object({
+  transportId: z.string().min(1).max(128),
+  localMediaId: z.string().uuid(),
+  sctpStreamParameters: sfuSctpStreamParametersSchema,
+  label: z.string().max(128).optional(),
+  protocol: z.string().max(128).optional(),
+  /** `provider` serves blocks; `requests` is a viewer→provider request channel. */
+  role: z.enum(["provider", "requests"]).optional(),
+})
+
+export const localMediaSfuConsumeDataSchema = z.object({
+  transportId: z.string().min(1).max(128),
+  localMediaId: z.string().uuid(),
+  /** Consume a specific viewer request channel instead of the provider block channel. */
+  dataProducerId: z.string().min(1).max(128).optional(),
+})
+
 export const playlistRetrySchema = z.object({
   itemId: z.string().min(1),
 })

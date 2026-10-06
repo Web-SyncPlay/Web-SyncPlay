@@ -1,8 +1,14 @@
+import { env } from "@/env"
 import {
   getOrFetchLocalMediaBlock,
   invalidateLocalMediaBlockCache,
 } from "@/server/media/local-media-block-cache"
+import {
+  getLocalMediaNode,
+  isLocalMediaInternalConfigured,
+} from "@/server/media/local-media-node-registry"
 import type { LocalMediaEntry } from "@/server/media/local-media-store"
+import { getAppNodeId } from "@/server/node-id"
 import { getCommandClient, getSubscriberClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
 import { getSocketsForUser } from "@/server/ws/registry"
@@ -58,8 +64,6 @@ type RelayPubSubRequest = {
   end: number
   originNodeId: string
 }
-
-const RELAY_NODE_ID = randomUUID()
 
 const g = globalThis as typeof globalThis & {
   __webSyncPlayLocalMediaPending?: Map<string, PendingLocal>
@@ -208,6 +212,71 @@ async function fetchChunkViaLocalSockets(
   return bytes
 }
 
+/**
+ * Prefer the node that holds the provider WebSocket for cache misses.
+ * Returns null when affinity is unavailable so callers fall through to pub/sub.
+ */
+async function fetchChunkViaInternalHttp(
+  entry: LocalMediaEntry,
+  start: number,
+  end: number,
+): Promise<Uint8Array | null> {
+  if (!isLocalMediaInternalConfigured()) {
+    return null
+  }
+  const holderNodeId = entry.providerNodeId
+  if (!holderNodeId || holderNodeId === getAppNodeId()) {
+    return null
+  }
+
+  const secret = env.LOCAL_MEDIA_INTERNAL_SECRET?.trim()
+  if (!secret) {
+    return null
+  }
+
+  const holder = await getLocalMediaNode(holderNodeId)
+  if (!holder?.baseUrl) {
+    return null
+  }
+
+  const url = `${holder.baseUrl}/api/media/local/internal/${encodeURIComponent(entry.id)}`
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), LOCAL_MEDIA_RELAY_TIMEOUT_MS)
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Range: `bytes=${start}-${end}`,
+        "X-Local-Media-Internal": secret,
+      },
+      signal: controller.signal,
+    })
+    if (!response.ok && response.status !== 206) {
+      console.warn("[local-media-relay] internal fetch non-OK", {
+        mediaId: entry.id,
+        holderNodeId,
+        status: response.status,
+      })
+      return null
+    }
+    const buffer = new Uint8Array(await response.arrayBuffer())
+    if (buffer.byteLength === 0) {
+      return null
+    }
+    return buffer
+  } catch (error) {
+    console.warn("[local-media-relay] internal fetch failed", {
+      mediaId: entry.id,
+      holderNodeId,
+      error,
+    })
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 async function fetchChunkViaRedis(
   entry: LocalMediaEntry,
   start: number,
@@ -227,7 +296,7 @@ async function fetchChunkViaRedis(
     localMediaId: entry.id,
     start,
     end,
-    originNodeId: RELAY_NODE_ID,
+    originNodeId: getAppNodeId(),
   }
   await client.publish(
     keys.localMediaRelayRequestChannel(),
@@ -268,7 +337,7 @@ async function handleRelayPubSubRequest(raw: string) {
   }
 
   const requestId = message.requestId
-  if (message.originNodeId === RELAY_NODE_ID) {
+  if (message.originNodeId === getAppNodeId()) {
     return
   }
 
@@ -322,6 +391,8 @@ export async function ensureRelaySubscriber() {
 /**
  * Fetch bytes from the providing browser (no cache). Prefer
  * {@link fetchLocalMediaAlignedBlock} for shared viewer traffic.
+ *
+ * Order: local WS → internal HTTP to provider node → Redis pub/sub flood.
  */
 export async function fetchLocalMediaRangeBytes(
   entry: LocalMediaEntry,
@@ -336,6 +407,10 @@ export async function fetchLocalMediaRangeBytes(
     const local = await fetchChunkViaLocalSockets(entry, start, clampedEnd)
     if (local) {
       return local
+    }
+    const remote = await fetchChunkViaInternalHttp(entry, start, clampedEnd)
+    if (remote) {
+      return remote
     }
     return await fetchChunkViaRedis(entry, start, clampedEnd)
   } catch (error) {
@@ -433,4 +508,4 @@ export function createLocalMediaByteStream(
   })
 }
 
-export { invalidateLocalMediaBlockCache }
+export { invalidateLocalMediaBlockCache, LOCAL_MEDIA_RELAY_CHUNK_BYTES }

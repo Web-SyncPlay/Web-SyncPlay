@@ -35,6 +35,7 @@ function renderItemDuration(durationSeconds?: number): string | null {
 
 export function PlaylistPanel({
   roomState,
+  roomId,
   send,
   userId,
   userSecret: _userSecret,
@@ -85,6 +86,8 @@ export function PlaylistPanel({
           <PlaylistAddMediaControls
             send={send}
             canManagePlaylist={canManagePlaylist}
+            roomId={roomId}
+            userId={userId}
             endAddon={loopToggle}
           />
         ) : (

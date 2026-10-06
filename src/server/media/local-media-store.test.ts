@@ -69,6 +69,7 @@ describe.skipIf(!hasRedis)("local-media-store metadata", () => {
     })
 
     expect((await getLocalMediaEntry(id))?.providerReady).toBe(true)
+    expect((await getLocalMediaEntry(id))?.providerNodeId).toBeTruthy()
 
     const denied = await setLocalMediaProviderReady(id, false, {
       ownerUserId: "other",
@@ -78,10 +79,36 @@ describe.skipIf(!hasRedis)("local-media-store metadata", () => {
 
     await setLocalMediaProviderReady(id, false, { ownerUserId: "owner-2" })
     expect((await getLocalMediaEntry(id))?.providerReady).toBe(false)
+    expect((await getLocalMediaEntry(id))?.providerNodeId).toBeUndefined()
 
     await setLocalMediaProviderReady(id, true, { ownerUserId: "owner-2" })
     await clearLocalMediaProviderReadyForOwner("room-ready", "owner-2")
     expect((await getLocalMediaEntry(id))?.providerReady).toBe(false)
+
+    await deleteLocalMediaEntry(id)
+  })
+
+  test("providerNodeId updates on re-ready even when already ready", async () => {
+    const id = crypto.randomUUID()
+    await createLocalMediaEntry({
+      id,
+      roomId: "room-node",
+      ownerUserId: "owner-3",
+      filename: "clip.mp4",
+      mimeType: "video/mp4",
+      sizeBytes: 100,
+      providerReady: true,
+      providerNodeId: "node-a",
+    })
+
+    expect((await getLocalMediaEntry(id))?.providerNodeId).toBe("node-a")
+
+    await setLocalMediaProviderReady(id, true, {
+      ownerUserId: "owner-3",
+      providerNodeId: "node-b",
+    })
+    expect((await getLocalMediaEntry(id))?.providerReady).toBe(true)
+    expect((await getLocalMediaEntry(id))?.providerNodeId).toBe("node-b")
 
     await deleteLocalMediaEntry(id)
   })

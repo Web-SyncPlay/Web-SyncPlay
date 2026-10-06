@@ -66,6 +66,19 @@ export const env = createEnv({
       .min(0)
       .max(86_400)
       .default(1800),
+    /**
+     * This replica's reachable base URL for internal local-media range fetch
+     * (e.g. http://web:3000). When unset with LOCAL_MEDIA_INTERNAL_SECRET,
+     * cross-node HTTP affinity is disabled and Redis pub/sub remains the path.
+     */
+    INTERNAL_NODE_BASE_URL: z.url().optional(),
+    /** Shared secret for /api/media/local/internal/* (min 16 chars when set). */
+    LOCAL_MEDIA_INTERNAL_SECRET: z.string().min(16).optional(),
+    /**
+     * Public hostname or origin (e.g. web-syncplay.de or https://web-syncplay.de).
+     * Used for mediasoup ICE announcedAddress, CORS, and CSP.
+     */
+    PUBLIC_DOMAIN: z.string().min(1).optional(),
   },
 
   /**
@@ -95,6 +108,9 @@ export const env = createEnv({
     PROXY_ALLOW_PRIVATE_URLS: process.env.PROXY_ALLOW_PRIVATE_URLS,
     CONTROL_TOKEN_TTL_SECONDS: process.env.CONTROL_TOKEN_TTL_SECONDS,
     YTDLP_CACHE_TTL_SECONDS: process.env.YTDLP_CACHE_TTL_SECONDS,
+    INTERNAL_NODE_BASE_URL: process.env.INTERNAL_NODE_BASE_URL,
+    LOCAL_MEDIA_INTERNAL_SECRET: process.env.LOCAL_MEDIA_INTERNAL_SECRET,
+    PUBLIC_DOMAIN: process.env.PUBLIC_DOMAIN,
   },
 
   /**

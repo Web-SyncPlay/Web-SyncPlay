@@ -180,6 +180,8 @@ export const handlePlaylistAddLocal: RoomMessageHandler = async (ctx, data) => {
         defaultStreamId: "local-default",
         localMediaId: parsed.data.localMediaId,
         localOriginUserId: ctx.userId,
+        localMimeType: parsed.data.mimeType,
+        localSizeBytes: parsed.data.sizeBytes,
         createdBy: ctx.userId,
         createdAt: Date.now(),
       })

@@ -132,6 +132,8 @@ describe("playlist handler interfaces", () => {
     expect(item?.localMediaId).toBe(localMediaId)
     expect(item?.ingestStatus).toBe("ready")
     expect(item?.defaultStreamId).toBe("local-default")
+    expect(item?.localMimeType).toBe("video/mp4")
+    expect(item?.localSizeBytes).toBe(2048)
 
     const { getLocalMediaEntry, deleteLocalMediaEntry } = await import(
       "@/server/media/local-media-store"

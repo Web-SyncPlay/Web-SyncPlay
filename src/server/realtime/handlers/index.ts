@@ -1,4 +1,5 @@
 import * as localMedia from "./local-media"
+import * as localMediaSfu from "./local-media-sfu"
 import * as participant from "./participant"
 import * as playback from "./playback"
 import * as playlist from "./playlist"
@@ -29,6 +30,14 @@ export const roomMessageHandlers = {
   "playlist:item:error": playlist.handlePlaylistItemError,
   "local-media:chunk": localMedia.handleLocalMediaChunk,
   "local-media:ready": localMedia.handleLocalMediaReady,
+  "local-media:webrtc:signal": localMedia.handleLocalMediaWebrtcSignal,
+  "local-media:sfu:capabilities": localMediaSfu.handleLocalMediaSfuCapabilities,
+  "local-media:sfu:create-transport":
+    localMediaSfu.handleLocalMediaSfuCreateTransport,
+  "local-media:sfu:connect-transport":
+    localMediaSfu.handleLocalMediaSfuConnectTransport,
+  "local-media:sfu:produce-data": localMediaSfu.handleLocalMediaSfuProduceData,
+  "local-media:sfu:consume-data": localMediaSfu.handleLocalMediaSfuConsumeData,
   "viewer:media:preferences": viewerMedia.handleViewerMediaPreferences,
   "seek:preview": seekPreview.handleSeekPreview,
   "participant:update": participant.handleParticipantUpdate,

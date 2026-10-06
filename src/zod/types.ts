@@ -59,6 +59,8 @@ export interface PlaylistItem {
   isLive?: boolean
   localMediaId?: string
   localOriginUserId?: string
+  localMimeType?: string
+  localSizeBytes?: number
   createdBy: string
   createdAt: number
 }
