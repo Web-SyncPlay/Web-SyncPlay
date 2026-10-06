@@ -63,34 +63,52 @@ export function PlaylistAddMediaControls(props: {
   }
 
   return (
-    <div className={className ?? "flex items-center gap-2"}>
+    <div
+      className={
+        className ??
+        "flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
+      }
+    >
       <Input
         value={url}
         onChange={(event) => setUrl(event.target.value)}
         placeholder="Media URL"
         disabled={!canManagePlaylist}
-      />
-      <Button onClick={addMedia} disabled={!canManagePlaylist || !url.trim()}>
-        Add Media
-      </Button>
-      <input
-        ref={localFileInputRef}
-        type="file"
-        accept="video/*,audio/*"
-        className="hidden"
-        onChange={(event) => {
-          const file = event.target.files?.[0]
-          if (!file) return
-          addLocalMedia(file)
+        className="min-h-11 touch-manipulation sm:min-h-8 sm:min-w-48 sm:flex-1"
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            addMedia()
+          }
         }}
       />
-      <Button
-        variant="secondary"
-        disabled={!canManagePlaylist || sharingLocal}
-        onClick={() => localFileInputRef.current?.click()}
-      >
-        {sharingLocal ? "Sharing..." : "Share Local File"}
-      </Button>
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+        <Button
+          className="min-h-11 touch-manipulation sm:min-h-8"
+          onClick={addMedia}
+          disabled={!canManagePlaylist || !url.trim()}
+        >
+          Add Media
+        </Button>
+        <input
+          ref={localFileInputRef}
+          type="file"
+          accept="video/*,audio/*"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            if (!file) return
+            addLocalMedia(file)
+          }}
+        />
+        <Button
+          variant="secondary"
+          className="min-h-11 touch-manipulation sm:min-h-8"
+          disabled={!canManagePlaylist || sharingLocal}
+          onClick={() => localFileInputRef.current?.click()}
+        >
+          {sharingLocal ? "Sharing..." : "Share Local File"}
+        </Button>
+      </div>
     </div>
   )
 }

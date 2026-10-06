@@ -18,6 +18,7 @@ import {
   playlistAddLocalSchema,
   playlistAddUrlSchema,
   playlistItemErrorSchema,
+  playlistRemoveSchema,
   playlistRenameSchema,
   playlistReorderSchema,
   playlistRetrySchema,
@@ -150,6 +151,13 @@ describe("playlist payload interfaces", () => {
     expect(playlistSelectSchema.safeParse({ index: 0 }).success).toBe(true)
     expect(playlistSelectSchema.safeParse({ index: -1 }).success).toBe(false)
     expect(playlistSelectSchema.safeParse({ index: 1.5 }).success).toBe(false)
+  })
+
+  test("remove requires itemId", () => {
+    expect(
+      playlistRemoveSchema.safeParse({ itemId: "item-a" }).success,
+    ).toBe(true)
+    expect(playlistRemoveSchema.safeParse({ itemId: "" }).success).toBe(false)
   })
 
   test("reorder requires non-negative ints", () => {

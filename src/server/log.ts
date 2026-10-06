@@ -15,6 +15,7 @@ export const trackedActionTypes = new Set<string>([
   "playback:seek",
   "playback:loop",
   "playlist:add",
+  "playlist:remove",
   "playlist:reorder",
   "media:played",
   "room:password:set",

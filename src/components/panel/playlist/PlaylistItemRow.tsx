@@ -1,4 +1,11 @@
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import {
   Item,
@@ -15,8 +22,12 @@ import {
   ArrowUp,
   GripVertical,
   Loader2,
+  MoreVertical,
+  Pencil,
+  Play,
   PlayCircle,
   RefreshCw,
+  Trash2,
 } from "lucide-react"
 
 export function PlaylistItemRow(props: {
@@ -27,10 +38,13 @@ export function PlaylistItemRow(props: {
   canControlPlaylist: boolean
   playlistLength: number
   draftValue: string
+  isEditing: boolean
   onDraftChange: (next: string) => void
-  onDraftStart: () => void
+  onEditStart: () => void
   onDraftCommit: () => void
   onDraftCancel: () => void
+  onSelect: () => void
+  onRemove: () => void
   onMoveUp: () => void
   onMoveDown: () => void
   onRetry: () => void
@@ -43,10 +57,13 @@ export function PlaylistItemRow(props: {
     canControlPlaylist,
     playlistLength,
     draftValue,
+    isEditing,
     onDraftChange,
-    onDraftStart,
+    onEditStart,
     onDraftCommit,
     onDraftCancel,
+    onSelect,
+    onRemove,
     onMoveUp,
     onMoveDown,
     onRetry,
@@ -57,6 +74,11 @@ export function PlaylistItemRow(props: {
     index,
     disabled: !canControlPlaylist,
   })
+
+  const canRetry =
+    canControlPlaylist &&
+    item.ingestStatus === "error" &&
+    item.blockedReason !== "local_owner_offline"
 
   return (
     <div
@@ -69,7 +91,10 @@ export function PlaylistItemRow(props: {
     >
       <Item
         variant={isCurrent ? "outline" : "muted"}
-        className={cn(item.ingestStatus === "error" && "border-destructive/60")}
+        className={cn(
+          "items-start sm:items-center",
+          item.ingestStatus === "error" && "border-destructive/60",
+        )}
       >
         {canControlPlaylist && (
           <ItemMedia>
@@ -77,20 +102,20 @@ export function PlaylistItemRow(props: {
               ref={handleRef}
               variant="ghost"
               aria-label="Drag to reorder"
-              className={cn("touch-none cursor-grab active:cursor-grabbing")}
-              size={"icon"}
+              className="touch-none cursor-grab active:cursor-grabbing size-10 sm:size-8"
+              size="icon"
             >
               <GripVertical />
             </Button>
           </ItemMedia>
         )}
-        <ItemContent>
-          {canControlPlaylist && (
+        <ItemContent className="min-w-0 py-1">
+          {canControlPlaylist && isEditing ? (
             <Input
-              className="h-8 hidden group-hover/item:block group-focus-within/item:block"
+              className="h-10 sm:h-8"
+              autoFocus
               value={draftValue}
               onChange={(e) => onDraftChange(e.target.value)}
-              onFocus={onDraftStart}
               onBlur={onDraftCommit}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -103,60 +128,97 @@ export function PlaylistItemRow(props: {
                 }
               }}
             />
-          )}
-          <ItemTitle
-            className={cn(
-              canControlPlaylist &&
-                "group-hover/item:hidden group-focus-within/item:hidden",
-            )}
-          >
-            {isCurrent && <PlayCircle className="size-4 text-emerald-500" />}
-            {(item.ingestStatus === "resolving") && (
-              <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
-            )}
-            {index + 1}. {item.name}
-            {itemDuration && (
-              <span className="text-xs text-muted-foreground">
-                {itemDuration}
+          ) : (
+            <ItemTitle
+              className={cn(
+                "max-w-full",
+                canControlPlaylist &&
+                  !isCurrent &&
+                  "cursor-pointer rounded-md active:bg-muted/80 sm:hover:bg-muted/60",
+              )}
+              onClick={() => {
+                if (!canControlPlaylist || isCurrent) return
+                onSelect()
+              }}
+            >
+              {isCurrent && (
+                <PlayCircle className="size-4 shrink-0 text-emerald-500" />
+              )}
+              {item.ingestStatus === "resolving" && (
+                <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
+              )}
+              <span className="truncate">
+                {index + 1}. {item.name}
               </span>
-            )}
-          </ItemTitle>
+              {itemDuration && (
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {itemDuration}
+                </span>
+              )}
+            </ItemTitle>
+          )}
           {item.ingestStatus === "resolving" || item.ingestError ? (
-            <p className="text-xs text-muted-foreground">
+            <p className="truncate text-xs text-muted-foreground">
               {item.sourceUrl}
               {item.ingestError && ` (${item.ingestError})`}
             </p>
           ) : null}
         </ItemContent>
-        <ItemActions>
-          <Button
-            variant="secondary"
-            size="icon-sm"
-            disabled={
-              !canControlPlaylist ||
-              item.ingestStatus !== "error" ||
-              item.blockedReason === "local_owner_offline"
-            }
-            onClick={onRetry}
-          >
-            <RefreshCw className="size-3.5" />
-          </Button>
-          <Button
-            variant="secondary"
-            size="icon-sm"
-            disabled={!canControlPlaylist || index === 0}
-            onClick={onMoveUp}
-          >
-            <ArrowUp className="size-3.5" />
-          </Button>
-          <Button
-            variant="secondary"
-            size="icon-sm"
-            disabled={!canControlPlaylist || index === playlistLength - 1}
-            onClick={onMoveDown}
-          >
-            <ArrowDown className="size-3.5" />
-          </Button>
+        <ItemActions className="shrink-0 gap-1 self-center">
+          {canControlPlaylist && !isCurrent ? (
+            <Button
+              variant="secondary"
+              size="icon"
+              className="size-10 sm:size-7"
+              aria-label="Play this item"
+              onClick={onSelect}
+            >
+              <Play className="size-4" />
+            </Button>
+          ) : null}
+          {canControlPlaylist ? (
+            <Button
+              variant="destructive"
+              size="icon"
+              className="size-10 sm:size-7"
+              aria-label="Remove item"
+              onClick={onRemove}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          ) : null}
+          {canControlPlaylist ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label="More playlist actions"
+                className="inline-flex size-10 items-center justify-center rounded-lg border border-transparent bg-secondary text-secondary-foreground sm:size-7"
+              >
+                <MoreVertical className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-44">
+                <DropdownMenuItem onClick={onEditStart}>
+                  <Pencil />
+                  Rename
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={!canRetry} onClick={onRetry}>
+                  <RefreshCw />
+                  Retry
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled={index === 0} onClick={onMoveUp}>
+                  <ArrowUp />
+                  Move up
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={index === playlistLength - 1}
+                  onClick={onMoveDown}
+                >
+                  <ArrowDown />
+                  Move down
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
         </ItemActions>
       </Item>
     </div>

@@ -54,6 +54,10 @@ export const playlistRenameSchema = z.object({
   name: z.string().min(1).max(256),
 })
 
+export const playlistRemoveSchema = z.object({
+  itemId: z.string().min(1),
+})
+
 export const playlistAddUrlSchema = z.object({
   url: z.url(),
 })

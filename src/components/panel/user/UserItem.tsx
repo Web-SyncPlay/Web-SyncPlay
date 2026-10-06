@@ -3,7 +3,9 @@ import type { TypedRoomEventSender } from "@/lib/room-events"
 import { formatClockMs, formatRelativeLastSeen } from "@/lib/time-format"
 import { cn } from "@/lib/utils"
 import type { ParticipantState } from "@/zod/types"
+import { Pencil } from "lucide-react"
 import { Badge } from "../../ui/badge"
+import { Button } from "../../ui/button"
 import { Input } from "../../ui/input"
 import { Item, ItemActions, ItemContent } from "../../ui/item"
 import {
@@ -39,9 +41,10 @@ export function UserItem({
     >
       <UserAvatar send={send} user={user} isSelf={isSelf} />
       <ItemContent className="py-2">
-        {isSelf && (
+        {isSelf && inlineEdit.isEditing ? (
           <Input
-            className="h-10 hidden group-hover/item:block group-focus-within/item:block"
+            className="h-10"
+            autoFocus
             value={inlineEdit.draft || user.username}
             onChange={(e) => inlineEdit.setDraft(e.target.value)}
             onFocus={() => inlineEdit.reset(user.username)}
@@ -52,49 +55,56 @@ export function UserItem({
                 ;(e.target as HTMLInputElement).blur()
               }
               if (e.key === "Escape") {
-                inlineEdit.reset(user.username)
+                inlineEdit.cancel(user.username)
                 ;(e.target as HTMLInputElement).blur()
               }
             }}
           />
-        )}
-        <div
-          className={cn(
-            isSelf && "group-hover/item:hidden group-focus-within/item:hidden",
-          )}
-        >
-          <div className="flex items-center gap-2">
-            {isSelf && <Badge>You</Badge>}
-            {<span className="truncate text-lg">{user.username}</span>}
-            <Badge
-              variant={user.role === "owner" ? "default" : "outline"}
-              className="capitalize"
-            >
-              {user.role}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="leading-tight text-muted-foreground">
-              {user.localPlayback.paused ? "Paused" : "Playing"} at{" "}
-              {formatClockMs(user.localPlayback.currentTimeMs)}
+        ) : (
+          <div>
+            <div className="flex items-center gap-2">
+              {isSelf && <Badge>You</Badge>}
+              <span className="truncate text-lg">{user.username}</span>
+              {isSelf ? (
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label="Edit display name"
+                  onClick={() => inlineEdit.start(user.username)}
+                >
+                  <Pencil />
+                </Button>
+              ) : null}
+              <Badge
+                variant={user.role === "owner" ? "default" : "outline"}
+                className="capitalize"
+              >
+                {user.role}
+              </Badge>
             </div>
-            <Badge
-              variant={
-                user.localPlayback.error
-                  ? "destructive"
+            <div className="flex items-center gap-2">
+              <div className="leading-tight text-muted-foreground">
+                {user.localPlayback.paused ? "Paused" : "Playing"} at{" "}
+                {formatClockMs(user.localPlayback.currentTimeMs)}
+              </div>
+              <Badge
+                variant={
+                  user.localPlayback.error
+                    ? "destructive"
+                    : user.localPlayback.loading
+                      ? "outline"
+                      : "secondary"
+                }
+              >
+                {user.localPlayback.error
+                  ? "Error"
                   : user.localPlayback.loading
-                    ? "outline"
-                    : "secondary"
-              }
-            >
-              {user.localPlayback.error
-                ? "Error"
-                : user.localPlayback.loading
-                  ? "Loading"
-                  : "Ready"}
-            </Badge>
+                    ? "Loading"
+                    : "Ready"}
+              </Badge>
+            </div>
           </div>
-        </div>
+        )}
       </ItemContent>
       <ItemActions>
         <Tooltip>

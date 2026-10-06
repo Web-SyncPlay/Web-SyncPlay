@@ -25,9 +25,11 @@ import {
 import "@vidstack/react/player/styles/default/layouts/audio.css"
 import "@vidstack/react/player/styles/default/layouts/video.css"
 import "@vidstack/react/player/styles/default/theme.css"
-import { SkipBack, SkipForward } from "lucide-react"
+import { SkipBack, SkipForward, Volume2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import type { RoomPanelProps } from "../../layout/page/types"
 import { ControlPanel } from "../control/ControlPanel"
 import { PlaylistAddMediaControls } from "../playlist/PlaylistAddMediaControls"
@@ -152,7 +154,8 @@ export function PlayerPanel({
   userId,
   userSecret: _userSecret,
   capabilities,
-}: RoomPanelProps) {
+  className,
+}: RoomPanelProps & { className?: string }) {
   const current = roomState.playlist[roomState.currentIndex]
   const viewerPrefs = roomState.participants[userId]?.viewerMedia?.byItemId[
     current?.id ?? ""
@@ -578,10 +581,39 @@ export function PlayerPanel({
   const totalDurationMs = Math.floor((current?.durationSeconds ?? 0) * 1000)
 
   return (
-    <div className="relative aspect-video size-full bg-black sm:col-span-2 xl:col-span-3">
+    <div
+      className={cn(
+        "relative aspect-video size-full bg-black",
+        className,
+      )}
+    >
       {!canControlPlayback && (
         <div className="pointer-events-none absolute left-3 top-3 z-20 rounded-md bg-black/70 px-2 py-1 text-xs text-white/90">
-          You are a guest. Playback controls are view-only here.
+          View only — volume still works
+        </div>
+      )}
+      {isMuted && Boolean(activePlaybackSrc) && (
+        <div className="absolute bottom-16 left-1/2 z-30 w-[min(100%-1.5rem,20rem)] -translate-x-1/2 sm:bottom-14">
+          <Button
+            type="button"
+            size="lg"
+            className="w-full min-h-11 touch-manipulation shadow-lg"
+            onClick={() => {
+              const player = playerRef.current
+              if (!player) return
+              player.muted = false
+              if (player.volume <= 0.01) {
+                player.volume = preferredVolume > 0 ? preferredVolume : 0.3
+              }
+              handleVolumeChange({
+                volume: player.volume,
+                muted: false,
+              })
+            }}
+          >
+            <Volume2 className="size-4" />
+            Tap to unmute
+          </Button>
         </div>
       )}
       {current &&
@@ -1063,15 +1095,11 @@ export function PlayerPanel({
         .guest-controls-guard .vds-controls [data-media-control="settings"],
         .guest-controls-guard
           .vds-controls
-          [data-media-control="captions-button"],
-        .guest-controls-guard
-          .vds-controls
           [data-media-control="settings-menu"],
         .guest-controls-guard .vds-controls [aria-label*="settings" i],
         .guest-controls-guard .vds-controls [aria-label*="playback speed" i],
         .guest-controls-guard .vds-controls [aria-label*="loop" i] {
-          opacity: 0.45 !important;
-          pointer-events: none !important;
+          display: none !important;
         }
       `}</style>
     </div>

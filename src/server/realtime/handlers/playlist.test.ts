@@ -6,6 +6,7 @@ import {
 import {
   handlePlaylistAddLocal,
   handlePlaylistItemError,
+  handlePlaylistRemove,
   handlePlaylistRename,
   handlePlaylistReorder,
   handlePlaylistSelect,
@@ -70,6 +71,26 @@ describe("playlist handler interfaces", () => {
       "item-a",
     ])
     expect(next?.playlist[next.currentIndex]?.id).toBe(beforeId)
+  })
+
+  test("remove drops item and adjusts current index", async () => {
+    const store = new InMemoryRoomStateStore(
+      createRoomState({ currentIndex: 1 }),
+    )
+    createTestBroadcastBus(store)
+    const ctx = createHandlerContext({ store })
+
+    await handlePlaylistRemove(
+      ctx,
+      envelope("playlist:remove", { itemId: "item-b" }),
+    )
+    const next = store.peek("room-1")
+    expect(next?.playlist.map((item) => item.id)).toEqual([
+      "item-a",
+      "item-c",
+    ])
+    expect(next?.currentIndex).toBe(1)
+    expect(next?.actionLog.at(-1)?.action).toBe("playlist:remove")
   })
 
   test("rename rejects empty/same name and updates when valid", async () => {

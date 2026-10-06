@@ -45,6 +45,7 @@ export interface ClientEventPayloadMap {
     audioLanguage?: string
   }
   "playlist:rename": { itemId: string; name: string }
+  "playlist:remove": { itemId: string }
   "playlist:reorder": { from: number; to: number }
   "playlist:select": { index: number }
   "seek:preview": { targetMs?: number; active?: boolean }

@@ -11,6 +11,7 @@ import {
   playlistAddLocalSchema,
   playlistAddUrlSchema,
   playlistItemErrorSchema,
+  playlistRemoveSchema,
   playlistRenameSchema,
   playlistReorderSchema,
   playlistRetrySchema,
@@ -360,5 +361,59 @@ export const handlePlaylistRename: RoomMessageHandler = async (ctx, data) => {
       return true
     },
     { kind: "snapshot" },
+  )
+}
+
+export const handlePlaylistRemove: RoomMessageHandler = async (ctx, data) => {
+  const removeResult = playlistRemoveSchema.safeParse(data.payload)
+  if (!removeResult.success) return
+
+  await mutateControlledRoomMessage(
+    ctx,
+    (state, participant) => {
+      const index = state.playlist.findIndex(
+        (entry) => entry.id === removeResult.data.itemId,
+      )
+      if (index < 0) {
+        return false
+      }
+      const [removed] = state.playlist.splice(index, 1)
+      if (!removed) {
+        return false
+      }
+
+      if (state.playlist.length === 0) {
+        state.currentIndex = 0
+        state.playback.timelineAnchorMs = 0
+        state.playback.paused = true
+        state.playback.serverNowMs = nextMonotonicMs(
+          state.playback.serverNowMs,
+          Date.now(),
+        )
+      } else if (index < state.currentIndex) {
+        state.currentIndex -= 1
+      } else if (index === state.currentIndex) {
+        state.currentIndex = Math.min(index, state.playlist.length - 1)
+        state.playback.timelineAnchorMs = 0
+        state.playback.serverNowMs = nextMonotonicMs(
+          state.playback.serverNowMs,
+          Date.now(),
+        )
+      }
+
+      appendActionLog(state, {
+        roomId: ctx.roomId,
+        actorUserId: ctx.userId,
+        actorUsername: participant.username,
+        action: "playlist:remove",
+        payload: {
+          itemId: removed.id,
+          itemName: removed.name,
+          index,
+        },
+      })
+      return true
+    },
+    { kind: "control+snapshot" },
   )
 }

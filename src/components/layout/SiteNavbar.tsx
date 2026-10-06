@@ -1,5 +1,6 @@
 "use client"
 
+import { RoomSettingsDialog } from "@/components/dialog/RoomSettingsDialog"
 import { ShareRoomDialog } from "@/components/dialog/ShareRoomDialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,14 +15,32 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Separator } from "@/components/ui/separator"
 import { env } from "@/env"
+import type { RoomLayoutMode } from "@/hooks/use-room-layout-mode"
 import type { TypedRoomEventSender } from "@/lib/room-events"
+import { cn } from "@/lib/utils"
 import type { RoomSecurityState } from "@/zod/types"
-import { Copy, ExternalLink, QrCode, Rows3, ScreenShare } from "lucide-react"
+import {
+  Clapperboard,
+  ExternalLink,
+  ListMusic,
+  Rows3,
+  ScreenShare,
+  Settings,
+  Smartphone,
+} from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { QRCodeSVG } from "qrcode.react"
 import { useState } from "react"
-import { toast } from "sonner"
+
+const layoutModeItems: {
+  id: RoomLayoutMode
+  label: string
+  icon: typeof Clapperboard
+}[] = [
+  { id: "watch", label: "Watch", icon: Clapperboard },
+  { id: "manage", label: "Manage", icon: ListMusic },
+  { id: "remote", label: "Remote", icon: Smartphone },
+]
 
 export function SiteNavbar(props: {
   roomId: string
@@ -38,6 +57,9 @@ export function SiteNavbar(props: {
   canManageRoomSecurity?: boolean
   send?: TypedRoomEventSender
   showViewMenu?: boolean
+  layoutMode?: RoomLayoutMode
+  onLayoutModeChange?: (mode: RoomLayoutMode) => void
+  showLayoutModes?: boolean
 }) {
   const {
     roomId,
@@ -54,27 +76,22 @@ export function SiteNavbar(props: {
     canManageRoomSecurity = false,
     send,
     showViewMenu = true,
+    layoutMode,
+    onLayoutModeChange,
+    showLayoutModes = false,
   } = props
   const [isShareOpen, setIsShareOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const openInNewWindow = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer")
-  }
-
-  const copyToClipboard = async (value: string, message: string) => {
-    try {
-      await navigator.clipboard.writeText(value)
-      toast.success(message)
-    } catch {
-      toast.error("Failed to copy to clipboard")
-    }
   }
 
   return (
     <>
       <header className="sticky top-0 z-20 border-b bg-background/95">
         <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
             <Link href={"/"} className={"flex shrink-0 items-center gap-1"}>
               <Image
                 src={"/logo_white.png"}
@@ -91,23 +108,52 @@ export function SiteNavbar(props: {
             <Badge variant={paused ? "outline" : "secondary"}>
               {paused ? "Paused" : "Playing"}
             </Badge>
-            <span className="text-muted-foreground">
+            <span className="truncate text-muted-foreground">
               Playing: {currentName ?? "None"}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {showLayoutModes && layoutMode && onLayoutModeChange ? (
+              <div
+                className="inline-flex items-center rounded-lg border bg-background p-0.5"
+                role="group"
+                aria-label="Room layout mode"
+              >
+                {layoutModeItems.map((item) => {
+                  const Icon = item.icon
+                  const active = layoutMode === item.id
+                  return (
+                    <Button
+                      key={item.id}
+                      size="sm"
+                      variant={active ? "default" : "ghost"}
+                      className={cn(
+                        "min-h-10 min-w-10 touch-manipulation sm:min-h-8 sm:min-w-0",
+                        !active && "text-muted-foreground",
+                      )}
+                      aria-pressed={active}
+                      aria-label={item.label}
+                      onClick={() => onLayoutModeChange(item.id)}
+                    >
+                      <Icon className="size-4 sm:size-3.5" />
+                      <span className="hidden sm:inline">{item.label}</span>
+                    </Button>
+                  )
+                })}
+              </div>
+            ) : null}
             {showViewMenu ? (
               <DropdownMenu>
                 <DropdownMenuTrigger
                   className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground"
-                  aria-label="Open view options"
+                  aria-label="Open embed views"
                 >
                   <Rows3 className="size-4" />
-                  View
+                  Embeds
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-72">
+                <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuGroup>
-                    <DropdownMenuLabel>Open view</DropdownMenuLabel>
+                    <DropdownMenuLabel>Open in new window</DropdownMenuLabel>
                     <DropdownMenuItem
                       disabled={viewMode === "room"}
                       onClick={() => openInNewWindow(roomUrl)}
@@ -134,32 +180,24 @@ export function SiteNavbar(props: {
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuGroup>
-                    <DropdownMenuLabel className="flex items-center gap-2">
-                      <QrCode className="size-4" />
-                      QR code (control embed)
-                    </DropdownMenuLabel>
-                    <div className="flex min-h-[280px] flex-col items-center justify-center gap-2 p-2 text-xs text-muted-foreground">
-                      <QRCodeSVG
-                        value={controlEmbedUrl}
-                        className="size-full aspect-square"
-                      />
-                    </div>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        void copyToClipboard(
-                          controlEmbedUrl,
-                          "Control embed URL copied",
-                        )
-                      }}
-                      className="cursor-pointer"
-                    >
-                      <Copy />
-                      Copy control embed URL
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
+                  <DropdownMenuItem
+                    onClick={() => openInNewWindow(controlEmbedUrl)}
+                    className="cursor-pointer"
+                  >
+                    <Smartphone />
+                    Open on phone
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+            ) : null}
+            {canManageRoomSecurity && send ? (
+              <Button
+                variant="outline"
+                onClick={() => setIsSettingsOpen(true)}
+              >
+                <Settings />
+                <span className="hidden sm:inline">Settings</span>
+              </Button>
             ) : null}
             <Button onClick={() => setIsShareOpen(true)}>
               <ScreenShare />
@@ -172,11 +210,15 @@ export function SiteNavbar(props: {
         open={isShareOpen}
         shareUrl={shareUrl}
         copied={copied}
+        onOpenChange={setIsShareOpen}
+        onCopy={onCopyShareUrl}
+      />
+      <RoomSettingsDialog
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
         roomSecurity={roomSecurity}
         canManageRoomSecurity={canManageRoomSecurity}
         send={send}
-        onOpenChange={setIsShareOpen}
-        onCopy={onCopyShareUrl}
       />
     </>
   )

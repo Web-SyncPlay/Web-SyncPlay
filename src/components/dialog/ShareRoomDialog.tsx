@@ -1,6 +1,5 @@
 "use client"
 
-import { RoomJoinPasswordSection } from "@/components/dialog/RoomJoinPasswordSection"
 import {
   Dialog,
   DialogContent,
@@ -14,30 +13,16 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group"
-import type { TypedRoomEventSender } from "@/lib/room-events"
-import type { RoomSecurityState } from "@/zod/types"
 import { CheckIcon, ClipboardCopyIcon } from "lucide-react"
 
 export function ShareRoomDialog(props: {
   open: boolean
   shareUrl: string
   copied: boolean
-  roomSecurity?: RoomSecurityState
-  canManageRoomSecurity?: boolean
-  send?: TypedRoomEventSender
   onOpenChange: (next: boolean) => void
   onCopy: () => void
 }) {
-  const {
-    open,
-    shareUrl,
-    copied,
-    roomSecurity,
-    canManageRoomSecurity = false,
-    send,
-    onOpenChange,
-    onCopy,
-  } = props
+  const { open, shareUrl, copied, onOpenChange, onCopy } = props
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -65,13 +50,6 @@ export function ShareRoomDialog(props: {
             </InputGroupButton>
           </InputGroupAddon>
         </InputGroup>
-        {roomSecurity && send ? (
-          <RoomJoinPasswordSection
-            roomSecurity={roomSecurity}
-            canManageRoomSecurity={canManageRoomSecurity}
-            send={send}
-          />
-        ) : null}
       </DialogContent>
     </Dialog>
   )

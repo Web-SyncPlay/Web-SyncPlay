@@ -45,6 +45,7 @@ export function PlaylistPanel({
   capabilities,
 }: RoomPanelProps) {
   const [draftName, setDraftName] = useState<Record<string, string>>({})
+  const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const myRole = roomState.participants[userId]?.role
   const canManagePlaylist =
     canControlPlaylist(myRole) && capabilities.canManagePlaylist
@@ -70,6 +71,7 @@ export function PlaylistPanel({
   const commitItemName = (itemId: string, currentName: string) => {
     const rawDraft = draftName[itemId]
     const trimmed = (rawDraft ?? currentName).trim()
+    setEditingItemId(null)
     if (!trimmed || trimmed === currentName) {
       setDraftName((prev) => ({ ...prev, [itemId]: currentName }))
       return
@@ -167,16 +169,21 @@ export function PlaylistPanel({
                   canControlPlaylist={canManagePlaylist}
                   playlistLength={roomState.playlist.length}
                   draftValue={draftName[x.id] ?? x.name}
+                  isEditing={editingItemId === x.id}
                   onDraftChange={(next) =>
                     setDraftName((prev) => ({ ...prev, [x.id]: next }))
                   }
-                  onDraftStart={() =>
+                  onEditStart={() => {
                     setDraftName((prev) => ({ ...prev, [x.id]: x.name }))
-                  }
+                    setEditingItemId(x.id)
+                  }}
                   onDraftCommit={() => commitItemName(x.id, x.name)}
-                  onDraftCancel={() =>
+                  onDraftCancel={() => {
                     setDraftName((prev) => ({ ...prev, [x.id]: x.name }))
-                  }
+                    setEditingItemId(null)
+                  }}
+                  onSelect={() => send("playlist:select", { index: i })}
+                  onRemove={() => send("playlist:remove", { itemId: x.id })}
                   onMoveUp={() =>
                     send("playlist:reorder", {
                       from: i,

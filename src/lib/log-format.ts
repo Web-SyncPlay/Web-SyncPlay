@@ -14,6 +14,7 @@ export const visibleActionTypes = [
   "playback:seek",
   "playback:loop",
   "playlist:add",
+  "playlist:remove",
   "playlist:reorder",
   "media:played",
 ] as const
@@ -34,6 +35,7 @@ export const actionLabelByType: Record<
   "playback:seek": "Seeked",
   "playback:loop": "Loop Changed",
   "playlist:add": "Playlist Add",
+  "playlist:remove": "Playlist Remove",
   "playlist:reorder": "Playlist Reorder",
   "media:played": "Media Played",
 }
@@ -73,6 +75,9 @@ export function getActionLogDetails(log: ActionLogEntry): string {
 
   if (log.action === "playlist:add") {
     return `Added "${String(log.payload.itemName ?? "item")}" to playlist`
+  }
+  if (log.action === "playlist:remove") {
+    return `Removed "${String(log.payload.itemName ?? "item")}" from playlist`
   }
   if (log.action === "playlist:reorder") {
     const from = log.payload.from

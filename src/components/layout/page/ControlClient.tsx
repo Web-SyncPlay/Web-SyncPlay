@@ -95,7 +95,7 @@ function ControlClientReady(props: {
         send={send}
         showViewMenu={canControlByRole}
       />
-      <section className="mx-auto flex w-full flex-1 flex-col gap-3 px-3">
+      <section className="mx-auto flex w-full flex-1 flex-col gap-3 px-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <OwnUserPanel {...panelProps} />
         <SidePanel panelProps={panelProps} />
         <ControlPanel
@@ -114,6 +114,10 @@ function ControlClientReady(props: {
           onStepBy={timeline.stepBy}
           onSeekPreview={(targetMs, active) => {
             if (active) {
+              if (timeline.seekPhase === "idle") {
+                timeline.beginSeek(targetMs)
+                return
+              }
               timeline.updateSeek(targetMs)
               return
             }
