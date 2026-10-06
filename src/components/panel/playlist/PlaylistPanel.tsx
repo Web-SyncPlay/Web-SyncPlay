@@ -43,7 +43,8 @@ export function PlaylistPanel({
   userId,
   userSecret: _userSecret,
   capabilities,
-}: RoomPanelProps) {
+  hideTitle = false,
+}: RoomPanelProps & { hideTitle?: boolean }) {
   const [draftName, setDraftName] = useState<Record<string, string>>({})
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const myRole = roomState.participants[userId]?.role
@@ -84,9 +85,15 @@ export function PlaylistPanel({
     <>
       <CardHeader className="shrink-0">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle>Playlist</CardTitle>
+          {hideTitle ? (
+            <span className="text-sm font-medium text-muted-foreground">
+              Loop
+            </span>
+          ) : (
+            <CardTitle>Playlist</CardTitle>
+          )}
           <div className="flex items-center gap-2">
-            Loop
+            {!hideTitle ? <span>Loop</span> : null}
             {canManagePlaylist ? (
               <Select
                 value={roomState.playback.playlistLoop}

@@ -1,20 +1,16 @@
 "use client"
 
 import { RoomJoinPasswordPrompt } from "@/components/dialog/RoomJoinPasswordPrompt"
-import { PlaylistDrawer } from "@/components/layout/PlaylistDrawer"
-import { RemotePrepPanel } from "@/components/layout/RemotePrepPanel"
-import { RoomTransportBar } from "@/components/layout/RoomTransportBar"
 import { SidePanel } from "@/components/layout/SidePanel"
 import { SiteNavbar } from "@/components/layout/SiteNavbar"
 import { SocketStatus } from "@/components/layout/SocketStatus"
-import { UsersStrip } from "@/components/layout/UsersStrip"
 import { PlayerPanel } from "@/components/panel/player/PlayerPanel"
-import { useRoomLayoutMode } from "@/hooks/use-room-layout-mode"
+import { UsersPanel } from "@/components/panel/user/UsersPanel"
+import { useRoomRail } from "@/hooks/use-room-rail"
 import { useRoomSession } from "@/hooks/use-room-session"
 import { getRoomUrl } from "@/lib/control-url"
 import { canControlPlayback } from "@/lib/permissions-utils"
 import { cn } from "@/lib/utils"
-import type { RoomSecurityState } from "@/zod/types"
 import type { RoomPanelProps } from "./types"
 
 export function RoomClient({ roomId }: { roomId: string }) {
@@ -54,7 +50,7 @@ export function RoomClient({ roomId }: { roomId: string }) {
     canControlByRole &&
     (!sessionCapabilities.isControlSession ||
       sessionCapabilities.controlAuthorized)
-  const panelProps = {
+  const panelProps: RoomPanelProps = {
     roomId,
     roomState,
     send,
@@ -67,7 +63,6 @@ export function RoomClient({ roomId }: { roomId: string }) {
     },
   }
   const current = roomState.playlist[roomState.currentIndex]
-  const showViewMenu = canControlByRole
 
   return (
     <RoomClientReady
@@ -76,7 +71,6 @@ export function RoomClient({ roomId }: { roomId: string }) {
       currentName={current?.name}
       paused={roomState.playback.paused}
       canControlByRole={canControlByRole}
-      showViewMenu={showViewMenu}
       roomUrl={getRoomUrl(roomId)}
       playerEmbedUrl={playerEmbedUrl}
       controlEmbedUrl={controlEmbedUrl}
@@ -99,14 +93,13 @@ function RoomClientReady(props: {
   currentName?: string
   paused: boolean
   canControlByRole: boolean
-  showViewMenu: boolean
   roomUrl: string
   playerEmbedUrl: string
   controlEmbedUrl: string
   shareUrl: string
   copied: boolean
   handleCopyShareUrl: () => void
-  roomSecurity: RoomSecurityState
+  roomSecurity: RoomPanelProps["roomState"]["roomSecurity"]
   canManageRoomSecurity: boolean
   send: RoomPanelProps["send"]
 }) {
@@ -116,7 +109,6 @@ function RoomClientReady(props: {
     currentName,
     paused,
     canControlByRole,
-    showViewMenu,
     roomUrl,
     playerEmbedUrl,
     controlEmbedUrl,
@@ -128,13 +120,7 @@ function RoomClientReady(props: {
     send,
   } = props
 
-  const { layoutMode, setLayoutMode } = useRoomLayoutMode({
-    canSwitchModes: canControlByRole,
-    defaultMode: canControlByRole ? "manage" : "watch",
-  })
-
-  const showMobileTransport =
-    canControlByRole && (layoutMode === "watch" || layoutMode === "manage")
+  const { railOpen, railTab, toggleRailOpen, setRailTab } = useRoomRail()
 
   return (
     <>
@@ -152,76 +138,34 @@ function RoomClientReady(props: {
         roomSecurity={roomSecurity}
         canManageRoomSecurity={canManageRoomSecurity}
         send={send}
-        showViewMenu={showViewMenu}
-        showLayoutModes={canControlByRole}
-        layoutMode={layoutMode}
-        onLayoutModeChange={setLayoutMode}
+        showEmbedsMenu={canControlByRole}
+        showRailControls
+        railOpen={railOpen}
+        onToggleRail={toggleRailOpen}
+        railTab={railTab}
+        onRailTabChange={setRailTab}
       />
-
-      {layoutMode === "remote" ? (
-        <section className="flex flex-1 flex-col gap-3 px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <RemotePrepPanel controlEmbedUrl={controlEmbedUrl} />
-          <UsersStrip {...panelProps} />
-        </section>
-      ) : null}
-
-      {layoutMode === "watch" ? (
-        <section
+      <section className="flex flex-1 flex-col gap-2 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <div
           className={cn(
-            "flex flex-1 flex-col gap-2 px-2",
-            showMobileTransport
-              ? "pb-[calc(12rem+env(safe-area-inset-bottom))] lg:pb-2"
-              : "pb-20 lg:pb-2",
+            "grid gap-2",
+            railOpen &&
+              "lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]",
           )}
         >
-          <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]">
-            <PlayerPanel {...panelProps} className="min-h-0 w-full" />
+          <PlayerPanel {...panelProps} className="min-h-0 w-full" />
+          {railOpen ? (
             <SidePanel
               panelProps={panelProps}
-              className="hidden min-h-0 overflow-hidden lg:flex lg:flex-col"
+              hideTabBar
+              tab={railTab}
+              onTabChange={setRailTab}
+              className="min-h-0 max-h-[70vh] overflow-hidden lg:max-h-none"
             />
-          </div>
-          <UsersStrip {...panelProps} />
-          {showMobileTransport ? (
-            <div className="fixed inset-x-0 bottom-0 z-20 lg:hidden">
-              <RoomTransportBar {...panelProps} />
-            </div>
           ) : null}
-          <PlaylistDrawer
-            panelProps={panelProps}
-            offsetForTransport={showMobileTransport}
-          />
-        </section>
-      ) : null}
-
-      {layoutMode === "manage" ? (
-        <section
-          className={cn(
-            "flex flex-1 flex-col gap-2 px-2",
-            "pb-[calc(12rem+env(safe-area-inset-bottom))] lg:pb-2",
-          )}
-        >
-          <div className="grid gap-2 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,1fr)]">
-            <div className="flex min-w-0 flex-col gap-2">
-              <PlayerPanel {...panelProps} className="min-h-0 w-full" />
-              <div className="hidden lg:block">
-                <RoomTransportBar {...panelProps} />
-              </div>
-            </div>
-            <SidePanel
-              panelProps={panelProps}
-              className={cn(
-                "hidden min-h-0 overflow-hidden lg:flex lg:flex-col",
-              )}
-            />
-          </div>
-          <UsersStrip {...panelProps} />
-          <div className="fixed inset-x-0 bottom-0 z-20 lg:hidden">
-            <RoomTransportBar {...panelProps} />
-          </div>
-          <PlaylistDrawer panelProps={panelProps} offsetForTransport />
-        </section>
-      ) : null}
+        </div>
+        <UsersPanel {...panelProps} />
+      </section>
     </>
   )
 }

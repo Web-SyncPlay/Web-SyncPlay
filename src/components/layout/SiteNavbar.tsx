@@ -1,7 +1,6 @@
 "use client"
 
-import { RoomSettingsDialog } from "@/components/dialog/RoomSettingsDialog"
-import { ShareRoomDialog } from "@/components/dialog/ShareRoomDialog"
+import { RoomJoinPasswordSection } from "@/components/dialog/RoomJoinPasswordSection"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,32 +14,23 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Separator } from "@/components/ui/separator"
 import { env } from "@/env"
-import type { RoomLayoutMode } from "@/hooks/use-room-layout-mode"
+import type { RoomRailTab } from "@/hooks/use-room-rail"
 import type { TypedRoomEventSender } from "@/lib/room-events"
 import { cn } from "@/lib/utils"
 import type { RoomSecurityState } from "@/zod/types"
 import {
-  Clapperboard,
+  Check,
+  Copy,
   ExternalLink,
-  ListMusic,
+  PanelRightClose,
+  PanelRightOpen,
   Rows3,
-  ScreenShare,
   Settings,
-  Smartphone,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { useState } from "react"
-
-const layoutModeItems: {
-  id: RoomLayoutMode
-  label: string
-  icon: typeof Clapperboard
-}[] = [
-  { id: "watch", label: "Watch", icon: Clapperboard },
-  { id: "manage", label: "Manage", icon: ListMusic },
-  { id: "remote", label: "Remote", icon: Smartphone },
-]
+import { QRCodeSVG } from "qrcode.react"
+import { toast } from "sonner"
 
 export function SiteNavbar(props: {
   roomId: string
@@ -56,10 +46,12 @@ export function SiteNavbar(props: {
   roomSecurity?: RoomSecurityState
   canManageRoomSecurity?: boolean
   send?: TypedRoomEventSender
-  showViewMenu?: boolean
-  layoutMode?: RoomLayoutMode
-  onLayoutModeChange?: (mode: RoomLayoutMode) => void
-  showLayoutModes?: boolean
+  showEmbedsMenu?: boolean
+  showRailControls?: boolean
+  railOpen?: boolean
+  onToggleRail?: () => void
+  railTab?: RoomRailTab
+  onRailTabChange?: (tab: RoomRailTab) => void
 }) {
   const {
     roomId,
@@ -69,157 +61,233 @@ export function SiteNavbar(props: {
     roomUrl,
     playerEmbedUrl,
     controlEmbedUrl,
-    shareUrl,
     copied,
     onCopyShareUrl,
     roomSecurity,
     canManageRoomSecurity = false,
     send,
-    showViewMenu = true,
-    layoutMode,
-    onLayoutModeChange,
-    showLayoutModes = false,
+    showEmbedsMenu = true,
+    showRailControls = false,
+    railOpen = true,
+    onToggleRail,
+    railTab = "playlist",
+    onRailTabChange,
   } = props
-  const [isShareOpen, setIsShareOpen] = useState(false)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const openInNewWindow = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer")
   }
 
+  const copyControlUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(controlEmbedUrl)
+      toast.success("Control URL copied")
+    } catch {
+      toast.error("Failed to copy control URL")
+    }
+  }
+
+  const navButtonClass =
+    "inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium shadow-xs transition-colors hover:bg-muted hover:text-foreground touch-manipulation sm:min-h-8"
+
   return (
-    <>
-      <header className="sticky top-0 z-20 border-b bg-background/95">
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
-            <Link href={"/"} className={"flex shrink-0 items-center gap-1"}>
-              <Image
-                src={"/logo_white.png"}
-                alt={"Web-SyncPlay logo"}
-                width={36}
-                height={36}
-              />
-              <span className={"hidden sm:block"}>
-                {env.NEXT_PUBLIC_APP_NAME}
-              </span>
-            </Link>
-            <Separator orientation="vertical" />
-            <span className="text-base font-semibold">Room {roomId}</span>
-            <Badge variant={paused ? "outline" : "secondary"}>
-              {paused ? "Paused" : "Playing"}
-            </Badge>
-            <span className="truncate text-muted-foreground">
-              Playing: {currentName ?? "None"}
+    <header className="sticky top-0 z-20 border-b bg-background/95">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
+          <Link href={"/"} className="flex shrink-0 items-center gap-1.5">
+            <Image
+              src={"/logo_white.png"}
+              alt={"Web-SyncPlay logo"}
+              width={36}
+              height={36}
+            />
+            <span className="hidden sm:block">
+              {env.NEXT_PUBLIC_APP_NAME}
             </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {showLayoutModes && layoutMode && onLayoutModeChange ? (
-              <div
-                className="inline-flex items-center rounded-lg border bg-background p-0.5"
-                role="group"
-                aria-label="Room layout mode"
+          </Link>
+          <Separator orientation="vertical" className="mx-4 h-6 self-center" />
+          <span className="ml-0.5 text-base font-semibold tracking-tight">
+            Room {roomId}
+          </span>
+          <Badge variant={paused ? "outline" : "secondary"}>
+            {paused ? "Paused" : "Playing"}
+          </Badge>
+          <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+            <span className="truncate">Playing: {currentName ?? "None"}</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="min-h-8 shrink-0 touch-manipulation gap-1.5"
+              onClick={onCopyShareUrl}
+            >
+              {copied ? (
+                <Check className="size-3.5" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+              <span>{copied ? "Copied" : "Copy room link"}</span>
+            </Button>
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {showEmbedsMenu ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={navButtonClass}
+                aria-label="Open embeds menu"
               >
-                {layoutModeItems.map((item) => {
-                  const Icon = item.icon
-                  const active = layoutMode === item.id
-                  return (
-                    <Button
-                      key={item.id}
-                      size="sm"
-                      variant={active ? "default" : "ghost"}
-                      className={cn(
-                        "min-h-10 min-w-10 touch-manipulation sm:min-h-8 sm:min-w-0",
-                        !active && "text-muted-foreground",
-                      )}
-                      aria-pressed={active}
-                      aria-label={item.label}
-                      onClick={() => onLayoutModeChange(item.id)}
-                    >
-                      <Icon className="size-4 sm:size-3.5" />
-                      <span className="hidden sm:inline">{item.label}</span>
-                    </Button>
-                  )
-                })}
-              </div>
-            ) : null}
-            {showViewMenu ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground"
-                  aria-label="Open embed views"
-                >
-                  <Rows3 className="size-4" />
-                  Embeds
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuGroup>
-                    <DropdownMenuLabel>Open in new window</DropdownMenuLabel>
-                    <DropdownMenuItem
-                      disabled={viewMode === "room"}
-                      onClick={() => openInNewWindow(roomUrl)}
-                      className="cursor-pointer"
-                    >
-                      <ExternalLink />
-                      Room view
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      disabled={viewMode === "player"}
-                      onClick={() => openInNewWindow(playerEmbedUrl)}
-                      className="cursor-pointer"
-                    >
-                      <ExternalLink />
-                      Player embed
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      disabled={viewMode === "control"}
-                      onClick={() => openInNewWindow(controlEmbedUrl)}
-                      className="cursor-pointer"
-                    >
-                      <ExternalLink />
-                      Control embed
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
-                  <DropdownMenuSeparator />
+                <Rows3 className="size-4" />
+                Embeds
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-[min(calc(100vw-1.5rem),22rem)] p-3"
+              >
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Open in new window</DropdownMenuLabel>
                   <DropdownMenuItem
+                    disabled={viewMode === "room"}
+                    onClick={() => openInNewWindow(roomUrl)}
+                    className="cursor-pointer"
+                  >
+                    <ExternalLink />
+                    Room view
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={viewMode === "player"}
+                    onClick={() => openInNewWindow(playerEmbedUrl)}
+                    className="cursor-pointer"
+                  >
+                    <ExternalLink />
+                    Player embed
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={viewMode === "control"}
                     onClick={() => openInNewWindow(controlEmbedUrl)}
                     className="cursor-pointer"
                   >
-                    <Smartphone />
-                    Open on phone
+                    <ExternalLink />
+                    Control embed
                   </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : null}
-            {canManageRoomSecurity && send ? (
-              <Button
-                variant="outline"
-                onClick={() => setIsSettingsOpen(true)}
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <div
+                  className="flex flex-col gap-3 px-1 py-2"
+                  onPointerDown={(event) => event.preventDefault()}
+                >
+                  <div>
+                    <p className="text-sm font-medium">Control remotely</p>
+                    <p className="text-xs text-muted-foreground">
+                      Scan this QR code on your phone to open the control
+                      embed and operate playback from another device.
+                    </p>
+                  </div>
+                  <div className="w-full rounded-lg bg-white p-3">
+                    <QRCodeSVG
+                      value={controlEmbedUrl}
+                      size={320}
+                      className="h-auto w-full"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={copyControlUrl}
+                  >
+                    <Copy className="size-4" />
+                    Copy control URL
+                  </Button>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+          {canManageRoomSecurity && send && roomSecurity ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={navButtonClass}
+                aria-label="Open room settings"
               >
-                <Settings />
+                <Settings className="size-4" />
                 <span className="hidden sm:inline">Settings</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-[min(calc(100vw-1.5rem),22rem)] p-3"
+              >
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Room settings</DropdownMenuLabel>
+                </DropdownMenuGroup>
+                <div
+                  className="mt-2"
+                  onPointerDown={(event) => event.preventDefault()}
+                >
+                  <RoomJoinPasswordSection
+                    roomSecurity={roomSecurity}
+                    canManageRoomSecurity={canManageRoomSecurity}
+                    send={send}
+                  />
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+          {showRailControls ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-10 touch-manipulation sm:min-h-8"
+                aria-label={railOpen ? "Collapse side rail" : "Expand side rail"}
+                aria-pressed={railOpen}
+                onClick={onToggleRail}
+              >
+                {railOpen ? (
+                  <PanelRightClose className="size-4" />
+                ) : (
+                  <PanelRightOpen className="size-4" />
+                )}
+                <span className="hidden sm:inline">
+                  {railOpen ? "Hide panel" : "Show panel"}
+                </span>
               </Button>
-            ) : null}
-            <Button onClick={() => setIsShareOpen(true)}>
-              <ScreenShare />
-              Share
-            </Button>
-          </div>
+              {railOpen ? (
+                <div
+                  className="inline-flex items-center rounded-lg border bg-background p-0.5"
+                  role="group"
+                  aria-label="Side panel content"
+                >
+                  <Button
+                    size="sm"
+                    variant={railTab === "playlist" ? "default" : "ghost"}
+                    className={cn(
+                      "min-h-9 touch-manipulation",
+                      railTab !== "playlist" && "text-muted-foreground",
+                    )}
+                    aria-pressed={railTab === "playlist"}
+                    onClick={() => onRailTabChange?.("playlist")}
+                  >
+                    Playlist
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={railTab === "log" ? "default" : "ghost"}
+                    className={cn(
+                      "min-h-9 touch-manipulation",
+                      railTab !== "log" && "text-muted-foreground",
+                    )}
+                    aria-pressed={railTab === "log"}
+                    onClick={() => onRailTabChange?.("log")}
+                  >
+                    Logs
+                  </Button>
+                </div>
+              ) : null}
+            </>
+          ) : null}
         </div>
-      </header>
-      <ShareRoomDialog
-        open={isShareOpen}
-        shareUrl={shareUrl}
-        copied={copied}
-        onOpenChange={setIsShareOpen}
-        onCopy={onCopyShareUrl}
-      />
-      <RoomSettingsDialog
-        open={isSettingsOpen}
-        onOpenChange={setIsSettingsOpen}
-        roomSecurity={roomSecurity}
-        canManageRoomSecurity={canManageRoomSecurity}
-        send={send}
-      />
-    </>
+      </div>
+    </header>
   )
 }

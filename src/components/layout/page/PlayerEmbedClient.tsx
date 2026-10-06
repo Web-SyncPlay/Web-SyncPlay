@@ -66,7 +66,7 @@ export function PlayerEmbedClient({ roomId }: { roomId: string }) {
           sessionCapabilities.canManageRoomSecurity
         }
         send={send}
-        showViewMenu={canControlByRole}
+        showEmbedsMenu={canControlByRole}
       />
       <section className="grid px-2">
         <PlayerPanel

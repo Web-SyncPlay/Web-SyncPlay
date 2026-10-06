@@ -603,7 +603,7 @@ export function PlayerPanel({
               if (!player) return
               player.muted = false
               if (player.volume <= 0.01) {
-                player.volume = preferredVolume > 0 ? preferredVolume : 0.3
+                player.volume = preferredVolume > 0 ? preferredVolume : 0.4
               }
               handleVolumeChange({
                 volume: player.volume,

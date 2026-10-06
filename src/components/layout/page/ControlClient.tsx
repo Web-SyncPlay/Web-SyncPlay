@@ -93,7 +93,7 @@ function ControlClientReady(props: {
           sessionCapabilities.canManageRoomSecurity
         }
         send={send}
-        showViewMenu={canControlByRole}
+        showEmbedsMenu={canControlByRole}
       />
       <section className="mx-auto flex w-full flex-1 flex-col gap-3 px-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <OwnUserPanel {...panelProps} />

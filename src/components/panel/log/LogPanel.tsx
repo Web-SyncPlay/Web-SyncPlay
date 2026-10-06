@@ -7,7 +7,10 @@ import type { RoomPanelProps } from "../../layout/page/types"
 import { LogFilters } from "./LogFilters"
 import { LogTable } from "./LogTable"
 
-export function LogPanel({ roomState }: RoomPanelProps) {
+export function LogPanel({
+  roomState,
+  hideTitle = false,
+}: RoomPanelProps & { hideTitle?: boolean }) {
   const [actionFilter, setActionFilter] = useState<string>("all")
   const [userFilter, setUserFilter] = useState<string>("all")
 
@@ -27,7 +30,7 @@ export function LogPanel({ roomState }: RoomPanelProps) {
     <>
       <CardHeader className="shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle>Action Log</CardTitle>
+          {hideTitle ? null : <CardTitle>Action Log</CardTitle>}
           <LogFilters
             actionFilter={actionFilter}
             userFilter={userFilter}
