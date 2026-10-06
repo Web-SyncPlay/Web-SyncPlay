@@ -48,8 +48,15 @@ const navIconControlClass = cn(navControlClass, "w-8 px-0")
 const navTabClass =
   "h-full min-h-0 touch-manipulation gap-1.5 rounded-[min(var(--radius-md),10px)] px-2 max-lg:px-1.5"
 
-export function SiteNavbar(props: {
+type SiteNavbarBareProps = {
   roomId: string
+  /** Brand + room name only (e.g. while awaiting a join password). */
+  bare: true
+}
+
+type SiteNavbarFullProps = {
+  roomId: string
+  bare?: false
   paused: boolean
   currentName?: string
   viewMode: "room" | "player" | "control"
@@ -68,7 +75,45 @@ export function SiteNavbar(props: {
   onToggleRail?: () => void
   railTab?: RoomRailTab
   onRailTabChange?: (tab: RoomRailTab) => void
-}) {
+}
+
+export type SiteNavbarProps = SiteNavbarBareProps | SiteNavbarFullProps
+
+function SiteNavbarBrand(props: { roomId: string }) {
+  const { roomId } = props
+  return (
+    <>
+      <Link href={"/"} className="flex shrink-0 items-center gap-1.5">
+        <Image
+          src={"/logo_white.png"}
+          alt={"Web-SyncPlay logo"}
+          width={36}
+          height={36}
+        />
+        <span className="hidden sm:block">{env.NEXT_PUBLIC_APP_NAME}</span>
+      </Link>
+      <Separator
+        orientation="vertical"
+        className="mx-1 h-6 self-center sm:mx-4"
+      />
+      <span className="ml-0.5 text-base font-semibold tracking-tight">
+        Room {roomId}
+      </span>
+    </>
+  )
+}
+
+export function SiteNavbar(props: SiteNavbarProps) {
+  if (props.bare) {
+    return (
+      <header className="sticky top-0 z-20 border-b bg-background/95">
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
+          <SiteNavbarBrand roomId={props.roomId} />
+        </div>
+      </header>
+    )
+  }
+
   const {
     roomId,
     paused,
@@ -107,24 +152,7 @@ export function SiteNavbar(props: {
     <header className="sticky top-0 z-20 border-b bg-background/95">
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
-          <Link href={"/"} className="flex shrink-0 items-center gap-1.5">
-            <Image
-              src={"/logo_white.png"}
-              alt={"Web-SyncPlay logo"}
-              width={36}
-              height={36}
-            />
-            <span className="hidden sm:block">
-              {env.NEXT_PUBLIC_APP_NAME}
-            </span>
-          </Link>
-          <Separator
-            orientation="vertical"
-            className="mx-1 h-6 self-center sm:mx-4"
-          />
-          <span className="ml-0.5 text-base font-semibold tracking-tight">
-            Room {roomId}
-          </span>
+          <SiteNavbarBrand roomId={roomId} />
           <Badge variant={paused ? "outline" : "secondary"}>
             {paused ? "Paused" : "Playing"}
           </Badge>

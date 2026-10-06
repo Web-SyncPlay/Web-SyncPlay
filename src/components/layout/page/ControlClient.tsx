@@ -151,11 +151,14 @@ export function ControlClient(props: { roomId: string }) {
   if (!roomState) {
     if (status === "awaiting_password") {
       return (
-        <RoomJoinPasswordPrompt
-          roomId={roomId}
-          title={joinError}
-          onSubmit={submitJoinPassword}
-        />
+        <>
+          <SiteNavbar roomId={roomId} bare />
+          <RoomJoinPasswordPrompt
+            roomId={roomId}
+            title={joinError}
+            onSubmit={submitJoinPassword}
+          />
+        </>
       )
     }
 
