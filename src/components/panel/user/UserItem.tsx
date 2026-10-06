@@ -47,7 +47,7 @@ export function UserItem({
     <Item
       variant={isSelf ? "default" : "outline"}
       className={cn(
-        "relative w-72 shrink-0 flex-nowrap overflow-hidden border p-0 pr-2",
+        "relative w-96 shrink-0 flex-nowrap overflow-hidden border p-0 pr-2",
         isSelf ? "border-primary/40 bg-primary/5" : "border-border",
       )}
     >
