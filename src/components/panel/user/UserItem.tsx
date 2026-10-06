@@ -47,20 +47,20 @@ export function UserItem({
     <Item
       variant={isSelf ? "default" : "outline"}
       className={cn(
-        "relative border p-0 pr-2",
-        isSelf ? "border-primary/40" : "border-border",
+        "relative w-72 shrink-0 flex-nowrap overflow-hidden border p-0 pr-2",
+        isSelf ? "border-primary/40 bg-primary/5" : "border-border",
       )}
     >
       {isSelf ? (
-        <span className="absolute -top-2 left-2.5 z-10 inline-flex items-center rounded-sm bg-card px-1 text-[10px] leading-none font-medium text-primary">
+        <span className="absolute top-1 left-1 z-10 inline-flex items-center rounded-sm bg-card/95 px-1 text-[10px] leading-none font-medium text-primary shadow-sm">
           You
         </span>
       ) : null}
       <UserAvatar send={send} user={user} isSelf={isSelf} />
-      <ItemContent className="py-2">
+      <ItemContent className="min-w-0 flex-1 gap-0.5 py-2">
         {isSelf && inlineEdit.isEditing ? (
           <Input
-            className="h-10"
+            className="h-9"
             autoFocus
             value={inlineEdit.draft || user.username}
             onChange={(e) => inlineEdit.setDraft(e.target.value)}
@@ -78,17 +78,17 @@ export function UserItem({
             }}
           />
         ) : (
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-2">
               <span
                 className={cn(
-                  "truncate text-lg",
+                  "truncate text-lg leading-tight",
                   isSelf &&
                     "cursor-pointer rounded-md px-1 -mx-1 active:bg-muted/80 sm:hover:bg-muted/60",
                 )}
                 role={isSelf ? "button" : undefined}
                 tabIndex={isSelf ? 0 : undefined}
-                title={isSelf ? "Edit display name" : undefined}
+                title={isSelf ? "Edit display name" : user.username}
                 onClick={() => {
                   if (!isSelf) return
                   inlineEdit.start(user.username)
@@ -104,8 +104,8 @@ export function UserItem({
                 {user.username}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="leading-tight text-muted-foreground">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <div className="truncate text-xs leading-tight text-muted-foreground">
                 {user.localPlayback.paused ? "Paused" : "Playing"} at{" "}
                 {formatClockMs(user.localPlayback.currentTimeMs)}
               </div>
@@ -121,7 +121,7 @@ export function UserItem({
                             ? "outline"
                             : "secondary"
                     }
-                    className="h-5 px-1.5 text-[10px]"
+                    className="h-5 shrink-0 px-1.5 text-[10px]"
                   >
                     {connectionLabel} · {playbackStatus}
                   </Badge>
@@ -134,7 +134,7 @@ export function UserItem({
           </div>
         )}
       </ItemContent>
-      <ItemActions>
+      <ItemActions className="shrink-0">
         {user.role === "owner" ? (
           <Badge variant="default" className="capitalize">
             Owner
@@ -142,7 +142,7 @@ export function UserItem({
         ) : canToggleRole ? (
           <Badge
             variant="outline"
-            className="h-5 cursor-pointer px-1.5 text-[10px] capitalize"
+            className="cursor-pointer capitalize"
             role="button"
             tabIndex={0}
             title="Click to toggle role"

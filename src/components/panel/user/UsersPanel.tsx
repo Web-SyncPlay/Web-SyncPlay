@@ -18,7 +18,7 @@ export function UsersPanel({ roomState, send, userId }: RoomPanelProps) {
         <CardTitle>Users</CardTitle>
       </CardHeader>
       <CardContent>
-        <ItemGroup className="grid gap-3 pt-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <ItemGroup className="flex flex-row flex-wrap gap-3 pt-1">
           {me && <UserItem send={send} user={me} isSelf={true} />}
           {others.map((user) => (
             <UserItem

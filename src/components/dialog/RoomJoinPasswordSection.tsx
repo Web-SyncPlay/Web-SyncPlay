@@ -203,6 +203,8 @@ export function RoomJoinPasswordSection(props: {
                 type={visible ? "text" : "password"}
                 value={inlineEdit.draft}
                 onChange={(event) => inlineEdit.setDraft(event.target.value)}
+                onFocus={() => inlineEdit.reset(knownPassword || "")}
+                onBlur={() => inlineEdit.commit(knownPassword)}
                 onKeyDown={(event) => {
                   stopMenuKeyHandling(event)
                   if (event.key === "Enter") {
@@ -214,7 +216,6 @@ export function RoomJoinPasswordSection(props: {
                     ;(event.target as HTMLInputElement).blur()
                   }
                 }}
-                onBlur={() => inlineEdit.commit(knownPassword)}
                 autoComplete="new-password"
                 placeholder="Room password"
               />
@@ -242,39 +243,41 @@ export function RoomJoinPasswordSection(props: {
               </span>
             )}
 
-            <Tooltip>
-              <TooltipTrigger
-                type="button"
-                className={iconButtonClass}
-                aria-label={visible ? "Hide password" : "Show password"}
-                disabled={!passwordEnabled && !inlineEdit.isEditing}
-                onClick={() => setVisible((prev) => !prev)}
-              >
-                {visible ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
-                )}
-              </TooltipTrigger>
-              <TooltipContent>
-                {visible ? "Hide password" : "Show password"}
-              </TooltipContent>
-            </Tooltip>
+            {passwordEnabled ? (
+              <>
+                <Tooltip>
+                  <TooltipTrigger
+                    type="button"
+                    className={iconButtonClass}
+                    aria-label={visible ? "Hide password" : "Show password"}
+                    onClick={() => setVisible((prev) => !prev)}
+                  >
+                    {visible ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {visible ? "Hide password" : "Show password"}
+                  </TooltipContent>
+                </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger
-                type="button"
-                className={iconButtonClass}
-                aria-label="Copy join password"
-                disabled={!passwordEnabled}
-                onClick={() => {
-                  void handleCopyPassword()
-                }}
-              >
-                <Copy className="size-4" />
-              </TooltipTrigger>
-              <TooltipContent>Copy password</TooltipContent>
-            </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger
+                    type="button"
+                    className={iconButtonClass}
+                    aria-label="Copy join password"
+                    onClick={() => {
+                      void handleCopyPassword()
+                    }}
+                  >
+                    <Copy className="size-4" />
+                  </TooltipTrigger>
+                  <TooltipContent>Copy password</TooltipContent>
+                </Tooltip>
+              </>
+            ) : null}
 
             {passwordEnabled ? (
               <Tooltip>

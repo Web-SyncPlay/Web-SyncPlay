@@ -640,8 +640,8 @@ export function PlayerPanel({
       )}
     >
       {!canControlPlayback && (
-        <div className="pointer-events-none absolute left-3 top-3 z-20 rounded-md bg-black/70 px-2 py-1 text-xs text-white/90">
-          View only — volume still works
+        <div className="guest-view-hint pointer-events-none absolute left-3 top-3 z-20 rounded-md bg-black/70 px-2 py-1 text-xs text-white/90">
+          Guest view — controls are disabled
         </div>
       )}
       {isMuted && Boolean(activePlaybackSrc) && (
@@ -1139,6 +1139,17 @@ export function PlayerPanel({
       <style jsx global>{`
         .tap-to-unmute {
           transition: bottom 0.2s ease;
+        }
+
+        /* Only show while the player chrome is visible (same cadence as controls). */
+        .guest-view-hint {
+          opacity: 0;
+          transition: opacity 0.2s ease;
+        }
+
+        :has(.vds-controls[data-visible]):not(:has(.remote-seek-controls-hidden))
+          > .guest-view-hint {
+          opacity: 1;
         }
 
         /* Rise above the control bar + progress slider while they are visible. */

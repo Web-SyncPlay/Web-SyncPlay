@@ -29,17 +29,27 @@ const avatarStyles = [
 function AvatarFace({
   user,
   className,
+  /** Drop the default Avatar edge ring so it doesn't fight the card border. */
+  bare = false,
 }: {
   user: ParticipantState
   className?: string
+  bare?: boolean
 }) {
   return (
-    <Avatar className={cn("size-16", className)}>
+    <Avatar
+      className={cn(
+        "size-16 rounded-none",
+        bare && "after:hidden",
+        className,
+      )}
+    >
       <AvatarImage
+        className={bare ? "rounded-none" : undefined}
         src={`https://api.dicebear.com/9.x/${user.avatarStyle}/svg?seed=${encodeURIComponent(user.username)}`}
         alt={user.username}
       />
-      <AvatarFallback>
+      <AvatarFallback className={bare ? "rounded-none" : undefined}>
         {user.username.slice(0, 2).toUpperCase()}
       </AvatarFallback>
     </Avatar>
@@ -57,11 +67,22 @@ export function UserAvatar({
   isSelf?: boolean
   compact?: boolean
 }) {
-  const avatarClassName = compact ? "size-8" : "size-16"
+  const avatarClassName = compact ? "size-8 rounded-full" : "size-16"
   const face = isSelf ? (
     <DropdownMenu>
-      <DropdownMenuTrigger className="rounded-full ring-offset-background transition hover:ring-2 hover:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <AvatarFace user={user} className={avatarClassName} />
+      <DropdownMenuTrigger
+        className={cn(
+          "ring-offset-background transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          compact
+            ? "rounded-full hover:ring-2 hover:ring-primary/40"
+            : "rounded-none hover:brightness-95",
+        )}
+      >
+        <AvatarFace
+          user={user}
+          className={avatarClassName}
+          bare={!compact}
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         {avatarStyles.map((style) => (
@@ -75,7 +96,7 @@ export function UserAvatar({
       </DropdownMenuContent>
     </DropdownMenu>
   ) : (
-    <AvatarFace user={user} className={avatarClassName} />
+    <AvatarFace user={user} className={avatarClassName} bare={!compact} />
   )
 
   if (compact) {
@@ -99,5 +120,16 @@ export function UserAvatar({
     )
   }
 
-  return <ItemMedia>{face}</ItemMedia>
+  // Square media flush to the card edge: card border is the only outline
+  // (avoids round avatar ring fighting the item border; size stays 64px).
+  return (
+    <ItemMedia
+      className={cn(
+        "self-stretch overflow-hidden rounded-none",
+        !user.connected && "opacity-50",
+      )}
+    >
+      {face}
+    </ItemMedia>
+  )
 }

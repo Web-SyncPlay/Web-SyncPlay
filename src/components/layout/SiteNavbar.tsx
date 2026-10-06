@@ -249,6 +249,17 @@ export function SiteNavbar(props: {
                     ) {
                       return
                     }
+                    // Blur first so inline edits (join password) commit like
+                    // username does — preventDefault would otherwise keep focus.
+                    const active = document.activeElement
+                    if (
+                      active instanceof HTMLElement &&
+                      (active.tagName === "INPUT" ||
+                        active.tagName === "TEXTAREA") &&
+                      event.currentTarget.contains(active)
+                    ) {
+                      active.blur()
+                    }
                     event.preventDefault()
                   }}
                 >
