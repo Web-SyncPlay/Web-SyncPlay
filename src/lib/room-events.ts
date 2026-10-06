@@ -7,7 +7,8 @@ export interface ClientEventPayloadMap {
     paused?: boolean
     currentTimeMs?: number
     loading?: boolean
-    error?: string
+    /** `null` clears a previously reported local playback error. */
+    error?: string | null
   }
   "participant:role:update": {
     targetUserId: string

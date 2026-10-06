@@ -486,8 +486,9 @@ export function PlayerPanel({
         Math.floor(Number(player.currentTime ?? 0) * 1000),
       ),
       loading: isBuffering,
+      // Send null (not undefined) so JSON keeps the key and the server can clear.
       error:
-        playbackErrorLabel ?? participantStatusErrorRef.current ?? undefined,
+        playbackErrorLabel ?? participantStatusErrorRef.current ?? null,
       at: 0,
     }
 
@@ -500,7 +501,7 @@ export function PlayerPanel({
         ),
         loading: isBuffering,
         error:
-          playbackErrorLabel ?? participantStatusErrorRef.current ?? undefined,
+          playbackErrorLabel ?? participantStatusErrorRef.current ?? null,
       }
       const now = Date.now()
       const dirty =

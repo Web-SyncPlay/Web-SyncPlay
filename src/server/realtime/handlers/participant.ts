@@ -43,10 +43,13 @@ export const handleParticipantUpdate: RoomMessageHandler = async (
   const nextLoading = Boolean(
     participantResult.data.loading ?? previousPlayback.loading,
   )
+  // Explicit null/empty clears; omit keeps the previous sticky error.
   const nextError =
-    typeof participantResult.data.error === "string"
-      ? participantResult.data.error
-      : previousPlayback.error
+    participantResult.data.error === null
+      ? undefined
+      : typeof participantResult.data.error === "string"
+        ? participantResult.data.error.trim() || undefined
+        : previousPlayback.error
 
   const timeDirty =
     Math.abs(nextCurrentTimeMs - previousPlayback.currentTimeMs) >= 750

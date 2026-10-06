@@ -46,6 +46,63 @@ describe("participant handler interfaces", () => {
     expect(participant?.localPlayback.error).toBe("stall")
   })
 
+  test("explicit null clears a previously sticky localPlayback error", async () => {
+    const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
+    const ctx = createHandlerContext({ store, userId: "owner" })
+
+    await handleParticipantUpdate(
+      ctx,
+      envelope("participant:update", {
+        paused: false,
+        currentTimeMs: 1000,
+        loading: false,
+        error: "Playback stalled: recovering…",
+      }),
+    )
+    expect(store.peek("room-1")?.participants.owner?.localPlayback.error).toBe(
+      "Playback stalled: recovering…",
+    )
+
+    await handleParticipantUpdate(
+      ctx,
+      envelope("participant:update", {
+        paused: false,
+        currentTimeMs: 2000,
+        loading: false,
+        error: null,
+      }),
+    )
+
+    const presence = await store.getPresenceDataAll("room-1")
+    expect(presence.owner?.localPlayback?.error).toBeUndefined()
+    expect(
+      store.peek("room-1")?.participants.owner?.localPlayback.error,
+    ).toBeUndefined()
+  })
+
+  test("omitted error keeps previous localPlayback error (partial update)", async () => {
+    const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
+    const ctx = createHandlerContext({ store, userId: "owner" })
+
+    await handleParticipantUpdate(
+      ctx,
+      envelope("participant:update", { error: "stall" }),
+    )
+    await handleParticipantUpdate(
+      ctx,
+      envelope("participant:update", { username: "Owner Renamed" }),
+    )
+
+    expect(store.peek("room-1")?.participants.owner?.localPlayback.error).toBe(
+      "stall",
+    )
+    expect(store.peek("room-1")?.participants.owner?.username).toBe(
+      "Owner Renamed",
+    )
+  })
+
   test("playback-only tick does not bump room generation", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
     const bus = createTestBroadcastBus(store)

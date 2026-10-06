@@ -113,7 +113,8 @@ export const participantUpdateSchema = z.object({
   paused: z.boolean().optional(),
   currentTimeMs: z.number().min(0).optional(),
   loading: z.boolean().optional(),
-  error: z.string().max(300).optional(),
+  /** `null` clears a previously reported local playback error. */
+  error: z.string().max(300).nullable().optional(),
 })
 
 export const participantRoleUpdateSchema = z.object({
