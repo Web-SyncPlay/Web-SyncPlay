@@ -7,20 +7,28 @@ import {
   starWars,
   uniqueNamesGenerator,
 } from "unique-names-generator"
-import { getRandomItem } from "./utils"
 
 export const nameLists = [adjectives, animals, colors, starWars, names] as const
 
-function pickNameDictionaries(words: number) {
+/** Pick `count` distinct dictionaries (without replacement). */
+function pickNameDictionaries(count: number) {
+  if (count < 1 || count > nameLists.length) {
+    throw new Error(
+      `Requested ${count} name dictionaries; need between 1 and ${nameLists.length}`,
+    )
+  }
+
+  const pool = [...nameLists]
   const dictionaries = []
-  for (let i = 0; i < words; i++) {
-    dictionaries.push(getRandomItem(nameLists))
+  for (let i = 0; i < count; i++) {
+    const index = Math.floor(Math.random() * pool.length)
+    dictionaries.push(pool.splice(index, 1)[0]!)
   }
   return dictionaries
 }
 
-/** URL-safe room id, e.g. `crimson-falcon`. */
-export function randomRoomId(words = 2): string {
+/** URL-safe room id, e.g. `crimson-falcon-midnight-luke`. */
+export function randomRoomId(words = 4): string {
   return uniqueNamesGenerator({
     dictionaries: pickNameDictionaries(words),
     length: words,
