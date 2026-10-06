@@ -13,6 +13,10 @@ import {
   measurePlaybackDriftSec,
 } from "@/lib/playback-sync"
 import {
+  resolvePlayerDurationSec,
+  resolvePlayerStreamType,
+} from "@/lib/player-utils"
+import {
   getLocalMediaMimeType,
   getLocalMediaObjectUrl,
 } from "@/lib/local-media-provider"
@@ -670,7 +674,10 @@ export function PlayerPanel({
   )
 
   const elapsedMs = timeline.elapsedMs
-  const totalDurationMs = Math.floor((current?.durationSeconds ?? 0) * 1000)
+  const catalogDurationMs = Math.floor((current?.durationSeconds ?? 0) * 1000)
+  const totalDurationMs = Math.max(mediaDurationMs, catalogDurationMs)
+  const playerStreamType = resolvePlayerStreamType(current)
+  const playerDurationSec = resolvePlayerDurationSec(current)
 
   return (
     <div
@@ -788,7 +795,12 @@ export function PlayerPanel({
           paused={roomPaused}
           autoPlay={!roomPaused}
           playbackRate={roomPlaybackRate}
-          {...(current?.isLive ? { streamType: "live" as const } : {})}
+          // ARD/catch-up HLS often lacks EXT-X-ENDLIST, so hls.js reports
+          // `live` and Vidstack disables seeking. Force VOD unless catalog says live.
+          streamType={playerStreamType}
+          {...(playerDurationSec !== undefined
+            ? { duration: playerDurationSec }
+            : {})}
           muted={isMuted}
           className={`size-full ${isOtherUserSeeking ? "remote-seek-controls-hidden" : ""} ${!canControlPlayback ? "guest-controls-guard" : ""}`}
           onKeyDownCapture={(event) => {
