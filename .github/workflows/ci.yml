@@ -13,7 +13,6 @@ concurrency:
 
 permissions:
   contents: read
-  actions: write # buildx GitHub Actions cache
 
 env:
   REGISTRY_IMAGE: websyncplay/websyncplay
@@ -89,6 +88,9 @@ jobs:
     name: Docker (${{ matrix.platform }})
     needs: test
     if: github.event_name == 'push'
+    permissions:
+      contents: read
+      actions: write # buildx GitHub Actions cache
     strategy:
       fail-fast: false
       matrix:
@@ -166,6 +168,9 @@ jobs:
     name: Docker multi-arch manifest
     needs: docker
     if: github.event_name == 'push'
+    permissions:
+      contents: read
+      actions: read
     runs-on: ubuntu-latest
     steps:
       - name: Download digests

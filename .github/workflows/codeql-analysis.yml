@@ -12,6 +12,8 @@ concurrency:
   group: codeql-${{ github.ref }}
   cancel-in-progress: true
 
+permissions: read-all
+
 jobs:
   analyze:
     name: Analyze
