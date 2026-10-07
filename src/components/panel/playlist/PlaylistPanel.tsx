@@ -96,7 +96,7 @@ export function PlaylistPanel({
           </CardDescription>
         ) : null}
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-3">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
         <DragDropProvider
           modifiers={(defaults) => [...defaults, RestrictToVerticalAxis]}
           onDragEnd={(dragEvent) => {
@@ -111,7 +111,7 @@ export function PlaylistPanel({
             })
           }}
         >
-          <ItemGroup className="gap-3 pt-1 text-sm overflow-y-auto max-h-[80vh]">
+          <ItemGroup className="min-h-0 flex-1 gap-3 overflow-y-auto pt-1 text-sm">
             {roomState.playlist.map((x, i) => {
               const isCurrent =
                 (roomState.playback.mediaId ??

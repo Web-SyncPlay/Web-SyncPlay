@@ -16,8 +16,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className="dark">
       <body>
         <AppProviders>
-          <div className="flex min-h-dvh flex-col">
-            <main className="flex min-h-0 grow flex-col">{children}</main>
+          <div className="flex h-dvh flex-col overflow-hidden">
+            <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+              {children}
+            </main>
             <SiteFooter />
           </div>
         </AppProviders>

@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test"
-import { isRoomEmbedPath, parseRoomId } from "./room-utils"
+import {
+  isPlayerEmbedPath,
+  isRoomEmbedPath,
+  parseRoomId,
+} from "./room-utils"
 
 describe("parseRoomId", () => {
   test("accepts bare ids, paths, and URLs", () => {
@@ -18,5 +22,14 @@ describe("isRoomEmbedPath", () => {
     expect(isRoomEmbedPath("/room/abc/control/")).toBe(true)
     expect(isRoomEmbedPath("/room/abc")).toBe(false)
     expect(isRoomEmbedPath("/")).toBe(false)
+  })
+})
+
+describe("isPlayerEmbedPath", () => {
+  test("matches player embed only", () => {
+    expect(isPlayerEmbedPath("/room/abc/player")).toBe(true)
+    expect(isPlayerEmbedPath("/room/abc/player/")).toBe(true)
+    expect(isPlayerEmbedPath("/room/abc/control")).toBe(false)
+    expect(isPlayerEmbedPath("/room/abc")).toBe(false)
   })
 })

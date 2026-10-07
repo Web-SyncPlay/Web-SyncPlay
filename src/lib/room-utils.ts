@@ -64,9 +64,14 @@ export function parseRoomId(raw: string): string | null {
   return bare || null
 }
 
-/** True for player/control embed routes (footer and similar chrome hide here). */
+/** True for player/control embed routes. */
 export function isRoomEmbedPath(pathname: string): boolean {
   return /\/room\/[^/]+\/(player|control)\/?$/.test(pathname)
+}
+
+/** True for the player embed only (site chrome / footer hide here). */
+export function isPlayerEmbedPath(pathname: string): boolean {
+  return /\/room\/[^/]+\/player\/?$/.test(pathname)
 }
 
 /** URL-safe room id, e.g. `crimson-falcon-midnight-luke`. */

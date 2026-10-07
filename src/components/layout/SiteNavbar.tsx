@@ -345,24 +345,26 @@ export function SiteNavbar(props: SiteNavbarProps) {
           ) : null}
           {showRailControls ? (
             <>
-              <Tooltip>
-                <TooltipTrigger
-                  className={navIconControlClass}
-                  aria-label={railOpen ? "Hide panel" : "Show panel"}
-                  aria-pressed={railOpen}
-                  onClick={onToggleRail}
-                >
-                  {railOpen ? (
-                    <PanelRightClose className="size-3.5" />
-                  ) : (
-                    <PanelRightOpen className="size-3.5" />
-                  )}
-                </TooltipTrigger>
-                <TooltipContent>
-                  {railOpen ? "Hide panel" : "Show panel"}
-                </TooltipContent>
-              </Tooltip>
-              {railOpen ? (
+              {onToggleRail ? (
+                <Tooltip>
+                  <TooltipTrigger
+                    className={navIconControlClass}
+                    aria-label={railOpen ? "Hide panel" : "Show panel"}
+                    aria-pressed={railOpen}
+                    onClick={onToggleRail}
+                  >
+                    {railOpen ? (
+                      <PanelRightClose className="size-3.5" />
+                    ) : (
+                      <PanelRightOpen className="size-3.5" />
+                    )}
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {railOpen ? "Hide panel" : "Show panel"}
+                  </TooltipContent>
+                </Tooltip>
+              ) : null}
+              {railOpen || !onToggleRail ? (
                 <div
                   className="inline-flex h-8 items-stretch rounded-lg border border-border bg-background p-0.5"
                   role="group"

@@ -11,11 +11,15 @@ export function RoomConnectingView(props: {
   status: JoinStatus
   joinError: string | null
   onSubmitJoinPassword: (password: string) => void
+  /** When false, omit site chrome (player embed). Defaults to true. */
+  showNavbar?: boolean
 }) {
   if (props.status === "awaiting_password") {
     return (
       <>
-        <SiteNavbar roomId={props.roomId} bare />
+        {props.showNavbar === false ? null : (
+          <SiteNavbar roomId={props.roomId} bare />
+        )}
         <RoomJoinPasswordPrompt
           roomId={props.roomId}
           error={props.joinError}

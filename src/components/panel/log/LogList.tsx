@@ -33,7 +33,7 @@ export function LogList(props: {
   return (
     <ItemGroup
       role="list"
-      className="max-h-[80vh] gap-1.5 overflow-y-auto text-xs"
+      className="min-h-0 flex-1 gap-1.5 overflow-y-auto text-xs"
     >
       {ordered.map((log) => (
         <div

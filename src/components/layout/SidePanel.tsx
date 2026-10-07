@@ -49,7 +49,12 @@ export function SidePanel({
   const setTab = onTabChange ?? setUncontrolledTab
 
   return (
-    <Card className={className ?? "size-full min-h-0 overflow-hidden"}>
+    <Card
+      className={cn(
+        "size-full min-h-0 overflow-hidden rounded-lg",
+        className,
+      )}
+    >
       {hideTabBar ? null : (
         <div className="flex shrink-0 items-center px-4 pt-3">
           <div

@@ -178,7 +178,7 @@ export function PlayerPanel({
   return (
     <div
       className={cn(
-        "relative aspect-video size-full bg-black",
+        "relative aspect-video size-full overflow-hidden rounded-lg bg-black",
         className,
       )}
     >

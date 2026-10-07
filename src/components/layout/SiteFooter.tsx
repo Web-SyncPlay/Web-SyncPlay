@@ -1,6 +1,6 @@
 "use client"
 
-import { isRoomEmbedPath } from "@/lib/room-utils"
+import { isPlayerEmbedPath } from "@/lib/room-utils"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -15,7 +15,7 @@ const legalLinks = [
 
 export function SiteFooter() {
   const pathname = usePathname() ?? ""
-  if (isRoomEmbedPath(pathname)) return null
+  if (isPlayerEmbedPath(pathname)) return null
 
   const year = new Date().getFullYear()
 

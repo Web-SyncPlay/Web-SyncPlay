@@ -32,7 +32,7 @@ function ControlHints(props: {
 }
 
 export function ControlPanel(props: {
-  title: string
+  title?: string
   currentName?: string
   paused: boolean
   elapsedMs: number
@@ -161,8 +161,14 @@ export function ControlPanel(props: {
         }}
         disabled={controlsDisabled}
       />
-      <div className="text-xs text-muted-foreground">
-        {formatClockMs(elapsedMs)} / {formatClockMs(totalDurationMs)}
+      <div className="flex items-center gap-2">
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+          {currentName ?? "No media selected"}
+        </span>
+        {!title ? viewOnlyBadge : null}
+        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+          {formatClockMs(elapsedMs)} / {formatClockMs(totalDurationMs)}
+        </span>
       </div>
     </>
   )
@@ -171,17 +177,11 @@ export function ControlPanel(props: {
     return (
       <Card
         className={cn(
-          "sticky bottom-0 z-20 border-t bg-card/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur supports-backdrop-filter:bg-card/90",
+          "sticky bottom-0 z-20 rounded-lg border-t bg-card/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur supports-backdrop-filter:bg-card/90",
           className,
         )}
       >
         <CardContent className="space-y-2 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <span className="truncate font-medium">
-              {currentName ?? "No media selected"}
-            </span>
-            {viewOnlyBadge}
-          </div>
           {controls}
           {hints}
         </CardContent>
@@ -190,16 +190,18 @@ export function ControlPanel(props: {
   }
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>{title}</span>
-          {viewOnlyBadge}
-        </CardTitle>
-        {hints}
-      </CardHeader>
+    <Card className={cn("rounded-lg", className)}>
+      {title ? (
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>{title}</span>
+            {viewOnlyBadge}
+          </CardTitle>
+          {hints}
+        </CardHeader>
+      ) : null}
       <CardContent className="space-y-3">
-        <p className="font-medium">{currentName ?? "No media selected"}</p>
+        {!title ? hints : null}
         {controls}
       </CardContent>
     </Card>

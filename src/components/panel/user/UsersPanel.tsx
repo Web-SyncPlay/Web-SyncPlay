@@ -12,7 +12,7 @@ export function UsersPanel({ roomState, send, userId }: RoomPanelProps) {
   const isOwner = me?.role === "owner"
 
   return (
-    <Card>
+    <Card className="rounded-lg">
       <CardHeader>
         <CardTitle>Users</CardTitle>
       </CardHeader>

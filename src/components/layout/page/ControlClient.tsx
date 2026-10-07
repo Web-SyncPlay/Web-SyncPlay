@@ -1,13 +1,13 @@
 "use client"
 
 import { RoomConnectingView } from "@/components/layout/RoomConnectingView"
+import { useRoomRail } from "@/hooks/use-room-rail"
 import { useRoomSession } from "@/hooks/use-room-session"
 import { getRoomUrl } from "@/lib/control-url"
 import { isClientControlAuthorized } from "@/lib/permissions-utils"
 import { ControlPanel } from "../../panel/control/ControlPanel"
 import { getPlaybackPermissionsState } from "../../panel/player/playback-control/use-playback-permissions-state"
 import { usePlaybackTimelineController } from "../../panel/player/playback-control/use-playback-timeline-controller"
-import { OwnUserPanel } from "../../panel/user/OwnUserPanel"
 import { SidePanel } from "../SidePanel"
 import { SiteNavbar } from "../SiteNavbar"
 
@@ -38,6 +38,7 @@ function ControlClientReady(props: {
     controlEmbedUrl,
   } = props
 
+  const { railTab, setRailTab } = useRoomRail()
   const canControlBySession = isClientControlAuthorized(sessionCapabilities)
   const {
     canControlByRole,
@@ -73,7 +74,7 @@ function ControlClientReady(props: {
   }
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <SiteNavbar
         roomId={roomId}
         paused={roomState.playback.paused}
@@ -92,12 +93,20 @@ function ControlClientReady(props: {
         }
         send={send}
         showEmbedsMenu={canControlByRole}
+        showRailControls
+        railTab={railTab}
+        onRailTabChange={setRailTab}
       />
-      <section className="mx-auto flex w-full flex-1 flex-col gap-3 px-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <OwnUserPanel {...panelProps} />
-        <SidePanel panelProps={panelProps} />
+      <section className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden px-3 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <SidePanel
+          panelProps={panelProps}
+          hideTabBar
+          tab={railTab}
+          onTabChange={setRailTab}
+          className="min-h-0 flex-1 overflow-hidden"
+        />
         <ControlPanel
-          title="Remote Control"
+          className="shrink-0"
           currentName={current?.name}
           paused={roomState.playback.paused}
           elapsedMs={timeline.elapsedMs}
@@ -123,7 +132,7 @@ function ControlClientReady(props: {
           onSeekCommit={timeline.commitSeek}
         />
       </section>
-    </>
+    </div>
   )
 }
 
