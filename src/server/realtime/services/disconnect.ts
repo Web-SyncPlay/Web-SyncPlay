@@ -5,6 +5,7 @@ import {
 } from "@/server/media/local-media-store"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
+import { clearConnectionLocalPlaybackReport } from "@/server/realtime/services/local-playback-report-lifecycle"
 import type { RoomState } from "@/zod/types"
 import { transferOwnershipIfNeeded } from "./ownership"
 import {
@@ -17,6 +18,7 @@ import { bumpRoomRevisions, nextMonotonicMs } from "./timeline"
 export type DisconnectSocketMeta = {
   roomId: string
   userId: string
+  connectionId: string
   presenceTracked: boolean
 }
 
@@ -156,6 +158,7 @@ export async function handleSocketDisconnect(
 
   const before = await store.get(meta.roomId)
   const pausedBefore = before?.playback.paused
+  let userStillConnected = false
 
   const next = await store.updateRoom(meta.roomId, async (state) => {
     if (!state) {
@@ -178,6 +181,7 @@ export async function handleSocketDisconnect(
         "@/server/media/local-media-reannounce"
       )
       await publishLocalMediaReannounce(meta.roomId, meta.userId)
+      userStillConnected = true
       return null
     }
 
@@ -187,6 +191,16 @@ export async function handleSocketDisconnect(
     bumpRoomRevisions(state)
     return state
   })
+
+  if (userStillConnected) {
+    await clearConnectionLocalPlaybackReport(
+      store,
+      meta.roomId,
+      meta.userId,
+      meta.connectionId,
+    )
+    return
+  }
 
   if (!next) {
     return

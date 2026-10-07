@@ -162,6 +162,16 @@ export interface RoomState {
   structuralRevision: number
 }
 
+/** One media-playing socket's local playback sample (server-side only). */
+export interface LocalPlaybackReport {
+  sessionKind: SessionKind
+  paused: boolean
+  currentTimeMs: number
+  loading: boolean
+  error?: string
+  updatedAt: number
+}
+
 /** Per-user fields carried on the coalesced presence channel. */
 export interface PresencePatch {
   connected?: boolean
@@ -170,6 +180,11 @@ export interface PresencePatch {
   username?: string
   avatarStyle?: string
   localPlayback?: ParticipantState["localPlayback"]
+  /**
+   * Per-connection playback samples used to aggregate `localPlayback`.
+   * Stored in Redis; stripped before client broadcast.
+   */
+  localPlaybackReports?: Record<string, LocalPlaybackReport>
 }
 
 export interface RoomControlPayload {

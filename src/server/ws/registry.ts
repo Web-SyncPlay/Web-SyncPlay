@@ -4,6 +4,8 @@ import type { WebSocket } from "ws"
 export type SocketMeta = {
   roomId: string
   userId: string
+  /** Stable id for this WS so multi-tab playback reports do not clobber each other. */
+  connectionId: string
   presenceTracked: boolean
   controlAuthorized: boolean
   isControlSession: boolean
@@ -65,6 +67,7 @@ export function addSocket(
   sockets.set(ws, {
     roomId: meta.roomId,
     userId: meta.userId,
+    connectionId: previousMeta?.connectionId ?? crypto.randomUUID(),
     presenceTracked: previousMeta?.presenceTracked ?? false,
     controlAuthorized: meta.controlAuthorized,
     isControlSession: meta.isControlSession,

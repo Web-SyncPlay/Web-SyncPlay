@@ -7,6 +7,8 @@ export type RoomMessageContext = {
   store: RoomStateStorePort
   roomId: string
   userId: string
+  /** Identifies this WS among multi-tab connections for the same user. */
+  connectionId: string
   controlAuthorized: boolean
   isControlSession: boolean
   sessionKind: SessionKind

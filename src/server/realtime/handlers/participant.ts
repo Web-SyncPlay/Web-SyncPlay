@@ -2,6 +2,11 @@ import { resolveStyle } from "@/lib/avatar"
 import { appendActionLog } from "@/server/log"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
+  aggregateLocalPlaybackReports,
+  clientPresencePatch,
+  upsertLocalPlaybackReport,
+} from "@/server/realtime/services/local-playback-presence"
+import {
   participantRoleUpdateSchema,
   participantUpdateSchema,
 } from "@/zod/schemas"
@@ -77,13 +82,20 @@ export function resolveParticipantUpdate(
   }
 }
 
-function presencePatchFromUpdate(update: ReturnType<typeof resolveParticipantUpdate>): PresencePatch {
+function presencePatchFromAggregated(input: {
+  now: number
+  username: string
+  avatarStyle: string
+  localPlayback: ParticipantState["localPlayback"]
+  localPlaybackReports: NonNullable<PresencePatch["localPlaybackReports"]>
+}): PresencePatch {
   return {
     connected: true,
-    lastSeenAt: update.now,
-    localPlayback: update.localPlayback,
-    username: update.nextUsername,
-    avatarStyle: update.nextAvatarStyle,
+    lastSeenAt: input.now,
+    localPlayback: input.localPlayback,
+    localPlaybackReports: input.localPlaybackReports,
+    username: input.username,
+    avatarStyle: input.avatarStyle,
   }
 }
 
@@ -102,16 +114,46 @@ export const handleParticipantUpdate: RoomMessageHandler = async (
     return
   }
 
-  const update = resolveParticipantUpdate(participant, participantResult.data)
+  const connectionId = ctx.connectionId
+  const presenceAll = await ctx.store.getPresenceDataAll(ctx.roomId)
+  const existingReports =
+    presenceAll[ctx.userId]?.localPlaybackReports ?? {}
+  const previousForConnection =
+    existingReports[connectionId] ?? participant.localPlayback
+
+  const update = resolveParticipantUpdate(
+    { ...participant, localPlayback: previousForConnection },
+    participantResult.data,
+  )
   if (!update.identityDirty && !update.playbackDirty) {
     return
   }
 
+  let aggregatedPlayback = update.localPlayback
+
   // Presence ticks never rewrite full room state.
   if (update.playbackDirty) {
-    const patch = presencePatchFromUpdate(update)
+    const reports = upsertLocalPlaybackReport({
+      reports: existingReports,
+      connectionId,
+      sessionKind: ctx.sessionKind,
+      snapshot: update.localPlayback,
+    })
+    aggregatedPlayback =
+      aggregateLocalPlaybackReports(reports, update.now) ?? update.localPlayback
+    const patch = presencePatchFromAggregated({
+      now: update.now,
+      username: update.nextUsername,
+      avatarStyle: update.nextAvatarStyle,
+      localPlayback: aggregatedPlayback,
+      localPlaybackReports: reports,
+    })
     await ctx.store.mergePresenceData(ctx.roomId, ctx.userId, patch)
-    getRoomBroadcastBus().markPresenceDirty(ctx.roomId, ctx.userId, patch)
+    getRoomBroadcastBus().markPresenceDirty(
+      ctx.roomId,
+      ctx.userId,
+      clientPresencePatch(patch),
+    )
   }
 
   // Identity / error-log changes persist structurally.
@@ -141,8 +183,8 @@ export const handleParticipantUpdate: RoomMessageHandler = async (
           }
           p.avatarStyle = update.nextAvatarStyle
         }
-        // Keep last-known localPlayback on room for repair/join seed.
-        p.localPlayback = update.localPlayback
+        // Keep last-known aggregated localPlayback on room for repair/join seed.
+        p.localPlayback = aggregatedPlayback
         if (
           typeof participantResult.data.error === "string" &&
           update.previousError !== participantResult.data.error
@@ -153,7 +195,7 @@ export const handleParticipantUpdate: RoomMessageHandler = async (
             actorUsername: p.username,
             action: "participant:error",
             payload: {
-              currentTimeMs: update.localPlayback.currentTimeMs,
+              currentTimeMs: aggregatedPlayback.currentTimeMs,
             },
             error: participantResult.data.error,
           })

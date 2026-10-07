@@ -34,8 +34,33 @@ test("preserves presenceTracked for duplicate joins on same socket", () => {
   const meta = getSocketMeta(ws)
 
   expect(meta?.presenceTracked).toBe(true)
+  expect(typeof meta?.connectionId).toBe("string")
+  expect(meta?.connectionId.length).toBeGreaterThan(0)
+  const connectionId = meta?.connectionId
   const removed = removeSocket(ws)
   expect(removed?.presenceTracked).toBe(true)
+  expect(removed?.connectionId).toBe(connectionId)
+})
+
+test("preserves connectionId for duplicate joins on same socket", () => {
+  const ws = createWs()
+  addSocket(ws, {
+    roomId: "room-1",
+    userId: "u1",
+    controlAuthorized: false,
+    isControlSession: false,
+    sessionKind: "room",
+  })
+  const firstId = getSocketMeta(ws)?.connectionId
+  addSocket(ws, {
+    roomId: "room-1",
+    userId: "u1",
+    controlAuthorized: false,
+    isControlSession: false,
+    sessionKind: "player",
+  })
+  expect(getSocketMeta(ws)?.connectionId).toBe(firstId)
+  removeSocket(ws)
 })
 
 test("replacing room metadata on same socket updates room/user", () => {

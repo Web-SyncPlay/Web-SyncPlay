@@ -9,6 +9,7 @@ import {
 } from "@/server/realtime/services/participants"
 import { authorizeControlSession } from "@/server/realtime/services/control-auth"
 import { claimOrVerifyIdentitySecret } from "@/server/realtime/services/identity-store"
+import { clearConnectionLocalPlaybackReport } from "@/server/realtime/services/local-playback-report-lifecycle"
 import {
   computeSessionCapabilities,
   normalizeParticipantRoles,
@@ -106,6 +107,12 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
     await ctx.store.removeWsConnectionRef(
       previousMeta.roomId,
       previousMeta.userId,
+    )
+    await clearConnectionLocalPlaybackReport(
+      ctx.store,
+      previousMeta.roomId,
+      previousMeta.userId,
+      previousMeta.connectionId,
     )
     setSocketPresenceTracked(ctx.ws, false)
   }

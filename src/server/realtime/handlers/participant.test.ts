@@ -161,6 +161,65 @@ describe("participant handler interfaces", () => {
     )
   })
 
+  test("room + player connections aggregate loading without last-write flicker", async () => {
+    const store = new InMemoryRoomStateStore(createRoomState())
+    const bus = createTestBroadcastBus(store)
+    const roomCtx = createHandlerContext({
+      store,
+      userId: "owner",
+      connectionId: "conn-room",
+      sessionKind: "room",
+    })
+    const playerCtx = createHandlerContext({
+      store,
+      userId: "owner",
+      connectionId: "conn-player",
+      sessionKind: "player",
+    })
+
+    await handleParticipantUpdate(
+      roomCtx,
+      envelope("participant:update", {
+        paused: false,
+        currentTimeMs: 1000,
+        loading: true,
+      }),
+    )
+    await handleParticipantUpdate(
+      playerCtx,
+      envelope("participant:update", {
+        paused: false,
+        currentTimeMs: 1200,
+        loading: false,
+      }),
+    )
+    // Room tab keeps reporting Loading — must not flip the aggregated slot.
+    await handleParticipantUpdate(
+      roomCtx,
+      envelope("participant:update", {
+        paused: false,
+        currentTimeMs: 1400,
+        loading: true,
+      }),
+    )
+
+    const presence = await store.getPresenceDataAll("room-1")
+    expect(presence.owner?.localPlayback?.loading).toBe(false)
+    expect(presence.owner?.localPlaybackReports?.["conn-room"]?.loading).toBe(
+      true,
+    )
+    expect(presence.owner?.localPlaybackReports?.["conn-player"]?.loading).toBe(
+      false,
+    )
+
+    await bus.flushPresence("room-1")
+    const batch = bus.captured.find((c) => c.envelope.type === "presence:batch")
+    const payload = batch?.envelope.payload as {
+      participants: Record<string, { localPlaybackReports?: unknown }>
+    }
+    expect(payload.participants.owner?.localPlaybackReports).toBeUndefined()
+  })
+
   test("rejects invalid update payload", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
     createTestBroadcastBus(store)

@@ -170,6 +170,8 @@ export class InMemoryRoomStateStore implements RoomStateStorePort {
       ...prev,
       ...patch,
       localPlayback: patch.localPlayback ?? prev.localPlayback,
+      localPlaybackReports:
+        patch.localPlaybackReports ?? prev.localPlaybackReports,
     })
     this.presenceData.set(roomId, map)
   }
@@ -251,6 +253,7 @@ export function createHandlerContext(options: {
   store: RoomStateStorePort
   roomId?: string
   userId?: string
+  connectionId?: string
   controlAuthorized?: boolean
   isControlSession?: boolean
   sessionKind?: SessionKind
@@ -261,6 +264,7 @@ export function createHandlerContext(options: {
     store: options.store,
     roomId: options.roomId ?? "room-1",
     userId: options.userId ?? "owner",
+    connectionId: options.connectionId ?? "conn-test",
     controlAuthorized: options.controlAuthorized ?? false,
     isControlSession: options.isControlSession ?? false,
     sessionKind: options.sessionKind ?? "room",

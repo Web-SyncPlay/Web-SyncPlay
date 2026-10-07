@@ -60,6 +60,7 @@ describe("disconnect lifecycle", () => {
     await handleSocketDisconnect(store, {
       roomId: "room-1",
       userId: "owner",
+      connectionId: "conn-owner",
       presenceTracked: true,
     })
 
@@ -77,14 +78,43 @@ describe("disconnect lifecycle", () => {
         ["guest", 1],
       ]),
     )
+    await store.mergePresenceData("room-1", "owner", {
+      localPlayback: {
+        paused: false,
+        currentTimeMs: 1000,
+        loading: false,
+        updatedAt: Date.now(),
+      },
+      localPlaybackReports: {
+        "conn-room": {
+          sessionKind: "room",
+          paused: false,
+          currentTimeMs: 1000,
+          loading: true,
+          updatedAt: Date.now(),
+        },
+        "conn-player": {
+          sessionKind: "player",
+          paused: false,
+          currentTimeMs: 1000,
+          loading: false,
+          updatedAt: Date.now(),
+        },
+      },
+    })
 
     await handleSocketDisconnect(store, {
       roomId: "room-1",
       userId: "owner",
+      connectionId: "conn-room",
       presenceTracked: true,
     })
 
     expect(store.peek("room-1")?.participants.owner?.connected).toBe(true)
     expect(store.presence.get("room-1")?.get("owner")).toBe(1)
+    const presence = await store.getPresenceDataAll("room-1")
+    expect(presence.owner?.localPlaybackReports?.["conn-room"]).toBeUndefined()
+    expect(presence.owner?.localPlaybackReports?.["conn-player"]).toBeDefined()
+    expect(presence.owner?.localPlayback?.loading).toBe(false)
   })
 })

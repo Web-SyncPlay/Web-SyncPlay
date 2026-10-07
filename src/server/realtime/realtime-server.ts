@@ -142,6 +142,7 @@ async function dispatchJsonEnvelope(
     store,
     roomId: meta.roomId,
     userId: meta.userId,
+    connectionId: meta.connectionId,
     controlAuthorized: meta.controlAuthorized,
     isControlSession: meta.isControlSession,
     sessionKind: meta.sessionKind,

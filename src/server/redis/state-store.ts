@@ -127,6 +127,8 @@ export class RoomStateStore implements RoomStateStorePort {
       ...existing,
       ...patch,
       localPlayback: patch.localPlayback ?? existing.localPlayback,
+      localPlaybackReports:
+        patch.localPlaybackReports ?? existing.localPlaybackReports,
     }
     await client.hSet(hkey, { [userId]: JSON.stringify(merged) })
     await client.expire(hkey, roomStateTtlSeconds)

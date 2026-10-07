@@ -246,10 +246,13 @@ export class RoomBroadcastBus {
   markPresenceDirty(roomId: string, userId: string, patch: PresencePatch) {
     const dirty = this.ensure(roomId)
     const prev = dirty.presence.get(userId) ?? {}
+    // Never fan out per-connection report maps — clients only see the aggregate.
+    const { localPlaybackReports: _incoming, ...clientPatch } = patch
+    const { localPlaybackReports: _prev, ...prevClient } = prev
     dirty.presence.set(userId, {
-      ...prev,
-      ...patch,
-      localPlayback: patch.localPlayback ?? prev.localPlayback,
+      ...prevClient,
+      ...clientPatch,
+      localPlayback: clientPatch.localPlayback ?? prevClient.localPlayback,
     })
     this.scheduleOnce(dirty, "presenceTimer", PRESENCE_BATCH_INTERVAL_MS, () => {
       void this.flushPresence(roomId)
