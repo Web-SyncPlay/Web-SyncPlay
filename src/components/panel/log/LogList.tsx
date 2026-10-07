@@ -17,7 +17,10 @@ export function LogList(props: {
   }
 
   return (
-    <ItemGroup className="gap-1.5 text-xs overflow-y-auto max-h-[80vh]">
+    <ItemGroup
+      role="list"
+      className="gap-1.5 text-xs overflow-y-auto max-h-[80vh]"
+    >
       {ordered.map((log) => {
         const actorName =
           log.actorUsername ??

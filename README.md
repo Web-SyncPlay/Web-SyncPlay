@@ -1,5 +1,12 @@
 # Web-SyncPlay
 
+[![CI](https://github.com/Web-SyncPlay/Web-SyncPlay/actions/workflows/ci.yml/badge.svg)](https://github.com/Web-SyncPlay/Web-SyncPlay/actions/workflows/ci.yml)
+[![WCAG 2.2 AAA](https://img.shields.io/badge/WCAG%202.2-AAA-0550ae?logo=w3c&logoColor=white)](https://www.w3.org/WAI/WCAG22/quickref/?levels=aaa)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Docker Pulls](https://img.shields.io/docker/pulls/websyncplay/websyncplay)](https://hub.docker.com/r/websyncplay/websyncplay)
+[![CodeQL](https://github.com/Web-SyncPlay/Web-SyncPlay/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/Web-SyncPlay/Web-SyncPlay/actions/workflows/codeql-analysis.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Web-SyncPlay/Web-SyncPlay/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Web-SyncPlay/Web-SyncPlay)
+
 Watch videos or play music in sync with friends. Unified Next.js app with an embedded WebSocket realtime layer and Valkey-backed room state (1h TTL).
 
 ## Stack
@@ -8,9 +15,18 @@ Watch videos or play music in sync with friends. Unified Next.js app with an emb
 - Next.js + React + TypeScript
 - Tailwind CSS + shadcn/ui + Lucide
 - Vidstack player
+- mediasoup SFU for WebRTC local-media streaming (UDP 40000)
 - Valkey/Redis for room state, proxy tokens, identities, control tokens
 - yt-dlp for remote media extraction
 - Docker Compose deployment
+
+## Accessibility
+
+UI routes are checked in CI with [axe-core](https://github.com/dequelabs/axe-core) against **WCAG 2.2 Level AAA** (`bun run test:a11y` with the app running). The badge above reflects that automated gate; it is not a formal W3C certification.
+
+## Supply-chain security
+
+[OpenSSF Scorecard](https://github.com/ossf/scorecard) runs on `main` (see `.github/workflows/scorecards.yml`) and publishes results for the badge above. Dependabot keeps npm and GitHub Actions dependencies current. Report vulnerabilities via [`SECURITY.md`](./SECURITY.md).
 
 ## Layout
 
@@ -42,7 +58,7 @@ cp .env.example .env
 bun run dev
 ```
 
-Useful scripts: `bun run typecheck`, `bun run test`, `bun run lint`.
+Useful scripts: `bun run typecheck`, `bun run test`, `bun run lint`, `bun run test:a11y` (app must be running).
 
 ## Session kinds
 

@@ -265,6 +265,7 @@ export function SiteNavbar(props: SiteNavbarProps) {
                       value={controlEmbedUrl}
                       size={320}
                       className="h-auto w-full"
+                      title="QR code for control embed URL"
                     />
                   </div>
                   <Button

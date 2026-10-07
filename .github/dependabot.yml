@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # Official Bun ecosystem (version updates). Requires text bun.lock (not bun.lockb).
+  # This repo uses lockfileVersion 1, which Dependabot supports today.
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      production-dependencies:
+        dependency-type: production
+      development-dependencies:
+        dependency-type: development
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10

@@ -49,6 +49,7 @@ export function RoomJoinPasswordPrompt(props: {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="Enter room password"
+            aria-label="Room join password"
             autoComplete="current-password"
           />
           <Button type="submit">Join room</Button>

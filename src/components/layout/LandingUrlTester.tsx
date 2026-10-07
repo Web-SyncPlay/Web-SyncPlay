@@ -131,8 +131,13 @@ export function LandingUrlTester(): React.JSX.Element {
               size="default"
               className="shrink-0 gap-1.5"
               disabled={!ready || loading}
+              aria-label={loading ? "Checking URL" : "Check URL"}
             >
-              {loading ? <Loader2 className="animate-spin" /> : <Search />}
+              {loading ? (
+                <Loader2 className="animate-spin" aria-hidden />
+              ) : (
+                <Search aria-hidden />
+              )}
               <span className="hidden sm:inline">Check</span>
             </Button>
           </div>
