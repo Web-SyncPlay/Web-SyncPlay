@@ -1,3 +1,4 @@
+import { isHttpOrHttpsUrl } from "@/lib/sanitize-display"
 import {
   MEDIA_STREAM_CATALOG_LIMIT,
   MEDIA_TEXT_TRACK_CATALOG_LIMIT,
@@ -104,6 +105,7 @@ export function buildSelectableStreams(input: {
 
   const consider = (stream: YtDlpStream) => {
     if (!stream.src || seenSrc.has(stream.src)) return
+    if (!isHttpOrHttpsUrl(stream.src)) return
     if (!isCombinedStream(stream)) return
     seenSrc.add(stream.src)
 
@@ -202,6 +204,7 @@ export function buildSelectableStreams(input: {
 
   const textTracks: PlaylistTextTrack[] = input.textTracks
     .slice(0, MEDIA_TEXT_TRACK_CATALOG_LIMIT)
+    .filter((track) => isHttpOrHttpsUrl(track.src))
     .map((track) => ({
       id: track.id,
       src: track.src,

@@ -1,3 +1,7 @@
+import {
+  isHttpOrHttpsUrl,
+  sanitizeMediaTitle,
+} from "@/lib/sanitize-display"
 import type {
   YtDlpExtractSuccess,
   YtDlpNormalizedVariant,
@@ -30,7 +34,7 @@ export function parseYtDlpDumpJson(
   const parsed = JSON.parse(stdout) as YtDlpDumpJson
   const title =
     typeof parsed.title === "string" && parsed.title.trim()
-      ? parsed.title.trim()
+      ? sanitizeMediaTitle(parsed.title)
       : null
   const durationSeconds =
     typeof parsed.duration === "number" && Number.isFinite(parsed.duration)
@@ -55,7 +59,7 @@ export function parseYtDlpDumpJson(
   const topLevelProtocol =
     typeof parsed.protocol === "string" ? parsed.protocol : undefined
 
-  if (topLevelManifestUrl) {
+  if (topLevelManifestUrl && isHttpOrHttpsUrl(topLevelManifestUrl)) {
     const autoStream: YtDlpStream = {
       id: "auto",
       src: topLevelManifestUrl,
@@ -78,7 +82,7 @@ export function parseYtDlpDumpJson(
       audioVariants,
       autoStream,
     )
-  } else if (typeof parsed.url === "string") {
+  } else if (typeof parsed.url === "string" && isHttpOrHttpsUrl(parsed.url)) {
     const defaultStream: YtDlpStream = {
       id: "default",
       src: parsed.url,
@@ -103,7 +107,7 @@ export function parseYtDlpDumpJson(
 
   for (const format of parsed.formats ?? []) {
     const src = format.url
-    if (typeof src !== "string" || !src) {
+    if (typeof src !== "string" || !src || !isHttpOrHttpsUrl(src)) {
       continue
     }
     if (seenStreamSrc.has(src)) {
@@ -154,7 +158,8 @@ export function parseYtDlpDumpJson(
           : undefined,
       label:
         typeof format.format_note === "string"
-          ? format.format_note
+          ? (sanitizeMediaTitle(format.format_note)?.slice(0, 64) ??
+            undefined)
           : width && height
             ? `${height}p`
             : undefined,
@@ -223,14 +228,21 @@ export function parseYtDlpDumpJson(
   for (const source of subtitleSources) {
     for (const [language, tracks] of Object.entries(source ?? {})) {
       for (const track of tracks) {
-        if (typeof track.url !== "string" || !track.url) continue
+        if (
+          typeof track.url !== "string" ||
+          !track.url ||
+          !isHttpOrHttpsUrl(track.url)
+        ) {
+          continue
+        }
+        const rawLabel =
+          typeof track.name === "string" && track.name.trim()
+            ? track.name
+            : language
         const nextTrack: YtDlpTextTrack = {
           id: `${language}-${textTrackByLanguage.size + 1}`,
           src: track.url,
-          label:
-            typeof track.name === "string" && track.name.trim()
-              ? track.name
-              : language,
+          label: sanitizeMediaTitle(rawLabel)?.slice(0, 64) ?? language,
           language,
           kind: "subtitles",
           type:

@@ -263,6 +263,30 @@ describe("participant / room / viewer interfaces", () => {
     ).toBe(false)
   })
 
+  test("rejects XSS-packaged usernames / errors; strips title markup", () => {
+    expect(
+      participantUpdateSchema.safeParse({
+        username: "<script>alert(1)</script>",
+      }).success,
+    ).toBe(false)
+    expect(
+      participantUpdateSchema.safeParse({
+        error: '<img src=x onerror=alert(1)>',
+      }).success,
+    ).toBe(false)
+    expect(
+      playlistRenameSchema.safeParse({
+        itemId: "i1",
+        name: "Track <script>",
+      }).success,
+    ).toBe(true)
+    const renamed = playlistRenameSchema.safeParse({
+      itemId: "i1",
+      name: "Track <script>",
+    })
+    expect(renamed.success && renamed.data.name).toBe("Track script")
+  })
+
   test("role update rejects invalid role", () => {
     expect(
       participantRoleUpdateSchema.safeParse({
