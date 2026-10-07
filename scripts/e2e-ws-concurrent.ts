@@ -532,21 +532,6 @@ async function main() {
       player.roomState.playlist.length === beforePlayerPlaylist,
     )
 
-    // Ops auth
-    const cleanup = await fetch(`${BASE}/api/rooms/cleanup`, { method: "POST" })
-    record(
-      "ops cleanup unauthenticated rejected",
-      cleanup.status === 401 || cleanup.status === 503,
-      `status=${cleanup.status}`,
-    )
-
-    const defaultsGet = await fetch(`${BASE}/api/playlist/defaults/refresh`)
-    record(
-      "ops defaults unauthenticated rejected",
-      defaultsGet.status === 401 || defaultsGet.status === 503,
-      `status=${defaultsGet.status}`,
-    )
-
     // Proxy SSRF surface: create via resolve should have refused private URLs
     host.send("playlist:add:url", { url: "http://127.0.0.1:1/secret" })
     await wait(3000)

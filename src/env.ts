@@ -10,6 +10,11 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("production"),
+    /** Next.js telemetry; default disabled. */
+    NEXT_TELEMETRY_DISABLED: z
+      .enum(["0", "1"])
+      .default("1")
+      .transform((value) => value === "1"),
     VALKEY_URL: z.url(),
     YTDLP_BIN: z.string().default("yt-dlp"),
     YTDLP_MAX_CONCURRENT: z.coerce.number().int().min(1).default(2),
@@ -45,7 +50,6 @@ export const env = createEnv({
       .min(100)
       .max(30000)
       .default(5000),
-    OPS_SECRET: z.string().min(8).optional(),
     PROXY_ALLOW_PRIVATE_URLS: z
       .enum(["true", "false"])
       .default("false")
@@ -94,6 +98,7 @@ export const env = createEnv({
    */
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
+    NEXT_TELEMETRY_DISABLED: process.env.NEXT_TELEMETRY_DISABLED,
     VALKEY_URL: process.env.VALKEY_URL,
     YTDLP_BIN: process.env.YTDLP_BIN,
     YTDLP_MAX_CONCURRENT: process.env.YTDLP_MAX_CONCURRENT,
@@ -104,7 +109,6 @@ export const env = createEnv({
     ROOM_ACTION_LOG_LIMIT: process.env.ROOM_ACTION_LOG_LIMIT,
     ROOM_PLAYLIST_LIMIT: process.env.ROOM_PLAYLIST_LIMIT,
     WS_HEARTBEAT_INTERVAL_MS: process.env.WS_HEARTBEAT_INTERVAL_MS,
-    OPS_SECRET: process.env.OPS_SECRET,
     PROXY_ALLOW_PRIVATE_URLS: process.env.PROXY_ALLOW_PRIVATE_URLS,
     CONTROL_TOKEN_TTL_SECONDS: process.env.CONTROL_TOKEN_TTL_SECONDS,
     YTDLP_CACHE_TTL_SECONDS: process.env.YTDLP_CACHE_TTL_SECONDS,

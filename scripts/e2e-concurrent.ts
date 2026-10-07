@@ -216,15 +216,6 @@ async function main() {
       "host player + control use same seeded identity",
     )
 
-    const cleanupRes = await fetch(`${BASE}/api/rooms/cleanup`, {
-      method: "POST",
-    })
-    record(
-      "ops cleanup rejects unauthenticated in production",
-      cleanupRes.status === 401 || cleanupRes.status === 503,
-      `status=${cleanupRes.status}`,
-    )
-
     // Optional: yt-dlp default resolve progress
     const resolvingStuck = hostAfterAdd.includes("Resolving")
     record(

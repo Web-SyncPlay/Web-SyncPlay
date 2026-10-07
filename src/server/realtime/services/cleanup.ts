@@ -9,7 +9,7 @@ import {
 import { bumpRoomRevisions } from "./timeline"
 
 /**
- * Ops cleanup: sync presence, prune offline participants past grace,
+ * Background sweep: sync presence, prune offline participants past grace,
  * transfer ownership, delete empty rooms.
  */
 export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{

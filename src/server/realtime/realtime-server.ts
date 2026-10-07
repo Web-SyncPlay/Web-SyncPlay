@@ -6,7 +6,7 @@ import {
 } from "@/server/media/local-media-relay"
 import { ensureLocalMediaReannounceSubscriber } from "@/server/media/local-media-reannounce"
 import { startLocalMediaNodeHeartbeat } from "@/server/media/local-media-node-registry"
-import { startResolveReclaimLoop } from "@/server/media/yt-dlp/resolve-reclaim"
+import { ensureBackgroundMaintenance } from "@/server/maintenance"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { handleSocketDisconnect } from "@/server/realtime/services/disconnect"
 import { subscribeRoomUpdates } from "@/server/redis/pubsub"
@@ -36,10 +36,11 @@ export async function createRealtimeServer(server: HttpServer) {
   void subscribeRoomUpdates()
   void ensureRelaySubscriber()
   void ensureLocalMediaReannounceSubscriber()
+  void ensureBackgroundMaintenance()
   startLocalMediaNodeHeartbeat()
   // In-process mediasoup SFU (UDP 40000). Warns and continues if worker cannot start.
   void ensureMediasoupRuntime()
-  startResolveReclaimLoop(store)
+
   attachWebSocketTransport(server, (ws) => {
     setupWebSocketConnection(ws, store)
   })

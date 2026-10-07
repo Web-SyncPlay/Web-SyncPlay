@@ -1,5 +1,7 @@
 import { env } from "@/env"
 import { extractMetadata } from "@/server/media/yt-dlp"
+import { getAppNodeId } from "@/server/node-id"
+import { listAliveAppNodeIds } from "@/server/node-heartbeat"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type {
   DailyDefaultVideo,
@@ -12,6 +14,11 @@ import {
 } from "@/zod/types"
 import { getCommandClient } from "./client"
 import { keys } from "./keys"
+import {
+  bumpPresenceNodeCount,
+  encodePresenceNodeCounts,
+  parsePresenceNodeCounts,
+} from "./presence-ref"
 
 const fallbackDefaults: DailyDefaultVideo[] = [
   { title: "Fallback media", url: env.FALLBACK_DEFAULT_MEDIA_URL },
@@ -197,20 +204,31 @@ export class RoomStateStore implements RoomStateStorePort {
     })
   }
 
-  /** Increment refcount for one WebSocket connection (call on join / upgrade). */
+  /** Increment this node's WS refcount for a user (call on join). */
   async addWsConnectionRef(roomId: string, userId: string) {
     const client = await getCommandClient()
     const hkey = keys.roomPresenceRef(roomId)
-    await client.hIncrBy(hkey, userId, 1)
+    const nodeId = getAppNodeId()
+    const raw = await client.hGet(hkey, userId)
+    const next = bumpPresenceNodeCount(parsePresenceNodeCounts(raw), nodeId, 1)
+    const encoded = encodePresenceNodeCounts(next)
+    if (encoded) {
+      await client.hSet(hkey, { [userId]: encoded })
+    }
     await client.expire(hkey, roomStateTtlSeconds)
   }
 
-  /** Decrement refcount; removes user from presence when last connection closes. */
+  /** Decrement this node's WS refcount; removes the user when all nodes are zero. */
   async removeWsConnectionRef(roomId: string, userId: string) {
     const client = await getCommandClient()
     const hkey = keys.roomPresenceRef(roomId)
-    const n = Number(await client.hIncrBy(hkey, userId, -1))
-    if (!Number.isFinite(n) || n <= 0) {
+    const nodeId = getAppNodeId()
+    const raw = await client.hGet(hkey, userId)
+    const next = bumpPresenceNodeCount(parsePresenceNodeCounts(raw), nodeId, -1)
+    const encoded = encodePresenceNodeCounts(next)
+    if (encoded) {
+      await client.hSet(hkey, { [userId]: encoded })
+    } else {
       await client.hDel(hkey, userId)
     }
     await client.expire(hkey, roomStateTtlSeconds)
@@ -226,17 +244,51 @@ export class RoomStateStore implements RoomStateStorePort {
     await multi.exec()
   }
 
-  /** User IDs with at least one active WS connection cluster-wide. */
+  /**
+   * User IDs with at least one live WS connection on an alive app node.
+   * Orphaned legacy integer refs and dead-node maps are ignored.
+   */
   async getWsPresenceUserIds(roomId: string) {
     const client = await getCommandClient()
     const entries = await client.hGetAll(keys.roomPresenceRef(roomId))
+    const alive = await listAliveAppNodeIds()
+    // This process is always considered alive for its own refs (heartbeat race).
+    alive.add(getAppNodeId())
+
     const online = new Set<string>()
+    const staleFields: string[] = []
+    const hkey = keys.roomPresenceRef(roomId)
+
     for (const [uid, raw] of Object.entries(entries)) {
-      const n = Number.parseInt(raw, 10)
-      if (Number.isFinite(n) && n > 0) {
-        online.add(uid)
+      const counts = parsePresenceNodeCounts(raw)
+      if (Object.keys(counts).length === 0) {
+        // Legacy integer or empty — drop so it cannot resurrect "online".
+        staleFields.push(uid)
+        continue
+      }
+
+      const liveOnly: Record<string, number> = {}
+      for (const [nodeId, n] of Object.entries(counts)) {
+        if (n > 0 && alive.has(nodeId)) liveOnly[nodeId] = n
+      }
+
+      if (Object.keys(liveOnly).length === 0) {
+        staleFields.push(uid)
+        continue
+      }
+
+      online.add(uid)
+      // Drop dead-node refcounts left behind by crashed replicas.
+      const encoded = encodePresenceNodeCounts(liveOnly)
+      if (encoded && encoded !== raw) {
+        await client.hSet(hkey, { [uid]: encoded })
       }
     }
+
+    if (staleFields.length > 0) {
+      await client.hDel(hkey, staleFields)
+    }
+
     return online
   }
 

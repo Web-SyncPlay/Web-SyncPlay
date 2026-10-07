@@ -127,3 +127,38 @@ test("cleanup removes participants past prune grace", async () => {
   expect(state.participants.owner).toBeUndefined()
   expect(state.ownerId).toBe("mod")
 })
+
+test("cleanup marks everyone offline when WS presence is empty (crash ghosts)", async () => {
+  const state = createState()
+  let deleted = false
+
+  const fakeStore = {
+    listRoomIds: async () => ["room-1"],
+    delete: async () => {
+      deleted = true
+    },
+    getWsPresenceUserIds: async () => new Set<string>(),
+    updateRoom: async (
+      roomId: string,
+      mutate: (
+        current: RoomState | null,
+      ) => Promise<RoomState | null> | RoomState | null,
+    ) => {
+      const next = await mutate(roomId === "room-1" ? state : null)
+      if (next === null && deleted) {
+        return null
+      }
+      if (next) {
+        Object.assign(state, next)
+      }
+      return next
+    },
+  }
+
+  await cleanupInactiveRooms(fakeStore as never)
+
+  expect(state.participants.owner?.connected).toBe(false)
+  expect(state.participants.mod?.connected).toBe(false)
+  expect(deleted).toBe(false)
+})
+

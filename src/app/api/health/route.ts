@@ -1,4 +1,5 @@
 import { env } from "@/env"
+import { ensureBackgroundMaintenance } from "@/server/maintenance"
 import { getYtDlpMetrics } from "@/server/media/yt-dlp/metrics"
 import {
   derivedExtractFailoverWaitMs,
@@ -19,6 +20,7 @@ async function pingValkey(): Promise<boolean> {
 }
 
 export async function GET() {
+  void ensureBackgroundMaintenance()
   const valkeyOk = await pingValkey()
   const cacheTtl = env.YTDLP_CACHE_TTL_SECONDS
   const timeoutMs = env.YTDLP_TIMEOUT_MS

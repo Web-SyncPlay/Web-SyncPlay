@@ -1,5 +1,5 @@
 # Local / single-node stack: Next app + Valkey.
-# Copy `.env.example` → `.env` for OPS_SECRET / PUBLIC_DOMAIN (optional for smoke).
+# Copy `.env.example` → `.env` for PUBLIC_DOMAIN (optional for smoke).
 # Health: http://127.0.0.1:3000/api/health
 services:
   web:
@@ -14,6 +14,7 @@ services:
       VALKEY_URL: redis://valkey:6379
       # Image is production; do not inherit NODE_ENV=development from a local `.env`.
       NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
       # Public hostname/origin for ICE + CORS + CSP (set in `.env` for real deploys).
       PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-}
     ports:

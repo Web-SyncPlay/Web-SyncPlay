@@ -1,6 +1,7 @@
 import { reclaimAbandonedResolves } from "@/server/media/yt-dlp/resolve-lease"
 import { derivedResolveReclaimIntervalMs } from "@/server/media/yt-dlp/policy"
 import { reresolveRemotePlaylistItem } from "@/server/realtime/services/playlist-resolve"
+import { cleanupInactiveRooms } from "@/server/realtime/services/cleanup"
 import { processDuePrunes } from "@/server/realtime/services/participants"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
 import { env } from "@/env"
@@ -17,9 +18,10 @@ function timeoutMs(): number {
 }
 
 /**
- * Periodically reclaim playlist resolves whose Valkey lease expired (holder
- * crashed). Also processes due participant prunes. Safe to call from multiple
- * instances — claim keys / WATCH serialize work.
+ * Periodic maintenance: reclaim abandoned playlist resolves, process due
+ * participant prunes, and sweep inactive rooms (presence reconcile, ownership
+ * transfer, empty-room delete). Safe across instances — claim keys / WATCH
+ * serialize work.
  */
 export function startResolveReclaimLoop(store: RoomStateStorePort) {
   if (reclaimTimer) return
@@ -44,6 +46,12 @@ export function startResolveReclaimLoop(store: RoomStateStorePort) {
     void processDuePrunes(store).then((n) => {
       if (n > 0) {
         console.info("[participants] pruned disconnected users", { count: n })
+      }
+    })
+
+    void cleanupInactiveRooms(store).then((result) => {
+      if (result.removedRooms > 0 || result.removedParticipants > 0) {
+        console.info("[rooms] inactive cleanup sweep", result)
       }
     })
   }

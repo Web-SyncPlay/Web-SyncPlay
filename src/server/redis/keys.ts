@@ -57,9 +57,21 @@ export const keys = {
     return DEFAULTS_KEY
   },
 
-  /** HASH userId -> refcount of active WS connections cluster-wide */
+  /**
+   * HASH userId → JSON `{ [nodeId]: refcount }` of active WS connections.
+   * Legacy plain integer values are ignored (orphaned after process crash).
+   */
   roomPresenceRef(roomId: string) {
     return `${ROOM_PREFIX}${roomId}:presenceRef`
+  },
+
+  /** Short-lived liveness probe for a realtime process (`getAppNodeId()`). */
+  appNodeAlive(nodeId: string) {
+    return `app:node:${nodeId}:alive`
+  },
+
+  appNodeAliveScanPattern() {
+    return "app:node:*:alive"
   },
 
   /** HASH userId -> JSON PresencePatch (localPlayback clocks, etc.) */
