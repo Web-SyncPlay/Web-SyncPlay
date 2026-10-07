@@ -51,15 +51,18 @@ export function aggregateLocalPlaybackReports(
   })
   const primary = ranked[0]!
 
-  return {
+  const aggregated: LocalPlaybackSnapshot = {
     paused: primary.paused,
     currentTimeMs: primary.currentTimeMs,
     loading: fresh.every((report) => report.loading),
-    // Prefer the primary (ready) reporter's error so a buffering/errored
-    // secondary tab cannot override a healthy player/room view.
-    error: primary.error,
     updatedAt: Math.max(...fresh.map((report) => report.updatedAt)),
   }
+  // Prefer the primary (ready) reporter's error so a buffering/errored
+  // secondary tab cannot override a healthy player/room view.
+  if (primary.error !== undefined) {
+    aggregated.error = primary.error
+  }
+  return aggregated
 }
 
 export function clientPresencePatch(patch: PresencePatch): PresencePatch {
@@ -74,17 +77,20 @@ export function upsertLocalPlaybackReport(input: {
   sessionKind: SessionKind
   snapshot: LocalPlaybackSnapshot
 }): Record<string, LocalPlaybackReport> {
+  const report: LocalPlaybackReport = {
+    sessionKind: input.sessionKind,
+    paused: input.snapshot.paused,
+    currentTimeMs: input.snapshot.currentTimeMs,
+    loading: input.snapshot.loading,
+    updatedAt: input.snapshot.updatedAt,
+  }
+  if (input.snapshot.error !== undefined) {
+    report.error = input.snapshot.error
+  }
   return pruneLocalPlaybackReports(
     {
       ...input.reports,
-      [input.connectionId]: {
-        sessionKind: input.sessionKind,
-        paused: input.snapshot.paused,
-        currentTimeMs: input.snapshot.currentTimeMs,
-        loading: input.snapshot.loading,
-        error: input.snapshot.error,
-        updatedAt: input.snapshot.updatedAt,
-      },
+      [input.connectionId]: report,
     },
     input.snapshot.updatedAt,
   )

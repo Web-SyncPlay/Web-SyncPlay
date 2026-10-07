@@ -53,7 +53,7 @@ function patchSocketMeta(
 
 export function addSocket(
   ws: WebSocket,
-  meta: Omit<SocketMeta, "presenceTracked">,
+  meta: Omit<SocketMeta, "presenceTracked" | "connectionId">,
 ) {
   const { rooms, sockets } = getRegistrySlot()
   const previousMeta = sockets.get(ws)

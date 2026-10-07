@@ -62,12 +62,14 @@ export function resolveParticipantUpdate(
     timeDirty
 
   const now = Date.now()
-  const localPlayback = {
+  const localPlayback: ParticipantState["localPlayback"] = {
     paused: nextPaused,
     currentTimeMs: nextCurrentTimeMs,
     loading: nextLoading,
-    error: nextError,
     updatedAt: now,
+  }
+  if (nextError !== undefined) {
+    localPlayback.error = nextError
   }
 
   return {
@@ -118,8 +120,19 @@ export const handleParticipantUpdate: RoomMessageHandler = async (
   const presenceAll = await ctx.store.getPresenceDataAll(ctx.roomId)
   const existingReports =
     presenceAll[ctx.userId]?.localPlaybackReports ?? {}
-  const previousForConnection =
-    existingReports[connectionId] ?? participant.localPlayback
+  const previousReport = existingReports[connectionId]
+  const previousForConnection: ParticipantState["localPlayback"] =
+    previousReport
+      ? {
+          paused: previousReport.paused,
+          currentTimeMs: previousReport.currentTimeMs,
+          loading: previousReport.loading,
+          updatedAt: previousReport.updatedAt,
+          ...(previousReport.error !== undefined
+            ? { error: previousReport.error }
+            : {}),
+        }
+      : participant.localPlayback
 
   const update = resolveParticipantUpdate(
     { ...participant, localPlayback: previousForConnection },
