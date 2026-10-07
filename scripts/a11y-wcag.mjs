@@ -45,15 +45,27 @@ function formatViolations(violations) {
     .join("\n")
 }
 
-async function seedIdentity(context, userId, secret) {
+/** Prefer display name only — never write the user secret to storage here. */
+async function seedUsername(context, userId) {
   await context.addInitScript(
-    ({ userId, secret }) => {
-      localStorage.setItem("web-syncplay:user-id", userId)
-      localStorage.setItem("web-syncplay:user-secret", secret)
+    ({ userId }) => {
       localStorage.setItem("web-syncplay:username", userId.slice(0, 8))
     },
-    { userId, secret },
+    { userId },
   )
+}
+
+/**
+ * Bootstrap identity through the app's hash consumer, which encrypts the secret
+ * before persisting (see consumeSessionIdentityFromHash). Avoids cleartext
+ * localStorage writes that CodeQL flags in this script.
+ */
+function identityHash(userId, userSecret, controlToken) {
+  let hash = `uid=${encodeURIComponent(userId)}&secret=${encodeURIComponent(userSecret)}`
+  if (controlToken) {
+    hash += `&ct=${encodeURIComponent(controlToken)}`
+  }
+  return `#${hash}`
 }
 
 async function waitForConnected(page, timeoutMs = 45_000) {
@@ -144,14 +156,16 @@ async function main() {
     // participant stays owner while minting the control token.
     {
       const context = await browser.newContext()
-      await seedIdentity(context, userId, userSecret)
+      await seedUsername(context, userId)
 
       const roomPage = await context.newPage()
       roomPage.setDefaultTimeout(45_000)
       console.log(`Scanning room (/room/${ROOM})…`)
-      await roomPage.goto(`${BASE}/room/${ROOM}`, {
-        waitUntil: "domcontentloaded",
-      })
+      // Hash bootstrap lets the app encrypt the secret before localStorage write.
+      await roomPage.goto(
+        `${BASE}/room/${ROOM}${identityHash(userId, userSecret)}`,
+        { waitUntil: "domcontentloaded" },
+      )
       await waitForConnected(roomPage)
       await roomPage.waitForTimeout(1_000)
       results.push(await scanPage(roomPage, "room"))
@@ -159,6 +173,7 @@ async function main() {
       const playerPage = await context.newPage()
       playerPage.setDefaultTimeout(45_000)
       console.log(`Scanning player embed (/room/${ROOM}/player)…`)
+      // Same context already holds the encrypted identity from the room join.
       await playerPage.goto(`${BASE}/room/${ROOM}/player`, {
         waitUntil: "domcontentloaded",
       })
@@ -167,13 +182,13 @@ async function main() {
       results.push(await scanPage(playerPage, "player-embed"))
 
       const token = await mintControlToken(ROOM, userId, userSecret)
-      const controlHash = `#uid=${encodeURIComponent(userId)}&secret=${encodeURIComponent(userSecret)}&ct=${encodeURIComponent(token)}`
       const controlPage = await context.newPage()
       controlPage.setDefaultTimeout(45_000)
       console.log(`Scanning control embed (/room/${ROOM}/control#…)…`)
-      await controlPage.goto(`${BASE}/room/${ROOM}/control${controlHash}`, {
-        waitUntil: "domcontentloaded",
-      })
+      await controlPage.goto(
+        `${BASE}/room/${ROOM}/control${identityHash(userId, userSecret, token)}`,
+        { waitUntil: "domcontentloaded" },
+      )
       await waitForConnected(controlPage)
       await controlPage.waitForTimeout(1_000)
       results.push(await scanPage(controlPage, "control-embed"))
