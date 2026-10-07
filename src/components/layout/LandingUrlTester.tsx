@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { randomRoomId } from "@/lib/room-utils"
+import { formatDurationSeconds } from "@/lib/time-format"
 import { cn } from "@/lib/utils"
 import { CheckCircle2, Loader2, Play, Search, XCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -30,14 +31,7 @@ type CheckResult =
 
 function formatDuration(seconds: number | null | undefined): string | null {
   if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return null
-  const total = Math.round(seconds)
-  const h = Math.floor(total / 3600)
-  const m = Math.floor((total % 3600) / 60)
-  const s = total % 60
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
-  }
-  return `${m}:${String(s).padStart(2, "0")}`
+  return formatDurationSeconds(Math.round(seconds))
 }
 
 export function LandingUrlTester(): React.JSX.Element {

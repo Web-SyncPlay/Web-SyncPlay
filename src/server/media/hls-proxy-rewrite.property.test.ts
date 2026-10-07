@@ -2,9 +2,11 @@ import { expect, test } from "bun:test"
 import fc from "fast-check"
 import {
   collectM3u8ReferencedUrls,
+  playlistTargetHint,
   rewriteM3u8BodyWithProxyMap,
   shouldAttemptPlaylistRewrite,
 } from "@/server/media/hls-proxy-rewrite"
+import { sha256HexUrl, sha256HexUrlPrefix } from "@/server/media/url-hash"
 
 const baseUrl = "https://cdn.example.com/live/master.m3u8"
 
@@ -106,4 +108,24 @@ test("shouldAttemptPlaylistRewrite detects content-type or #EXTM3U", () => {
     ),
     { numRuns: 40 },
   )
+})
+
+test("playlistTargetHint treats mpegurl and opaque cdn types as playlists", () => {
+  expect(
+    playlistTargetHint("https://cdn.example/x", "application/vnd.apple.mpegurl"),
+  ).toBe(true)
+  expect(playlistTargetHint("https://cdn.example/live.m3u8", "")).toBe(true)
+  expect(
+    playlistTargetHint("https://cdn.example/seg", "application/octet-stream"),
+  ).toBe(true)
+  expect(
+    playlistTargetHint("https://cdn.example/seg.ts", "application/octet-stream"),
+  ).toBe(false)
+})
+
+test("sha256HexUrl is stable and prefix matches", () => {
+  const url = "https://cdn.example/a.mp4"
+  expect(sha256HexUrl(url)).toHaveLength(64)
+  expect(sha256HexUrlPrefix(url, 16)).toBe(sha256HexUrl(url).slice(0, 16))
+  expect(sha256HexUrl(url)).toBe(sha256HexUrl(url))
 })

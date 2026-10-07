@@ -1,10 +1,21 @@
-export type RoomRole = "owner" | "moderator" | "guest"
-export type LoopMode = "off" | "once" | "always"
+import type { z } from "zod"
+import type {
+  defaultJoinRoleSchema,
+  loopModeSchema,
+  roomRoleSchema,
+  sessionKindSchema,
+} from "@/zod/schemas"
+
+/** Inferred from Zod so wire schemas and domain types cannot drift. */
+export type RoomRole = z.infer<typeof roomRoleSchema>
+export type LoopMode = z.infer<typeof loopModeSchema>
+export type DefaultJoinRole = z.infer<typeof defaultJoinRoleSchema>
+export type SessionKind = z.infer<typeof sessionKindSchema>
+
 export type PlaylistSourceKind = "remote_url" | "local_file"
 export type PlaybackMode = "direct" | "relay"
 export type IngestStatus = "ready" | "resolving" | "error"
 export type PlaylistBlockedReason = "local_owner_offline"
-export type SessionKind = "room" | "player" | "control"
 export type PlaylistMediaStreamKind = "adaptive" | "combined"
 
 export interface PlaylistMediaStream {
@@ -124,8 +135,6 @@ export interface ActionLogEntry {
   error?: string
 }
 
-export type DefaultJoinRole = Exclude<RoomRole, "owner">
-
 export interface RoomSecurityState {
   joinPasswordEnabled: boolean
   joinPasswordUpdatedAt: number | null
@@ -176,9 +185,8 @@ export interface PresenceBatchPayload {
   serverNowMs: number
 }
 
-export interface RoomSnapshotPayload extends RoomState {
-  /** Snapshot omits password hash/salt via sanitize. */
-}
+/** Snapshot omits password hash/salt via sanitize; shape matches RoomState. */
+export type RoomSnapshotPayload = RoomState
 
 export interface WsEnvelope<T extends string, P> {
   type: T

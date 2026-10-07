@@ -117,10 +117,18 @@ function SiteNavbarBrand(props: { roomId?: string }) {
   )
 }
 
-function SiteNavbarChrome(props: { children: ReactNode }) {
+function SiteNavbarChrome(props: {
+  children: ReactNode
+  className?: string
+}) {
   return (
     <header className="sticky top-0 z-20 border-b bg-background/95">
-      <div className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-2 px-3 py-2 text-sm",
+          props.className,
+        )}
+      >
         {props.children}
       </div>
     </header>
@@ -179,9 +187,8 @@ export function SiteNavbar(props: SiteNavbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-20 border-b bg-background/95">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
+    <SiteNavbarChrome className="justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <SiteNavbarBrand roomId={roomId} />
           <Button
             type="button"
@@ -394,7 +401,6 @@ export function SiteNavbar(props: SiteNavbarProps) {
             </>
           ) : null}
         </div>
-      </div>
-    </header>
+    </SiteNavbarChrome>
   )
 }

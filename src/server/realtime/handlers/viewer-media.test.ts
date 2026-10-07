@@ -4,7 +4,12 @@ import {
   setRoomBroadcastBusForTests,
 } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { handleSeekPreview } from "@/server/realtime/handlers/seek-preview"
-import { handleViewerMediaPreferences } from "@/server/realtime/handlers/viewer-media"
+import {
+  applyViewerMediaPreferences,
+  capViewerMediaByItemId,
+  handleViewerMediaPreferences,
+  mergeViewerMediaItemPreference,
+} from "@/server/realtime/handlers/viewer-media"
 import {
   createHandlerContext,
   createParticipant,
@@ -12,7 +17,7 @@ import {
   envelope,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
-import { VIEWER_MEDIA_BY_ITEM_LIMIT } from "@/zod/types"
+import { VIEWER_MEDIA_BY_ITEM_LIMIT, type PlaylistItem } from "@/zod/types"
 
 describe("seek preview handler interface", () => {
   afterEach(() => {
@@ -65,6 +70,59 @@ describe("seek preview handler interface", () => {
     )
     expect(store.peek("room-1")?.playback.seekPreview).toBeUndefined()
     expect(bus.captured.length).toBe(0)
+  })
+})
+
+describe("viewer media preference helpers", () => {
+  const item = {
+    id: "item-c",
+    mediaStreams: [{ id: "stream-1" }],
+    textTracks: [{ id: "track-1" }],
+  } as PlaylistItem
+
+  test("merge rejects unknown catalog ids and accepts clears", () => {
+    expect(
+      mergeViewerMediaItemPreference(item, undefined, {
+        itemId: "item-c",
+        streamId: "missing",
+      }),
+    ).toBeNull()
+    expect(
+      mergeViewerMediaItemPreference(item, { streamId: "stream-1" }, {
+        itemId: "item-c",
+        streamId: null,
+        textTrackId: "track-1",
+        audioLanguage: "en",
+      }),
+    ).toEqual({
+      streamId: undefined,
+      textTrackId: "track-1",
+      audioLanguage: "en",
+    })
+  })
+
+  test("cap keeps the newest entries within the limit", () => {
+    const byItemId: Record<string, { streamId: string }> = {}
+    for (let i = 0; i < VIEWER_MEDIA_BY_ITEM_LIMIT + 2; i += 1) {
+      byItemId[`old-${i}`] = { streamId: "stream-1" }
+    }
+    const capped = capViewerMediaByItemId({ byItemId })
+    expect(Object.keys(capped.byItemId)).toHaveLength(VIEWER_MEDIA_BY_ITEM_LIMIT)
+    expect(capped.byItemId[`old-${VIEWER_MEDIA_BY_ITEM_LIMIT + 1}`]).toBeDefined()
+    expect(capped.byItemId["old-0"]).toBeUndefined()
+  })
+
+  test("apply writes merged prefs onto the participant", () => {
+    const participant = createParticipant({ userId: "guest", role: "guest" })
+    expect(
+      applyViewerMediaPreferences(participant, item, {
+        itemId: "item-c",
+        streamId: "stream-1",
+      }),
+    ).toBe(true)
+    expect(participant.viewerMedia?.byItemId["item-c"]).toEqual({
+      streamId: "stream-1",
+    })
   })
 })
 

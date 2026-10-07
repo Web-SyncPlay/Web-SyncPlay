@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import type { ParticipantState } from "@/zod/types"
 import { resolveJoinParticipantProfile } from "./join"
 
-describe("join profile interface", () => {
+describe("resolveJoinParticipantProfile", () => {
   test("keeps existing username/avatar for reconnecting participant", () => {
     const existingParticipant = {
       userId: "user-1",

@@ -1,4 +1,6 @@
-import { createHash, randomUUID } from "node:crypto"
+import { randomUUID } from "node:crypto"
+import { MEDIA_FETCH_UA } from "@/server/media/media-ua"
+import { sha256HexUrl } from "@/server/media/url-hash"
 import { assertPublicHttpUrl } from "@/server/security/url-safety"
 import { getCommandClient } from "../redis/client"
 import { keys } from "../redis/keys"
@@ -19,8 +21,47 @@ export type ProxyTokenPayload = {
   createdAt: number
 }
 
-function hashUrl(url: string): string {
-  return createHash("sha256").update(url).digest("hex")
+/** Default UA stamped on relay mints when callers omit one. */
+export const PROXY_DEFAULT_UA = MEDIA_FETCH_UA
+
+function parseProxyTokenPayload(
+  raw: string,
+): ProxyTokenPayload | null {
+  try {
+    const parsed = JSON.parse(raw) as Partial<ProxyTokenPayload>
+    if (typeof parsed.url !== "string") return null
+    return {
+      url: parsed.url,
+      referer: typeof parsed.referer === "string" ? parsed.referer : undefined,
+      userAgent:
+        typeof parsed.userAgent === "string" ? parsed.userAgent : undefined,
+      roomId: typeof parsed.roomId === "string" ? parsed.roomId : undefined,
+      mediaId: typeof parsed.mediaId === "string" ? parsed.mediaId : undefined,
+      createdAt:
+        typeof parsed.createdAt === "number" ? parsed.createdAt : Date.now(),
+    }
+  } catch {
+    return null
+  }
+}
+
+function metaUpgraded(
+  existing: ProxyTokenPayload,
+  meta: Omit<ProxyTokenPayload, "url" | "createdAt">,
+): ProxyTokenPayload | null {
+  const next: ProxyTokenPayload = {
+    ...existing,
+    referer: meta.referer ?? existing.referer,
+    userAgent: meta.userAgent ?? existing.userAgent,
+    roomId: meta.roomId ?? existing.roomId,
+    mediaId: meta.mediaId ?? existing.mediaId,
+  }
+  const changed =
+    next.referer !== existing.referer ||
+    next.userAgent !== existing.userAgent ||
+    next.roomId !== existing.roomId ||
+    next.mediaId !== existing.mediaId
+  return changed ? next : null
 }
 
 export async function createProxyUrl(
@@ -33,56 +74,21 @@ export async function createProxyUrl(
   }
 
   const client = await getCommandClient()
-  const urlHash = hashUrl(targetUrl)
+  const urlHash = sha256HexUrl(targetUrl)
   const byUrlKey = keys.mediaProxyByUrl(urlHash)
   const existingToken = await client.get(byUrlKey)
   if (existingToken) {
     const tokenKey = keys.mediaProxyToken(existingToken)
     const existingRaw = await client.get(tokenKey)
     if (existingRaw) {
-      let existing: ProxyTokenPayload | null = null
-      try {
-        const parsed = JSON.parse(existingRaw) as Partial<ProxyTokenPayload>
-        if (typeof parsed.url === "string") {
-          existing = {
-            url: parsed.url,
-            referer:
-              typeof parsed.referer === "string" ? parsed.referer : undefined,
-            userAgent:
-              typeof parsed.userAgent === "string"
-                ? parsed.userAgent
-                : undefined,
-            roomId:
-              typeof parsed.roomId === "string" ? parsed.roomId : undefined,
-            mediaId:
-              typeof parsed.mediaId === "string" ? parsed.mediaId : undefined,
-            createdAt:
-              typeof parsed.createdAt === "number"
-                ? parsed.createdAt
-                : Date.now(),
-          }
-        }
-      } catch {
-        existing = null
-      }
+      const existing = parseProxyTokenPayload(existingRaw)
 
       // Upgrade a bare token when a later mint carries Referer / room meta
       // (HLS child rewrite must not stick with a no-referer first mint).
       if (existing && meta) {
-        const next: ProxyTokenPayload = {
-          ...existing,
-          referer: meta.referer ?? existing.referer,
-          userAgent: meta.userAgent ?? existing.userAgent,
-          roomId: meta.roomId ?? existing.roomId,
-          mediaId: meta.mediaId ?? existing.mediaId,
-        }
-        const upgraded =
-          next.referer !== existing.referer ||
-          next.userAgent !== existing.userAgent ||
-          next.roomId !== existing.roomId ||
-          next.mediaId !== existing.mediaId
+        const upgraded = metaUpgraded(existing, meta)
         if (upgraded) {
-          await client.set(tokenKey, JSON.stringify(next), {
+          await client.set(tokenKey, JSON.stringify(upgraded), {
             EX: PROXY_TOKEN_TTL_SECONDS,
           })
         } else {
@@ -119,22 +125,7 @@ export async function getProxyTokenPayload(
   const key = keys.mediaProxyToken(token)
   const raw = await client.get(key)
   if (!raw) return null
-  try {
-    const parsed = JSON.parse(raw) as Partial<ProxyTokenPayload>
-    if (typeof parsed.url !== "string") return null
-    return {
-      url: parsed.url,
-      referer: typeof parsed.referer === "string" ? parsed.referer : undefined,
-      userAgent:
-        typeof parsed.userAgent === "string" ? parsed.userAgent : undefined,
-      roomId: typeof parsed.roomId === "string" ? parsed.roomId : undefined,
-      mediaId: typeof parsed.mediaId === "string" ? parsed.mediaId : undefined,
-      createdAt:
-        typeof parsed.createdAt === "number" ? parsed.createdAt : Date.now(),
-    }
-  } catch {
-    return null
-  }
+  return parseProxyTokenPayload(raw)
 }
 
 export async function getProxyTarget(token: string): Promise<string | null> {
@@ -149,7 +140,10 @@ export async function refreshProxyTokenTtl(token: string): Promise<void> {
   const payload = await getProxyTokenPayload(token)
   await client.expire(key, PROXY_TOKEN_TTL_SECONDS)
   if (payload?.url) {
-    await client.expire(keys.mediaProxyByUrl(hashUrl(payload.url)), PROXY_TOKEN_TTL_SECONDS)
+    await client.expire(
+      keys.mediaProxyByUrl(sha256HexUrl(payload.url)),
+      PROXY_TOKEN_TTL_SECONDS,
+    )
   }
 }
 

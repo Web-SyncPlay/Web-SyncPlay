@@ -5,6 +5,7 @@ import {
   getSocketMeta,
   getSocketsForUser,
   removeSocket,
+  setSocketControlAuthorized,
   setSocketPresenceTracked,
 } from "./registry"
 
@@ -61,6 +62,25 @@ test("replacing room metadata on same socket updates room/user", () => {
   expect(meta?.isControlSession).toBe(true)
   expect(meta?.sessionKind).toBe("control")
 
+  removeSocket(ws)
+})
+
+test("setSocketControlAuthorized patches without dropping other meta", () => {
+  const ws = createWs()
+  addSocket(ws, {
+    roomId: "room-1",
+    userId: "u1",
+    controlAuthorized: false,
+    isControlSession: false,
+    sessionKind: "room",
+  })
+  setSocketPresenceTracked(ws, true)
+  setSocketControlAuthorized(ws, true)
+
+  const meta = getSocketMeta(ws)
+  expect(meta?.controlAuthorized).toBe(true)
+  expect(meta?.presenceTracked).toBe(true)
+  expect(meta?.roomId).toBe("room-1")
   removeSocket(ws)
 })
 

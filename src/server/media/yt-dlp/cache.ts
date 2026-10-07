@@ -1,10 +1,10 @@
 import { env } from "@/env"
+import { sha256HexUrl } from "@/server/media/url-hash"
 import { recordYtDlpMetric } from "@/server/media/yt-dlp/metrics"
 import { derivedStreamUrlMaxAgeSeconds } from "@/server/media/yt-dlp/policy"
 import type { YtDlpExtractResult } from "@/server/media/yt-dlp/types"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
-import { createHash } from "node:crypto"
 import { z } from "zod"
 
 const CACHE_VERSION = 1 as const
@@ -94,9 +94,7 @@ const envelopeSchema = z.object({
 
 export type YtDlpCacheEnvelope = z.infer<typeof envelopeSchema>
 
-export function urlHash(url: string) {
-  return createHash("sha256").update(url).digest("hex")
-}
+export const urlHash = sha256HexUrl
 
 function cacheTtlSeconds(): number {
   const raw = env.YTDLP_CACHE_TTL_SECONDS

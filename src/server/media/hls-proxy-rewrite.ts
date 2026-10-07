@@ -5,6 +5,21 @@ import {
 
 export type HlsRewriteProxyMeta = Omit<ProxyTokenPayload, "url" | "createdAt">
 
+/** Fresh RegExp each call — global flags must not share `lastIndex`. */
+const URI_ATTR_SPECS = [
+  { source: String.raw`URI="([^"]+)"`, wrap: (p: string) => `URI="${p}"` },
+  { source: String.raw`URI='([^']+)'`, wrap: (p: string) => `URI='${p}'` },
+] as const
+
+function resolveHttpUrl(raw: string, baseUrl: string): string | null {
+  try {
+    const abs = new URL(raw.trim(), baseUrl).href
+    return /^https?:\/\//i.test(abs) ? abs : null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Collect every absolute http(s) URL referenced by an HLS playlist (master or media).
  * Exported for property tests; production callers use {@link rewriteM3u8ForProxy}.
@@ -16,34 +31,22 @@ export function collectM3u8ReferencedUrls(
   const set = new Set<string>()
 
   const addResolved = (raw: string) => {
-    try {
-      const abs = new URL(raw.trim(), baseUrl).href
-      if (/^https?:\/\//i.test(abs)) {
-        set.add(abs)
-      }
-    } catch {
-      // ignore invalid
+    const abs = resolveHttpUrl(raw, baseUrl)
+    if (abs) set.add(abs)
+  }
+
+  for (const { source } of URI_ATTR_SPECS) {
+    const re = new RegExp(source, "g")
+    let m: RegExpExecArray | null
+    while ((m = re.exec(body)) !== null) {
+      const raw = m[1]
+      if (typeof raw === "string") addResolved(raw)
     }
-  }
-
-  const quotedUri = /URI="([^"]+)"/g
-  let m: RegExpExecArray | null
-  while ((m = quotedUri.exec(body)) !== null) {
-    const raw = m[1]
-    if (typeof raw === "string") addResolved(raw)
-  }
-
-  const singleQuotedUri = /URI='([^']+)'/g
-  while ((m = singleQuotedUri.exec(body)) !== null) {
-    const raw = m[1]
-    if (typeof raw === "string") addResolved(raw)
   }
 
   for (const line of body.split(/\r?\n/)) {
     const t = line.trim()
-    if (!t || t.startsWith("#")) {
-      continue
-    }
+    if (!t || t.startsWith("#")) continue
     addResolved(t)
   }
 
@@ -55,25 +58,18 @@ function rewriteLineWithMap(
   baseUrl: string,
   proxyMap: Map<string, string>,
 ): string {
-  let result = line.replace(/URI="([^"]+)"/g, (full, uri: string) => {
-    try {
-      const abs = new URL(uri, baseUrl).href
-      const proxied = proxyMap.get(abs)
-      return proxied !== undefined ? `URI="${proxied}"` : full
-    } catch {
-      return full
-    }
-  })
-
-  result = result.replace(/URI='([^']+)'/g, (full, uri: string) => {
-    try {
-      const abs = new URL(uri, baseUrl).href
-      const proxied = proxyMap.get(abs)
-      return proxied !== undefined ? `URI='${proxied}'` : full
-    } catch {
-      return full
-    }
-  })
+  let result = line
+  for (const { source, wrap } of URI_ATTR_SPECS) {
+    result = result.replace(new RegExp(source, "g"), (full, uri: string) => {
+      try {
+        const abs = new URL(uri, baseUrl).href
+        const proxied = proxyMap.get(abs)
+        return proxied !== undefined ? wrap(proxied) : full
+      } catch {
+        return full
+      }
+    })
+  }
 
   const trimmed = result.trimEnd()
   const leadingLen = result.length - trimmed.length
@@ -101,6 +97,26 @@ function looksLikeHlsPlaylist(body: string, contentType: string): boolean {
   }
   const head = body.slice(0, 200).trimStart()
   return head.startsWith("#EXTM3U")
+}
+
+/**
+ * Heuristic before buffering a response body: is this likely an HLS playlist
+ * (including opaque CDN types without `.m3u8`)?
+ */
+export function playlistTargetHint(target: string, contentType: string): boolean {
+  const ct = contentType.toLowerCase()
+  if (ct.includes("mpegurl") || ct.includes("m3u8")) return true
+  if (/\.m3u8(\?|$)/i.test(target)) return true
+  // Opaque CDN playlists often use octet-stream without .m3u8
+  if (
+    (ct === "" ||
+      ct.includes("octet-stream") ||
+      ct.includes("text/plain")) &&
+    !/\.(ts|m4s|mp4|webm|aac|m4a)(\?|$)/i.test(target)
+  ) {
+    return true
+  }
+  return false
 }
 
 /**

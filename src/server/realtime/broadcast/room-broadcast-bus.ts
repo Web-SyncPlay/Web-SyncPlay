@@ -28,6 +28,8 @@ const ACTION_LOG_SNAPSHOT_MAX_MS = 2000
 
 type WiredEnvelope = RoomBroadcastEnvelope & { originNodeId?: string }
 
+type DirtyTimerKey = "presenceTimer" | "snapshotTimer" | "actionLogTimer"
+
 type RoomDirty = {
   presence: Map<string, PresencePatch>
   snapshot: boolean
@@ -42,6 +44,18 @@ type RoomDirty = {
 export type BusPublishCapture = {
   roomId: string
   envelope: RoomBroadcastEnvelope
+}
+
+type BusSlot = {
+  bus: RoomBroadcastBus | null
+}
+
+function getBusSlot(): BusSlot {
+  const g = globalThis as typeof globalThis & {
+    __webSyncPlayBroadcastBus?: BusSlot
+  }
+  g.__webSyncPlayBroadcastBus ??= { bus: null }
+  return g.__webSyncPlayBroadcastBus
 }
 
 function structuralHash(state: RoomState): string {
@@ -71,6 +85,32 @@ function structuralHash(state: RoomState): string {
     actionLog: state.actionLog,
     participants,
   })
+}
+
+function applyPresenceOverlay(
+  state: RoomState,
+  overlay: Record<string, PresencePatch>,
+) {
+  for (const [userId, patch] of Object.entries(overlay)) {
+    const participant = state.participants[userId]
+    if (!participant) continue
+    if (patch.localPlayback) participant.localPlayback = patch.localPlayback
+    if (typeof patch.connected === "boolean") {
+      participant.connected = patch.connected
+    }
+    if (typeof patch.lastSeenAt === "number") {
+      participant.lastSeenAt = patch.lastSeenAt
+    }
+    if (typeof patch.disconnectedAt === "number") {
+      participant.disconnectedAt = patch.disconnectedAt
+    }
+    if (typeof patch.username === "string") {
+      participant.username = patch.username
+    }
+    if (typeof patch.avatarStyle === "string") {
+      participant.avatarStyle = patch.avatarStyle
+    }
+  }
 }
 
 function sendRawToRoom(roomId: string, raw: string) {
@@ -103,10 +143,23 @@ export class RoomBroadcastBus {
   clearRoom(roomId: string) {
     const dirty = this.rooms.get(roomId)
     if (!dirty) return
+    this.clearTimers(dirty)
+    this.rooms.delete(roomId)
+  }
+
+  clearAllRooms() {
+    for (const roomId of [...this.rooms.keys()]) {
+      this.clearRoom(roomId)
+    }
+  }
+
+  private clearTimers(dirty: RoomDirty) {
     if (dirty.presenceTimer) clearTimeout(dirty.presenceTimer)
     if (dirty.snapshotTimer) clearTimeout(dirty.snapshotTimer)
     if (dirty.actionLogTimer) clearTimeout(dirty.actionLogTimer)
-    this.rooms.delete(roomId)
+    dirty.presenceTimer = undefined
+    dirty.snapshotTimer = undefined
+    dirty.actionLogTimer = undefined
   }
 
   private ensure(roomId: string): RoomDirty {
@@ -123,6 +176,19 @@ export class RoomBroadcastBus {
     return dirty
   }
 
+  private scheduleOnce(
+    dirty: RoomDirty,
+    timerKey: DirtyTimerKey,
+    delayMs: number,
+    run: () => void,
+  ) {
+    if (dirty[timerKey]) return
+    dirty[timerKey] = setTimeout(() => {
+      dirty[timerKey] = undefined
+      run()
+    }, delayMs)
+  }
+
   /** Fan-out from Redis subscriber (skip if we originated the message). */
   fanOutFromPubSub(roomId: string, wired: WiredEnvelope) {
     if (wired.originNodeId && wired.originNodeId === BROADCAST_NODE_ID) {
@@ -130,10 +196,6 @@ export class RoomBroadcastBus {
     }
     const { originNodeId: _origin, ...envelope } = wired
     sendRawToRoom(roomId, JSON.stringify(envelope as RoomBroadcastEnvelope))
-  }
-
-  fanOutLocal(roomId: string, envelope: RoomBroadcastEnvelope) {
-    sendRawToRoom(roomId, JSON.stringify(envelope))
   }
 
   sendToSocket(ws: WebSocket, envelope: RoomBroadcastEnvelope) {
@@ -173,6 +235,7 @@ export class RoomBroadcastBus {
     await this.publishTyped(roomId, keys.roomControlChannel(roomId), envelope)
   }
 
+  /** Same wire path as publishControl; named for seek-preview / non-persisted control. */
   async publishControlEphemeral(
     roomId: string,
     payload: RoomControlPayload,
@@ -188,34 +251,33 @@ export class RoomBroadcastBus {
       ...patch,
       localPlayback: patch.localPlayback ?? prev.localPlayback,
     })
-    if (dirty.presenceTimer) return
-    dirty.presenceTimer = setTimeout(() => {
-      dirty.presenceTimer = undefined
+    this.scheduleOnce(dirty, "presenceTimer", PRESENCE_BATCH_INTERVAL_MS, () => {
       void this.flushPresence(roomId)
-    }, PRESENCE_BATCH_INTERVAL_MS)
+    })
   }
 
   markSnapshotDirty(roomId: string) {
     const dirty = this.ensure(roomId)
     dirty.snapshot = true
-    if (dirty.snapshotTimer) return
-    dirty.snapshotTimer = setTimeout(() => {
-      dirty.snapshotTimer = undefined
+    this.scheduleOnce(dirty, "snapshotTimer", SNAPSHOT_COALESCE_MS, () => {
       void this.flushSnapshot(roomId)
-    }, SNAPSHOT_COALESCE_MS)
+    })
   }
 
   markActionLogDirty(roomId: string) {
     const dirty = this.ensure(roomId)
     dirty.actionLog = true
-    if (dirty.actionLogTimer) return
-    dirty.actionLogTimer = setTimeout(() => {
-      dirty.actionLogTimer = undefined
-      if (!dirty.actionLog) return
-      dirty.actionLog = false
-      dirty.snapshot = true
-      void this.flushSnapshot(roomId)
-    }, ACTION_LOG_SNAPSHOT_MAX_MS)
+    this.scheduleOnce(
+      dirty,
+      "actionLogTimer",
+      ACTION_LOG_SNAPSHOT_MAX_MS,
+      () => {
+        if (!dirty.actionLog) return
+        dirty.actionLog = false
+        dirty.snapshot = true
+        void this.flushSnapshot(roomId)
+      },
+    )
   }
 
   async flushPresence(roomId: string) {
@@ -269,26 +331,7 @@ export class RoomBroadcastBus {
     if (!state) return null
 
     const overlay = await store.getPresenceDataAll(roomId)
-    for (const [userId, patch] of Object.entries(overlay)) {
-      const participant = state.participants[userId]
-      if (!participant) continue
-      if (patch.localPlayback) participant.localPlayback = patch.localPlayback
-      if (typeof patch.connected === "boolean") {
-        participant.connected = patch.connected
-      }
-      if (typeof patch.lastSeenAt === "number") {
-        participant.lastSeenAt = patch.lastSeenAt
-      }
-      if (typeof patch.disconnectedAt === "number") {
-        participant.disconnectedAt = patch.disconnectedAt
-      }
-      if (typeof patch.username === "string") {
-        participant.username = patch.username
-      }
-      if (typeof patch.avatarStyle === "string") {
-        participant.avatarStyle = patch.avatarStyle
-      }
-    }
+    applyPresenceOverlay(state, overlay)
 
     return sanitizeRoomStateForClient({
       ...state,
@@ -308,23 +351,17 @@ export class RoomBroadcastBus {
   }
 }
 
-let busSingleton: RoomBroadcastBus | null = null
-
 export function getRoomBroadcastBus() {
-  if (!busSingleton) {
-    busSingleton = new RoomBroadcastBus()
-  }
-  return busSingleton
+  const slot = getBusSlot()
+  slot.bus ??= new RoomBroadcastBus()
+  return slot.bus
 }
 
 /** Test helper */
 export function setRoomBroadcastBusForTests(bus: RoomBroadcastBus | null) {
-  if (busSingleton) {
-    for (const roomId of [...busSingleton["rooms"].keys()]) {
-      busSingleton.clearRoom(roomId)
-    }
-  }
-  busSingleton = bus
+  const slot = getBusSlot()
+  slot.bus?.clearAllRooms()
+  slot.bus = bus
 }
 
 export function createTestBroadcastBus(store: RoomStateStorePort) {

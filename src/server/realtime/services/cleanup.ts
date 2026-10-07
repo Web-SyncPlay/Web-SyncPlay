@@ -6,6 +6,7 @@ import {
   pruneOfflineParticipants,
   reconcileParticipantsConnectivity,
 } from "./participants"
+import { bumpRoomRevisions } from "./timeline"
 
 /**
  * Ops cleanup: sync presence, prune offline participants past grace,
@@ -64,8 +65,7 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
       }
 
       current.updatedAt = Date.now()
-      current.generation = (current.generation ?? 0) + 1
-      current.structuralRevision = (current.structuralRevision ?? 0) + 1
+      bumpRoomRevisions(current)
       return current
     })
 

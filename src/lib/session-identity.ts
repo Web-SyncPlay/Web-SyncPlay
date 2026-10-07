@@ -22,11 +22,13 @@ function isValidIdentityValue(value: string | null): value is string {
   return typeof value === "string" && value.trim().length > 0
 }
 
+/** Detects uid/secret/ct bootstrap fragments, including malformed ones. */
 function looksLikeIdentityBootstrapHash(rawHash: string): boolean {
   const params = new URLSearchParams(rawHash)
   if (params.has("uid") || params.has("secret") || params.has("ct")) {
     return true
   }
+  // Malformed hashes like `#uid&secret` still must be stripped for privacy.
   return (
     /(^|[&;])uid(?:[=&;]|$)/i.test(rawHash) ||
     /(^|[&;])secret(?:[=&;]|$)/i.test(rawHash) ||

@@ -6,6 +6,13 @@ import type {
   RoomState,
 } from "@/zod/types"
 
+function pickDefined<T>(
+  patchValue: T | undefined,
+  existing: T,
+): T {
+  return patchValue !== undefined ? patchValue : existing
+}
+
 function mergeParticipantPresence(
   prev: RoomState["participants"],
   patches: Record<string, PresencePatch>,
@@ -17,24 +24,11 @@ function mergeParticipantPresence(
     if (!existing) continue
     next[userId] = {
       ...existing,
-      connected:
-        typeof patch.connected === "boolean"
-          ? patch.connected
-          : existing.connected,
-      lastSeenAt:
-        typeof patch.lastSeenAt === "number"
-          ? patch.lastSeenAt
-          : existing.lastSeenAt,
-      disconnectedAt:
-        typeof patch.disconnectedAt === "number"
-          ? patch.disconnectedAt
-          : existing.disconnectedAt,
-      username:
-        typeof patch.username === "string" ? patch.username : existing.username,
-      avatarStyle:
-        typeof patch.avatarStyle === "string"
-          ? patch.avatarStyle
-          : existing.avatarStyle,
+      connected: pickDefined(patch.connected, existing.connected),
+      lastSeenAt: pickDefined(patch.lastSeenAt, existing.lastSeenAt),
+      disconnectedAt: pickDefined(patch.disconnectedAt, existing.disconnectedAt),
+      username: pickDefined(patch.username, existing.username),
+      avatarStyle: pickDefined(patch.avatarStyle, existing.avatarStyle),
       localPlayback: patch.localPlayback ?? existing.localPlayback,
     }
     changed = true
@@ -53,11 +47,6 @@ export function applyRoomControl(
   }
   return {
     ...prev,
-    playlist: prev.playlist,
-    participants: prev.participants,
-    history: prev.history,
-    actionLog: prev.actionLog,
-    roomSecurity: prev.roomSecurity,
     playback: payload.playback,
     currentIndex: payload.currentIndex,
     updatedAt: payload.updatedAt,
@@ -79,11 +68,6 @@ export function applyPresenceBatch(
   }
   return {
     ...prev,
-    playlist: prev.playlist,
-    playback: prev.playback,
-    history: prev.history,
-    actionLog: prev.actionLog,
-    roomSecurity: prev.roomSecurity,
     participants,
   }
 }
@@ -115,11 +99,6 @@ export function applyRoomSnapshot(
 
   return {
     ...payload,
-    playlist: payload.playlist,
-    participants: payload.participants,
-    history: payload.history,
-    actionLog: payload.actionLog,
-    roomSecurity: payload.roomSecurity,
     playback,
     currentIndex: applyPlayback ? payload.currentIndex : prev.currentIndex,
     generation: Math.max(localGen, payload.generation ?? 0),

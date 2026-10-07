@@ -7,6 +7,8 @@ const BLOCKED_HOSTNAMES = new Set([
   "metadata",
 ])
 
+const BLOCKED_HOSTNAME_SUFFIXES = [".localhost", ".local"] as const
+
 function allowPrivateUrls(): boolean {
   return env.PROXY_ALLOW_PRIVATE_URLS
 }
@@ -112,7 +114,9 @@ export function assertPublicHttpUrl(raw: string): UrlSafetyResult {
     return { ok: false, reason: "blocked_hostname" }
   }
 
-  if (hostname.endsWith(".localhost") || hostname.endsWith(".local")) {
+  if (
+    BLOCKED_HOSTNAME_SUFFIXES.some((suffix) => hostname.endsWith(suffix))
+  ) {
     return { ok: false, reason: "blocked_hostname" }
   }
 

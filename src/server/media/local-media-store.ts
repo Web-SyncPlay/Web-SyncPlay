@@ -310,14 +310,7 @@ export async function touchLocalMediaEntry(id: string) {
   entry.expiresAt = Date.now() + LOCAL_MEDIA_TTL_MS
 
   try {
-    const client = await getCommandClient()
-    await client.set(keys.localMediaEntry(id), JSON.stringify(entry), {
-      EX: LOCAL_MEDIA_TTL_SECONDS,
-    })
-    await client.expire(
-      keys.localMediaOwnerIndex(entry.roomId, entry.ownerUserId),
-      LOCAL_MEDIA_TTL_SECONDS,
-    )
+    await persistEntry(entry)
   } catch (error) {
     console.warn("[local-media] redis metadata touch failed", error)
     return null

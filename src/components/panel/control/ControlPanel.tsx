@@ -4,21 +4,31 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
+import { formatClockMs } from "@/lib/time-format"
 import { cn } from "@/lib/utils"
 import { SkipBack, SkipForward } from "lucide-react"
-
-function formatTime(ms: number) {
-  const safe = Math.max(0, Math.floor(ms / 1000))
-  const mins = Math.floor(safe / 60)
-  const secs = String(safe % 60).padStart(2, "0")
-  return `${mins}:${secs}`
-}
 
 function getSliderTargetMs(values: number | readonly number[]): number {
   if (Array.isArray(values)) {
     return Math.max(0, Number(values[0] ?? 0))
   }
   return Math.max(0, Number(values))
+}
+
+function ControlHints(props: {
+  authorizationHint?: string
+  disabledHint?: string
+}) {
+  return (
+    <>
+      {props.authorizationHint ? (
+        <p className="text-xs text-muted-foreground">{props.authorizationHint}</p>
+      ) : null}
+      {props.disabledHint ? (
+        <p className="text-xs text-muted-foreground">{props.disabledHint}</p>
+      ) : null}
+    </>
+  )
 }
 
 export function ControlPanel(props: {
@@ -68,6 +78,12 @@ export function ControlPanel(props: {
   ) : null
 
   const touchButtonClass = "min-h-11 touch-manipulation sm:min-h-8"
+  const hints = (
+    <ControlHints
+      authorizationHint={authorizationHint}
+      disabledHint={disabledHint}
+    />
+  )
 
   const controls = (
     <>
@@ -146,7 +162,7 @@ export function ControlPanel(props: {
         disabled={controlsDisabled}
       />
       <div className="text-xs text-muted-foreground">
-        {formatTime(elapsedMs)} / {formatTime(totalDurationMs)}
+        {formatClockMs(elapsedMs)} / {formatClockMs(totalDurationMs)}
       </div>
     </>
   )
@@ -167,12 +183,7 @@ export function ControlPanel(props: {
             {viewOnlyBadge}
           </div>
           {controls}
-          {authorizationHint ? (
-            <p className="text-xs text-muted-foreground">{authorizationHint}</p>
-          ) : null}
-          {disabledHint ? (
-            <p className="text-xs text-muted-foreground">{disabledHint}</p>
-          ) : null}
+          {hints}
         </CardContent>
       </Card>
     )
@@ -185,12 +196,7 @@ export function ControlPanel(props: {
           <span>{title}</span>
           {viewOnlyBadge}
         </CardTitle>
-        {authorizationHint ? (
-          <p className="text-xs text-muted-foreground">{authorizationHint}</p>
-        ) : null}
-        {disabledHint ? (
-          <p className="text-xs text-muted-foreground">{disabledHint}</p>
-        ) : null}
+        {hints}
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="font-medium">{currentName ?? "No media selected"}</p>

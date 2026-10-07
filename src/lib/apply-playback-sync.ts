@@ -1,5 +1,6 @@
 import {
   computeExpectedPlaybackTimeSec,
+  DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
   isPlaybackDriftBeyondThreshold,
   measurePlaybackDriftSec,
   resolveSeekCeilingSec,
@@ -49,7 +50,7 @@ export function applyPlaybackSyncToPlayer(config: {
   const {
     player,
     syncState,
-    driftThresholdSec = 0.8,
+    driftThresholdSec = DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
     nowMs = Date.now(),
     mode = "full",
     seekableEndSec,
@@ -90,7 +91,7 @@ export function applyPlaybackClockToPlayer(config: {
   const {
     player,
     syncState,
-    driftThresholdSec = 0.8,
+    driftThresholdSec = DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
     nowMs = Date.now(),
     seekableEndSec,
   } = config

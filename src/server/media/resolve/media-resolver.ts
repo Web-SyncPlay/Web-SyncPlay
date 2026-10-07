@@ -4,11 +4,7 @@ import { resolveWithYtDlp } from "@/server/media/providers/yt-dlp-provider"
 import { buildSelectableStreams } from "@/server/media/resolve/build-selectable-streams"
 import { applyRelayToResolvedUrls } from "@/server/media/resolve/relay-urls"
 import { buildStreamPlan } from "@/server/media/stream/stream-plan"
-import type {
-  YtDlpNormalizedVariant,
-  YtDlpStream,
-  YtDlpTextTrack,
-} from "@/server/media/yt-dlp"
+import { emptyYtDlpCatalog } from "@/server/media/yt-dlp/types"
 import { assertPublicHttpUrl } from "@/server/security/url-safety"
 import type { PlaylistMediaStream, PlaylistTextTrack } from "@/zod/types"
 
@@ -34,6 +30,30 @@ export type ResolvedMedia = {
   isLive?: boolean | null
 }
 
+function unresolvedMedia(
+  input: { url: string; name?: string },
+  failure: {
+    title?: string
+    durationSeconds?: number | null
+    failureReason: ResolveFailureReason
+    resolveUserMessage: string
+    isLive?: boolean | null
+  },
+): ResolvedMedia {
+  return {
+    playableUrl: input.url,
+    sourceUrl: input.url,
+    title: failure.title ?? input.name ?? input.url,
+    durationSeconds: failure.durationSeconds ?? null,
+    playbackMode: "direct",
+    mediaStreams: [],
+    textTracks: [],
+    failureReason: failure.failureReason,
+    resolveUserMessage: failure.resolveUserMessage,
+    ...(failure.isLive !== undefined ? { isLive: failure.isLive } : {}),
+  }
+}
+
 export async function resolveMediaSource(input: {
   url: string
   name?: string
@@ -44,17 +64,10 @@ export async function resolveMediaSource(input: {
 }): Promise<ResolvedMedia> {
   const urlSafety = assertPublicHttpUrl(input.url)
   if (!urlSafety.ok) {
-    return {
-      playableUrl: input.url,
-      sourceUrl: input.url,
-      title: input.name ?? input.url,
-      durationSeconds: null,
-      playbackMode: "direct",
-      mediaStreams: [],
-      textTracks: [],
+    return unresolvedMedia(input, {
       failureReason: "source_unreachable",
       resolveUserMessage: "This URL cannot be fetched for security reasons.",
-    }
+    })
   }
 
   const native = detectNativeSupport(input.url)
@@ -65,26 +78,16 @@ export async function resolveMediaSource(input: {
         title: null as string | null,
         durationSeconds: null as number | null,
         playableUrl: input.url as string | null,
-        streams: [] as YtDlpStream[],
-        textTracks: [] as YtDlpTextTrack[],
+        ...emptyYtDlpCatalog(),
         isLive: null as boolean | null,
-        videoVariants: [] as YtDlpNormalizedVariant[],
-        audioVariants: [] as YtDlpNormalizedVariant[],
       }
     : await resolveWithYtDlp(input.url)
 
   if (!native.canPlayNatively && !ytResolved.extractOk) {
-    return {
-      playableUrl: input.url,
-      sourceUrl: input.url,
-      title: input.name ?? input.url,
-      durationSeconds: null,
-      playbackMode: "direct",
-      mediaStreams: [],
-      textTracks: [],
+    return unresolvedMedia(input, {
       failureReason: "metadata_failed",
       resolveUserMessage: ytResolved.userMessage,
-    }
+    })
   }
 
   const selectable = buildSelectableStreams({
@@ -95,18 +98,13 @@ export async function resolveMediaSource(input: {
   })
 
   if (selectable.mediaStreams.length === 0 || !selectable.playableUrl) {
-    return {
-      playableUrl: input.url,
-      sourceUrl: input.url,
+    return unresolvedMedia(input, {
       title: ytResolved.title ?? input.name ?? input.url,
       durationSeconds: ytResolved.durationSeconds,
-      playbackMode: "direct",
-      mediaStreams: [],
-      textTracks: [],
       failureReason: "metadata_failed",
       resolveUserMessage: "No playable streams were found for this URL.",
       isLive: ytResolved.isLive,
-    }
+    })
   }
 
   let playableUrl = selectable.playableUrl
@@ -138,19 +136,14 @@ export async function resolveMediaSource(input: {
       mediaStreams = wrapped.mediaStreams
       textTracks = wrapped.textTracks
     } catch {
-      return {
-        playableUrl: input.url,
-        sourceUrl: input.url,
+      return unresolvedMedia(input, {
         title: ytResolved.title ?? input.name ?? input.url,
         durationSeconds: ytResolved.durationSeconds,
-        playbackMode: "direct",
-        mediaStreams: [],
-        textTracks: [],
         failureReason: "cors_blocked",
         resolveUserMessage:
           "Media requires a proxy but could not be relayed safely.",
         isLive: ytResolved.isLive,
-      }
+      })
     }
   }
 

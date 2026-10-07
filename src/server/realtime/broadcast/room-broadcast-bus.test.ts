@@ -66,4 +66,15 @@ describe("RoomBroadcastBus", () => {
       false,
     )
   })
+
+  test("flushSnapshot skips republish when structural hash is unchanged", async () => {
+    const store = new InMemoryRoomStateStore(createRoomState())
+    const bus = createTestBroadcastBus(store)
+    await bus.flushSnapshot("room-1")
+    await bus.flushSnapshot("room-1")
+    const snapshots = bus.captured.filter(
+      (c) => c.envelope.type === "room:snapshot",
+    )
+    expect(snapshots.length).toBe(1)
+  })
 })

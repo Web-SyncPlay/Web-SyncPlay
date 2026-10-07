@@ -1,17 +1,16 @@
-import { assertOpsAuthorized } from "@/server/ops-auth"
 import { cleanupInactiveRooms } from "@/server"
+import { withOpsAuth } from "@/server/ops-auth"
 import { NextResponse } from "next/server"
 
-export async function POST(request: Request) {
-  const denied = assertOpsAuthorized(request)
-  if (denied) return denied
+async function runCleanup() {
   const result = await cleanupInactiveRooms()
   return NextResponse.json({ ok: true, ...result })
 }
 
+export async function POST(request: Request) {
+  return withOpsAuth(request, runCleanup)
+}
+
 export async function GET(request: Request) {
-  const denied = assertOpsAuthorized(request)
-  if (denied) return denied
-  const result = await cleanupInactiveRooms()
-  return NextResponse.json({ ok: true, ...result })
+  return withOpsAuth(request, runCleanup)
 }

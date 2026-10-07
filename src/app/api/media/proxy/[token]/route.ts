@@ -1,4 +1,5 @@
 import {
+  playlistTargetHint,
   rewriteM3u8ForProxy,
   shouldAttemptPlaylistRewrite,
 } from "@/server/media/hls-proxy-rewrite"
@@ -6,10 +7,12 @@ import {
   getOrComputeHlsRewrite,
   peekHlsRewriteCache,
 } from "@/server/media/hls-rewrite-cache"
+import { MEDIA_FETCH_UA } from "@/server/media/media-ua"
 import {
   getProxyTokenPayload,
   refreshProxyTokenTtl,
   roomStillExists,
+  type ProxyTokenPayload,
 } from "@/server/media/proxy-token"
 import {
   isStaleUpstreamStatus,
@@ -22,31 +25,12 @@ import {
 import { assertPublicHttpUrl } from "@/server/security/url-safety"
 import { NextResponse } from "next/server"
 
-const DEFAULT_UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-
-function playlistTargetHint(target: string, contentType: string): boolean {
-  const ct = contentType.toLowerCase()
-  if (ct.includes("mpegurl") || ct.includes("m3u8")) return true
-  if (/\.m3u8(\?|$)/i.test(target)) return true
-  // Opaque CDN playlists often use octet-stream without .m3u8
-  if (
-    (ct === "" ||
-      ct.includes("octet-stream") ||
-      ct.includes("text/plain")) &&
-    !/\.(ts|m4s|mp4|webm|aac|m4a)(\?|$)/i.test(target)
-  ) {
-    return true
-  }
-  return false
-}
-
 function buildUpstreamHeaders(
   request: Request,
   payload: { referer?: string; userAgent?: string },
 ): HeadersInit {
   const headers: Record<string, string> = {
-    "user-agent": payload.userAgent || DEFAULT_UA,
+    "user-agent": payload.userAgent || MEDIA_FETCH_UA,
   }
   if (payload.referer) {
     headers.referer = payload.referer
@@ -77,6 +61,68 @@ async function authorizeProxyRequest(request: Request, token: string) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 })
   }
   return null
+}
+
+/**
+ * Rate-limit + load token + room + SSRF gate. Shared by GET/HEAD.
+ * On failure returns a JSON error (GET) or empty status (HEAD).
+ */
+async function loadAuthorizedProxy(
+  request: Request,
+  token: string,
+  mode: "json" | "empty",
+): Promise<
+  | { ok: true; payload: ProxyTokenPayload }
+  | { ok: false; response: Response }
+> {
+  const limited = await authorizeProxyRequest(request, token)
+  if (limited) {
+    return {
+      ok: false,
+      response:
+        mode === "json"
+          ? limited
+          : new Response(null, { status: limited.status }),
+    }
+  }
+
+  const payload = await getProxyTokenPayload(token)
+  if (!payload) {
+    return {
+      ok: false,
+      response:
+        mode === "json"
+          ? NextResponse.json({ error: "Proxy token expired" }, { status: 404 })
+          : new Response(null, { status: 404 }),
+    }
+  }
+
+  if (!(await roomStillExists(payload.roomId))) {
+    return {
+      ok: false,
+      response:
+        mode === "json"
+          ? NextResponse.json({ error: "Proxy token expired" }, { status: 404 })
+          : new Response(null, { status: 404 }),
+    }
+  }
+
+  const safety = assertPublicHttpUrl(payload.url)
+  if (!safety.ok) {
+    if (mode === "json") {
+      console.warn("[media-proxy] blocked upstream", { reason: safety.reason })
+    }
+    return {
+      ok: false,
+      response:
+        mode === "json"
+          ? NextResponse.json({ error: "Forbidden upstream" }, { status: 403 })
+          : new Response(null, { status: 403 }),
+    }
+  }
+
+  await refreshProxyTokenTtl(token)
+  return { ok: true, payload }
 }
 
 function passthroughHeaders(response: Response, range: string | null) {
@@ -124,25 +170,9 @@ export async function GET(
   context: { params: Promise<{ token: string }> },
 ) {
   const { token } = await context.params
-  const limited = await authorizeProxyRequest(request, token)
-  if (limited) return limited
-
-  const payload = await getProxyTokenPayload(token)
-  if (!payload) {
-    return NextResponse.json({ error: "Proxy token expired" }, { status: 404 })
-  }
-
-  if (!(await roomStillExists(payload.roomId))) {
-    return NextResponse.json({ error: "Proxy token expired" }, { status: 404 })
-  }
-
-  const safety = assertPublicHttpUrl(payload.url)
-  if (!safety.ok) {
-    console.warn("[media-proxy] blocked upstream", { reason: safety.reason })
-    return NextResponse.json({ error: "Forbidden upstream" }, { status: 403 })
-  }
-
-  await refreshProxyTokenTtl(token)
+  const access = await loadAuthorizedProxy(request, token, "json")
+  if (!access.ok) return access.response
+  const { payload } = access
 
   const range = request.headers.get("range")
 
@@ -239,22 +269,9 @@ export async function HEAD(
   context: { params: Promise<{ token: string }> },
 ) {
   const { token } = await context.params
-  const limited = await authorizeProxyRequest(request, token)
-  if (limited) return limited
-
-  const payload = await getProxyTokenPayload(token)
-  if (!payload) {
-    return new Response(null, { status: 404 })
-  }
-  if (!(await roomStillExists(payload.roomId))) {
-    return new Response(null, { status: 404 })
-  }
-  const safety = assertPublicHttpUrl(payload.url)
-  if (!safety.ok) {
-    return new Response(null, { status: 403 })
-  }
-
-  await refreshProxyTokenTtl(token)
+  const access = await loadAuthorizedProxy(request, token, "empty")
+  if (!access.ok) return access.response
+  const { payload } = access
 
   const response = await fetch(payload.url, {
     method: "HEAD",

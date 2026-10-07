@@ -16,9 +16,17 @@ function pickNextOwner(
   participants: ParticipantState[],
   role: ParticipantState["role"],
 ): ParticipantState | undefined {
-  return participants
-    .filter((participant) => participant.role === role)
-    .sort((left, right) => participantSortKey(left) - participantSortKey(right))[0]
+  let best: ParticipantState | undefined
+  let bestKey = Number.POSITIVE_INFINITY
+  for (const participant of participants) {
+    if (participant.role !== role) continue
+    const key = participantSortKey(participant)
+    if (key < bestKey) {
+      best = participant
+      bestKey = key
+    }
+  }
+  return best
 }
 
 export function transferOwnershipIfNeeded(

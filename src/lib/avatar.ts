@@ -25,15 +25,16 @@ const styleLabels: Record<AvatarStyleId, string> = {
   lorelei: "Lorelei",
 }
 
+export function isAvatarStyleId(style: string): style is AvatarStyleId {
+  return (avatarStyles as readonly string[]).includes(style)
+}
+
 export function avatarStyleLabel(style: AvatarStyleId): string {
   return styleLabels[style]
 }
 
 export function resolveStyle(style: string): AvatarStyleId {
-  if ((avatarStyles as readonly string[]).includes(style)) {
-    return style as AvatarStyleId
-  }
-  return DEFAULT_AVATAR_STYLE
+  return isAvatarStyleId(style) ? style : DEFAULT_AVATAR_STYLE
 }
 
 /** Generate a same-origin SVG data URI (no third-party request). */

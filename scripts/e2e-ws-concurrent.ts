@@ -5,23 +5,91 @@
  */
 import { randomUUID } from "node:crypto"
 import WebSocket from "ws"
+import { checkHealth } from "./lib/check-health.ts"
 
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000"
 const WS_URL = BASE.replace(/^http/, "ws") + "/api/ws"
 const ROOM = process.env.E2E_ROOM_ID ?? `e2ews-${Date.now().toString(36)}`
-const RESULTS = []
 
-function record(name, ok, detail) {
+type ResultRow = { name: string; ok: boolean; detail?: string }
+const RESULTS: ResultRow[] = []
+
+function record(name: string, ok: boolean, detail?: string) {
   RESULTS.push({ name, ok, detail })
   console.log(`[${ok ? "PASS" : "FAIL"}] ${name}${detail ? ` — ${detail}` : ""}`)
 }
 
-function wait(ms) {
+function wait(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
 }
 
+type SessionKind = "room" | "player" | "control"
+
+type RoomClientOptions = {
+  userId: string
+  userSecret: string
+  username: string
+  sessionKind?: SessionKind
+  controlToken?: string
+}
+
+type RoomState = {
+  playback: { paused?: boolean; [key: string]: unknown }
+  currentIndex?: number
+  updatedAt?: unknown
+  generation?: unknown
+  roomSecurity?: { defaultJoinRole?: string; [key: string]: unknown }
+  playlist: Array<{
+    id: string
+    sourceUrl?: string
+    ingestStatus?: string
+    ingestError?: string | null
+    mediaStreams?: Array<{ id: string; [key: string]: unknown }>
+    playbackMode?: string
+    defaultStreamId?: string
+    [key: string]: unknown
+  }>
+  participants: Record<
+    string,
+    {
+      role?: string
+      localPlayback?: unknown
+      viewerMedia?: {
+        byItemId?: Record<string, { streamId?: string; [key: string]: unknown }>
+      }
+      [key: string]: unknown
+    }
+  >
+  [key: string]: unknown
+}
+
+type Capabilities = {
+  canControlPlayback?: boolean
+  sessionKind?: string
+  isControlSession?: boolean
+  controlAuthorized?: boolean
+  [key: string]: unknown
+}
+
 class RoomClient {
-  constructor({ userId, userSecret, username, sessionKind, controlToken }) {
+  userId: string
+  userSecret: string
+  username: string
+  sessionKind: SessionKind
+  controlToken: string | undefined
+  ws: WebSocket | null
+  roomState: RoomState | null
+  capabilities: Capabilities | null
+  rejected: unknown
+  _waiters: Array<() => void>
+
+  constructor({
+    userId,
+    userSecret,
+    username,
+    sessionKind,
+    controlToken,
+  }: RoomClientOptions) {
     this.userId = userId
     this.userSecret = userSecret
     this.username = username
@@ -61,25 +129,34 @@ class RoomClient {
         reject(err)
       })
       ws.on("message", (raw) => {
-        const msg = JSON.parse(String(raw))
+        const msg = JSON.parse(String(raw)) as {
+          type: string
+          payload: Record<string, unknown>
+        }
         if (msg.type === "room:snapshot" || msg.type === "room:state") {
-          this.roomState = msg.payload
+          this.roomState = msg.payload as RoomState
           this._flush()
         } else if (msg.type === "room:control") {
+          const payload = msg.payload as {
+            playback: RoomState["playback"]
+            currentIndex?: number
+            updatedAt?: unknown
+            generation?: unknown
+          }
           if (this.roomState) {
             this.roomState = {
               ...this.roomState,
-              playback: msg.payload.playback,
-              currentIndex: msg.payload.currentIndex,
-              updatedAt: msg.payload.updatedAt,
-              generation: msg.payload.generation,
+              playback: payload.playback,
+              currentIndex: payload.currentIndex,
+              updatedAt: payload.updatedAt,
+              generation: payload.generation,
             }
           } else {
             this.roomState = {
-              playback: msg.payload.playback,
-              currentIndex: msg.payload.currentIndex,
-              updatedAt: msg.payload.updatedAt,
-              generation: msg.payload.generation,
+              playback: payload.playback,
+              currentIndex: payload.currentIndex,
+              updatedAt: payload.updatedAt,
+              generation: payload.generation,
               playlist: [],
               participants: {},
             }
@@ -87,7 +164,11 @@ class RoomClient {
           this._flush()
         } else if (msg.type === "presence:batch") {
           if (this.roomState?.participants) {
-            for (const [uid, patch] of Object.entries(msg.payload.participants ?? {})) {
+            const participants = (msg.payload.participants ?? {}) as Record<
+              string,
+              Record<string, unknown>
+            >
+            for (const [uid, patch] of Object.entries(participants)) {
               const existing = this.roomState.participants[uid]
               if (!existing) continue
               this.roomState.participants[uid] = {
@@ -99,7 +180,7 @@ class RoomClient {
           }
           this._flush()
         } else if (msg.type === "session:capabilities") {
-          this.capabilities = msg.payload
+          this.capabilities = msg.payload as Capabilities
           this._flush()
         } else if (msg.type === "room:join:rejected") {
           this.rejected = msg.payload
@@ -114,7 +195,10 @@ class RoomClient {
     for (const w of waiters) w()
   }
 
-  waitFor(predicate, timeoutMs = 20_000) {
+  waitFor(
+    predicate: (client: RoomClient) => unknown,
+    timeoutMs = 20_000,
+  ): Promise<RoomClient> {
     return new Promise((resolve, reject) => {
       const start = Date.now()
       const check = () => {
@@ -141,8 +225,8 @@ class RoomClient {
     })
   }
 
-  send(type, payload) {
-    this.ws.send(
+  send(type: string, payload: Record<string, unknown>) {
+    this.ws!.send(
       JSON.stringify({
         type,
         requestId: randomUUID(),
@@ -163,9 +247,8 @@ class RoomClient {
 async function main() {
   console.log(`WS E2E base=${BASE} room=${ROOM}`)
 
-  const healthRes = await fetch(`${BASE}/api/health`)
-  const health = await healthRes.json()
-  record("health", healthRes.ok && health.ok && health.valkey, JSON.stringify(health))
+  const { ok: healthOk, health } = await checkHealth(BASE)
+  record("health", healthOk, JSON.stringify(health))
 
   const hostId = randomUUID()
   const guestId = randomUUID()
@@ -218,6 +301,13 @@ async function main() {
         `status=${settled?.ingestStatus} err=${settled?.ingestError ?? ""} streams=${settled?.mediaStreams?.length ?? 0}`,
       )
     }
+
+    // Product default for first-time joiners is moderator; force guest for this check.
+    host.send("room:default-role:set", { role: "guest" })
+    await host.waitFor(
+      (c) => c.roomState?.roomSecurity?.defaultJoinRole === "guest",
+      10_000,
+    )
 
     await guest.connect()
     await guest.waitFor((c) => c.roomState && c.capabilities)

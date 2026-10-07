@@ -1,34 +1,39 @@
 import {
   buildContentSecurityPolicy,
-  getPublicOrigin,
   isOriginAllowed,
 } from "@/lib/public-domain"
 import { NextResponse, type NextRequest } from "next/server"
 
+const CORS_ALLOW_METHODS = "GET,HEAD,POST,OPTIONS"
+const CORS_EXPOSE_HEADERS =
+  "content-range, accept-ranges, content-length"
+
+function applyCorsHeaders(
+  headers: Headers,
+  request: NextRequest,
+  origin: string,
+): void {
+  headers.set("Access-Control-Allow-Origin", origin)
+  headers.set("Vary", "Origin")
+  headers.set("Access-Control-Allow-Methods", CORS_ALLOW_METHODS)
+  headers.set(
+    "Access-Control-Allow-Headers",
+    request.headers.get("access-control-request-headers") ??
+      "content-type, authorization, range",
+  )
+  headers.set("Access-Control-Expose-Headers", CORS_EXPOSE_HEADERS)
+}
+
 export function proxy(request: NextRequest) {
   const response = NextResponse.next()
   const origin = request.headers.get("origin")
-  const publicOrigin = getPublicOrigin()
 
   response.headers.set("Content-Security-Policy", buildContentSecurityPolicy())
   response.headers.set("X-Content-Type-Options", "nosniff")
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
 
   if (origin && isOriginAllowed(origin)) {
-    response.headers.set("Access-Control-Allow-Origin", origin)
-    response.headers.set("Vary", "Origin")
-    response.headers.set(
-      "Access-Control-Allow-Methods",
-      "GET,HEAD,POST,OPTIONS",
-    )
-    response.headers.set(
-      "Access-Control-Allow-Headers",
-      request.headers.get("access-control-request-headers") ??
-        "content-type, authorization, range",
-    )
-    response.headers.set("Access-Control-Expose-Headers", "content-range, accept-ranges, content-length")
-  } else if (!origin && publicOrigin) {
-    // Same-origin navigations have no Origin; CSP still binds the app.
+    applyCorsHeaders(response.headers, request, origin)
   }
 
   if (request.method === "OPTIONS" && origin && isOriginAllowed(origin)) {

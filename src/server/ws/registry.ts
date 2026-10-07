@@ -15,18 +15,38 @@ type RegistrySlot = {
   sockets: Map<WebSocket, SocketMeta>
 }
 
-function getRegistrySlot() {
+function getRegistrySlot(): RegistrySlot {
   const g = globalThis as typeof globalThis & {
     __webSyncPlayWsRegistry?: RegistrySlot
   }
-  if (!g.__webSyncPlayWsRegistry) {
-    g.__webSyncPlayWsRegistry = {
-      rooms: new Map(),
-      sockets: new Map(),
-    }
+  g.__webSyncPlayWsRegistry ??= {
+    rooms: new Map(),
+    sockets: new Map(),
   }
-
   return g.__webSyncPlayWsRegistry
+}
+
+function detachFromRoom(
+  rooms: Map<string, Set<WebSocket>>,
+  roomId: string,
+  ws: WebSocket,
+) {
+  const roomSet = rooms.get(roomId)
+  if (!roomSet) return
+  roomSet.delete(ws)
+  if (roomSet.size === 0) {
+    rooms.delete(roomId)
+  }
+}
+
+function patchSocketMeta(
+  ws: WebSocket,
+  patch: Partial<Pick<SocketMeta, "presenceTracked" | "controlAuthorized">>,
+) {
+  const { sockets } = getRegistrySlot()
+  const meta = sockets.get(ws)
+  if (!meta) return
+  sockets.set(ws, { ...meta, ...patch })
 }
 
 export function addSocket(
@@ -36,11 +56,7 @@ export function addSocket(
   const { rooms, sockets } = getRegistrySlot()
   const previousMeta = sockets.get(ws)
   if (previousMeta) {
-    const previousRoomSet = rooms.get(previousMeta.roomId)
-    previousRoomSet?.delete(ws)
-    if (previousRoomSet && previousRoomSet.size === 0) {
-      rooms.delete(previousMeta.roomId)
-    }
+    detachFromRoom(rooms, previousMeta.roomId, ws)
   }
 
   const roomSet = rooms.get(meta.roomId) ?? new Set<WebSocket>()
@@ -60,24 +76,14 @@ export function setSocketPresenceTracked(
   ws: WebSocket,
   presenceTracked: boolean,
 ) {
-  const { sockets } = getRegistrySlot()
-  const meta = sockets.get(ws)
-  if (!meta) {
-    return
-  }
-  sockets.set(ws, { ...meta, presenceTracked })
+  patchSocketMeta(ws, { presenceTracked })
 }
 
 export function setSocketControlAuthorized(
   ws: WebSocket,
   controlAuthorized: boolean,
 ) {
-  const { sockets } = getRegistrySlot()
-  const meta = sockets.get(ws)
-  if (!meta) {
-    return
-  }
-  sockets.set(ws, { ...meta, controlAuthorized })
+  patchSocketMeta(ws, { controlAuthorized })
 }
 
 export function removeSocket(ws: WebSocket) {
@@ -87,11 +93,7 @@ export function removeSocket(ws: WebSocket) {
     return undefined
   }
   sockets.delete(ws)
-  const roomSet = rooms.get(meta.roomId)
-  roomSet?.delete(ws)
-  if (roomSet && roomSet.size === 0) {
-    rooms.delete(meta.roomId)
-  }
+  detachFromRoom(rooms, meta.roomId, ws)
   return meta
 }
 

@@ -5,8 +5,19 @@ import {
 } from "@/lib/sanitize-display"
 import { z } from "zod"
 
-const roomRoleSchema = z.enum(["owner", "moderator", "guest"])
+/** Shared id / size primitives (keep bounds consistent across client events). */
+const userIdSchema = z.string().min(1).max(128)
+const itemIdSchema = z.string().min(1).max(128)
+const localMediaIdSchema = z.string().uuid()
+const sizeBytesSchema = z
+  .number()
+  .int()
+  .min(1)
+  .max(1024 * 1024 * 1024 * 1024) // 1 TiB sanity bound
 
+export const roomRoleSchema = z.enum(["owner", "moderator", "guest"])
+export const loopModeSchema = z.enum(["off", "once", "always"])
+export const defaultJoinRoleSchema = roomRoleSchema.exclude(["owner"])
 export const sessionKindSchema = z.enum(["room", "player", "control"])
 
 /** Reject XSS-packaged / control-laden usernames; NFC + strip markup delimiters. */
@@ -48,7 +59,7 @@ const errorMessageSchema = z
 
 export const roomJoinSchema = z.object({
   roomId: z.string().min(1).max(128),
-  userId: z.string().min(1).max(128).optional(),
+  userId: userIdSchema.optional(),
   userSecret: z.string().min(1),
   joinPassword: z.string().min(1).max(256).optional(),
   username: usernameSchema.optional(),
@@ -65,8 +76,6 @@ export const roomPasswordSetSchema = z.object({
 })
 
 export const roomPasswordClearSchema = z.object({})
-
-export const defaultJoinRoleSchema = z.enum(["moderator", "guest"])
 
 export const roomDefaultRoleSetSchema = z.object({
   role: defaultJoinRoleSchema,
@@ -88,7 +97,7 @@ export const playbackSetPausedSchema = z.object({
 })
 
 export const playbackLoopModeSchema = z.object({
-  mode: z.enum(["off", "always", "once"]),
+  mode: loopModeSchema,
 })
 
 export const playlistSelectSchema = z.object({
@@ -101,12 +110,12 @@ export const playlistReorderSchema = z.object({
 })
 
 export const playlistRenameSchema = z.object({
-  itemId: z.string().min(1).max(128),
+  itemId: itemIdSchema,
   name: mediaTitleSchema,
 })
 
 export const playlistRemoveSchema = z.object({
-  itemId: z.string().min(1),
+  itemId: itemIdSchema,
 })
 
 export const playlistAddUrlSchema = z.object({
@@ -114,14 +123,10 @@ export const playlistAddUrlSchema = z.object({
 })
 
 export const playlistAddLocalSchema = z.object({
-  localMediaId: z.string().uuid(),
+  localMediaId: localMediaIdSchema,
   name: mediaTitleSchema,
   mimeType: z.string().min(1).max(128),
-  sizeBytes: z
-    .number()
-    .int()
-    .min(1)
-    .max(1024 * 1024 * 1024 * 1024), // 1 TiB sanity bound (bytes stay on provider)
+  sizeBytes: sizeBytesSchema,
 })
 
 export const localMediaChunkSchema = z.object({
@@ -132,26 +137,22 @@ export const localMediaChunkSchema = z.object({
 })
 
 export const localMediaReadySchema = z.object({
-  localMediaId: z.string().uuid(),
+  localMediaId: localMediaIdSchema,
   ready: z.boolean(),
 })
 
 export const localMediaAbrPublishSchema = z.object({
-  parentLocalMediaId: z.string().uuid(),
+  parentLocalMediaId: localMediaIdSchema,
   durationSec: z.number().positive().max(60 * 60 * 24),
   variants: z
     .array(
       z.object({
-        localMediaId: z.string().uuid(),
+        localMediaId: localMediaIdSchema,
         height: z.number().int().min(1).max(16_384),
         bandwidth: z.number().int().min(1).max(500_000_000),
         label: shortLabelSchema,
         mimeType: z.string().min(1).max(128),
-        sizeBytes: z
-          .number()
-          .int()
-          .min(1)
-          .max(1024 * 1024 * 1024 * 1024),
+        sizeBytes: sizeBytesSchema,
         name: mediaTitleSchema,
       }),
     )
@@ -161,8 +162,8 @@ export const localMediaAbrPublishSchema = z.object({
 
 /** WebRTC signaling for local-media P2P / SFU bootstrap (relayed by server). */
 export const localMediaWebrtcSignalSchema = z.object({
-  localMediaId: z.string().uuid(),
-  targetUserId: z.string().min(1).max(128),
+  localMediaId: localMediaIdSchema,
+  targetUserId: userIdSchema,
   signal: z.object({
     type: z.enum(["offer", "answer", "ice", "hangup"]),
     sdp: z.string().max(256_000).optional(),
@@ -196,7 +197,7 @@ export const localMediaSfuCapabilitiesSchema = z.object({})
 
 export const localMediaSfuCreateTransportSchema = z.object({
   direction: z.enum(["send", "recv"]),
-  localMediaId: z.string().uuid().optional(),
+  localMediaId: localMediaIdSchema.optional(),
 })
 
 export const localMediaSfuConnectTransportSchema = z.object({
@@ -206,7 +207,7 @@ export const localMediaSfuConnectTransportSchema = z.object({
 
 export const localMediaSfuProduceDataSchema = z.object({
   transportId: z.string().min(1).max(128),
-  localMediaId: z.string().uuid(),
+  localMediaId: localMediaIdSchema,
   sctpStreamParameters: sfuSctpStreamParametersSchema,
   label: z.string().max(128).optional(),
   protocol: z.string().max(128).optional(),
@@ -216,23 +217,23 @@ export const localMediaSfuProduceDataSchema = z.object({
 
 export const localMediaSfuConsumeDataSchema = z.object({
   transportId: z.string().min(1).max(128),
-  localMediaId: z.string().uuid(),
+  localMediaId: localMediaIdSchema,
   /** Consume a specific viewer request channel instead of the provider block channel. */
   dataProducerId: z.string().min(1).max(128).optional(),
 })
 
 export const playlistRetrySchema = z.object({
-  itemId: z.string().min(1),
+  itemId: itemIdSchema,
 })
 
 export const playlistItemErrorSchema = z.object({
-  itemId: z.string().min(1).max(128),
+  itemId: itemIdSchema,
   /** `null` clears a previously reported ingest error after recovery. */
   error: errorMessageSchema.nullable(),
 })
 
 export const viewerMediaPreferencesSchema = z.object({
-  itemId: z.string().min(1).max(128),
+  itemId: itemIdSchema,
   streamId: z.string().min(1).max(128).nullable().optional(),
   textTrackId: z.string().min(1).max(128).nullable().optional(),
   audioLanguage: z.string().min(1).max(32).optional(),
@@ -253,8 +254,9 @@ export const participantUpdateSchema = z.object({
 })
 
 export const participantRoleUpdateSchema = z.object({
-  targetUserId: z.string().min(1).max(128),
-  role: roomRoleSchema,
+  targetUserId: userIdSchema,
+  /** Assignable roles only — ownership transfers via disconnect/cleanup, not this event. */
+  role: defaultJoinRoleSchema,
 })
 
 export const seekPreviewSchema = z.object({

@@ -1,29 +1,22 @@
 import { env } from "@/env"
+import { visibleActionTypes } from "@/lib/log-format"
 import {
   roomActionLogMaxAgeMs,
   type RoomState,
 } from "@/zod/types"
 import { randomUUID } from "node:crypto"
 
-export const trackedActionTypes = new Set<string>([
-  "participant:joined",
-  "participant:disconnected",
-  "participant:username",
-  "participant:role:changed",
-  "participant:owner:transferred",
-  "participant:error",
-  "playback:pause",
-  "playback:unpause",
-  "playback:rate",
-  "playback:seek",
-  "playback:loop",
-  "playlist:add",
-  "playlist:remove",
-  "playlist:reorder",
-  "media:played",
+/** Server-only actions (not shown in the room UI filter). */
+const serverOnlyActionTypes = [
   "room:password:set",
   "room:password:cleared",
   "room:default-role:set",
+] as const
+
+/** Union of UI-visible + ops/security actions persisted on the room. */
+export const trackedActionTypes = new Set<string>([
+  ...visibleActionTypes,
+  ...serverOnlyActionTypes,
 ])
 
 /** Drop entries older than the room TTL so active rooms cannot retain logs forever. */

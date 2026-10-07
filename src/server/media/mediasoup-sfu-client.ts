@@ -19,4 +19,6 @@ export {
   mediasoupProduceData,
   onMediasoupTransportClosed,
   type LocalMediaSfuProducer,
+  type MediasoupDataProducerAppData,
+  type MediasoupTransportAppData,
 } from "@/server/media/mediasoup-runtime"

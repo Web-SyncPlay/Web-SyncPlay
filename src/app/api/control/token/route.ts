@@ -1,3 +1,4 @@
+import { canMutateByRole } from "@/lib/permissions-utils"
 import { mintControlToken } from "@/server/realtime/services/control-token"
 import { matchIdentitySecret } from "@/server/realtime/services/identity-store"
 import { getRoomStateStore } from "@/server/redis/state-store"
@@ -5,6 +6,7 @@ import {
   clientIpFromRequest,
   consumeRateLimit,
 } from "@/server/security/rate-limit"
+import type { RoomRole } from "@/zod/types"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 
@@ -39,8 +41,8 @@ export async function POST(request: Request) {
   const store = await getRoomStateStore()
   const state = await store.get(roomId)
   const participant = state?.participants[userId]
-  const role = participant?.role
-  if (role !== "owner" && role !== "moderator") {
+  const role = participant?.role as RoomRole | undefined
+  if (!canMutateByRole(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 

@@ -5,6 +5,9 @@ export interface PlaybackSyncState {
   serverNowMs: number
 }
 
+/** Default absolute drift (seconds) before an authoritative clock seek. */
+export const DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC = 0.8
+
 export function computeExpectedPlaybackTimeSec(
   syncState: PlaybackSyncState,
   nowMs = Date.now(),

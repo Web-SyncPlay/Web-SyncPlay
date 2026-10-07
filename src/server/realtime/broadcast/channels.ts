@@ -5,8 +5,10 @@ import type {
   WsEnvelope,
 } from "@/zod/types"
 
+/** Hint for mutateRoomMessage post-write publish path. */
 export type RoomPublishHint =
   | { kind: "control" }
+  /** No bus publish (caller uses publishControlEphemeral directly). */
   | { kind: "control-ephemeral" }
   | { kind: "presence" }
   | { kind: "snapshot" }

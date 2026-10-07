@@ -22,6 +22,7 @@ function safeEqualString(a: string, b: string): boolean {
 
 /**
  * Gates operator HTTP endpoints. In production, OPS_SECRET must be set.
+ * Returns an error Response when unauthorized; otherwise null.
  */
 export function assertOpsAuthorized(request: Request): Response | null {
   const expected = env.OPS_SECRET
@@ -41,4 +42,14 @@ export function assertOpsAuthorized(request: Request): Response | null {
     return Response.json({ error: "Unauthorized" }, { status: 401 })
   }
   return null
+}
+
+/** Run an ops handler only after `assertOpsAuthorized` succeeds. */
+export async function withOpsAuth(
+  request: Request,
+  handler: () => Promise<Response>,
+): Promise<Response> {
+  const denied = assertOpsAuthorized(request)
+  if (denied) return denied
+  return handler()
 }

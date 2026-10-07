@@ -1,5 +1,6 @@
 "use client"
 
+import { isRoomEmbedPath } from "@/lib/room-utils"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -12,13 +13,9 @@ const legalLinks = [
   { href: "/terms", label: "Terms" },
 ] as const
 
-function isEmbedPath(pathname: string): boolean {
-  return /\/room\/[^/]+\/(player|control)\/?$/.test(pathname)
-}
-
 export function SiteFooter() {
   const pathname = usePathname() ?? ""
-  if (isEmbedPath(pathname)) return null
+  if (isRoomEmbedPath(pathname)) return null
 
   const year = new Date().getFullYear()
 

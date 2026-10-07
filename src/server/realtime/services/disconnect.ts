@@ -12,7 +12,7 @@ import {
   clearAllRoomPrunes,
   schedulePrune,
 } from "./participants"
-import { nextMonotonicMs } from "./timeline"
+import { bumpRoomRevisions, nextMonotonicMs } from "./timeline"
 
 export type DisconnectSocketMeta = {
   roomId: string
@@ -184,8 +184,7 @@ export async function handleSocketDisconnect(
     applyUserWentOffline(state, meta.roomId, meta.userId)
     await deleteLocalMediaEntriesForOwner(meta.roomId, meta.userId)
     await schedulePrune(meta.roomId, meta.userId)
-    state.generation = (state.generation ?? 0) + 1
-    state.structuralRevision = (state.structuralRevision ?? 0) + 1
+    bumpRoomRevisions(state)
     return state
   })
 
@@ -196,18 +195,14 @@ export async function handleSocketDisconnect(
   const bus = getRoomBroadcastBus()
   bus.attachStore(store)
   const now = Date.now()
-  await store.mergePresenceData(meta.roomId, meta.userId, {
-    connected: false,
+  const offlinePresence = {
+    connected: false as const,
     lastSeenAt: now,
     disconnectedAt: now,
     localPlayback: next.participants[meta.userId]?.localPlayback,
-  })
-  bus.markPresenceDirty(meta.roomId, meta.userId, {
-    connected: false,
-    lastSeenAt: now,
-    disconnectedAt: now,
-    localPlayback: next.participants[meta.userId]?.localPlayback,
-  })
+  }
+  await store.mergePresenceData(meta.roomId, meta.userId, offlinePresence)
+  bus.markPresenceDirty(meta.roomId, meta.userId, offlinePresence)
 
   const playbackChanged = pausedBefore !== next.playback.paused
   if (playbackChanged) {

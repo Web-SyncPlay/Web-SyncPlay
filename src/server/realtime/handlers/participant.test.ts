@@ -6,13 +6,47 @@ import {
 import {
   handleParticipantRoleUpdate,
   handleParticipantUpdate,
+  resolveLocalPlaybackError,
+  resolveParticipantUpdate,
 } from "@/server/realtime/handlers/participant"
 import {
   createHandlerContext,
+  createParticipant,
   createRoomState,
   envelope,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
+
+describe("participant update helpers", () => {
+  test("resolveLocalPlaybackError clears on null/empty and keeps omitted", () => {
+    expect(resolveLocalPlaybackError(null, "stall")).toBeUndefined()
+    expect(resolveLocalPlaybackError("  ", "stall")).toBeUndefined()
+    expect(resolveLocalPlaybackError(undefined, "stall")).toBe("stall")
+    expect(resolveLocalPlaybackError("boom", "stall")).toBe("boom")
+  })
+
+  test("resolveParticipantUpdate marks identity and playback dirty flags", () => {
+    const participant = createParticipant({
+      userId: "guest",
+      role: "guest",
+      username: "Guest",
+    })
+    const idle = resolveParticipantUpdate(participant, {})
+    expect(idle.identityDirty).toBe(false)
+    expect(idle.playbackDirty).toBe(false)
+
+    const renamed = resolveParticipantUpdate(participant, {
+      username: "Renamed",
+    })
+    expect(renamed.identityDirty).toBe(true)
+    expect(renamed.nextUsername).toBe("Renamed")
+
+    const seeked = resolveParticipantUpdate(participant, {
+      currentTimeMs: participant.localPlayback.currentTimeMs + 1000,
+    })
+    expect(seeked.playbackDirty).toBe(true)
+  })
+})
 
 describe("participant handler interfaces", () => {
   afterEach(() => {
@@ -171,5 +205,55 @@ describe("participant handler interfaces", () => {
       }),
     )
     expect(store.peek("room-1")?.participants.guest?.role).toBe("moderator")
+  })
+
+  test("role update requires control-session auth when session is gated", async () => {
+    const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
+    const unauthorized = createHandlerContext({
+      store,
+      userId: "owner",
+      isControlSession: true,
+      controlAuthorized: false,
+    })
+    const authorized = createHandlerContext({
+      store,
+      userId: "owner",
+      isControlSession: true,
+      controlAuthorized: true,
+    })
+
+    await handleParticipantRoleUpdate(
+      unauthorized,
+      envelope("participant:role:update", {
+        targetUserId: "guest",
+        role: "moderator",
+      }),
+    )
+    expect(store.peek("room-1")?.participants.guest?.role).toBe("guest")
+
+    await handleParticipantRoleUpdate(
+      authorized,
+      envelope("participant:role:update", {
+        targetUserId: "guest",
+        role: "moderator",
+      }),
+    )
+    expect(store.peek("room-1")?.participants.guest?.role).toBe("moderator")
+  })
+
+  test("role update cannot demote the room owner", async () => {
+    const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
+    const ownerCtx = createHandlerContext({ store, userId: "owner" })
+
+    await handleParticipantRoleUpdate(
+      ownerCtx,
+      envelope("participant:role:update", {
+        targetUserId: "owner",
+        role: "guest",
+      }),
+    )
+    expect(store.peek("room-1")?.participants.owner?.role).toBe("owner")
   })
 })

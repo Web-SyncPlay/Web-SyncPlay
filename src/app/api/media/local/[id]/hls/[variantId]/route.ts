@@ -1,13 +1,7 @@
+import { resolveServeableLocalMedia } from "@/server/media/local-media-access"
+import { localMediaJsonError } from "@/server/media/local-media-http"
 import { buildLocalMediaVariantPlaylist } from "@/server/media/local-media-hls"
-import {
-  getLocalMediaEntry,
-  touchLocalMediaEntry,
-} from "@/server/media/local-media-store"
-import { getRoomStateStore } from "@/server/redis/state-store"
-import {
-  httpStatusForLocalMediaError,
-  localMediaErrorMessage,
-} from "@/lib/local-media-errors"
+import { touchLocalMediaEntry } from "@/server/media/local-media-store"
 
 /**
  * GET /api/media/local/{id}/hls/{variantId}
@@ -18,40 +12,17 @@ export async function GET(
   context: { params: Promise<{ id: string; variantId: string }> },
 ) {
   const { id, variantId } = await context.params
-  const entry = await getLocalMediaEntry(id)
-  if (!entry || entry.abrParentId) {
-    return Response.json(
-      {
-        error: localMediaErrorMessage("not_found"),
-        code: "not_found",
-      },
-      { status: httpStatusForLocalMediaError("not_found") },
-    )
+  const access = await resolveServeableLocalMedia(id, { rejectAbrChild: true })
+  if (!access.ok) {
+    return access.response
   }
 
+  const { entry } = access
   const allowed =
     variantId === id ||
     entry.abr?.variants.some((v) => v.localMediaId === variantId) === true
   if (!allowed) {
-    return Response.json(
-      {
-        error: localMediaErrorMessage("not_found"),
-        code: "not_found",
-      },
-      { status: httpStatusForLocalMediaError("not_found") },
-    )
-  }
-
-  const store = await getRoomStateStore()
-  const onlineUsers = await store.getWsPresenceUserIds(entry.roomId)
-  if (!onlineUsers.has(entry.ownerUserId) || !entry.providerReady) {
-    const code = !onlineUsers.has(entry.ownerUserId)
-      ? "owner_offline"
-      : "provider_unavailable"
-    return Response.json(
-      { error: localMediaErrorMessage(code), code },
-      { status: httpStatusForLocalMediaError(code) },
-    )
+    return localMediaJsonError("not_found")
   }
 
   void touchLocalMediaEntry(id)

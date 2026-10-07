@@ -1,14 +1,58 @@
 import { describe, expect, test } from "bun:test"
 import {
+  canMutateByRole,
+  canMutateFromClientSession,
+  isClientControlAuthorized,
+} from "@/lib/permissions-utils"
+import {
   canControlFromConnectionContext,
   canManageRoomSecurityFromConnectionContext,
   computeSessionCapabilities,
+  hasPlaybackAndPlaylistControl,
 } from "./permissions"
 import { createRoomState } from "@/server/realtime/test-utils/fixtures"
 
 const state = createRoomState()
 
 describe("permissions / session capabilities", () => {
+  test("role helpers agree on mutate eligibility", () => {
+    expect(canMutateByRole("owner")).toBe(true)
+    expect(canMutateByRole("moderator")).toBe(true)
+    expect(canMutateByRole("guest")).toBe(false)
+    expect(hasPlaybackAndPlaylistControl(state, "owner")).toBe(true)
+    expect(hasPlaybackAndPlaylistControl(state, "guest")).toBe(false)
+    expect(hasPlaybackAndPlaylistControl(state, "missing")).toBe(false)
+  })
+
+  test("client session helpers mirror embed UI gates", () => {
+    expect(
+      isClientControlAuthorized({
+        isControlSession: false,
+        controlAuthorized: false,
+      }),
+    ).toBe(true)
+    expect(
+      isClientControlAuthorized({
+        isControlSession: true,
+        controlAuthorized: false,
+      }),
+    ).toBe(false)
+    expect(
+      canMutateFromClientSession({
+        role: "owner",
+        isControlSession: true,
+        controlAuthorized: true,
+      }),
+    ).toBe(true)
+    expect(
+      canMutateFromClientSession({
+        role: "guest",
+        isControlSession: false,
+        controlAuthorized: false,
+      }),
+    ).toBe(false)
+  })
+
   test("allows owner in room session", () => {
     expect(
       canControlFromConnectionContext(state, "owner", {

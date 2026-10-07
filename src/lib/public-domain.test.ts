@@ -40,6 +40,16 @@ describe("public-domain", () => {
     expect(csp).toContain("https://www.youtube-nocookie.com")
     expect(csp).toContain("https://player.vimeo.com")
     expect(csp).toContain("img-src 'self' data: blob: https: http:")
+    expect(csp).toContain("wss://web-syncplay.de")
+    process.env.PUBLIC_DOMAIN = prev
+  })
+
+  test("localhost PUBLIC_DOMAIN uses http/ws origins", () => {
+    const prev = process.env.PUBLIC_DOMAIN
+    process.env.PUBLIC_DOMAIN = "localhost:3000"
+    expect(getPublicOrigin()).toBe("http://localhost:3000")
+    const csp = buildContentSecurityPolicy()
+    expect(csp).toContain("ws://localhost:3000")
     process.env.PUBLIC_DOMAIN = prev
   })
 })

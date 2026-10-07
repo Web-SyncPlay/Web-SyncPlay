@@ -5,6 +5,7 @@ import {
   type YtDlpTextTrack,
 } from "@/server/media/yt-dlp"
 import type { YtDlpFailureClassification } from "@/server/media/yt-dlp/classify"
+import { emptyYtDlpCatalog } from "@/server/media/yt-dlp/types"
 
 export type YtDlpResolvedPayload =
   | {
@@ -42,11 +43,8 @@ export async function resolveWithYtDlp(
       title: null,
       durationSeconds: null,
       playableUrl: null,
-      streams: [],
-      textTracks: [],
+      ...emptyYtDlpCatalog(),
       isLive: null,
-      videoVariants: [],
-      audioVariants: [],
       userMessage: info.userMessage,
       classification: info.classification,
     }

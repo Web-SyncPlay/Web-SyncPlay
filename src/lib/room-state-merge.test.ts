@@ -39,6 +39,28 @@ describe("room-state-merge", () => {
     expect(next?.participants.guest?.localPlayback.currentTimeMs).toBe(999)
   })
 
+  test("presence merge preserves identity fields when patch omits them", () => {
+    const prev = createRoomState()
+    const next = applyPresenceBatch(prev, {
+      presenceRevision: 1,
+      serverNowMs: Date.now(),
+      participants: {
+        guest: {
+          connected: false,
+          lastSeenAt: 42,
+        },
+      },
+    })
+    expect(next?.participants.guest?.username).toBe(
+      prev.participants.guest?.username,
+    )
+    expect(next?.participants.guest?.avatarStyle).toBe(
+      prev.participants.guest?.avatarStyle,
+    )
+    expect(next?.participants.guest?.connected).toBe(false)
+    expect(next?.participants.guest?.lastSeenAt).toBe(42)
+  })
+
   test("late snapshot does not rewind newer control playback", () => {
     const base = createRoomState({ generation: 1 })
     const afterControl = applyRoomControl(base, {

@@ -183,9 +183,10 @@ export function reconcileParticipantsConnectivity(
     }
     const isActive = activeUserIds.has(participant.userId)
     if (participant.connected && !isActive) {
+      const nowMs = Date.now()
       participant.connected = false
-      participant.disconnectedAt = Date.now()
-      participant.lastSeenAt = Date.now()
+      participant.disconnectedAt = nowMs
+      participant.lastSeenAt = nowMs
       disconnecting.push(participant.userId)
     } else if (!participant.connected && isActive) {
       participant.connected = true

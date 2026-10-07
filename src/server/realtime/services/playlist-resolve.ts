@@ -6,14 +6,43 @@ import {
 } from "@/server/media/resolve"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
+import { bumpRoomRevisions } from "@/server/realtime/services/timeline"
 import { sanitizeMediaTitle } from "@/lib/sanitize-display"
-import type { PlaylistItem } from "@/zod/types"
+import type { PlaylistItem, RoomState } from "@/zod/types"
 
 /** Process-local dedupe so multi-kick of the same item does not pile up yt-dlp work. */
 const inflightPlaylistResolves = new Set<string>()
 
 function resolveKey(roomId: string, itemId: string) {
   return `${roomId}:${itemId}`
+}
+
+function touchRoomStructural(state: RoomState) {
+  state.updatedAt = Date.now()
+  bumpRoomRevisions(state)
+}
+
+function publishRoomSnapshot(store: RoomStateStorePort, roomId: string) {
+  const bus = getRoomBroadcastBus()
+  bus.attachStore(store)
+  bus.markSnapshotDirty(roomId)
+}
+
+function resolveDisplayName(
+  item: PlaylistItem,
+  resolved: ResolvedMedia,
+  preferredTitle?: string,
+): string {
+  const preferred = preferredTitle?.trim()
+  const safeTitle =
+    (resolved.title ? sanitizeMediaTitle(resolved.title) : null) ?? null
+  if (preferred && item.name.trim() === preferred) {
+    return safeTitle || sanitizeMediaTitle(preferred) || preferred
+  }
+  if (item.name.trim() === item.sourceUrl.trim()) {
+    return safeTitle || sanitizeMediaTitle(item.sourceUrl) || item.sourceUrl
+  }
+  return item.name
 }
 
 export function applyResolvedMediaToItem(
@@ -34,16 +63,7 @@ export function applyResolvedMediaToItem(
   item.isLive = resolved.isLive ?? undefined
   item.ingestStatus = "ready"
   item.ingestError = undefined
-
-  const preferred = options?.preferredTitle?.trim()
-  const safeTitle =
-    (resolved.title ? sanitizeMediaTitle(resolved.title) : null) ?? null
-  if (preferred && item.name.trim() === preferred) {
-    item.name = safeTitle || sanitizeMediaTitle(preferred) || preferred
-  } else if (item.name.trim() === item.sourceUrl.trim()) {
-    item.name =
-      safeTitle || sanitizeMediaTitle(item.sourceUrl) || item.sourceUrl
-  }
+  item.name = resolveDisplayName(item, resolved, options?.preferredTitle)
 }
 
 async function commitResolvingItem(
@@ -63,15 +83,11 @@ async function commitResolvingItem(
         return options?.retryUntilPresent ? state : null
       }
       mutateItem(item)
-      state.updatedAt = Date.now()
-      state.generation = (state.generation ?? 0) + 1
-      state.structuralRevision = (state.structuralRevision ?? 0) + 1
+      touchRoomStructural(state)
       return state
     })
     if (written) {
-      const bus = getRoomBroadcastBus()
-      bus.attachStore(store)
-      bus.markSnapshotDirty(roomId)
+      publishRoomSnapshot(store, roomId)
       return true
     }
     if (!options?.retryUntilPresent) return false
@@ -131,8 +147,7 @@ export async function resolvePlaylistItem(params: {
         itemId,
         (item) => {
           item.ingestStatus = "error"
-          item.ingestError =
-            resolved.resolveUserMessage ?? failureMessage
+          item.ingestError = resolved.resolveUserMessage ?? failureMessage
         },
         { retryUntilPresent },
       )
@@ -212,9 +227,7 @@ export async function reresolveRemotePlaylistItem(params: {
     }
     item.ingestStatus = "resolving"
     item.ingestError = undefined
-    state.updatedAt = Date.now()
-    state.generation = (state.generation ?? 0) + 1
-    state.structuralRevision = (state.structuralRevision ?? 0) + 1
+    touchRoomStructural(state)
     return state
   })
 
@@ -223,9 +236,7 @@ export async function reresolveRemotePlaylistItem(params: {
   await invalidateYtDlpExtractCache(sourceUrl)
 
   if (written) {
-    const bus = getRoomBroadcastBus()
-    bus.attachStore(store)
-    bus.markSnapshotDirty(roomId)
+    publishRoomSnapshot(store, roomId)
   }
 
   await resolvePlaylistItem({

@@ -4,6 +4,7 @@ import {
   applyPlaybackSyncToPlayer,
   nudgePlaybackTransport,
 } from "./apply-playback-sync"
+import { DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC } from "./playback-sync"
 
 describe("applyPlaybackClockToPlayer", () => {
   test("seeks and sets rate without touching transport", () => {
@@ -35,7 +36,7 @@ describe("applyPlaybackClockToPlayer", () => {
         serverNowMs: 100,
       },
       nowMs: 100,
-      driftThresholdSec: 0.8,
+      driftThresholdSec: DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
     })
 
     expect(order).toEqual(["seek:5"])
@@ -65,7 +66,7 @@ describe("applyPlaybackClockToPlayer", () => {
         serverNowMs: 1_000,
       },
       nowMs: 1_000,
-      driftThresholdSec: 0.8,
+      driftThresholdSec: DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
     })
 
     expect(order).toEqual([])
@@ -95,7 +96,7 @@ describe("applyPlaybackClockToPlayer", () => {
         serverNowMs: 100,
       },
       nowMs: 100,
-      driftThresholdSec: 0.8,
+      driftThresholdSec: DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
     })
 
     expect(order).toEqual(["seek:9.95"])
@@ -130,7 +131,7 @@ describe("applyPlaybackClockToPlayer", () => {
         serverNowMs: 100,
       },
       nowMs: 100,
-      driftThresholdSec: 0.8,
+      driftThresholdSec: DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
     })
 
     expect(order).toEqual(["seek:50"])

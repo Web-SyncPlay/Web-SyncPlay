@@ -1,41 +1,56 @@
-const ROOM_STATE_PREFIX = "room:"
+const ROOM_PREFIX = "room:"
 const ROOM_STATE_SUFFIX = ":state"
 const ROOM_CHANNEL_SUFFIX = ":channel"
+const ROOM_IDENTITY_SUFFIX = ":identity"
 const DEFAULTS_KEY = "defaults:daily-top-10"
 const MEDIA_PROXY_PREFIX = "media:proxy:"
 const MEDIA_PROXY_BY_URL_PREFIX = "media:proxy:by-url:"
 const LOCAL_MEDIA_PREFIX = "media:local:"
 const LOCAL_MEDIA_OWNER_INDEX_PREFIX = "media:local:room:"
 const CONTROL_TOKEN_PREFIX = "control:token:"
-const ROOM_IDENTITY_PREFIX = "room:"
-const ROOM_IDENTITY_SUFFIX = ":identity"
+
+type RoomTypedChannelSuffix = ":control" | ":presence" | ":snapshot" | ":state" | ":channel"
+
+/** Extract roomId from `room:{id}{suffix}`; empty string if the key does not match. */
+function parseRoomPrefixedKey(
+  key: string,
+  suffix: RoomTypedChannelSuffix | typeof ROOM_IDENTITY_SUFFIX,
+): string {
+  const trimmed = key.trim()
+  if (!trimmed.startsWith(ROOM_PREFIX)) {
+    return ""
+  }
+  const withoutPrefix = trimmed.slice(ROOM_PREFIX.length)
+  if (!withoutPrefix.endsWith(suffix)) {
+    return ""
+  }
+  return withoutPrefix.slice(0, withoutPrefix.length - suffix.length)
+}
 
 export const keys = {
   roomState(roomId: string) {
-    return `${ROOM_STATE_PREFIX}${roomId}${ROOM_STATE_SUFFIX}`
+    return `${ROOM_PREFIX}${roomId}${ROOM_STATE_SUFFIX}`
+  },
+
+  /** SCAN MATCH for all room state keys. */
+  roomStateScanPattern() {
+    return `${ROOM_PREFIX}*${ROOM_STATE_SUFFIX}`
+  },
+
+  parseRoomStateKey(key: string): string {
+    return parseRoomPrefixedKey(key, ROOM_STATE_SUFFIX)
   },
 
   roomChannel(roomId: string) {
-    return `${ROOM_STATE_PREFIX}${roomId}${ROOM_CHANNEL_SUFFIX}`
+    return `${ROOM_PREFIX}${roomId}${ROOM_CHANNEL_SUFFIX}`
   },
 
   roomChannelPattern() {
-    return `${ROOM_STATE_PREFIX}*${ROOM_CHANNEL_SUFFIX}`
+    return `${ROOM_PREFIX}*${ROOM_CHANNEL_SUFFIX}`
   },
 
   parseRoomChannel(channel: string): string {
-    const trimmed = channel.trim()
-    if (!trimmed.startsWith(ROOM_STATE_PREFIX)) {
-      return ""
-    }
-    const withoutPrefix = trimmed.slice(ROOM_STATE_PREFIX.length)
-    if (!withoutPrefix.endsWith(ROOM_CHANNEL_SUFFIX)) {
-      return ""
-    }
-    return withoutPrefix.slice(
-      0,
-      withoutPrefix.length - ROOM_CHANNEL_SUFFIX.length,
-    )
+    return parseRoomPrefixedKey(channel, ROOM_CHANNEL_SUFFIX)
   },
 
   dailyDefaults() {
@@ -44,51 +59,43 @@ export const keys = {
 
   /** HASH userId -> refcount of active WS connections cluster-wide */
   roomPresenceRef(roomId: string) {
-    return `${ROOM_STATE_PREFIX}${roomId}:presenceRef`
+    return `${ROOM_PREFIX}${roomId}:presenceRef`
   },
 
   /** HASH userId -> JSON PresencePatch (localPlayback clocks, etc.) */
   roomPresenceData(roomId: string) {
-    return `${ROOM_STATE_PREFIX}${roomId}:presenceData`
+    return `${ROOM_PREFIX}${roomId}:presenceData`
   },
 
   roomControlChannel(roomId: string) {
-    return `${ROOM_STATE_PREFIX}${roomId}:control`
+    return `${ROOM_PREFIX}${roomId}:control`
   },
 
   roomPresenceChannel(roomId: string) {
-    return `${ROOM_STATE_PREFIX}${roomId}:presence`
+    return `${ROOM_PREFIX}${roomId}:presence`
   },
 
   roomSnapshotChannel(roomId: string) {
-    return `${ROOM_STATE_PREFIX}${roomId}:snapshot`
+    return `${ROOM_PREFIX}${roomId}:snapshot`
   },
 
   roomControlChannelPattern() {
-    return `${ROOM_STATE_PREFIX}*:control`
+    return `${ROOM_PREFIX}*:control`
   },
 
   roomPresenceChannelPattern() {
-    return `${ROOM_STATE_PREFIX}*:presence`
+    return `${ROOM_PREFIX}*:presence`
   },
 
   roomSnapshotChannelPattern() {
-    return `${ROOM_STATE_PREFIX}*:snapshot`
+    return `${ROOM_PREFIX}*:snapshot`
   },
 
   parseRoomTypedChannel(
     channel: string,
     suffix: ":control" | ":presence" | ":snapshot",
   ): string {
-    const trimmed = channel.trim()
-    if (!trimmed.startsWith(ROOM_STATE_PREFIX)) {
-      return ""
-    }
-    const withoutPrefix = trimmed.slice(ROOM_STATE_PREFIX.length)
-    if (!withoutPrefix.endsWith(suffix)) {
-      return ""
-    }
-    return withoutPrefix.slice(0, withoutPrefix.length - suffix.length)
+    return parseRoomPrefixedKey(channel, suffix)
   },
 
   mediaYtDlpExtract(urlHash: string) {
@@ -122,17 +129,17 @@ export const keys = {
 
   /** Grace-period marker while a disconnected participant awaits prune. */
   roomParticipantPrune(roomId: string, userId: string) {
-    return `${ROOM_STATE_PREFIX}${roomId}:prune:${userId}`
+    return `${ROOM_PREFIX}${roomId}:prune:${userId}`
   },
 
   /** SET of `roomId\\tuserId` pending participant prunes cluster-wide. */
   roomPendingPrunes() {
-    return `${ROOM_STATE_PREFIX}pending-prunes`
+    return `${ROOM_PREFIX}pending-prunes`
   },
 
   /** HASH userId -> hashed userSecret for participant identity continuity */
   roomIdentity(roomId: string) {
-    return `${ROOM_IDENTITY_PREFIX}${roomId}${ROOM_IDENTITY_SUFFIX}`
+    return `${ROOM_PREFIX}${roomId}${ROOM_IDENTITY_SUFFIX}`
   },
 
   mediaProxyToken(token: string) {

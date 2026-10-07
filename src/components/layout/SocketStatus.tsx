@@ -1,4 +1,4 @@
-import type { JoinStatus } from "@/hooks/use-room-socket"
+import type { JoinStatus } from "@/lib/room-join-client"
 import {
   Empty,
   EmptyContent,

@@ -75,7 +75,8 @@ function ownsTransport(
   if (!socketTransports.get(ctx.ws)?.has(transportId)) return false
   const appData = getMediasoupTransportAppData(transportId)
   if (!appData || appData.roomKey !== ctx.roomId) return false
-  return direction ? appData.direction === direction : true
+  if (direction && appData.direction !== direction) return false
+  return true
 }
 
 function broadcastProducer(

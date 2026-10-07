@@ -4,10 +4,31 @@ import { LogPanel } from "@/components/panel/log/LogPanel"
 import { PlaylistPanel } from "@/components/panel/playlist/PlaylistPanel"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import type { RoomRailTab } from "@/hooks/use-room-rail"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
-import type { RoomRailTab } from "@/hooks/use-room-rail"
 import type { RoomPanelProps } from "./page/types"
+
+function SidePanelTabButton(props: {
+  label: string
+  active: boolean
+  onSelect: () => void
+}) {
+  return (
+    <Button
+      size="sm"
+      variant={props.active ? "default" : "ghost"}
+      className={cn(
+        "min-h-9 touch-manipulation",
+        !props.active && "text-muted-foreground",
+      )}
+      aria-pressed={props.active}
+      onClick={props.onSelect}
+    >
+      {props.label}
+    </Button>
+  )
+}
 
 export function SidePanel({
   panelProps,
@@ -36,30 +57,16 @@ export function SidePanel({
             role="group"
             aria-label="Side panel content"
           >
-            <Button
-              size="sm"
-              variant={tab === "playlist" ? "default" : "ghost"}
-              className={cn(
-                "min-h-9 touch-manipulation",
-                tab !== "playlist" && "text-muted-foreground",
-              )}
-              aria-pressed={tab === "playlist"}
-              onClick={() => setTab("playlist")}
-            >
-              Playlist
-            </Button>
-            <Button
-              size="sm"
-              variant={tab === "log" ? "default" : "ghost"}
-              className={cn(
-                "min-h-9 touch-manipulation",
-                tab !== "log" && "text-muted-foreground",
-              )}
-              aria-pressed={tab === "log"}
-              onClick={() => setTab("log")}
-            >
-              Logs
-            </Button>
+            <SidePanelTabButton
+              label="Playlist"
+              active={tab === "playlist"}
+              onSelect={() => setTab("playlist")}
+            />
+            <SidePanelTabButton
+              label="Logs"
+              active={tab === "log"}
+              onSelect={() => setTab("log")}
+            />
           </div>
         </div>
       )}

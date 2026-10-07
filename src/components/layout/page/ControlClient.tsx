@@ -1,15 +1,15 @@
 "use client"
 
-import { RoomJoinPasswordPrompt } from "@/components/dialog/RoomJoinPasswordPrompt"
+import { RoomConnectingView } from "@/components/layout/RoomConnectingView"
 import { useRoomSession } from "@/hooks/use-room-session"
 import { getRoomUrl } from "@/lib/control-url"
+import { isClientControlAuthorized } from "@/lib/permissions-utils"
 import { ControlPanel } from "../../panel/control/ControlPanel"
 import { getPlaybackPermissionsState } from "../../panel/player/playback-control/use-playback-permissions-state"
 import { usePlaybackTimelineController } from "../../panel/player/playback-control/use-playback-timeline-controller"
 import { OwnUserPanel } from "../../panel/user/OwnUserPanel"
 import { SidePanel } from "../SidePanel"
 import { SiteNavbar } from "../SiteNavbar"
-import { SocketStatus } from "../SocketStatus"
 
 function ControlClientReady(props: {
   roomId: string
@@ -38,9 +38,7 @@ function ControlClientReady(props: {
     controlEmbedUrl,
   } = props
 
-  const canControlBySession =
-    !sessionCapabilities.isControlSession ||
-    sessionCapabilities.controlAuthorized
+  const canControlBySession = isClientControlAuthorized(sessionCapabilities)
   const {
     canControlByRole,
     canControl,
@@ -148,20 +146,14 @@ export function ControlClient(props: { roomId: string }) {
   } = useRoomSession(roomId, { sessionKind: "control" })
 
   if (!roomState) {
-    if (status === "awaiting_password") {
-      return (
-        <>
-          <SiteNavbar roomId={roomId} bare />
-          <RoomJoinPasswordPrompt
-            roomId={roomId}
-            title={joinError}
-            onSubmit={submitJoinPassword}
-          />
-        </>
-      )
-    }
-
-    return <SocketStatus status={status} />
+    return (
+      <RoomConnectingView
+        roomId={roomId}
+        status={status}
+        joinError={joinError}
+        onSubmitJoinPassword={submitJoinPassword}
+      />
+    )
   }
 
   return (

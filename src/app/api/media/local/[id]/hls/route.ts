@@ -1,16 +1,6 @@
-import {
-  buildLocalMediaMasterPlaylist,
-  buildLocalMediaVariantPlaylist,
-} from "@/server/media/local-media-hls"
-import {
-  getLocalMediaEntry,
-  touchLocalMediaEntry,
-} from "@/server/media/local-media-store"
-import { getRoomStateStore } from "@/server/redis/state-store"
-import {
-  httpStatusForLocalMediaError,
-  localMediaErrorMessage,
-} from "@/lib/local-media-errors"
+import { resolveServeableLocalMedia } from "@/server/media/local-media-access"
+import { buildLocalMediaMasterPlaylist } from "@/server/media/local-media-hls"
+import { touchLocalMediaEntry } from "@/server/media/local-media-store"
 
 /**
  * GET /api/media/local/{id}/hls
@@ -21,45 +11,17 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params
-  const entry = await getLocalMediaEntry(id)
-  if (!entry) {
-    return Response.json(
-      {
-        error: localMediaErrorMessage("not_found"),
-        code: "not_found",
-      },
-      { status: httpStatusForLocalMediaError("not_found") },
-    )
-  }
-
-  // Child entries are not ABR parents — redirect logic via not_found.
-  if (entry.abrParentId) {
-    return Response.json(
-      {
-        error: localMediaErrorMessage("not_found"),
-        code: "not_found",
-      },
-      { status: httpStatusForLocalMediaError("not_found") },
-    )
-  }
-
-  const store = await getRoomStateStore()
-  const onlineUsers = await store.getWsPresenceUserIds(entry.roomId)
-  if (!onlineUsers.has(entry.ownerUserId) || !entry.providerReady) {
-    const code = !onlineUsers.has(entry.ownerUserId)
-      ? "owner_offline"
-      : "provider_unavailable"
-    return Response.json(
-      { error: localMediaErrorMessage(code), code },
-      { status: httpStatusForLocalMediaError(code) },
-    )
+  const access = await resolveServeableLocalMedia(id, { rejectAbrChild: true })
+  if (!access.ok) {
+    return access.response
   }
 
   void touchLocalMediaEntry(id)
 
   const body = buildLocalMediaMasterPlaylist({
     parentId: id,
-    variants: entry.abr?.status === "ready" ? entry.abr.variants : null,
+    variants:
+      access.entry.abr?.status === "ready" ? access.entry.abr.variants : null,
   })
 
   return new Response(body, {

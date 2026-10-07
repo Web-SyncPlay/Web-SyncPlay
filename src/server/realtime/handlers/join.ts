@@ -7,7 +7,7 @@ import {
   reconcileParticipantsConnectivity,
   schedulePrune,
 } from "@/server/realtime/services/participants"
-import { validateControlToken } from "@/server/realtime/services/control-token"
+import { authorizeControlSession } from "@/server/realtime/services/control-auth"
 import { claimOrVerifyIdentitySecret } from "@/server/realtime/services/identity-store"
 import {
   computeSessionCapabilities,
@@ -129,21 +129,13 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
     userSecret,
   })
 
-  const isControlSession = sessionKind === "control"
-  let controlAuthorized = false
-  if (isControlSession) {
-    if (controlToken) {
-      controlAuthorized = await validateControlToken({
-        token: controlToken,
-        roomId,
-        userId,
-      })
-    }
-    // Migration: legacy secret match still authorizes control embeds briefly.
-    if (!controlAuthorized && identityOk) {
-      controlAuthorized = true
-    }
-  }
+  const { isControlSession, controlAuthorized } = await authorizeControlSession({
+    sessionKind,
+    controlToken,
+    roomId,
+    userId,
+    identityOk,
+  })
 
   addSocket(ctx.ws, {
     roomId,

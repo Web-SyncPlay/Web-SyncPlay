@@ -6,7 +6,8 @@ import type { RoomState } from "@/zod/types"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPlaybackActions } from "./use-playback-actions"
 
-const SEEK_ACK_MATCH_THRESHOLD_MS = 450
+/** Local seek ack: room timeline must land within this of the requested target. */
+export const SEEK_ACK_MATCH_THRESHOLD_MS = 450
 const SEEK_ACK_TIMEOUT_MS = 1_800
 const SEEK_PREVIEW_THROTTLE_MS = 80
 /** If scrubbing stops without a final seek-request, commit the last target. */

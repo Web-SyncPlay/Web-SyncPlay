@@ -14,6 +14,8 @@ import { useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 
 export function PlaylistAddMediaControls(props: {
+  /** Accessible name for the primary add button (defaults to "Add Media"). */
+  addButtonLabel?: string
   send: TypedRoomEventSender
   canManagePlaylist: boolean
   roomId: string
@@ -21,8 +23,15 @@ export function PlaylistAddMediaControls(props: {
   className?: string
   endAddon?: ReactNode
 }) {
-  const { send, canManagePlaylist, roomId, userId, className, endAddon } =
-    props
+  const {
+    send,
+    canManagePlaylist,
+    roomId,
+    userId,
+    className,
+    endAddon,
+    addButtonLabel = "Add Media",
+  } = props
   const [url, setUrl] = useState("")
   const [sharingLocal, setSharingLocal] = useState(false)
   const localFileInputRef = useRef<HTMLInputElement>(null)
@@ -141,7 +150,7 @@ export function PlaylistAddMediaControls(props: {
           onClick={addMedia}
           disabled={!canManagePlaylist || !url.trim()}
         >
-          Add Media
+          {addButtonLabel}
         </Button>
         <input
           ref={localFileInputRef}

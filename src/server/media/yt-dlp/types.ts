@@ -75,3 +75,18 @@ export type YtDlpExtractFailure = {
 }
 
 export type YtDlpExtractResult = YtDlpExtractSuccess | YtDlpExtractFailure
+
+/** Shared empty catalog fields for failure / native-skip shells. */
+export function emptyYtDlpCatalog(): {
+  streams: YtDlpStream[]
+  textTracks: YtDlpTextTrack[]
+  videoVariants: YtDlpNormalizedVariant[]
+  audioVariants: YtDlpNormalizedVariant[]
+} {
+  return {
+    streams: [],
+    textTracks: [],
+    videoVariants: [],
+    audioVariants: [],
+  }
+}

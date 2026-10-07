@@ -1,3 +1,5 @@
+# Test on PR/push; build+push multi-arch images on push only.
+# docker/metadata-action OCI labels must stay aligned with Dockerfile LABEL lines.
 name: CI
 
 on:

@@ -1,3 +1,4 @@
+import { canMutateByRole, isOwner } from "@/lib/permissions-utils"
 import { normalizeRole } from "@/lib/room-utils"
 import type {
   ParticipantState,
@@ -31,7 +32,7 @@ export function hasPlaybackAndPlaylistControl(
   }
 
   const role = normalizeRole(participant.role as ParticipantState["role"])
-  return role === "owner" || role === "moderator"
+  return canMutateByRole(role)
 }
 
 function passesSessionGate(context: ConnectionAuthContext) {
@@ -74,12 +75,13 @@ export function computeSessionCapabilities(params: {
   controlAuthorized: boolean
 }): SessionCapabilities {
   const { role, sessionKind, isControlSession, controlAuthorized } = params
-  const canControlByRole = role === "owner" || role === "moderator"
-  const playerBlocked = sessionKind === "player"
-  const sessionOk =
-    !playerBlocked && (!isControlSession || controlAuthorized)
-  const canMutate = sessionOk && canControlByRole
-  const canManageRoomSecurity = sessionOk && role === "owner"
+  const sessionOk = passesSessionGate({
+    sessionKind,
+    isControlSession,
+    controlAuthorized,
+  })
+  const canMutate = sessionOk && canMutateByRole(role)
+  const canManageRoomSecurity = sessionOk && isOwner(role)
 
   return {
     canControlPlayback: canMutate,

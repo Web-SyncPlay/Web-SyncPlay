@@ -4,11 +4,12 @@ import {
   registerShutdownHandler,
 } from "@/server/lifecycle"
 import type { Server as HttpServer, IncomingMessage } from "node:http"
+import type { Socket } from "node:net"
 import { WebSocketServer, type WebSocket } from "ws"
 
 type UpgradeListener = (
   req: IncomingMessage,
-  socket: import("node:net").Socket,
+  socket: Socket,
   head: Buffer,
 ) => void
 
@@ -17,22 +18,25 @@ type WsTransportSlot = {
   heartbeat?: ReturnType<typeof setInterval>
   onConnection?: (ws: WebSocket) => void
   lastPongAt: WeakMap<WebSocket, number>
-  routingInstalled?: boolean
 }
 
-function getTransportSlot() {
+function getTransportSlot(): WsTransportSlot {
   const g = globalThis as typeof globalThis & {
     __webSyncPlayWsTransport?: WsTransportSlot
   }
-  if (!g.__webSyncPlayWsTransport) {
-    g.__webSyncPlayWsTransport = {
-      lastPongAt: new WeakMap(),
-    }
+  g.__webSyncPlayWsTransport ??= {
+    lastPongAt: new WeakMap(),
   }
   return g.__webSyncPlayWsTransport
 }
 
 let shutdownRegistered = false
+
+function clearHeartbeat(slot: WsTransportSlot) {
+  if (!slot.heartbeat) return
+  clearInterval(slot.heartbeat)
+  slot.heartbeat = undefined
+}
 
 function registerWsShutdown(slot: WsTransportSlot) {
   if (shutdownRegistered) {
@@ -41,10 +45,7 @@ function registerWsShutdown(slot: WsTransportSlot) {
   shutdownRegistered = true
   installShutdownOnce()
   registerShutdownHandler(async () => {
-    if (slot.heartbeat) {
-      clearInterval(slot.heartbeat)
-      slot.heartbeat = undefined
-    }
+    clearHeartbeat(slot)
     if (slot.wss) {
       for (const ws of slot.wss.clients) {
         try {
@@ -58,7 +59,6 @@ function registerWsShutdown(slot: WsTransportSlot) {
       }).catch((e) => console.error("[ws] close error", e))
       slot.wss = undefined
     }
-    slot.routingInstalled = false
   })
 }
 
@@ -82,7 +82,6 @@ export function attachWebSocketTransport(
 
   const enhancedServer = server as HttpServer & {
     __webSyncPlayWsRoutingInstalled?: boolean
-    __webSyncPlayWsServer?: WebSocketServer
   }
 
   if (!enhancedServer.__webSyncPlayWsRoutingInstalled) {
@@ -92,22 +91,26 @@ export function attachWebSocketTransport(
     server.removeAllListeners("upgrade")
     enhancedServer.__webSyncPlayWsRoutingInstalled = true
 
+    // Resolve WSS from the slot so a post-shutdown recreate still works.
     server.on("upgrade", (req: IncomingMessage, socket, head) => {
       if (req.url?.startsWith("/api/ws")) {
-        console.log(`[realtime] upgrade request: ${req.url}`)
-        wss.handleUpgrade(req, socket, head, (ws) =>
-          wss.emit("connection", ws, req),
+        const current = getTransportSlot().wss
+        if (!current) {
+          socket.destroy()
+          return
+        }
+        console.log(`[ws] upgrade request: ${req.url}`)
+        current.handleUpgrade(req, socket, head, (upgraded) =>
+          current.emit("connection", upgraded, req),
         )
         return
       }
 
       for (const listener of existingUpgradeListeners) {
-        listener.call(server, req, socket as import("node:net").Socket, head)
+        listener.call(server, req, socket as Socket, head)
       }
     })
   }
-
-  enhancedServer.__webSyncPlayWsServer = wss
 
   const heartbeatTimeoutMs = env.WS_HEARTBEAT_INTERVAL_MS * 3
   slot.heartbeat = setInterval(() => {
@@ -123,10 +126,7 @@ export function attachWebSocketTransport(
   }, env.WS_HEARTBEAT_INTERVAL_MS)
 
   wss.on("close", () => {
-    if (slot.heartbeat) {
-      clearInterval(slot.heartbeat)
-      slot.heartbeat = undefined
-    }
+    clearHeartbeat(slot)
   })
 
   wss.on("connection", (ws) => {
@@ -134,10 +134,9 @@ export function attachWebSocketTransport(
     ws.on("pong", () => {
       slot.lastPongAt.set(ws, Date.now())
     })
+    ws.on("close", () => {
+      slot.lastPongAt.delete(ws)
+    })
     slot.onConnection?.(ws)
   })
-}
-
-export function getLastPongMap() {
-  return getTransportSlot().lastPongAt
 }

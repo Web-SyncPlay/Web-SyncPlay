@@ -8,10 +8,18 @@ import {
   FieldGroup,
   FieldTitle,
 } from "@/components/ui/field"
-import { cn } from "@/lib/utils"
 import type { TypedRoomEventSender } from "@/lib/room-events"
+import { cn } from "@/lib/utils"
 import type { DefaultJoinRole, RoomSecurityState } from "@/zod/types"
 import { Shield } from "lucide-react"
+
+const JOIN_ROLE_OPTIONS: ReadonlyArray<{
+  role: DefaultJoinRole
+  label: string
+}> = [
+  { role: "moderator", label: "Moderator" },
+  { role: "guest", label: "Guest" },
+]
 
 export function RoomDefaultJoinRoleSection(props: {
   roomSecurity: RoomSecurityState
@@ -22,9 +30,7 @@ export function RoomDefaultJoinRoleSection(props: {
   const defaultJoinRole = roomSecurity.defaultJoinRole ?? "moderator"
 
   const setRole = (role: DefaultJoinRole) => {
-    if (role === defaultJoinRole) {
-      return
-    }
+    if (role === defaultJoinRole) return
     send("room:default-role:set", { role })
   }
 
@@ -50,32 +56,25 @@ export function RoomDefaultJoinRoleSection(props: {
           role="group"
           aria-label="Default join role"
         >
-          <Button
-            type="button"
-            size="sm"
-            variant={defaultJoinRole === "moderator" ? "default" : "ghost"}
-            className={cn(
-              "min-h-8 flex-1 touch-manipulation",
-              defaultJoinRole !== "moderator" && "text-muted-foreground",
-            )}
-            aria-pressed={defaultJoinRole === "moderator"}
-            onClick={() => setRole("moderator")}
-          >
-            Moderator
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={defaultJoinRole === "guest" ? "default" : "ghost"}
-            className={cn(
-              "min-h-8 flex-1 touch-manipulation",
-              defaultJoinRole !== "guest" && "text-muted-foreground",
-            )}
-            aria-pressed={defaultJoinRole === "guest"}
-            onClick={() => setRole("guest")}
-          >
-            Guest
-          </Button>
+          {JOIN_ROLE_OPTIONS.map(({ role, label }) => {
+            const selected = defaultJoinRole === role
+            return (
+              <Button
+                key={role}
+                type="button"
+                size="sm"
+                variant={selected ? "default" : "ghost"}
+                className={cn(
+                  "min-h-8 flex-1 touch-manipulation",
+                  !selected && "text-muted-foreground",
+                )}
+                aria-pressed={selected}
+                onClick={() => setRole(role)}
+              >
+                {label}
+              </Button>
+            )
+          })}
         </div>
       ) : (
         <p className="text-sm capitalize text-muted-foreground">

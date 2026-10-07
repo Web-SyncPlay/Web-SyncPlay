@@ -8,8 +8,11 @@
  * Room / embed routes need Valkey + a healthy /api/health.
  */
 import { AxeBuilder } from "@axe-core/playwright"
-import { chromium } from "playwright"
+import type { Result } from "axe-core"
 import { randomUUID } from "node:crypto"
+import type { BrowserContext, Page } from "playwright"
+import { chromium } from "playwright"
+import { checkHealth } from "./lib/check-health.ts"
 
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000"
 const ROOM = process.env.A11Y_ROOM_ID ?? `a11y-${Date.now().toString(36)}`
@@ -17,17 +20,27 @@ const ROOM = process.env.A11Y_ROOM_ID ?? `a11y-${Date.now().toString(36)}`
 const AA_TAGS = ["wcag2a", "wcag2aa", "wcag22aa"]
 const AAA_TAGS = ["wcag2aaa", "wcag22aaa"]
 
-/** @typedef {{ name: string; path: string; prepare?: (page: import('playwright').Page) => Promise<void> }} RouteSpec */
+type RouteSpec = {
+  name: string
+  path: string
+  prepare?: (page: Page) => Promise<void>
+}
 
-/** @type {RouteSpec[]} */
-const STATIC_ROUTES = [
+type ScanResult = {
+  name: string
+  aa: Result[]
+  aaa: Result[]
+  url: string
+}
+
+const STATIC_ROUTES: RouteSpec[] = [
   { name: "landing", path: "/" },
   { name: "imprint", path: "/imprint" },
   { name: "privacy", path: "/privacy" },
   { name: "terms", path: "/terms" },
 ]
 
-function formatViolations(violations) {
+function formatViolations(violations: Result[]) {
   if (!violations.length) return "none"
   return violations
     .map((v) => {
@@ -46,7 +59,7 @@ function formatViolations(violations) {
 }
 
 /** Prefer display name only — never write the user secret to storage here. */
-async function seedUsername(context, userId) {
+async function seedUsername(context: BrowserContext, userId: string) {
   await context.addInitScript(
     ({ userId }) => {
       localStorage.setItem("web-syncplay:username", userId.slice(0, 8))
@@ -60,7 +73,11 @@ async function seedUsername(context, userId) {
  * before persisting (see consumeSessionIdentityFromHash). Avoids cleartext
  * localStorage writes that CodeQL flags in this script.
  */
-function identityHash(userId, userSecret, controlToken) {
+function identityHash(
+  userId: string,
+  userSecret: string,
+  controlToken?: string,
+) {
   let hash = `uid=${encodeURIComponent(userId)}&secret=${encodeURIComponent(userSecret)}`
   if (controlToken) {
     hash += `&ct=${encodeURIComponent(controlToken)}`
@@ -68,7 +85,7 @@ function identityHash(userId, userSecret, controlToken) {
   return `#${hash}`
 }
 
-async function waitForConnected(page, timeoutMs = 45_000) {
+async function waitForConnected(page: Page, timeoutMs = 45_000) {
   await page.waitForFunction(
     () => !document.body.innerText.includes("Connecting to room session"),
     undefined,
@@ -76,7 +93,7 @@ async function waitForConnected(page, timeoutMs = 45_000) {
   )
 }
 
-async function scanPage(page, routeName) {
+async function scanPage(page: Page, routeName: string): Promise<ScanResult> {
   const aa = await new AxeBuilder({ page }).withTags(AA_TAGS).analyze()
 
   const aaa = await new AxeBuilder({ page }).withTags(AAA_TAGS).analyze()
@@ -86,7 +103,7 @@ async function scanPage(page, routeName) {
     (v.tags ?? []).some((t) => AAA_TAGS.includes(t)),
   )
 
-  const result = {
+  const result: ScanResult = {
     name: routeName,
     aa: aa.violations,
     aaa: aaaOnly,
@@ -100,7 +117,11 @@ async function scanPage(page, routeName) {
   return result
 }
 
-async function mintControlToken(roomId, userId, userSecret) {
+async function mintControlToken(
+  roomId: string,
+  userId: string,
+  userSecret: string,
+) {
   const res = await fetch(`${BASE}/api/control/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -110,7 +131,7 @@ async function mintControlToken(roomId, userId, userSecret) {
     const body = await res.text()
     throw new Error(`control token mint failed: ${res.status} ${body}`)
   }
-  const data = await res.json()
+  const data = (await res.json()) as { token?: string }
   if (!data?.token) throw new Error("control token response missing token")
   return data.token
 }
@@ -120,14 +141,12 @@ async function main() {
   console.log(`AA tags: ${AA_TAGS.join(", ")}`)
   console.log(`AAA tags (required): ${AAA_TAGS.join(", ")}\n`)
 
-  const healthRes = await fetch(`${BASE}/api/health`)
-  const health = await healthRes.json().catch(() => ({}))
-  if (!healthRes.ok || health.ok !== true) {
-    console.error("Health check failed — is the app running?", health)
-    process.exit(1)
-  }
-  if (health.valkey !== true) {
-    console.error("Valkey unhealthy — room routes cannot be scanned.", health)
+  const { ok: healthOk, health } = await checkHealth(BASE)
+  if (!healthOk) {
+    console.error(
+      "Health check failed — need a running app with healthy Valkey.",
+      health,
+    )
     process.exit(1)
   }
   console.log("Health OK\n")
@@ -137,8 +156,7 @@ async function main() {
   const userSecret =
     randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "")
 
-  /** @type {Awaited<ReturnType<typeof scanPage>>[]} */
-  const results = []
+  const results: ScanResult[] = []
 
   try {
     // Static pages (no identity needed)

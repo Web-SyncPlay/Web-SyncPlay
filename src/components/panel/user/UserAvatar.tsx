@@ -4,6 +4,7 @@ import {
   avatarDataUri,
   avatarStyleLabel,
   avatarStyles,
+  isAvatarStyleId,
   resolveStyle,
   type AvatarStyleId,
 } from "@/lib/avatar"
@@ -127,12 +128,10 @@ export function UserAvatar({
         <DropdownMenuRadioGroup
           value={displayStyle}
           onValueChange={(style) => {
-            if (!style) return
-            const next = style as AvatarStyleId
-            if (next === displayStyle) return
-            setPendingStyle(next)
+            if (!isAvatarStyleId(style) || style === displayStyle) return
+            setPendingStyle(style)
             send("participant:update", {
-              avatarStyle: next,
+              avatarStyle: style,
             })
           }}
         >

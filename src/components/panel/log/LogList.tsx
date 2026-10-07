@@ -1,6 +1,20 @@
 import { ItemGroup } from "@/components/ui/item"
-import { getActionLogDetails } from "@/lib/log-format"
+import {
+  formatLogTimestamp,
+  getActionLogDetails,
+} from "@/lib/log-format"
 import type { ActionLogEntry, ParticipantState } from "@/zod/types"
+
+function resolveActorName(
+  log: ActionLogEntry,
+  participants: Record<string, ParticipantState>,
+): string {
+  return (
+    log.actorUsername ??
+    participants[log.actorUserId]?.username ??
+    log.actorUserId
+  )
+}
 
 export function LogList(props: {
   logs: ActionLogEntry[]
@@ -19,35 +33,25 @@ export function LogList(props: {
   return (
     <ItemGroup
       role="list"
-      className="gap-1.5 text-xs overflow-y-auto max-h-[80vh]"
+      className="max-h-[80vh] gap-1.5 overflow-y-auto text-xs"
     >
-      {ordered.map((log) => {
-        const actorName =
-          log.actorUsername ??
-          participants[log.actorUserId]?.username ??
-          log.actorUserId
-
-        return (
-          <div
-            key={log.id}
-            role="listitem"
-            className="border-b border-border/40 py-1.5 last:border-b-0 text-pretty leading-snug"
-          >
-            <span className="text-muted-foreground tabular-nums">
-              {new Date(log.at).toLocaleTimeString(undefined, {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                hour12: false,
-              })}
-            </span>
-            <span className="text-muted-foreground"> · </span>
-            <span className="font-medium">{actorName}</span>
-            <span className="text-muted-foreground"> · </span>
-            <span>{getActionLogDetails(log)}</span>
-          </div>
-        )
-      })}
+      {ordered.map((log) => (
+        <div
+          key={log.id}
+          role="listitem"
+          className="border-b border-border/40 py-1.5 text-pretty leading-snug last:border-b-0"
+        >
+          <span className="text-muted-foreground tabular-nums">
+            {formatLogTimestamp(log.at)}
+          </span>
+          <span className="text-muted-foreground"> · </span>
+          <span className="font-medium">
+            {resolveActorName(log, participants)}
+          </span>
+          <span className="text-muted-foreground"> · </span>
+          <span>{getActionLogDetails(log)}</span>
+        </div>
+      ))}
     </ItemGroup>
   )
 }

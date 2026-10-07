@@ -2,13 +2,13 @@
  * Deep property-fuzz pass (not part of regular CI).
  *
  * Usage:
- *   bun scripts/run-property-fuzz.mjs
- *   bun scripts/run-property-fuzz.mjs --runs 10000 --rounds 5
+ *   bun scripts/run-property-fuzz.ts
+ *   bun scripts/run-property-fuzz.ts --runs 10000 --rounds 5
  */
 process.env.SKIP_ENV_VALIDATION ??= "1"
 process.env.VALKEY_URL ??= "redis://127.0.0.1:6379"
 
-function argValue(name, fallback) {
+function argValue(name: string, fallback: number) {
   const idx = process.argv.indexOf(name)
   if (idx === -1) return fallback
   const next = process.argv[idx + 1]
@@ -101,7 +101,13 @@ const absoluteHttpUrl = fc
   )
   .map(([scheme, host, path]) => `${scheme}://${host}${path}`)
 
-function check(name, property, params) {
+type CheckResult = { name: string; ok: boolean; error?: string }
+
+function check(
+  name: string,
+  property: Parameters<typeof fc.assert>[0],
+  params: Parameters<typeof fc.assert>[1],
+): CheckResult {
   try {
     fc.assert(property, params)
     return { name, ok: true }
@@ -114,9 +120,9 @@ function check(name, property, params) {
   }
 }
 
-function runSuite(seed) {
+function runSuite(seed: number) {
   const params = { numRuns: RUNS, seed }
-  const results = []
+  const results: CheckResult[] = []
 
   results.push(
     check(
@@ -424,7 +430,7 @@ function runSuite(seed) {
   return results
 }
 
-const failures = []
+const failures: Array<CheckResult & { round: number; seed: number }> = []
 let totalChecks = 0
 const started = Date.now()
 

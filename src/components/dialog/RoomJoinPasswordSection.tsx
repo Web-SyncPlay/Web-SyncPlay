@@ -28,18 +28,21 @@ import {
   LockKeyholeOpen,
   Trash2,
 } from "lucide-react"
-import { useEffect, useState, type KeyboardEvent } from "react"
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react"
 import { toast } from "sonner"
 
 const PASSWORD_DISPLAY_WIDTH = 6
 const LEGACY_PASSWORD_STORAGE_PREFIX = "wsp:join-password:"
+const PASSWORD_ALPHABET =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
 function generateJoinPassword(length = PASSWORD_DISPLAY_WIDTH): string {
-  const alphabet =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
   const bytes = new Uint8Array(length)
   crypto.getRandomValues(bytes)
-  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("")
+  return Array.from(
+    bytes,
+    (byte) => PASSWORD_ALPHABET[byte % PASSWORD_ALPHABET.length],
+  ).join("")
 }
 
 function maskPassword(password: string | null): string {
@@ -54,6 +57,28 @@ const iconButtonClass = cn(
   buttonVariants({ variant: "ghost", size: "icon-sm" }),
   "size-8",
 )
+
+function IconAction(props: {
+  label: string
+  tooltip: string
+  onClick: () => void
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        type="button"
+        className={cn(iconButtonClass, props.className)}
+        aria-label={props.label}
+        onClick={props.onClick}
+      >
+        {props.children}
+      </TooltipTrigger>
+      <TooltipContent>{props.tooltip}</TooltipContent>
+    </Tooltip>
+  )
+}
 
 export function RoomJoinPasswordSection(props: {
   roomId: string
@@ -84,10 +109,6 @@ export function RoomJoinPasswordSection(props: {
     }
   }, [passwordEnabled])
 
-  const rememberPassword = (password: string) => {
-    setKnownPassword(password)
-  }
-
   const applyPassword = (password: string) => {
     const trimmed = password.trim()
     if (!trimmed) {
@@ -95,7 +116,7 @@ export function RoomJoinPasswordSection(props: {
       return false
     }
     setError(null)
-    rememberPassword(trimmed)
+    setKnownPassword(trimmed)
     send("room:password:set", { password: trimmed })
     return true
   }
@@ -114,8 +135,7 @@ export function RoomJoinPasswordSection(props: {
   }
 
   const handleGeneratePassword = () => {
-    const generated = generateJoinPassword()
-    applyPassword(generated)
+    applyPassword(generateJoinPassword())
     setVisible(true)
   }
 
@@ -215,67 +235,43 @@ export function RoomJoinPasswordSection(props: {
 
             {passwordEnabled ? (
               <>
-                <Tooltip>
-                  <TooltipTrigger
-                    type="button"
-                    className={iconButtonClass}
-                    aria-label={visible ? "Hide password" : "Show password"}
-                    onClick={() => setVisible((prev) => !prev)}
-                  >
-                    {visible ? (
-                      <EyeOff className="size-4" />
-                    ) : (
-                      <Eye className="size-4" />
-                    )}
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {visible ? "Hide password" : "Show password"}
-                  </TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger
-                    type="button"
-                    className={iconButtonClass}
-                    aria-label="Copy join password"
-                    onClick={() => {
-                      void handleCopyPassword()
-                    }}
-                  >
-                    <Copy className="size-4" />
-                  </TooltipTrigger>
-                  <TooltipContent>Copy password</TooltipContent>
-                </Tooltip>
-              </>
-            ) : null}
-
-            {passwordEnabled ? (
-              <Tooltip>
-                <TooltipTrigger
-                  type="button"
-                  className={cn(
-                    iconButtonClass,
-                    "text-destructive hover:text-destructive",
+                <IconAction
+                  label={visible ? "Hide password" : "Show password"}
+                  tooltip={visible ? "Hide password" : "Show password"}
+                  onClick={() => setVisible((prev) => !prev)}
+                >
+                  {visible ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
                   )}
-                  aria-label="Remove join password"
+                </IconAction>
+                <IconAction
+                  label="Copy join password"
+                  tooltip="Copy password"
+                  onClick={() => {
+                    void handleCopyPassword()
+                  }}
+                >
+                  <Copy className="size-4" />
+                </IconAction>
+                <IconAction
+                  label="Remove join password"
+                  tooltip="Remove password"
+                  className="text-destructive hover:text-destructive"
                   onClick={handleClearPassword}
                 >
                   <Trash2 className="size-4" />
-                </TooltipTrigger>
-                <TooltipContent>Remove password</TooltipContent>
-              </Tooltip>
+                </IconAction>
+              </>
             ) : (
-              <Tooltip>
-                <TooltipTrigger
-                  type="button"
-                  className={iconButtonClass}
-                  aria-label="Generate random join password"
-                  onClick={handleGeneratePassword}
-                >
-                  <Dices className="size-4" />
-                </TooltipTrigger>
-                <TooltipContent>Generate random password</TooltipContent>
-              </Tooltip>
+              <IconAction
+                label="Generate random join password"
+                tooltip="Generate random password"
+                onClick={handleGeneratePassword}
+              >
+                <Dices className="size-4" />
+              </IconAction>
             )}
           </div>
           <FieldError>{error}</FieldError>

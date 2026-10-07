@@ -79,7 +79,10 @@ export function sanitizeErrorMessage(raw: string): string | null {
   })
 }
 
-/** True only for http(s) URLs — blocks javascript:/data:/blob: in media sinks. */
+/**
+ * True only for http(s) URLs — blocks javascript:/data:/blob: in media sinks.
+ * Client-safe protocol check; server SSRF policy lives in `url-safety.ts`.
+ */
 export function isHttpOrHttpsUrl(raw: string): boolean {
   try {
     const url = new URL(raw)

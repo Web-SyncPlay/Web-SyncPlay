@@ -1,3 +1,5 @@
+import { MEDIA_FETCH_UA } from "@/server/media/media-ua"
+
 /**
  * Probe whether a browser can fetch `url` cross-origin for media playback.
  *
@@ -10,8 +12,6 @@
 
 const PROBE_ORIGIN = "https://playback.web-syncplay.local"
 const PROBE_TIMEOUT_MS = 4_000
-const DEFAULT_UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 export function acaoAllowsBrowserPlayback(
   allowOrigin: string | null,
@@ -28,7 +28,7 @@ function probeHeaders(): HeadersInit {
   return {
     Origin: PROBE_ORIGIN,
     Range: "bytes=0-1",
-    "User-Agent": DEFAULT_UA,
+    "User-Agent": MEDIA_FETCH_UA,
   }
 }
 

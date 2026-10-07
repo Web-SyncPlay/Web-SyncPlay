@@ -27,6 +27,48 @@ function pickNameDictionaries(count: number) {
   return dictionaries
 }
 
+function decodeRoomSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment)
+  } catch {
+    return segment
+  }
+}
+
+/**
+ * Accepts a bare room id, `/room/...` path, or full room URL.
+ * Returns null when the input is empty/unusable.
+ */
+export function parseRoomId(raw: string): string | null {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+
+  const pathMatch = trimmed.match(/\/room\/([^/?#]+)/i)
+  if (pathMatch?.[1]) {
+    return decodeRoomSegment(pathMatch[1])
+  }
+
+  try {
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      const url = new URL(trimmed)
+      const fromPath = url.pathname.match(/\/room\/([^/]+)/i)
+      if (fromPath?.[1]) {
+        return decodeRoomSegment(fromPath[1])
+      }
+    }
+  } catch {
+    // not a valid URL — fall through to bare id
+  }
+
+  const bare = trimmed.replace(/^\/+|\/+$/g, "")
+  return bare || null
+}
+
+/** True for player/control embed routes (footer and similar chrome hide here). */
+export function isRoomEmbedPath(pathname: string): boolean {
+  return /\/room\/[^/]+\/(player|control)\/?$/.test(pathname)
+}
+
 /** URL-safe room id, e.g. `crimson-falcon-midnight-luke`. */
 export function randomRoomId(words = 4): string {
   return uniqueNamesGenerator({

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto"
+import { sha256HexUrlPrefix } from "@/server/media/url-hash"
 
 type CacheEntry = {
   body: string
@@ -12,7 +12,7 @@ const cache = new Map<string, CacheEntry>()
 const inflight = new Map<string, Promise<CacheEntry>>()
 
 function cacheKey(token: string, upstreamUrl: string) {
-  return `${token}:${createHash("sha256").update(upstreamUrl).digest("hex").slice(0, 16)}`
+  return `${token}:${sha256HexUrlPrefix(upstreamUrl)}`
 }
 
 function touch(key: string, entry: CacheEntry) {

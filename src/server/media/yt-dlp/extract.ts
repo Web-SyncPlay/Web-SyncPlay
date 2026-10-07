@@ -14,10 +14,12 @@ import { recordYtDlpMetric } from "@/server/media/yt-dlp/metrics"
 import { parseYtDlpDumpJson } from "@/server/media/yt-dlp/parse-dump"
 import { derivedYtDlpDumpArgs } from "@/server/media/yt-dlp/policy"
 import { runYtDlp } from "@/server/media/yt-dlp/runner"
-import type {
-  YtDlpExtractFailure,
-  YtDlpExtractResult,
-  YtDlpMetadata,
+import type { YtDlpRunFailureKind } from "@/server/media/yt-dlp/runner"
+import {
+  emptyYtDlpCatalog,
+  type YtDlpExtractFailure,
+  type YtDlpExtractResult,
+  type YtDlpMetadata,
 } from "@/server/media/yt-dlp/types"
 
 export { invalidateYtDlpExtractCache }
@@ -32,6 +34,13 @@ function logHost(url: string): string {
   }
 }
 
+function recordSpawnishMetrics(
+  failureKind: YtDlpRunFailureKind | null | undefined,
+) {
+  if (failureKind === "timeout") recordYtDlpMetric("timeout")
+  if (failureKind === "spawn_error") recordYtDlpMetric("spawnError")
+}
+
 function failureResult(
   partial: Pick<
     YtDlpExtractFailure,
@@ -43,10 +52,7 @@ function failureResult(
     title: null,
     durationSeconds: null,
     isLive: null,
-    streams: [],
-    textTracks: [],
-    videoVariants: [],
-    audioVariants: [],
+    ...emptyYtDlpCatalog(),
     bestPlayableUrl: null,
     ...partial,
   }
@@ -106,8 +112,7 @@ async function extractInfoUncached(url: string): Promise<YtDlpExtractResult> {
       failureKind: result.failureKind,
       spawnErrorCode: result.spawnErrorCode,
     })
-    if (result.failureKind === "timeout") recordYtDlpMetric("timeout")
-    if (result.failureKind === "spawn_error") recordYtDlpMetric("spawnError")
+    recordSpawnishMetrics(result.failureKind)
     recordYtDlpMetric("extractFail")
     console.warn("[yt-dlp] extract failed", {
       host: logHost(url),
@@ -175,8 +180,7 @@ async function extractMetadataLight(url: string): Promise<YtDlpMetadata> {
       failureKind: result.failureKind,
       spawnErrorCode: result.spawnErrorCode,
     })
-    if (result.failureKind === "timeout") recordYtDlpMetric("timeout")
-    if (result.failureKind === "spawn_error") recordYtDlpMetric("spawnError")
+    recordSpawnishMetrics(result.failureKind)
     console.warn("[yt-dlp] metadata extract failed", {
       host: logHost(url),
       classification,

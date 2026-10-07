@@ -3,6 +3,7 @@ import { expect, test } from "bun:test"
 import {
   clearJoinPassword,
   createDefaultRoomSecurity,
+  ensureRoomSecurity,
   evaluateJoinAdmission,
   sanitizeRoomStateForClient,
   setDefaultJoinRole,
@@ -101,5 +102,18 @@ test("clearing the password disables future admission checks", () => {
 
   expect(changed).toBe(true)
   expect(state.roomSecurity.joinPasswordEnabled).toBe(false)
+  expect(evaluateJoinAdmission(state)).toEqual({ allowed: true })
+})
+
+test("ensureRoomSecurity disables protection when hash/salt are missing", () => {
+  const state = createState()
+  state.roomSecurity = {
+    ...createDefaultRoomSecurity(),
+    joinPasswordEnabled: true,
+  }
+
+  const security = ensureRoomSecurity(state)
+
+  expect(security.joinPasswordEnabled).toBe(false)
   expect(evaluateJoinAdmission(state)).toEqual({ allowed: true })
 })

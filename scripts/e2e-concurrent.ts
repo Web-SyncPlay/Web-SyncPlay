@@ -2,20 +2,24 @@
  * Concurrent E2E verification against the docker-compose stack.
  * Uses two isolated browser contexts (host + guest) on localhost:3000.
  */
-import { chromium } from "playwright"
 import { randomUUID } from "node:crypto"
+import type { BrowserContext, Page } from "playwright"
+import { chromium } from "playwright"
+import { checkHealth } from "./lib/check-health.ts"
 
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000"
 const ROOM = process.env.E2E_ROOM_ID ?? `e2e-${Date.now().toString(36)}`
-const RESULTS = []
 
-function record(name, ok, detail) {
+type ResultRow = { name: string; ok: boolean; detail?: string }
+const RESULTS: ResultRow[] = []
+
+function record(name: string, ok: boolean, detail?: string) {
   RESULTS.push({ name, ok, detail })
   const mark = ok ? "PASS" : "FAIL"
   console.log(`[${mark}] ${name}${detail ? ` — ${detail}` : ""}`)
 }
 
-async function waitForConnected(page, timeoutMs = 30_000) {
+async function waitForConnected(page: Page, timeoutMs = 30_000) {
   await page.waitForFunction(
     () => !document.body.innerText.includes("Connecting to room session"),
     undefined,
@@ -23,7 +27,11 @@ async function waitForConnected(page, timeoutMs = 30_000) {
   )
 }
 
-async function seedIdentity(context, userId, secret) {
+async function seedIdentity(
+  context: BrowserContext,
+  userId: string,
+  secret: string,
+) {
   await context.addInitScript(
     ({ userId, secret }) => {
       localStorage.setItem("web-syncplay:user-id", userId)
@@ -34,7 +42,7 @@ async function seedIdentity(context, userId, secret) {
   )
 }
 
-async function openRoom(context, path) {
+async function openRoom(context: BrowserContext, path: string) {
   const page = await context.newPage()
   page.setDefaultTimeout(20_000)
   await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded" })
@@ -45,13 +53,8 @@ async function openRoom(context, path) {
 async function main() {
   console.log(`E2E base=${BASE} room=${ROOM}`)
 
-  const healthRes = await fetch(`${BASE}/api/health`)
-  const health = await healthRes.json()
-  record(
-    "health endpoint",
-    healthRes.ok && health.ok === true && health.valkey === true,
-    JSON.stringify(health),
-  )
+  const { ok: healthOk, health } = await checkHealth(BASE)
+  record("health endpoint", healthOk, JSON.stringify(health))
 
   const browser = await chromium.launch({ headless: true })
   const hostId = randomUUID()
@@ -66,10 +69,10 @@ async function main() {
   await seedIdentity(hostCtx, hostId, hostSecret)
   await seedIdentity(guestCtx, guestId, guestSecret)
 
-  let hostPage
-  let guestPage
-  let playerPage
-  let controlPage
+  let hostPage: Page | undefined
+  let guestPage: Page | undefined
+  let playerPage: Page | undefined
+  let controlPage: Page | undefined
 
   try {
     hostPage = await openRoom(hostCtx, `/room/${ROOM}`)
@@ -79,7 +82,10 @@ async function main() {
     record("host sees Owner badge", /Owner/i.test(hostBody))
     record(
       "host can manage playlist controls",
-      await hostPage.getByRole("button", { name: "Add Media" }).isVisible(),
+      await hostPage
+        .getByRole("button", { name: "Add Media" })
+        .first()
+        .isVisible(),
     )
 
     guestPage = await openRoom(guestCtx, `/room/${ROOM}`)
@@ -95,21 +101,25 @@ async function main() {
         ? "guest username present"
         : "guest username missing",
     )
+    // Default join role is moderator. Self card layout is:
+    // You / username / playback / Online · Ready / Moderator|Guest
+    // (host Owner appears on the next card — keep this match line-anchored)
     record(
       "guest is not owner",
-      !guestUsers.match(/\bOwner\b/) || guestUsers.includes("Guest"),
-      "guest role",
+      /^You\n[^\n]+\n[^\n]+\n[^\n]+\n(Moderator|Guest)\b/m.test(guestUsers),
+      "guest self-card role",
     )
 
     const guestAddDisabled = await guestPage
       .getByRole("button", { name: "Add Media" })
+      .first()
       .isDisabled()
     record("guest cannot add media", guestAddDisabled)
 
     const mediaUrl =
       "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
-    await hostPage.getByPlaceholder("Media URL").fill(mediaUrl)
-    await hostPage.getByRole("button", { name: "Add Media" }).click()
+    await hostPage.getByPlaceholder("Media URL").first().fill(mediaUrl)
+    await hostPage.getByRole("button", { name: "Add Media" }).first().click()
     record("host queued media URL", true, mediaUrl)
 
     await hostPage.waitForTimeout(10_000)
@@ -171,7 +181,10 @@ async function main() {
         userSecret: hostSecret,
       }),
     })
-    const mintJson = await mintRes.json().catch(() => ({}))
+    const mintJson = (await mintRes.json().catch(() => ({}))) as {
+      token?: string
+      error?: string
+    }
     record(
       "control token mint API",
       mintRes.ok && typeof mintJson.token === "string",

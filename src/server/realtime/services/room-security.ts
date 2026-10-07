@@ -6,10 +6,27 @@ import type {
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto"
 
 const JOIN_PASSWORD_KEY_LENGTH = 64
+const JOIN_PASSWORD_SALT_BYTES = 16
 
 export type JoinAdmissionResult =
   | { allowed: true }
   | { allowed: false; reason: "password_required" | "invalid_password" }
+
+function asOptionalString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined
+}
+
+function asNonNegativeInt(value: unknown, fallback = 0): number {
+  return typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 0
+    ? value
+    : fallback
+}
+
+function asFiniteNumberOrNull(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null
+}
 
 export function normalizeDefaultJoinRole(
   value: unknown,
@@ -30,26 +47,11 @@ export function ensureRoomSecurity(state: RoomState): RoomSecurityState {
   const current = state.roomSecurity
   const normalized: RoomSecurityState = {
     joinPasswordEnabled: current?.joinPasswordEnabled === true,
-    joinPasswordUpdatedAt:
-      typeof current?.joinPasswordUpdatedAt === "number" &&
-      Number.isFinite(current.joinPasswordUpdatedAt)
-        ? current.joinPasswordUpdatedAt
-        : null,
-    admissionVersion:
-      typeof current?.admissionVersion === "number" &&
-      Number.isInteger(current.admissionVersion) &&
-      current.admissionVersion >= 0
-        ? current.admissionVersion
-        : 0,
+    joinPasswordUpdatedAt: asFiniteNumberOrNull(current?.joinPasswordUpdatedAt),
+    admissionVersion: asNonNegativeInt(current?.admissionVersion),
     defaultJoinRole: normalizeDefaultJoinRole(current?.defaultJoinRole),
-    joinPasswordHash:
-      typeof current?.joinPasswordHash === "string"
-        ? current.joinPasswordHash
-        : undefined,
-    joinPasswordSalt:
-      typeof current?.joinPasswordSalt === "string"
-        ? current.joinPasswordSalt
-        : undefined,
+    joinPasswordHash: asOptionalString(current?.joinPasswordHash),
+    joinPasswordSalt: asOptionalString(current?.joinPasswordSalt),
   }
 
   if (
@@ -65,16 +67,22 @@ export function ensureRoomSecurity(state: RoomState): RoomSecurityState {
   return normalized
 }
 
+/** Client-safe security view: never includes hash/salt secrets. */
+export function publicRoomSecurity(
+  security: RoomSecurityState,
+): RoomSecurityState {
+  return {
+    joinPasswordEnabled: security.joinPasswordEnabled,
+    joinPasswordUpdatedAt: security.joinPasswordUpdatedAt,
+    admissionVersion: security.admissionVersion,
+    defaultJoinRole: security.defaultJoinRole,
+  }
+}
+
 export function sanitizeRoomStateForClient(state: RoomState): RoomState {
-  const security = ensureRoomSecurity(state)
   return {
     ...state,
-    roomSecurity: {
-      joinPasswordEnabled: security.joinPasswordEnabled,
-      joinPasswordUpdatedAt: security.joinPasswordUpdatedAt,
-      admissionVersion: security.admissionVersion,
-      defaultJoinRole: security.defaultJoinRole,
-    },
+    roomSecurity: publicRoomSecurity(ensureRoomSecurity(state)),
   }
 }
 
@@ -92,11 +100,10 @@ export function setDefaultJoinRole(
 
 export function setJoinPassword(state: RoomState, password: string): void {
   const security = ensureRoomSecurity(state)
-  const trimmedPassword = password.trim()
-  const salt = randomBytes(16).toString("hex")
+  const salt = randomBytes(JOIN_PASSWORD_SALT_BYTES).toString("hex")
   security.joinPasswordEnabled = true
   security.joinPasswordSalt = salt
-  security.joinPasswordHash = hashJoinPassword(trimmedPassword, salt)
+  security.joinPasswordHash = hashJoinPassword(password.trim(), salt)
   security.joinPasswordUpdatedAt = Date.now()
   security.admissionVersion += 1
 }

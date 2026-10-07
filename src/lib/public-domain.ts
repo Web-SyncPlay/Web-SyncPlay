@@ -10,18 +10,42 @@ export function getPublicDomain(): string | undefined {
   return raw || undefined
 }
 
-/** Hostname only — used for mediasoup ICE `announcedAddress`. */
-export function getPublicHostname(): string | undefined {
-  const domain = getPublicDomain()
-  if (!domain) return undefined
+function hostnameFromBareOrUrl(domain: string): string | undefined {
   try {
     if (domain.includes("://")) {
       return new URL(domain).hostname
     }
   } catch {
-    // fall through
+    // fall through — treat as bare host
   }
   return domain.replace(/\/.*$/, "").replace(/:\d+$/, "") || undefined
+}
+
+function isLocalHttpHost(host: string): boolean {
+  return (
+    host === "localhost" ||
+    host.startsWith("localhost:") ||
+    host === "127.0.0.1" ||
+    host.startsWith("127.0.0.1:")
+  )
+}
+
+/** http(s) origin → ws(s) for CSP connect-src. */
+function toWebSocketOrigin(httpOrigin: string): string {
+  if (httpOrigin.startsWith("https://")) {
+    return `wss://${httpOrigin.slice("https://".length)}`
+  }
+  if (httpOrigin.startsWith("http://")) {
+    return `ws://${httpOrigin.slice("http://".length)}`
+  }
+  return httpOrigin
+}
+
+/** Hostname only — used for mediasoup ICE `announcedAddress`. */
+export function getPublicHostname(): string | undefined {
+  const domain = getPublicDomain()
+  if (!domain) return undefined
+  return hostnameFromBareOrUrl(domain)
 }
 
 /** Canonical https origin for CORS / CSP (http for localhost*). */
@@ -32,12 +56,7 @@ export function getPublicOrigin(): string | undefined {
     return domain.replace(/\/$/, "")
   }
   const host = domain.replace(/\/.*$/, "")
-  const isLocal =
-    host === "localhost" ||
-    host.startsWith("localhost:") ||
-    host === "127.0.0.1" ||
-    host.startsWith("127.0.0.1:")
-  return `${isLocal ? "http" : "https"}://${host}`
+  return `${isLocalHttpHost(host) ? "http" : "https"}://${host}`
 }
 
 export function isOriginAllowed(origin: string | null): boolean {
@@ -69,7 +88,7 @@ export function isOriginAllowed(origin: string | null): boolean {
 export function buildContentSecurityPolicy(): string {
   const publicOrigin = getPublicOrigin()
   const connect = publicOrigin
-    ? `'self' ${publicOrigin} ${publicOrigin.replace(/^http/, "ws")} https: wss: blob:`
+    ? `'self' ${publicOrigin} ${toWebSocketOrigin(publicOrigin)} https: wss: blob:`
     : `'self' https: http: wss: ws: blob:`
 
   // YouTube IFrame API (+ nocookie) and Vimeo player postMessage bridge.

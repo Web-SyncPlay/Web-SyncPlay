@@ -1,12 +1,14 @@
 "use client"
 
-import { RoomJoinPasswordPrompt } from "@/components/dialog/RoomJoinPasswordPrompt"
+import { RoomConnectingView } from "@/components/layout/RoomConnectingView"
 import { useRoomSession } from "@/hooks/use-room-session"
 import { getRoomUrl } from "@/lib/control-url"
-import { canControlPlayback } from "@/lib/permissions-utils"
+import {
+  canControlPlayback,
+  canMutateFromClientSession,
+} from "@/lib/permissions-utils"
 import { PlayerPanel } from "../../panel/player/PlayerPanel"
 import { SiteNavbar } from "../SiteNavbar"
-import { SocketStatus } from "../SocketStatus"
 
 export function PlayerEmbedClient({ roomId }: { roomId: string }) {
   const {
@@ -26,28 +28,23 @@ export function PlayerEmbedClient({ roomId }: { roomId: string }) {
   } = useRoomSession(roomId, { sessionKind: "player" })
 
   if (!roomState) {
-    if (status === "awaiting_password") {
-      return (
-        <>
-          <SiteNavbar roomId={roomId} bare />
-          <RoomJoinPasswordPrompt
-            roomId={roomId}
-            title={joinError}
-            onSubmit={submitJoinPassword}
-          />
-        </>
-      )
-    }
-
-    return <SocketStatus status={status} />
+    return (
+      <RoomConnectingView
+        roomId={roomId}
+        status={status}
+        joinError={joinError}
+        onSubmitJoinPassword={submitJoinPassword}
+      />
+    )
   }
 
   const myRole = roomState.participants[userId]?.role
   const canControlByRole = canControlPlayback(myRole)
-  const canMutateFromThisSession =
-    canControlByRole &&
-    (!sessionCapabilities.isControlSession ||
-      sessionCapabilities.controlAuthorized)
+  const canMutateFromThisSession = canMutateFromClientSession({
+    role: myRole,
+    isControlSession: sessionCapabilities.isControlSession,
+    controlAuthorized: sessionCapabilities.controlAuthorized,
+  })
   const current = roomState.playlist[roomState.currentIndex]
 
   return (

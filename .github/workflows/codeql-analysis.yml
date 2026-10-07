@@ -1,3 +1,4 @@
+# Static analysis for JavaScript/TypeScript (SARIF → code scanning).
 name: CodeQL
 
 on:

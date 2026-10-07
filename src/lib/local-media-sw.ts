@@ -1,5 +1,7 @@
 "use client"
 
+import { LOCAL_MEDIA_MAX_BLOCK_BYTES } from "@/lib/local-media-block-protocol"
+
 /** Register the local-media Service Worker that prefers WebRTC ranges. */
 export async function registerLocalMediaServiceWorker(): Promise<void> {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
@@ -16,7 +18,8 @@ export async function registerLocalMediaServiceWorker(): Promise<void> {
 
 /**
  * Bridge SW range requests to the in-page mediasoup SFU, then WebRTC mesh.
- * Call once per room session from the socket hook.
+ * Delivery order: SFU → P2P → (SW falls back to HTTP). Call once per room
+ * session from the socket hook.
  */
 export function attachLocalMediaServiceWorkerBridge(input: {
   resolveProviderUserId: (localMediaId: string) => string | null
@@ -43,7 +46,7 @@ export function attachLocalMediaServiceWorkerBridge(input: {
     void (async () => {
       try {
         const start = data.start ?? 0
-        const end = data.end ?? start + 256 * 1024 - 1
+        const end = data.end ?? start + LOCAL_MEDIA_MAX_BLOCK_BYTES - 1
 
         // Prefer a warm SFU viewer, then P2P mesh; failing both lets the SW
         // fall back to HTTP. A cold SFU viewer is warmed in the background and

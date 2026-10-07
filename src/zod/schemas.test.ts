@@ -300,6 +300,12 @@ describe("participant / room / viewer interfaces", () => {
         role: "admin",
       }).success,
     ).toBe(false)
+    expect(
+      participantRoleUpdateSchema.safeParse({
+        targetUserId: "g1",
+        role: "owner",
+      }).success,
+    ).toBe(false)
   })
 
   test("room password set/clear", () => {

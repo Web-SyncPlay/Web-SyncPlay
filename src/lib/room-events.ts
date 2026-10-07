@@ -1,6 +1,7 @@
-import type { LoopMode, RoomRole, SessionKind } from "@/zod/types"
+import type { DefaultJoinRole, LoopMode, SessionKind } from "@/zod/types"
 
 export interface ClientEventPayloadMap {
+  // --- Participant / presence ---
   "participant:update": {
     username?: string
     avatarStyle?: string
@@ -12,14 +13,19 @@ export interface ClientEventPayloadMap {
   }
   "participant:role:update": {
     targetUserId: string
-    role: Exclude<RoomRole, "owner">
+    role: DefaultJoinRole
   }
+
+  // --- Playback ---
   "playback:play": { currentTimeMs?: number }
   "playback:pause": { currentTimeMs?: number }
   "playback:seek": { targetMs: number }
   "playback:rate": { playbackRate: number }
   "playback:loop:video": { mode: LoopMode }
   "playback:loop:playlist": { mode: LoopMode }
+  "seek:preview": { targetMs?: number; active?: boolean }
+
+  // --- Playlist ---
   "playlist:add:url": { url: string }
   "playlist:add:local": {
     localMediaId: string
@@ -27,6 +33,20 @@ export interface ClientEventPayloadMap {
     mimeType: string
     sizeBytes: number
   }
+  "playlist:retry": { itemId: string }
+  "playlist:item:error": { itemId: string; error: string | null }
+  "playlist:rename": { itemId: string; name: string }
+  "playlist:remove": { itemId: string }
+  "playlist:reorder": { from: number; to: number }
+  "playlist:select": { index: number }
+  "viewer:media:preferences": {
+    itemId: string
+    streamId?: string | null
+    textTrackId?: string | null
+    audioLanguage?: string
+  }
+
+  // --- Local media (P2P / SFU) ---
   "local-media:chunk": {
     requestId: string
     ok: boolean
@@ -91,22 +111,11 @@ export interface ClientEventPayloadMap {
     localMediaId: string
     dataProducerId?: string
   }
-  "playlist:retry": { itemId: string }
-  "playlist:item:error": { itemId: string; error: string | null }
-  "viewer:media:preferences": {
-    itemId: string
-    streamId?: string | null
-    textTrackId?: string | null
-    audioLanguage?: string
-  }
-  "playlist:rename": { itemId: string; name: string }
-  "playlist:remove": { itemId: string }
-  "playlist:reorder": { from: number; to: number }
-  "playlist:select": { index: number }
-  "seek:preview": { targetMs?: number; active?: boolean }
+
+  // --- Room security ---
   "room:password:set": { password: string }
   "room:password:clear": Record<string, never>
-  "room:default-role:set": { role: Exclude<RoomRole, "owner"> }
+  "room:default-role:set": { role: DefaultJoinRole }
 }
 
 export type ClientEventType = keyof ClientEventPayloadMap

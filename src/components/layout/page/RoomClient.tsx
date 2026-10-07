@@ -1,15 +1,17 @@
 "use client"
 
-import { RoomJoinPasswordPrompt } from "@/components/dialog/RoomJoinPasswordPrompt"
+import { RoomConnectingView } from "@/components/layout/RoomConnectingView"
 import { SidePanel } from "@/components/layout/SidePanel"
 import { SiteNavbar } from "@/components/layout/SiteNavbar"
-import { SocketStatus } from "@/components/layout/SocketStatus"
 import { PlayerPanel } from "@/components/panel/player/PlayerPanel"
 import { UsersPanel } from "@/components/panel/user/UsersPanel"
 import { useRoomRail } from "@/hooks/use-room-rail"
 import { useRoomSession } from "@/hooks/use-room-session"
 import { getRoomUrl } from "@/lib/control-url"
-import { canControlPlayback } from "@/lib/permissions-utils"
+import {
+  canControlPlayback,
+  canMutateFromClientSession,
+} from "@/lib/permissions-utils"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -54,28 +56,23 @@ export function RoomClient({
   }, [roomState, seedMediaUrl, router])
 
   if (!roomState) {
-    if (status === "awaiting_password") {
-      return (
-        <>
-          <SiteNavbar roomId={roomId} bare />
-          <RoomJoinPasswordPrompt
-            roomId={roomId}
-            title={joinError}
-            onSubmit={submitJoinPassword}
-          />
-        </>
-      )
-    }
-
-    return <SocketStatus status={status} />
+    return (
+      <RoomConnectingView
+        roomId={roomId}
+        status={status}
+        joinError={joinError}
+        onSubmitJoinPassword={submitJoinPassword}
+      />
+    )
   }
 
   const myRole = roomState.participants[userId]?.role
   const canControlByRole = canControlPlayback(myRole)
-  const canMutateFromThisSession =
-    canControlByRole &&
-    (!sessionCapabilities.isControlSession ||
-      sessionCapabilities.controlAuthorized)
+  const canMutateFromThisSession = canMutateFromClientSession({
+    role: myRole,
+    isControlSession: sessionCapabilities.isControlSession,
+    controlAuthorized: sessionCapabilities.controlAuthorized,
+  })
   const panelProps: RoomPanelProps = {
     roomId,
     roomState,

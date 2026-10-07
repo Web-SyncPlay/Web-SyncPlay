@@ -19,6 +19,15 @@ import { Copy, GripVertical, Loader2, Play, Trash2 } from "lucide-react"
 import { useLayoutEffect, useState } from "react"
 import { toast } from "sonner"
 
+async function copySourceUrl(url: string) {
+  try {
+    await navigator.clipboard.writeText(url)
+    toast.success("URL copied")
+  } catch {
+    toast.error("Could not copy URL")
+  }
+}
+
 const SORTABLE_ROW_A11Y_ATTRS = [
   "role",
   "aria-roledescription",
@@ -211,14 +220,7 @@ export function PlaylistItemRow(props: {
                   aria-label="Copy source URL"
                   onClick={(e) => {
                     e.stopPropagation()
-                    void (async () => {
-                      try {
-                        await navigator.clipboard.writeText(item.sourceUrl)
-                        toast.success("URL copied")
-                      } catch {
-                        toast.error("Could not copy URL")
-                      }
-                    })()
+                    void copySourceUrl(item.sourceUrl)
                   }}
                 >
                   <Copy className="size-3" />

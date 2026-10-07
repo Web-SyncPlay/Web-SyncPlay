@@ -1,6 +1,21 @@
-import { chromium } from "playwright"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+import { chromium } from "playwright"
+
+type SfuSlot = {
+  producer?: { closed?: boolean }
+  ready?: boolean
+}
+
+type SfuSession = {
+  providers?: Map<string, Promise<SfuSlot>>
+  viewers?: Map<string, Promise<SfuSlot>>
+}
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __webSyncPlayLocalMediaSfu: SfuSession | undefined
+}
 
 const root = path.dirname(fileURLToPath(import.meta.url))
 const filePath = path.join(root, "..", "tmp", "sfu-test.mp4")
@@ -13,7 +28,13 @@ const viewer = await browser.newContext()
 const hostPage = await host.newPage()
 const viewerPage = await viewer.newPage()
 
-const mediaHeaders = []
+const mediaHeaders: Array<{
+  status: number
+  source: string | null
+  contentRange: string | null
+  contentType: string | null
+  url: string
+}> = []
 viewerPage.on("response", (res) => {
   if (!res.url().includes("/api/media/local/")) return
   mediaHeaders.push({
@@ -21,16 +42,16 @@ viewerPage.on("response", (res) => {
     source: res.headers()["x-local-media-source"] ?? null,
     contentRange: res.headers()["content-range"] ?? null,
     contentType: res.headers()["content-type"] ?? null,
-    url: res.url().split("?")[0],
+    url: res.url().split("?")[0]!,
   })
 })
 
-const hostLogs = []
+const hostLogs: string[] = []
 hostPage.on("console", (msg) => {
   const text = msg.text()
   if (/sfu|mediasoup|local-media/i.test(text)) hostLogs.push(text)
 })
-const viewerLogs = []
+const viewerLogs: string[] = []
 viewerPage.on("console", (msg) => {
   const text = msg.text()
   if (/sfu|mediasoup|local-media/i.test(text)) viewerLogs.push(text)
@@ -108,7 +129,9 @@ const sfuWarm = await viewerPage.evaluate(async () => {
     ready: false,
     waitedMs: 20_000,
     hasSession: Boolean(globalThis.__webSyncPlayLocalMediaSfu),
-    viewerKeys: [...(globalThis.__webSyncPlayLocalMediaSfu?.viewers?.keys?.() ?? [])],
+    viewerKeys: [
+      ...(globalThis.__webSyncPlayLocalMediaSfu?.viewers?.keys?.() ?? []),
+    ],
   }
 })
 
@@ -135,7 +158,7 @@ const sfuRangeProbe = await viewerPage.evaluate(async () => {
 
 const videoState = await viewerPage.evaluate(async () => {
   const video = document.querySelector("video")
-  if (!video) return { error: "no_video" }
+  if (!video) return { error: "no_video" as const }
   const start = Date.now()
   while (Date.now() - start < 25_000) {
     if (
@@ -205,12 +228,15 @@ console.log(JSON.stringify(result, null, 2))
 
 const streamed =
   videoState &&
+  "readyState" in videoState &&
   videoState.readyState >= 2 &&
   Number.isFinite(videoState.duration) &&
-  videoState.duration > 0 &&
-  (videoState.videoWidth > 0 || videoState.currentTime > 0)
+  (videoState.duration ?? 0) > 0 &&
+  ((videoState.videoWidth ?? 0) > 0 || (videoState.currentTime ?? 0) > 0)
 const sfuBytes =
-  sfuRangeProbe?.ok &&
+  sfuRangeProbe &&
+  "ok" in sfuRangeProbe &&
+  sfuRangeProbe.ok &&
   (sfuRangeProbe.source === "sfu" || sfuRangeProbe.source === "webrtc")
 
 await browser.close()

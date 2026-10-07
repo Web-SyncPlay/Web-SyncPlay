@@ -50,6 +50,9 @@ LICENSE
 **/*.spec.tsx
 scripts/e2e*
 scripts/verify-*
+scripts/a11y*
+scripts/lib
+scripts/run-property-fuzz.ts
 
 # Local compose / lint-format tooling (not needed at build)
 docker-compose*.yml

@@ -1,4 +1,4 @@
-import { createProxyUrl } from "@/server/media/proxy-token"
+import { PROXY_DEFAULT_UA, createProxyUrl } from "@/server/media/proxy-token"
 import type { PlaylistMediaStream, PlaylistTextTrack } from "@/zod/types"
 
 function isRemoteHttpUrl(url: string): boolean {
@@ -39,8 +39,7 @@ export async function applyRelayToResolvedUrls(input: {
     roomId: input.roomId,
     mediaId: input.mediaId,
     referer: input.referer,
-    userAgent:
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    userAgent: PROXY_DEFAULT_UA,
   }
 
   const mapped = new Map<string, string>()

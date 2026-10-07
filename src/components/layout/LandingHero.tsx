@@ -2,46 +2,13 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { randomRoomId } from "@/lib/room-utils"
+import { parseRoomId, randomRoomId } from "@/lib/room-utils"
 import { cn } from "@/lib/utils"
 import { ArrowRight, Dice5, Play } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState, type FormEvent } from "react"
-
-function parseRoomId(raw: string): string | null {
-  const trimmed = raw.trim()
-  if (!trimmed) return null
-
-  const pathMatch = trimmed.match(/\/room\/([^/?#]+)/i)
-  if (pathMatch?.[1]) {
-    try {
-      return decodeURIComponent(pathMatch[1])
-    } catch {
-      return pathMatch[1]
-    }
-  }
-
-  try {
-    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-      const url = new URL(trimmed)
-      const fromPath = url.pathname.match(/\/room\/([^/]+)/i)
-      if (fromPath?.[1]) {
-        try {
-          return decodeURIComponent(fromPath[1])
-        } catch {
-          return fromPath[1]
-        }
-      }
-    }
-  } catch {
-    // not a valid URL
-  }
-
-  const bare = trimmed.replace(/^\/+|\/+$/g, "")
-  return bare || null
-}
 
 function RoomEntry(props: {
   roomInput: string

@@ -12,7 +12,7 @@ type DedupeSlot = {
   pruneTimer?: ReturnType<typeof setInterval>
 }
 
-function getDedupeSlot() {
+function getDedupeSlot(): DedupeSlot {
   const g = globalThis as typeof globalThis & {
     __webSyncPlayRequestDedupe?: DedupeSlot
   }
@@ -20,8 +20,7 @@ function getDedupeSlot() {
   return g.__webSyncPlayRequestDedupe
 }
 
-function pruneExpired(map: Map<string, number>) {
-  const now = Date.now()
+function pruneExpired(map: Map<string, number>, now = Date.now()) {
   for (const [id, at] of map.entries()) {
     if (now - at >= DEDUPE_WINDOW_MS) {
       map.delete(id)
@@ -59,7 +58,7 @@ export function shouldSkipDuplicateRequest(requestId: string) {
   }
   slot.map.set(requestId, now)
   if (slot.map.size > MAX_ENTRIES) {
-    pruneExpired(slot.map)
+    pruneExpired(slot.map, now)
     while (slot.map.size > MAX_ENTRIES) {
       const first = slot.map.keys().next().value
       if (first === undefined) break
@@ -67,4 +66,10 @@ export function shouldSkipDuplicateRequest(requestId: string) {
     }
   }
   return false
+}
+
+/** Test helper: clear dedupe state between cases. */
+export function resetRequestDedupeForTests() {
+  const slot = getDedupeSlot()
+  slot.map.clear()
 }

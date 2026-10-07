@@ -1,12 +1,12 @@
 import { appendActionLog } from "@/server/log"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { canControlFromConnectionContext } from "@/server/realtime/services/permissions"
-import {
-  nextMonotonicMs,
-  resolveCurrentTimelineMs,
-} from "@/server/realtime/services/timeline"
+import { commitPlaybackSeek } from "@/server/realtime/services/timeline"
 import { seekPreviewSchema } from "@/zod/schemas"
-import { mutateControlledRoomMessage } from "./mutate-controlled"
+import {
+  connectionAuthFromContext,
+  mutateControlledRoomMessage,
+} from "./mutate-controlled"
 import type { RoomMessageHandler } from "./types"
 
 /**
@@ -27,20 +27,13 @@ export const handleSeekPreview: RoomMessageHandler = async (ctx, data) => {
     await mutateControlledRoomMessage(
       ctx,
       (state, participant) => {
-        const fromMs = Math.max(
-          0,
-          Math.floor(resolveCurrentTimelineMs(state, Date.now())),
-        )
-        const nowMs = nextMonotonicMs(state.playback.serverNowMs, Date.now())
-        state.playback.timelineAnchorMs = targetMs
-        state.playback.serverNowMs = nowMs
-        state.playback.seekPreview = undefined
+        const { fromMs, toMs } = commitPlaybackSeek(state, targetMs)
         appendActionLog(state, {
           roomId: ctx.roomId,
           actorUserId: ctx.userId,
           actorUsername: participant.username,
           action: "playback:seek",
-          payload: { fromMs, toMs: state.playback.timelineAnchorMs },
+          payload: { fromMs, toMs },
         })
         return true
       },
@@ -53,11 +46,11 @@ export const handleSeekPreview: RoomMessageHandler = async (ctx, data) => {
   if (!state) return
 
   if (
-    !canControlFromConnectionContext(state, ctx.userId, {
-      controlAuthorized: ctx.controlAuthorized,
-      isControlSession: ctx.isControlSession,
-      sessionKind: ctx.sessionKind,
-    })
+    !canControlFromConnectionContext(
+      state,
+      ctx.userId,
+      connectionAuthFromContext(ctx),
+    )
   ) {
     return
   }

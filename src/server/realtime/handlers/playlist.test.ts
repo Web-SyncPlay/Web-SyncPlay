@@ -94,6 +94,32 @@ describe("playlist handler interfaces", () => {
     expect(next?.actionLog.at(-1)?.action).toBe("playlist:remove")
   })
 
+  test("remove prunes viewerMedia preferences for the removed item", async () => {
+    const initial = createRoomState({ currentIndex: 1 })
+    initial.participants.guest!.viewerMedia = {
+      byItemId: {
+        "item-b": { streamId: "stream-1" },
+        "item-c": { textTrackId: "track-1" },
+      },
+    }
+    initial.participants.owner!.viewerMedia = {
+      byItemId: { "item-b": { streamId: "stream-1" } },
+    }
+    const store = new InMemoryRoomStateStore(initial)
+    createTestBroadcastBus(store)
+    const ctx = createHandlerContext({ store })
+
+    await handlePlaylistRemove(
+      ctx,
+      envelope("playlist:remove", { itemId: "item-b" }),
+    )
+    const next = store.peek("room-1")
+    expect(next?.participants.guest?.viewerMedia?.byItemId).toEqual({
+      "item-c": { textTrackId: "track-1" },
+    })
+    expect(next?.participants.owner?.viewerMedia).toBeUndefined()
+  })
+
   test("rename rejects empty/same name and updates when valid", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
     createTestBroadcastBus(store)

@@ -6,20 +6,21 @@
     "node": ">=26"
   },
   "scripts": {
-    "postinstall": "node scripts/vendor-ffmpeg-core.mjs",
-    "vendor:ffmpeg": "node scripts/vendor-ffmpeg-core.mjs",
+    "postinstall": "bun scripts/vendor-ffmpeg-core.ts && bun scripts/build-local-media-sw.ts",
+    "vendor:ffmpeg": "bun scripts/vendor-ffmpeg-core.ts",
+    "build:local-media-sw": "bun scripts/build-local-media-sw.ts",
     "dev": "NEXT_TELEMETRY_DISABLED=1 next dev",
-    "prebuild": "node scripts/vendor-ffmpeg-core.mjs",
+    "prebuild": "bun scripts/vendor-ffmpeg-core.ts && bun scripts/build-local-media-sw.ts",
     "build": "NEXT_TELEMETRY_DISABLED=1 next build",
     "start": "NEXT_TELEMETRY_DISABLED=1 next start",
     "lint": "eslint",
     "typecheck": "bunx --package @typescript/native tsc -p tsconfig.json --noEmit",
     "test": "bun test",
     "test:unit": "bun test src/server src/zod src/lib",
-    "test:fuzz": "bun scripts/run-property-fuzz.mjs",
-    "test:e2e": "node scripts/e2e-concurrent.mjs",
-    "test:e2e:ws": "node scripts/e2e-ws-concurrent.mjs",
-    "test:a11y": "node scripts/a11y-wcag.mjs",
+    "test:fuzz": "bun scripts/run-property-fuzz.ts",
+    "test:e2e": "bun scripts/e2e-concurrent.ts",
+    "test:e2e:ws": "bun scripts/e2e-ws-concurrent.ts",
+    "test:a11y": "bun scripts/a11y-wcag.ts",
     "format": "prettier --write ."
   },
   "allowScripts": {

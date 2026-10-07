@@ -36,6 +36,10 @@ export async function consumeRateLimit(params: {
   }
 }
 
+/**
+ * Best-effort client IP for rate keys. Prefers the first `X-Forwarded-For`
+ * hop (typical reverse-proxy layout), then `X-Real-IP`.
+ */
 export function clientIpFromRequest(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for")
   if (forwarded) {

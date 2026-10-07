@@ -42,6 +42,18 @@ function redisSocketOptions() {
   }
 }
 
+function createRedisClient(): RedisClientType {
+  return createClient({
+    url: env.VALKEY_URL,
+    // redis@6 defaults to RESP3 + a 5s command timeout. Keep RESP3 (Valkey-
+    // compatible) but restore no-timeout command behavior and disable Redis
+    // Enterprise maintenance notifications (not applicable to Valkey).
+    commandOptions: { timeout: undefined },
+    maintNotifications: "disabled",
+    socket: redisSocketOptions(),
+  })
+}
+
 function ensureShutdownRegistered() {
   if (shutdownRegistered) return
   shutdownRegistered = true
@@ -51,7 +63,6 @@ function ensureShutdownRegistered() {
 
 async function connectOrReset(
   kind: "command" | "subscriber",
-  factory: () => RedisClientType,
 ): Promise<RedisClientType> {
   ensureShutdownRegistered()
   const existing = slot[kind]
@@ -60,7 +71,7 @@ async function connectOrReset(
   }
 
   if (!slot[kind]) {
-    const client = factory()
+    const client = createRedisClient()
     // node-redis emits `error` during reconnect; without a listener the process
     // can crash on ECONNREFUSED while connect() is still retrying.
     client.on("error", () => {
@@ -89,28 +100,11 @@ async function connectOrReset(
 }
 
 export async function getCommandClient(): Promise<RedisClientType> {
-  return connectOrReset("command", () =>
-    createClient({
-      url: env.VALKEY_URL,
-      // redis@6 defaults to RESP3 + a 5s command timeout. Keep RESP3 (Valkey-
-      // compatible) but restore no-timeout command behavior and disable Redis
-      // Enterprise maintenance notifications (not applicable to Valkey).
-      commandOptions: { timeout: undefined },
-      maintNotifications: "disabled",
-      socket: redisSocketOptions(),
-    }),
-  )
+  return connectOrReset("command")
 }
 
 export async function getSubscriberClient(): Promise<RedisClientType> {
-  return connectOrReset("subscriber", () =>
-    createClient({
-      url: env.VALKEY_URL,
-      commandOptions: { timeout: undefined },
-      maintNotifications: "disabled",
-      socket: redisSocketOptions(),
-    }),
-  )
+  return connectOrReset("subscriber")
 }
 
 export async function shutdownRedis(): Promise<void> {

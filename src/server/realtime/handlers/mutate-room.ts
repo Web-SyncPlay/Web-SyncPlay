@@ -10,63 +10,36 @@ import { markCurrentMedia } from "@/server/realtime/services/timeline"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
 import type { RoomState } from "@/zod/types"
 
-/**
- * WATCH/GET/mutate/SET for one user message: reconcile presence, run body, bump activity.
- * Body returns false to abort (no write). Publish via RoomBroadcastBus per hint.
- */
-export async function mutateRoomMessage(
+function bumpsStructuralRevision(hint: RoomPublishHint): boolean {
+  return (
+    hint.kind === "snapshot" ||
+    hint.kind === "control+snapshot" ||
+    hint.kind === "action-log"
+  )
+}
+
+async function reconcilePresenceForMutation(
   store: RoomStateStorePort,
+  state: RoomState,
+  roomId: string,
+) {
+  const active = await store.getWsPresenceUserIds(roomId)
+  const recon = reconcileParticipantsConnectivity(state, active)
+  for (const uid of recon.disconnecting) {
+    await schedulePrune(roomId, uid)
+  }
+  for (const uid of recon.reconnecting) {
+    await clearPrune(roomId, uid)
+  }
+  applyOfflinePruning(state)
+}
+
+async function publishAfterMutation(
   roomId: string,
   userId: string,
-  body: (
-    state: RoomState,
-    participant: RoomState["participants"][string],
-  ) => boolean,
-  hint: RoomPublishHint = { kind: "snapshot" },
-): Promise<RoomState | null> {
-  const next = await store.updateRoom(roomId, async (state) => {
-    if (!state) return null
-    const active = await store.getWsPresenceUserIds(roomId)
-    const recon = reconcileParticipantsConnectivity(state, active)
-    for (const uid of recon.disconnecting) {
-      await schedulePrune(roomId, uid)
-    }
-    for (const uid of recon.reconnecting) {
-      await clearPrune(roomId, uid)
-    }
-    applyOfflinePruning(state)
-
-    const participant = state.participants[userId]
-    if (!participant) {
-      return null
-    }
-
-    if (!body(state, participant)) {
-      return null
-    }
-
-    participant.connected = true
-    participant.lastSeenAt = Date.now()
-    participant.disconnectedAt = undefined
-    markCurrentMedia(state)
-    state.updatedAt = Date.now()
-    state.generation = (state.generation ?? 0) + 1
-
-    if (
-      hint.kind === "snapshot" ||
-      hint.kind === "control+snapshot" ||
-      hint.kind === "action-log"
-    ) {
-      state.structuralRevision = (state.structuralRevision ?? 0) + 1
-    }
-
-    return state
-  })
-
-  if (!next) {
-    return null
-  }
-
+  next: RoomState,
+  hint: RoomPublishHint,
+) {
   const bus = getRoomBroadcastBus()
   switch (hint.kind) {
     case "control":
@@ -94,6 +67,53 @@ export async function mutateRoomMessage(
     case "control-ephemeral":
       break
   }
+}
 
+/**
+ * WATCH/GET/mutate/SET for one user message: reconcile presence, run body, bump activity.
+ * Body returns false to abort (no write). Publish via RoomBroadcastBus per hint.
+ */
+export async function mutateRoomMessage(
+  store: RoomStateStorePort,
+  roomId: string,
+  userId: string,
+  body: (
+    state: RoomState,
+    participant: RoomState["participants"][string],
+  ) => boolean,
+  hint: RoomPublishHint = { kind: "snapshot" },
+): Promise<RoomState | null> {
+  const next = await store.updateRoom(roomId, async (state) => {
+    if (!state) return null
+    await reconcilePresenceForMutation(store, state, roomId)
+
+    const participant = state.participants[userId]
+    if (!participant) {
+      return null
+    }
+
+    if (!body(state, participant)) {
+      return null
+    }
+
+    participant.connected = true
+    participant.lastSeenAt = Date.now()
+    participant.disconnectedAt = undefined
+    markCurrentMedia(state)
+    state.updatedAt = Date.now()
+    state.generation = (state.generation ?? 0) + 1
+
+    if (bumpsStructuralRevision(hint)) {
+      state.structuralRevision = (state.structuralRevision ?? 0) + 1
+    }
+
+    return state
+  })
+
+  if (!next) {
+    return null
+  }
+
+  await publishAfterMutation(roomId, userId, next, hint)
   return next
 }

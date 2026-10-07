@@ -1,0 +1,156 @@
+"use client"
+
+import {
+  getLocalMediaMimeType,
+  getLocalMediaObjectUrl,
+} from "@/lib/local-media-provider"
+import { inferMediaViewType } from "@/lib/playback-sync"
+import { useEffect, useMemo, useRef, useState } from "react"
+import type { PlaylistItem, ViewerMediaItemPreference } from "@/zod/types"
+import {
+  buildPlayerSrc,
+  isSameOriginPlaybackUrl,
+  type PlayerSrcInput,
+} from "../player-src"
+
+function decodeLocalMediaIdFromStreamSrc(streamSrc: string): string | null {
+  const match = /\/api\/media\/local\/([^/?#]+)/i.exec(streamSrc)
+  if (!match?.[1]) return null
+  try {
+    return decodeURIComponent(match[1])
+  } catch {
+    return match[1]
+  }
+}
+
+/**
+ * Resolve active stream, playback URL (blob vs relay), MIME hint, and Vidstack src.
+ */
+export function usePlayerMediaSource(config: {
+  current: PlaylistItem | undefined
+  viewerPrefs: ViewerMediaItemPreference | undefined
+  userId: string
+}) {
+  const { current, viewerPrefs, userId } = config
+  const [forceLocalRelaySrc, setForceLocalRelaySrc] = useState(false)
+  const localBlobFallbackAttemptedRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    setForceLocalRelaySrc(false)
+    localBlobFallbackAttemptedRef.current = null
+  }, [current?.id])
+
+  const activeStream = useMemo(() => {
+    if (!current) {
+      return null
+    }
+
+    const streams = current.mediaStreams ?? []
+    if (streams.length === 0) {
+      return null
+    }
+
+    return (
+      streams.find((stream) => stream.id === viewerPrefs?.streamId) ??
+      streams.find((stream) => stream.id === current.defaultStreamId) ??
+      streams.find((stream) => stream.isDefault) ??
+      streams[0] ??
+      null
+    )
+  }, [current, viewerPrefs?.streamId])
+
+  const activePlaybackSrc = useMemo(() => {
+    if (!current) {
+      return ""
+    }
+
+    // Avoid loading the unresolved page URL (MediaError 4) while yt-dlp runs.
+    if (current.ingestStatus === "resolving") {
+      return ""
+    }
+
+    // Provider plays from the in-tab File directly — no relay hop.
+    // If blob playback fails (MediaError 4), fall back to the relay URL.
+    // Prefer the File for the selected progressive stream id (parent or ABR child).
+    // For Auto HLS, keep the source File blob for best local UX.
+    if (
+      !forceLocalRelaySrc &&
+      current.sourceKind === "local_file" &&
+      current.localOriginUserId === userId
+    ) {
+      const streamSrc = activeStream?.src ?? ""
+      const isHlsAuto =
+        activeStream?.kind === "adaptive" ||
+        /\.m3u8(\?|$)/i.test(streamSrc) ||
+        /\/hls(\?|$)/i.test(streamSrc)
+      let blobId = current.localMediaId
+      if (!isHlsAuto && streamSrc) {
+        const fromStream = decodeLocalMediaIdFromStreamSrc(streamSrc)
+        if (fromStream) {
+          blobId = fromStream
+        }
+      }
+      if (blobId) {
+        const localUrl = getLocalMediaObjectUrl(blobId)
+        if (localUrl) {
+          return localUrl
+        }
+      }
+    }
+
+    const fromStream = activeStream?.src
+    if (
+      current.playbackMode === "relay" &&
+      fromStream &&
+      /^https?:\/\//i.test(fromStream)
+    ) {
+      return current.playableUrl ?? ""
+    }
+
+    return fromStream ?? current.playableUrl ?? ""
+  }, [activeStream, current, forceLocalRelaySrc, userId])
+
+  const localMimeHint = (() => {
+    if (current?.sourceKind !== "local_file") return null
+    if (activePlaybackSrc.startsWith("blob:") && current.localMediaId) {
+      // Prefer mime for whichever File we are playing (parent or ABR child).
+      const streamSrc = activeStream?.src ?? ""
+      const id =
+        decodeLocalMediaIdFromStreamSrc(streamSrc) ?? current.localMediaId
+      return getLocalMediaMimeType(id) ?? getLocalMediaMimeType(current.localMediaId)
+    }
+    return current.localMediaId
+      ? getLocalMediaMimeType(current.localMediaId)
+      : null
+  })()
+
+  const playerSrc: PlayerSrcInput = useMemo(
+    () =>
+      buildPlayerSrc(
+        activePlaybackSrc,
+        current,
+        activeStream,
+        localMimeHint ?? activeStream?.type,
+      ),
+    [activePlaybackSrc, activeStream, current, localMimeHint],
+  )
+
+  const playbackUrlForOrigin =
+    typeof playerSrc === "string" ? playerSrc : playerSrc.src
+  const useCrossOriginAnonymous =
+    playbackUrlForOrigin.length > 0 &&
+    !isSameOriginPlaybackUrl(playbackUrlForOrigin)
+
+  const viewType = inferMediaViewType(activePlaybackSrc)
+
+  return {
+    activeStream,
+    activePlaybackSrc,
+    playerSrc,
+    useCrossOriginAnonymous,
+    viewType,
+    forceLocalRelaySrc,
+    setForceLocalRelaySrc,
+    localBlobFallbackAttemptedRef,
+  }
+}

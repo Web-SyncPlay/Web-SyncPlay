@@ -13,7 +13,6 @@ import { RestrictToVerticalAxis } from "@dnd-kit/abstract/modifiers"
 import { DragDropProvider } from "@dnd-kit/react"
 import { isSortable } from "@dnd-kit/react/sortable"
 import { Loader2 } from "lucide-react"
-import { useState } from "react"
 import type { RoomPanelProps } from "../../layout/page/types"
 import { PlaylistAddMediaControls } from "./PlaylistAddMediaControls"
 import { PlaylistItemRow } from "./PlaylistItemRow"
@@ -21,6 +20,7 @@ import {
   nextPlaylistLoopMode,
   PlaylistLoopToggle,
 } from "./PlaylistLoopToggle"
+import { usePlaylistItemRename } from "./use-playlist-item-rename"
 
 function renderItemDuration(durationSeconds?: number): string | null {
   if (
@@ -42,8 +42,7 @@ export function PlaylistPanel({
   capabilities,
   hideTitle = false,
 }: RoomPanelProps & { hideTitle?: boolean }) {
-  const [draftName, setDraftName] = useState<Record<string, string>>({})
-  const [editingItemId, setEditingItemId] = useState<string | null>(null)
+  const rename = usePlaylistItemRename(send)
   const myRole = roomState.participants[userId]?.role
   const canManagePlaylist =
     canControlPlaylist(myRole) && capabilities.canManagePlaylist
@@ -65,18 +64,6 @@ export function PlaylistPanel({
       onCycle={cyclePlaylistLoop}
     />
   )
-
-  const commitItemName = (itemId: string, currentName: string) => {
-    const rawDraft = draftName[itemId]
-    const trimmed = (rawDraft ?? currentName).trim()
-    setEditingItemId(null)
-    if (!trimmed || trimmed === currentName) {
-      setDraftName((prev) => ({ ...prev, [itemId]: currentName }))
-      return
-    }
-
-    send("playlist:rename", { itemId, name: trimmed })
-  }
 
   return (
     <>
@@ -113,16 +100,10 @@ export function PlaylistPanel({
         <DragDropProvider
           modifiers={(defaults) => [...defaults, RestrictToVerticalAxis]}
           onDragEnd={(dragEvent) => {
-            if (dragEvent.canceled) {
-              return
-            }
+            if (dragEvent.canceled) return
             const source = dragEvent.operation.source
-            if (!source || !isSortable(source)) {
-              return
-            }
-            if (source.initialIndex === source.index) {
-              return
-            }
+            if (!source || !isSortable(source)) return
+            if (source.initialIndex === source.index) return
 
             send("playlist:reorder", {
               from: source.initialIndex,
@@ -135,7 +116,6 @@ export function PlaylistPanel({
               const isCurrent =
                 (roomState.playback.mediaId ??
                   roomState.playlist[roomState.currentIndex]?.id) === x.id
-              const itemDuration = renderItemDuration(x.durationSeconds)
 
               return (
                 <PlaylistItemRow
@@ -143,22 +123,14 @@ export function PlaylistPanel({
                   item={x}
                   index={i}
                   isCurrent={isCurrent}
-                  itemDuration={itemDuration}
+                  itemDuration={renderItemDuration(x.durationSeconds)}
                   canControlPlaylist={canManagePlaylist}
-                  draftValue={draftName[x.id] ?? x.name}
-                  isEditing={editingItemId === x.id}
-                  onDraftChange={(next) =>
-                    setDraftName((prev) => ({ ...prev, [x.id]: next }))
-                  }
-                  onEditStart={() => {
-                    setDraftName((prev) => ({ ...prev, [x.id]: x.name }))
-                    setEditingItemId(x.id)
-                  }}
-                  onDraftCommit={() => commitItemName(x.id, x.name)}
-                  onDraftCancel={() => {
-                    setDraftName((prev) => ({ ...prev, [x.id]: x.name }))
-                    setEditingItemId(null)
-                  }}
+                  draftValue={rename.draftName[x.id] ?? x.name}
+                  isEditing={rename.editingItemId === x.id}
+                  onDraftChange={(next) => rename.setDraft(x.id, next)}
+                  onEditStart={() => rename.startEdit(x.id, x.name)}
+                  onDraftCommit={() => rename.commitEdit(x.id, x.name)}
+                  onDraftCancel={() => rename.cancelEdit(x.id, x.name)}
                   onSelect={() => send("playlist:select", { index: i })}
                   onRemove={() => send("playlist:remove", { itemId: x.id })}
                 />

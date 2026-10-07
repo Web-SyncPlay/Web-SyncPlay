@@ -7,16 +7,19 @@ import {
 import { NextResponse } from "next/server"
 import { z } from "zod"
 
-const checkSchema = z.object({
-  url: z.url(),
-})
-
 function normalizeCheckUrl(raw: string): string {
   const trimmed = raw.trim()
   if (!trimmed) return trimmed
   if (/^https?:\/\//i.test(trimmed)) return trimmed
   return `https://${trimmed}`
 }
+
+const checkBodySchema = z.object({
+  url: z
+    .string()
+    .transform(normalizeCheckUrl)
+    .pipe(z.url()),
+})
 
 function successMessage(input: {
   playbackMode: "direct" | "relay"
@@ -56,15 +59,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  const rawUrl =
-    typeof body === "object" &&
-    body !== null &&
-    "url" in body &&
-    typeof (body as { url: unknown }).url === "string"
-      ? normalizeCheckUrl((body as { url: string }).url)
-      : ""
-
-  const parsed = checkSchema.safeParse({ url: rawUrl })
+  const parsed = checkBodySchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Paste a valid http(s) URL." },

@@ -6,6 +6,30 @@ const g = globalThis as typeof globalThis & {
   __webSyncPlayPubsubInstalled?: boolean
 }
 
+type RoomPubSubKind = "control" | "presence" | "snapshot"
+
+const ROOM_PUBSUB_SUBSCRIPTIONS: Array<{
+  kind: RoomPubSubKind
+  pattern: () => string
+  suffix: ":control" | ":presence" | ":snapshot"
+}> = [
+  {
+    kind: "control",
+    pattern: keys.roomControlChannelPattern,
+    suffix: ":control",
+  },
+  {
+    kind: "presence",
+    pattern: keys.roomPresenceChannelPattern,
+    suffix: ":presence",
+  },
+  {
+    kind: "snapshot",
+    pattern: keys.roomSnapshotChannelPattern,
+    suffix: ":snapshot",
+  },
+]
+
 /**
  * Subscribe to typed room channels. Fan-out is immediate (coalesce happens
  * only on the mutating node before PUBLISH). Same-node echoes are skipped.
@@ -22,14 +46,9 @@ export async function subscribeRoomUpdates() {
   const handle = (
     message: string,
     channel: string,
-    kind: "control" | "presence" | "snapshot",
+    kind: RoomPubSubKind,
+    suffix: ":control" | ":presence" | ":snapshot",
   ) => {
-    const suffix =
-      kind === "control"
-        ? (":control" as const)
-        : kind === "presence"
-          ? (":presence" as const)
-          : (":snapshot" as const)
     const roomId = keys.parseRoomTypedChannel(String(channel), suffix)
     if (!roomId) return
     try {
@@ -44,21 +63,11 @@ export async function subscribeRoomUpdates() {
     }
   }
 
-  await Promise.all([
-    sub.pSubscribe<false>(keys.roomControlChannelPattern(), (message, channel) => {
-      handle(String(message), String(channel), "control")
-    }),
-    sub.pSubscribe<false>(
-      keys.roomPresenceChannelPattern(),
-      (message, channel) => {
-        handle(String(message), String(channel), "presence")
-      },
+  await Promise.all(
+    ROOM_PUBSUB_SUBSCRIPTIONS.map(({ kind, pattern, suffix }) =>
+      sub.pSubscribe<false>(pattern(), (message, channel) => {
+        handle(String(message), String(channel), kind, suffix)
+      }),
     ),
-    sub.pSubscribe<false>(
-      keys.roomSnapshotChannelPattern(),
-      (message, channel) => {
-        handle(String(message), String(channel), "snapshot")
-      },
-    ),
-  ])
+  )
 }

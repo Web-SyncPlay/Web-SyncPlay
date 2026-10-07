@@ -55,6 +55,8 @@ WORKDIR /app
 ARG TARGETARCH
 ARG YTDLP_VERSION=2026.08.19
 
+# Keep these OCI labels aligned with docker/metadata-action labels in
+# .github/workflows/ci.yml (title/description/url/docs/authors).
 LABEL org.opencontainers.image.title="Web-SyncPlay" \
     org.opencontainers.image.description="Watch any yt-dlp source in sync—or stream local files to everyone" \
     org.opencontainers.image.url="https://web-syncplay.de" \

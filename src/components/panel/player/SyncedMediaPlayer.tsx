@@ -1,0 +1,254 @@
+"use client"
+
+import {
+  resolvePlayerDurationSec,
+  resolvePlayerStreamType,
+} from "@/lib/player-utils"
+import type { TypedRoomEventSender } from "@/lib/room-events"
+import {
+  MediaPlayer,
+  MediaProvider,
+  Track,
+  type MediaErrorDetail,
+  type MediaPlayerInstance,
+  type PlayerSrc,
+} from "@vidstack/react"
+import {
+  DefaultAudioLayout,
+  DefaultVideoLayout,
+  defaultLayoutIcons,
+} from "@vidstack/react/player/layouts/default"
+import type { ReactNode, RefObject } from "react"
+import type {
+  PlaylistItem,
+  PlaylistMediaStream,
+  RoomState,
+  ViewerMediaItemPreference,
+} from "@/zod/types"
+import type { PlayerSrcInput } from "./player-src"
+import type { PendingSyncState } from "./hooks/use-buffering-watchdog"
+import { useSyncedMediaPlayerHandlers } from "./hooks/use-synced-media-player-handlers"
+import type { LocalSeekPhase } from "./playback-control/use-playback-timeline-controller"
+
+export function SyncedMediaPlayer(props: {
+  playerRef: RefObject<MediaPlayerInstance | null>
+  current: PlaylistItem | undefined
+  activeStream: PlaylistMediaStream | null
+  viewerPrefs: ViewerMediaItemPreference | undefined
+  playerSrc: PlayerSrcInput
+  activePlaybackSrc: string
+  viewType: "audio" | "video"
+  useCrossOriginAnonymous: boolean
+  playerRemountNonce: number
+  roomState: RoomState
+  roomPaused: boolean
+  roomPlaybackRate: number
+  userId: string
+  send: TypedRoomEventSender
+  canControlPlayback: boolean
+  isOtherUserSeeking: boolean
+  isMuted: boolean
+  preferredVolume: number
+  unmute: () => number
+  handleVolumeChange: (detail: { volume: number; muted: boolean }) => void
+  previousButtonSlot: ReactNode
+  nextButtonSlot: ReactNode
+  playbackRef: RefObject<RoomState["playback"]>
+  isMediaReadyRef: RefObject<boolean>
+  bufferingSinceRef: RefObject<number | null>
+  participantStatusErrorRef: RefObject<string | null>
+  pendingSyncRef: RefObject<PendingSyncState | null>
+  reportedItemErrorRef: RefObject<string | null>
+  proxyRenewAttemptedRef: RefObject<string | null>
+  localBlobFallbackAttemptedRef: RefObject<string | null>
+  seekPhase: LocalSeekPhase
+  awaitingSeekTargetMs: number | null
+  totalItems: number
+  applyRoomClock: (
+    player: MediaPlayerInstance,
+    syncState: PendingSyncState,
+    driftThresholdSec?: number,
+  ) => void
+  enforceServerPlaybackState: () => void
+  getCurrentTimeMs: () => number
+  commitLiveEdgeSeek: () => void
+  selectPlaylistIndex: (index: number) => void
+  beginSeek: (targetMs: number) => void
+  updateSeek: (targetMs: number) => void
+  commitSeek: (targetMs: number) => void
+  setIsBuffering: (value: boolean) => void
+  setPlaybackError: (value: MediaErrorDetail | undefined) => void
+  setMediaDurationMs: (value: number) => void
+  setForceLocalRelaySrc: (value: boolean) => void
+  setPlayerRemountNonce: (updater: (n: number) => number) => void
+}) {
+  const {
+    playerRef,
+    current,
+    activeStream,
+    viewerPrefs,
+    playerSrc,
+    activePlaybackSrc,
+    viewType,
+    useCrossOriginAnonymous,
+    playerRemountNonce,
+    roomState,
+    roomPaused,
+    roomPlaybackRate,
+    userId,
+    send,
+    canControlPlayback,
+    isOtherUserSeeking,
+    isMuted,
+    preferredVolume,
+    unmute,
+    handleVolumeChange,
+    previousButtonSlot,
+    nextButtonSlot,
+    playbackRef,
+    isMediaReadyRef,
+    bufferingSinceRef,
+    participantStatusErrorRef,
+    pendingSyncRef,
+    reportedItemErrorRef,
+    proxyRenewAttemptedRef,
+    localBlobFallbackAttemptedRef,
+    seekPhase,
+    awaitingSeekTargetMs,
+    totalItems,
+    applyRoomClock,
+    enforceServerPlaybackState,
+    getCurrentTimeMs,
+    commitLiveEdgeSeek,
+    selectPlaylistIndex,
+    beginSeek,
+    updateSeek,
+    commitSeek,
+    setIsBuffering,
+    setPlaybackError,
+    setMediaDurationMs,
+    setForceLocalRelaySrc,
+    setPlayerRemountNonce,
+  } = props
+
+  const playerStreamType = resolvePlayerStreamType(current)
+  const playerDurationSec = resolvePlayerDurationSec(current)
+  const handlers = useSyncedMediaPlayerHandlers({
+    playerRef,
+    current,
+    playerSrc,
+    activePlaybackSrc,
+    roomState,
+    send,
+    canControlPlayback,
+    isMuted,
+    preferredVolume,
+    unmute,
+    handleVolumeChange,
+    playbackRef,
+    isMediaReadyRef,
+    bufferingSinceRef,
+    participantStatusErrorRef,
+    pendingSyncRef,
+    reportedItemErrorRef,
+    proxyRenewAttemptedRef,
+    localBlobFallbackAttemptedRef,
+    seekPhase,
+    awaitingSeekTargetMs,
+    totalItems,
+    userId,
+    applyRoomClock,
+    enforceServerPlaybackState,
+    getCurrentTimeMs,
+    commitLiveEdgeSeek,
+    selectPlaylistIndex,
+    beginSeek,
+    updateSeek,
+    commitSeek,
+    setIsBuffering,
+    setPlaybackError,
+    setMediaDurationMs,
+    setForceLocalRelaySrc,
+    setPlayerRemountNonce,
+  })
+
+  return (
+    <MediaPlayer
+      key={`${current?.id ?? "no-media"}:${activeStream?.id ?? "auto"}:${playerRemountNonce}`}
+      ref={playerRef}
+      src={playerSrc as PlayerSrc}
+      title={current?.name ?? "Web-SyncPlay"}
+      viewType={viewType}
+      loop={roomState.playback.videoLoop !== "off"}
+      crossOrigin={useCrossOriginAnonymous ? "anonymous" : undefined}
+      playsInline
+      // Room playback is the transport authority — player follows.
+      paused={roomPaused}
+      autoPlay={!roomPaused}
+      playbackRate={roomPlaybackRate}
+      // ARD/catch-up HLS often lacks EXT-X-ENDLIST, so hls.js reports
+      // `live` and Vidstack disables seeking. Force VOD unless catalog says live.
+      streamType={playerStreamType}
+      {...(playerDurationSec !== undefined
+        ? { duration: playerDurationSec }
+        : {})}
+      muted={isMuted}
+      className={`size-full ${isOtherUserSeeking ? "remote-seek-controls-hidden" : ""} ${!canControlPlayback ? "guest-controls-guard" : ""}`}
+      onKeyDownCapture={handlers.onKeyDownCapture}
+      onMediaPlayRequest={handlers.onMediaPlayRequest}
+      onMediaPauseRequest={handlers.onMediaPauseRequest}
+      onMediaSeekingRequest={handlers.onMediaSeekingRequest}
+      onMediaSeekRequest={handlers.onMediaSeekRequest}
+      onMediaLiveEdgeRequest={handlers.onMediaLiveEdgeRequest}
+      onMediaRateChangeRequest={handlers.onMediaRateChangeRequest}
+      onPlay={handlers.onPlay}
+      onPause={handlers.onPause}
+      onPlaying={handlers.onPlaying}
+      onWaiting={handlers.onWaiting}
+      onLoadStart={handlers.onLoadStart}
+      onCanPlay={handlers.onCanPlay}
+      onError={handlers.onError}
+      volume={preferredVolume}
+      onVolumeChange={handlers.onVolumeChange}
+      onMediaUserLoopChangeRequest={handlers.onMediaUserLoopChangeRequest}
+      onEnded={handlers.onEnded}
+      onDurationChange={handlers.onDurationChange}
+    >
+      <MediaProvider />
+      {(current?.textTracks ?? []).map((track) => (
+        <Track
+          key={track.id}
+          src={track.src}
+          label={track.label}
+          kind={track.kind ?? "subtitles"}
+          language={track.language}
+          default={Boolean(
+            viewerPrefs?.textTrackId !== undefined
+              ? track.id === viewerPrefs.textTrackId
+              : current?.defaultTextTrackId
+                ? track.id === current.defaultTextTrackId
+                : track.isDefault,
+          )}
+        />
+      ))}
+      <DefaultAudioLayout
+        icons={defaultLayoutIcons}
+        {...(!canControlPlayback ? { playbackRates: [] as number[] } : {})}
+        slots={{
+          beforePlayButton: previousButtonSlot,
+          afterPlayButton: nextButtonSlot,
+          ...(!canControlPlayback ? { playbackMenuLoop: null } : {}),
+        }}
+      />
+      <DefaultVideoLayout
+        icons={defaultLayoutIcons}
+        {...(!canControlPlayback ? { playbackRates: [] as number[] } : {})}
+        slots={{
+          beforePlayButton: previousButtonSlot,
+          afterPlayButton: nextButtonSlot,
+          ...(!canControlPlayback ? { playbackMenuLoop: null } : {}),
+        }}
+      />
+    </MediaPlayer>
+  )
+}

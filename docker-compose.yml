@@ -1,3 +1,6 @@
+# Local / single-node stack: Next app + Valkey.
+# Copy `.env.example` → `.env` for OPS_SECRET / PUBLIC_DOMAIN (optional for smoke).
+# Health: http://127.0.0.1:3000/api/health
 services:
   web:
     build: .
@@ -16,7 +19,7 @@ services:
     ports:
       # HTTP/WS — loopback for local compose; operators publish via reverse proxy.
       - "127.0.0.1:3000:3000"
-      # mediasoup WebRtcServer — fixed UDP 40000 browsers must reach.
+      # mediasoup WebRtcServer — fixed UDP 40000 browsers must reach (see MEDIASOUP_RTC_UDP_PORT).
       - "40000:40000/udp"
     depends_on:
       valkey:

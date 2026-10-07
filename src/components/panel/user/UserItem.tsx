@@ -9,6 +9,64 @@ import { Item, ItemActions, ItemContent } from "../../ui/item"
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip"
 import { UserAvatar } from "./UserAvatar"
 
+function playbackStatusLabel(playback: ParticipantState["localPlayback"]): string {
+  if (playback.error) return "Error"
+  if (playback.loading) return "Loading"
+  return "Ready"
+}
+
+function playbackBadgeVariant(
+  user: ParticipantState,
+): "destructive" | "outline" | "secondary" {
+  if (user.localPlayback.error) return "destructive"
+  if (!user.connected || user.localPlayback.loading) return "outline"
+  return "secondary"
+}
+
+function RoleBadge(props: {
+  user: ParticipantState
+  canToggle: boolean
+  onToggle: () => void
+}) {
+  const { user, canToggle, onToggle } = props
+
+  if (user.role === "owner") {
+    return (
+      <Badge variant="default" className="capitalize">
+        Owner
+      </Badge>
+    )
+  }
+
+  if (!canToggle) {
+    return (
+      <Badge variant="outline" className="capitalize">
+        {user.role}
+      </Badge>
+    )
+  }
+
+  return (
+    <Badge
+      variant="outline"
+      className="cursor-pointer capitalize"
+      role="button"
+      tabIndex={0}
+      title="Click to toggle role"
+      aria-label={`Role ${user.role}, click to toggle`}
+      onClick={onToggle}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault()
+          onToggle()
+        }
+      }}
+    >
+      {user.role}
+    </Badge>
+  )
+}
+
 export function UserItem({
   send,
   user,
@@ -25,21 +83,15 @@ export function UserItem({
       send("participant:update", { username: nextValue }),
   })
 
-  const playbackStatus = user.localPlayback.error
-    ? "Error"
-    : user.localPlayback.loading
-      ? "Loading"
-      : "Ready"
   const connectionLabel = user.connected ? "Online" : "Offline"
   const canToggleRole =
     isOwner && !isSelf && (user.role === "moderator" || user.role === "guest")
 
   const toggleRole = () => {
     if (!canToggleRole) return
-    const nextRole = user.role === "moderator" ? "guest" : "moderator"
     send("participant:role:update", {
       targetUserId: user.userId,
-      role: nextRole,
+      role: user.role === "moderator" ? "guest" : "moderator",
     })
   }
 
@@ -63,17 +115,17 @@ export function UserItem({
             className="h-9"
             autoFocus
             value={inlineEdit.draft || user.username}
-            onChange={(e) => inlineEdit.setDraft(e.target.value)}
+            onChange={(event) => inlineEdit.setDraft(event.target.value)}
             onFocus={() => inlineEdit.reset(user.username)}
             onBlur={() => inlineEdit.commit(user.username)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
                 inlineEdit.commit(user.username)
-                ;(e.target as HTMLInputElement).blur()
+                ;(event.target as HTMLInputElement).blur()
               }
-              if (e.key === "Escape") {
+              if (event.key === "Escape") {
                 inlineEdit.cancel(user.username)
-                ;(e.target as HTMLInputElement).blur()
+                ;(event.target as HTMLInputElement).blur()
               }
             }}
           />
@@ -93,10 +145,10 @@ export function UserItem({
                   if (!isSelf) return
                   inlineEdit.start(user.username)
                 }}
-                onKeyDown={(e) => {
+                onKeyDown={(event) => {
                   if (!isSelf) return
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault()
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault()
                     inlineEdit.start(user.username)
                   }
                 }}
@@ -112,18 +164,10 @@ export function UserItem({
               <Tooltip>
                 <TooltipTrigger>
                   <Badge
-                    variant={
-                      user.localPlayback.error
-                        ? "destructive"
-                        : !user.connected
-                          ? "outline"
-                          : user.localPlayback.loading
-                            ? "outline"
-                            : "secondary"
-                    }
+                    variant={playbackBadgeVariant(user)}
                     className="h-5 shrink-0 px-1.5 text-[10px]"
                   >
-                    {connectionLabel} · {playbackStatus}
+                    {connectionLabel} · {playbackStatusLabel(user.localPlayback)}
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -135,33 +179,11 @@ export function UserItem({
         )}
       </ItemContent>
       <ItemActions className="shrink-0">
-        {user.role === "owner" ? (
-          <Badge variant="default" className="capitalize">
-            Owner
-          </Badge>
-        ) : canToggleRole ? (
-          <Badge
-            variant="outline"
-            className="cursor-pointer capitalize"
-            role="button"
-            tabIndex={0}
-            title="Click to toggle role"
-            aria-label={`Role ${user.role}, click to toggle`}
-            onClick={toggleRole}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault()
-                toggleRole()
-              }
-            }}
-          >
-            {user.role}
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="capitalize">
-            {user.role}
-          </Badge>
-        )}
+        <RoleBadge
+          user={user}
+          canToggle={canToggleRole}
+          onToggle={toggleRole}
+        />
       </ItemActions>
     </Item>
   )

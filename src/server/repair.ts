@@ -64,85 +64,7 @@ export function repairCleanupAndCheckRoomState(state: RoomState) {
     }
   }
 
-  if (!Array.isArray(state.playlist)) {
-    state.playlist = []
-    findings.push("playlist-repaired")
-  }
-  state.playlist = state.playlist.filter(
-    (item) =>
-      item &&
-      typeof item.id === "string" &&
-      typeof item.name === "string" &&
-      typeof item.sourceUrl === "string" &&
-      typeof item.playableUrl === "string",
-  )
-  for (const item of state.playlist) {
-    if (item.sourceKind !== "remote_url" && item.sourceKind !== "local_file") {
-      item.sourceKind = item.localMediaId ? "local_file" : "remote_url"
-      findings.push("playlist-item-source-kind-repaired")
-    }
-    if (item.playbackMode !== "direct" && item.playbackMode !== "relay") {
-      item.playbackMode = "direct"
-      findings.push("playlist-item-playback-mode-repaired")
-    }
-    // Local files are same-origin — never "relay"
-    if (item.sourceKind === "local_file" && item.playbackMode === "relay") {
-      item.playbackMode = "direct"
-      findings.push("playlist-item-local-playback-mode-repaired")
-    }
-
-    const legacy = item as PlaylistItem & {
-      isResolving?: boolean
-      resolutionError?: string
-      originalUrl?: string
-      selectedStreamId?: string
-      selectedTextTrackId?: string
-    }
-
-    if (
-      item.ingestStatus !== "ready" &&
-      item.ingestStatus !== "resolving" &&
-      item.ingestStatus !== "error"
-    ) {
-      item.ingestStatus = legacy.isResolving
-        ? "resolving"
-        : legacy.resolutionError
-          ? "error"
-          : "ready"
-      findings.push("playlist-item-ingest-status-repaired")
-    }
-    if (!item.ingestError && typeof legacy.resolutionError === "string") {
-      item.ingestError = legacy.resolutionError
-      findings.push("playlist-item-ingest-error-migrated")
-    }
-    if (!item.defaultStreamId && typeof legacy.selectedStreamId === "string") {
-      item.defaultStreamId = legacy.selectedStreamId
-      findings.push("playlist-item-default-stream-migrated")
-    }
-    if (
-      !item.defaultTextTrackId &&
-      typeof legacy.selectedTextTrackId === "string"
-    ) {
-      item.defaultTextTrackId = legacy.selectedTextTrackId
-      findings.push("playlist-item-default-text-track-migrated")
-    }
-
-    // Strip legacy dual-write fields
-    delete legacy.isResolving
-    delete legacy.resolutionError
-    delete legacy.originalUrl
-    delete legacy.selectedStreamId
-    delete legacy.selectedTextTrackId
-  }
-
-  if (state.currentIndex >= state.playlist.length) {
-    state.currentIndex = Math.max(0, state.playlist.length - 1)
-    findings.push("playlist-index-clamped")
-  }
-  if (state.currentIndex < 0 || !Number.isInteger(state.currentIndex)) {
-    state.currentIndex = 0
-    findings.push("playlist-index-repaired")
-  }
+  findings.push(...repairPlaylistState(state))
 
   if (!state.participants || typeof state.participants !== "object") {
     state.participants = {}
@@ -237,16 +159,6 @@ export function repairCleanupAndCheckRoomState(state: RoomState) {
     }
   }
 
-  if (Array.isArray(state.playlist) && state.playlist.length > env.ROOM_PLAYLIST_LIMIT) {
-    const overflow = state.playlist.length - env.ROOM_PLAYLIST_LIMIT
-    state.playlist = state.playlist.slice(-env.ROOM_PLAYLIST_LIMIT)
-    state.currentIndex = Math.max(
-      0,
-      Math.min(state.currentIndex - overflow, state.playlist.length - 1),
-    )
-    findings.push("playlist-trimmed")
-  }
-
   const playbackRepairs = sanitizePlayback(state)
   for (let i = 0; i < playbackRepairs; i += 1)
     findings.push("playback-repaired")
@@ -273,6 +185,113 @@ export function repairCleanupAndCheckRoomState(state: RoomState) {
     state.structuralRevision = 0
     findings.push("structural-revision-repaired")
   }
+
+  return findings
+}
+
+type LegacyPlaylistItem = PlaylistItem & {
+  isResolving?: boolean
+  resolutionError?: string
+  originalUrl?: string
+  selectedStreamId?: string
+  selectedTextTrackId?: string
+}
+
+/** Normalize playlist shape, migrate legacy item fields, clamp index, trim overflow. */
+export function repairPlaylistState(state: RoomState): string[] {
+  const findings: string[] = []
+
+  if (!Array.isArray(state.playlist)) {
+    state.playlist = []
+    findings.push("playlist-repaired")
+  }
+  state.playlist = state.playlist.filter(
+    (item) =>
+      item &&
+      typeof item.id === "string" &&
+      typeof item.name === "string" &&
+      typeof item.sourceUrl === "string" &&
+      typeof item.playableUrl === "string",
+  )
+
+  for (const item of state.playlist) {
+    findings.push(...repairPlaylistItemFields(item))
+  }
+
+  if (state.currentIndex >= state.playlist.length) {
+    state.currentIndex = Math.max(0, state.playlist.length - 1)
+    findings.push("playlist-index-clamped")
+  }
+  if (state.currentIndex < 0 || !Number.isInteger(state.currentIndex)) {
+    state.currentIndex = 0
+    findings.push("playlist-index-repaired")
+  }
+
+  if (state.playlist.length > env.ROOM_PLAYLIST_LIMIT) {
+    const overflow = state.playlist.length - env.ROOM_PLAYLIST_LIMIT
+    state.playlist = state.playlist.slice(-env.ROOM_PLAYLIST_LIMIT)
+    state.currentIndex = Math.max(
+      0,
+      Math.min(state.currentIndex - overflow, state.playlist.length - 1),
+    )
+    findings.push("playlist-trimmed")
+  }
+
+  return findings
+}
+
+function repairPlaylistItemFields(item: PlaylistItem): string[] {
+  const findings: string[] = []
+  const legacy = item as LegacyPlaylistItem
+
+  if (item.sourceKind !== "remote_url" && item.sourceKind !== "local_file") {
+    item.sourceKind = item.localMediaId ? "local_file" : "remote_url"
+    findings.push("playlist-item-source-kind-repaired")
+  }
+  if (item.playbackMode !== "direct" && item.playbackMode !== "relay") {
+    item.playbackMode = "direct"
+    findings.push("playlist-item-playback-mode-repaired")
+  }
+  // Local files are same-origin — never "relay"
+  if (item.sourceKind === "local_file" && item.playbackMode === "relay") {
+    item.playbackMode = "direct"
+    findings.push("playlist-item-local-playback-mode-repaired")
+  }
+
+  if (
+    item.ingestStatus !== "ready" &&
+    item.ingestStatus !== "resolving" &&
+    item.ingestStatus !== "error"
+  ) {
+    item.ingestStatus = legacy.isResolving
+      ? "resolving"
+      : legacy.resolutionError
+        ? "error"
+        : "ready"
+    findings.push("playlist-item-ingest-status-repaired")
+  }
+  if (!item.ingestError && typeof legacy.resolutionError === "string") {
+    item.ingestError = legacy.resolutionError
+    findings.push("playlist-item-ingest-error-migrated")
+  }
+  if (!item.defaultStreamId && typeof legacy.selectedStreamId === "string") {
+    item.defaultStreamId = legacy.selectedStreamId
+    findings.push("playlist-item-default-stream-migrated")
+  }
+  if (
+    !item.defaultTextTrackId &&
+    typeof legacy.selectedTextTrackId === "string"
+  ) {
+    item.defaultTextTrackId = legacy.selectedTextTrackId
+    findings.push("playlist-item-default-text-track-migrated")
+  }
+
+  // Strip legacy dual-write fields
+  delete legacy.isResolving
+  delete legacy.resolutionError
+  delete legacy.originalUrl
+  delete legacy.selectedStreamId
+  delete legacy.selectedTextTrackId
 
   return findings
 }

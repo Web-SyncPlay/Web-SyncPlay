@@ -12,6 +12,7 @@ import { getAppNodeId } from "@/server/node-id"
 import { getCommandClient, getSubscriberClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
 import { getSocketsForUser } from "@/server/ws/registry"
+import { LOCAL_MEDIA_MAX_BLOCK_BYTES } from "@/lib/local-media-block-protocol"
 import {
   localMediaErrorFromMessage,
   type LocalMediaErrorCode,
@@ -19,7 +20,8 @@ import {
 import { randomUUID } from "node:crypto"
 import type { WebSocket } from "ws"
 
-const LOCAL_MEDIA_RELAY_CHUNK_BYTES = 256 * 1024
+/** Aligned provider blocks; must match client DataChannel max block size. */
+const LOCAL_MEDIA_RELAY_CHUNK_BYTES = LOCAL_MEDIA_MAX_BLOCK_BYTES
 const LOCAL_MEDIA_RELAY_TIMEOUT_MS = 15_000
 
 export type LocalMediaReadRequest = {

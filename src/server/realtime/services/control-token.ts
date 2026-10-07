@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto"
 import { env } from "@/env"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
+import { z } from "zod"
 
 export type ControlTokenRecord = {
   roomId: string
@@ -10,8 +11,24 @@ export type ControlTokenRecord = {
   expiresAt: number
 }
 
+const controlTokenRecordSchema = z.object({
+  roomId: z.string().min(1),
+  userId: z.string().min(1),
+  mintedAt: z.number().finite(),
+  expiresAt: z.number().finite(),
+})
+
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex")
+}
+
+function parseControlTokenRecord(raw: string): ControlTokenRecord | null {
+  try {
+    const parsed = controlTokenRecordSchema.safeParse(JSON.parse(raw))
+    return parsed.success ? parsed.data : null
+  } catch {
+    return null
+  }
 }
 
 export async function mintControlToken(input: {
@@ -43,16 +60,13 @@ export async function validateControlToken(input: {
   const client = await getCommandClient()
   const raw = await client.get(keys.controlToken(hashToken(input.token)))
   if (!raw) return false
-  try {
-    const parsed = JSON.parse(raw) as ControlTokenRecord
-    if (parsed.roomId !== input.roomId || parsed.userId !== input.userId) {
-      return false
-    }
-    if (parsed.expiresAt <= Date.now()) {
-      return false
-    }
-    return true
-  } catch {
+  const parsed = parseControlTokenRecord(raw)
+  if (!parsed) return false
+  if (parsed.roomId !== input.roomId || parsed.userId !== input.userId) {
     return false
   }
+  if (parsed.expiresAt <= Date.now()) {
+    return false
+  }
+  return true
 }

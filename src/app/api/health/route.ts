@@ -9,21 +9,23 @@ import {
 import { getCommandClient } from "@/server/redis/client"
 import { NextResponse } from "next/server"
 
-export async function GET() {
-  let valkeyOk = false
+async function pingValkey(): Promise<boolean> {
   try {
     const client = await getCommandClient()
-    valkeyOk = (await client.ping()) === "PONG"
+    return (await client.ping()) === "PONG"
   } catch {
-    valkeyOk = false
+    return false
   }
+}
 
-  const ok = valkeyOk
+export async function GET() {
+  const valkeyOk = await pingValkey()
   const cacheTtl = env.YTDLP_CACHE_TTL_SECONDS
   const timeoutMs = env.YTDLP_TIMEOUT_MS
+
   return NextResponse.json(
     {
-      ok,
+      ok: valkeyOk,
       valkey: valkeyOk,
       ytdlpBin: env.YTDLP_BIN,
       ytdlp: {
@@ -38,6 +40,6 @@ export async function GET() {
       },
       nodeEnv: env.NODE_ENV,
     },
-    { status: ok ? 200 : 503 },
+    { status: valkeyOk ? 200 : 503 },
   )
 }

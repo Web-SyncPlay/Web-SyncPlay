@@ -36,6 +36,34 @@ function secretsMatch(stored: string, userSecret: string): boolean {
   return timingSafeEqual(storedBytes, providedBytes)
 }
 
+async function touchIdentityKey(
+  client: Awaited<ReturnType<typeof getCommandClient>>,
+  key: string,
+) {
+  await client.expire(key, roomStateTtlSeconds)
+}
+
+/** Verify stored secret; migrate legacy cleartext to hash. Does not claim. */
+async function verifyAndMaybeMigrate(params: {
+  client: Awaited<ReturnType<typeof getCommandClient>>
+  key: string
+  userId: string
+  userSecret: string
+  existing: string
+}): Promise<boolean> {
+  const { client, key, userId, userSecret, existing } = params
+  if (!secretsMatch(existing, userSecret)) {
+    await touchIdentityKey(client, key)
+    return false
+  }
+
+  if (!isHashedIdentitySecret(existing)) {
+    await client.hSet(key, userId, hashIdentitySecret(userSecret))
+  }
+  await touchIdentityKey(client, key)
+  return true
+}
+
 /**
  * Redis-backed identity secret hashes so verification survives restarts /
  * multi-instance. First claim wins; later joins must match.
@@ -52,21 +80,17 @@ export async function claimOrVerifyIdentitySecret(params: {
 
   if (!existing) {
     await client.hSet(key, params.userId, secretHash)
-    await client.expire(key, roomStateTtlSeconds)
+    await touchIdentityKey(client, key)
     return true
   }
 
-  if (!secretsMatch(existing, params.userSecret)) {
-    await client.expire(key, roomStateTtlSeconds)
-    return false
-  }
-
-  // Migrate legacy cleartext secrets to hashed form.
-  if (!isHashedIdentitySecret(existing)) {
-    await client.hSet(key, params.userId, secretHash)
-  }
-  await client.expire(key, roomStateTtlSeconds)
-  return true
+  return verifyAndMaybeMigrate({
+    client,
+    key,
+    userId: params.userId,
+    userSecret: params.userSecret,
+    existing,
+  })
 }
 
 /** Verify only — does not claim a new identity (for HTTP upload auth). */
@@ -79,17 +103,14 @@ export async function matchIdentitySecret(params: {
   const key = keys.roomIdentity(params.roomId)
   const existing = await client.hGet(key, params.userId)
   if (!existing) return false
-  if (!secretsMatch(existing, params.userSecret)) return false
 
-  if (!isHashedIdentitySecret(existing)) {
-    await client.hSet(
-      key,
-      params.userId,
-      hashIdentitySecret(params.userSecret),
-    )
-  }
-  await client.expire(key, roomStateTtlSeconds)
-  return true
+  return verifyAndMaybeMigrate({
+    client,
+    key,
+    userId: params.userId,
+    userSecret: params.userSecret,
+    existing,
+  })
 }
 
 export async function clearRoomIdentities(roomId: string): Promise<void> {

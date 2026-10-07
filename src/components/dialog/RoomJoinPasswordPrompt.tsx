@@ -16,10 +16,11 @@ import { Kbd } from "../ui/kbd"
 
 export function RoomJoinPasswordPrompt(props: {
   roomId: string
-  title: string | null
+  /** Join rejection message (wrong password, etc.); null on first prompt. */
+  error: string | null
   onSubmit: (password: string) => void
 }) {
-  const { roomId, title, onSubmit } = props
+  const { roomId, error, onSubmit } = props
   const [password, setPassword] = useState("")
 
   const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
@@ -37,19 +38,26 @@ export function RoomJoinPasswordPrompt(props: {
         <EmptyMedia variant="icon">
           <LockKeyhole />
         </EmptyMedia>
-        <EmptyTitle>{title}</EmptyTitle>
+        <EmptyTitle>Password required</EmptyTitle>
         <EmptyDescription>
-          Enter the join password to access room <Kbd>{roomId}</Kbd>.
+          {error ? (
+            <span className="text-destructive">{error}</span>
+          ) : (
+            <>
+              Enter the join password to access room <Kbd>{roomId}</Kbd>.
+            </>
+          )}
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <form onSubmit={handleSubmit} className="flex gap-2 w-full">
+        <form onSubmit={handleSubmit} className="flex w-full gap-2">
           <Input
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="Enter room password"
             aria-label="Room join password"
+            aria-invalid={Boolean(error) || undefined}
             autoComplete="current-password"
           />
           <Button type="submit">Join room</Button>

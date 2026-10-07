@@ -4,12 +4,17 @@
  * Signaling uses room WS `local-media:webrtc:signal`. HTTP remains fallback.
  */
 
+import {
+  encodeLocalMediaBlockMetaError,
+  encodeLocalMediaBlockMetaOk,
+  encodeLocalMediaBlockRequest,
+  isLocalMediaBlockMeta,
+  isLocalMediaBlockRequest,
+  LOCAL_MEDIA_BLOCK_CHANNEL_LABEL,
+  parseLocalMediaBlockJson,
+} from "@/lib/local-media-block-protocol"
 import { getLocalMediaFile } from "@/lib/local-media-provider"
 import { PUBLIC_STUN_ICE_SERVERS } from "@/lib/webrtc-ice-servers"
-
-const BLOCK_REQUEST = "lm-block-req"
-const BLOCK_META = "lm-block-meta"
-const CHANNEL_LABEL = "web-syncplay-local-media"
 
 type SignalPayload = {
   type: "offer" | "answer" | "ice" | "hangup"
@@ -81,65 +86,34 @@ function wireChannel(peer: PeerSlot, channel: RTCDataChannel) {
   channel.onmessage = (event) => {
     void (async () => {
       if (typeof event.data === "string") {
-        let msg: {
-          t?: string
-          requestId?: string
-          start?: number
-          end?: number
-          ok?: boolean
-          error?: string
-        }
-        try {
-          msg = JSON.parse(event.data) as typeof msg
-        } catch {
-          return
-        }
-        if (msg.t === BLOCK_REQUEST && peer.role === "provider") {
+        const msg = parseLocalMediaBlockJson(event.data)
+        if (isLocalMediaBlockRequest(msg) && peer.role === "provider") {
           const file = getLocalMediaFile(peer.localMediaId)
-          const requestId = msg.requestId
-          const start = msg.start
-          const end = msg.end
-          if (
-            !file ||
-            !requestId ||
-            typeof start !== "number" ||
-            typeof end !== "number"
-          ) {
+          const { requestId, start, end } = msg
+          if (!file) {
             channel.send(
-              JSON.stringify({
-                t: BLOCK_META,
+              encodeLocalMediaBlockMetaError(
                 requestId,
-                ok: false,
-                error: "provider_unavailable",
-              }),
+                "provider_unavailable",
+              ),
             )
             return
           }
           try {
             const buffer = await file.slice(start, end + 1).arrayBuffer()
             channel.send(
-              JSON.stringify({
-                t: BLOCK_META,
-                requestId,
-                ok: true,
-                byteLength: buffer.byteLength,
-              }),
+              encodeLocalMediaBlockMetaOk(requestId, buffer.byteLength),
             )
             channel.send(buffer)
           } catch {
             channel.send(
-              JSON.stringify({
-                t: BLOCK_META,
-                requestId,
-                ok: false,
-                error: "read_failed",
-              }),
+              encodeLocalMediaBlockMetaError(requestId, "read_failed"),
             )
           }
           return
         }
 
-        if (msg.t === BLOCK_META && peer.role === "viewer") {
+        if (isLocalMediaBlockMeta(msg) && peer.role === "viewer") {
           const pending = msg.requestId
             ? peer.pending.get(msg.requestId)
             : undefined
@@ -210,7 +184,9 @@ async function ensurePeer(input: {
   }
 
   if (input.role === "provider") {
-    const channel = pc.createDataChannel(CHANNEL_LABEL, { ordered: true })
+    const channel = pc.createDataChannel(LOCAL_MEDIA_BLOCK_CHANNEL_LABEL, {
+      ordered: true,
+    })
     wireChannel(peer, channel)
     const offer = await pc.createOffer()
     await pc.setLocalDescription(offer)
@@ -220,7 +196,7 @@ async function ensurePeer(input: {
     })
   } else {
     pc.ondatachannel = (event) => {
-      if (event.channel.label === CHANNEL_LABEL) {
+      if (event.channel.label === LOCAL_MEDIA_BLOCK_CHANNEL_LABEL) {
         wireChannel(peer, event.channel)
       }
     }
@@ -338,12 +314,7 @@ export async function fetchLocalMediaRangeViaWebrtc(input: {
     }, timeoutMs)
     peer.pending.set(requestId, { resolve, timer })
     peer.channel!.send(
-      JSON.stringify({
-        t: BLOCK_REQUEST,
-        requestId,
-        start: input.start,
-        end: input.end,
-      }),
+      encodeLocalMediaBlockRequest(requestId, input.start, input.end),
     )
   })
   return bytes

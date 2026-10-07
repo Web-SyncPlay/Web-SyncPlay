@@ -15,6 +15,26 @@ export interface PendingSyncState {
   videoLoop: boolean
 }
 
+/** Build pending sync from room playback (string or boolean loop field). */
+export function pendingSyncFromPlayback(playback: {
+  paused: boolean
+  playbackRate: number
+  timelineAnchorMs: number
+  serverNowMs: number
+  videoLoop: string | boolean
+}): PendingSyncState {
+  return {
+    paused: playback.paused,
+    playbackRate: playback.playbackRate,
+    timelineAnchorMs: playback.timelineAnchorMs,
+    serverNowMs: playback.serverNowMs,
+    videoLoop:
+      typeof playback.videoLoop === "boolean"
+        ? playback.videoLoop
+        : playback.videoLoop !== "off",
+  }
+}
+
 export function useBufferingWatchdog(config: {
   currentItem: { id: string; name: string } | null
   activePlaybackSrc: string

@@ -17,6 +17,23 @@ export type LocalMediaSfuProducer = {
   ownerUserId: string
 }
 
+/** AppData stamped onto WebRtcTransports by signaling handlers. */
+export type MediasoupTransportAppData = {
+  roomKey: string
+  userId?: string
+  direction?: "send" | "recv"
+  localMediaId?: string
+}
+
+/** AppData stamped onto DataProducers (provider block / viewer request). */
+export type MediasoupDataProducerAppData = {
+  localMediaId?: string
+  roomId?: string
+  ownerUserId?: string
+  userId?: string
+  role?: "provider" | "requests"
+}
+
 type Runtime = {
   worker: Worker
   webRtcServer: WebRtcServer
@@ -130,17 +147,18 @@ export async function mediasoupCreateRouter(roomKey: string) {
 
 export async function mediasoupCreateTransport(
   roomKey: string,
-  appData: Record<string, unknown> = {},
+  appData: Omit<MediasoupTransportAppData, "roomKey"> = {},
 ) {
   const runtime = await requireRuntime()
   const router = await getOrCreateRouter(roomKey)
+  const transportAppData: MediasoupTransportAppData = { ...appData, roomKey }
   const transport = await router.createWebRtcTransport({
     webRtcServer: runtime.webRtcServer,
     enableUdp: true,
     enableTcp: false,
     preferUdp: true,
     enableSctp: true,
-    appData: { ...appData, roomKey },
+    appData: transportAppData,
   })
   runtime.transports.set(transport.id, transport)
   transport.observer.once("close", () => {
@@ -171,12 +189,12 @@ export async function mediasoupProduceData(input: {
   sctpStreamParameters: MsTypes.SctpStreamParameters
   label?: string
   protocol?: string
-  appData?: Record<string, unknown>
+  appData?: MediasoupDataProducerAppData
 }) {
   const runtime = await requireRuntime()
   const transport = runtime.transports.get(input.transportId)
   if (!transport) throw new Error("transport_not_found")
-  const appData = input.appData || {}
+  const appData: MediasoupDataProducerAppData = input.appData || {}
   const dataProducer = await transport.produceData({
     sctpStreamParameters: input.sctpStreamParameters,
     label: input.label || "web-syncplay-local-media",
@@ -185,11 +203,9 @@ export async function mediasoupProduceData(input: {
   })
   runtime.dataProducers.set(dataProducer.id, dataProducer)
 
-  const localMediaId =
-    typeof appData.localMediaId === "string" ? appData.localMediaId : null
-  const roomId = typeof appData.roomId === "string" ? appData.roomId : ""
-  const ownerUserId =
-    typeof appData.ownerUserId === "string" ? appData.ownerUserId : ""
+  const localMediaId = appData.localMediaId ?? null
+  const roomId = appData.roomId ?? ""
+  const ownerUserId = appData.ownerUserId ?? ""
   const isRequestChannel = appData.role === "requests"
 
   if (localMediaId) {
@@ -275,18 +291,20 @@ export function clearLocalMediaSfuProducer(localMediaId: string) {
 
 export function getMediasoupTransportAppData(
   transportId: string,
-): Record<string, unknown> | null {
-  return (
-    g.__webSyncPlayMediasoup?.transports.get(transportId)?.appData ?? null
-  )
+): MediasoupTransportAppData | null {
+  const appData =
+    g.__webSyncPlayMediasoup?.transports.get(transportId)?.appData
+  if (!appData || typeof appData.roomKey !== "string") return null
+  return appData as MediasoupTransportAppData
 }
 
 export function getMediasoupDataProducerAppData(
   dataProducerId: string,
-): Record<string, unknown> | null {
-  return (
-    g.__webSyncPlayMediasoup?.dataProducers.get(dataProducerId)?.appData ?? null
-  )
+): MediasoupDataProducerAppData | null {
+  const appData =
+    g.__webSyncPlayMediasoup?.dataProducers.get(dataProducerId)?.appData
+  if (!appData) return null
+  return appData as MediasoupDataProducerAppData
 }
 
 export function mediasoupCloseTransport(transportId: string) {
