@@ -1,15 +1,58 @@
+import {
+  sanitizeErrorMessage,
+  sanitizeMediaTitle,
+  sanitizeUsername,
+} from "@/lib/sanitize-display"
 import { z } from "zod"
 
 const roomRoleSchema = z.enum(["owner", "moderator", "guest"])
 
 export const sessionKindSchema = z.enum(["room", "player", "control"])
 
+/** Reject XSS-packaged / control-laden usernames; NFC + strip markup delimiters. */
+const usernameSchema = z
+  .string()
+  .max(64)
+  .refine((value) => sanitizeUsername(value) !== null, {
+    message: "invalid_username",
+  })
+  .transform((value) => sanitizeUsername(value)!)
+
+/** Media / playlist display names (strip markup; allow unicode). */
+const mediaTitleSchema = z
+  .string()
+  .max(256)
+  .refine((value) => sanitizeMediaTitle(value) !== null, {
+    message: "invalid_media_title",
+  })
+  .transform((value) => sanitizeMediaTitle(value)!)
+
+/** Short UI labels (quality rungs, etc.). */
+const shortLabelSchema = z
+  .string()
+  .max(64)
+  .refine((value) => {
+    const next = sanitizeMediaTitle(value)
+    return next !== null && next.length <= 64
+  }, { message: "invalid_label" })
+  .transform((value) => sanitizeMediaTitle(value)!.slice(0, 64))
+
+/** Client-reported errors shown in UI / action log. */
+const errorMessageSchema = z
+  .string()
+  .max(300)
+  .refine((value) => sanitizeErrorMessage(value) !== null, {
+    message: "invalid_error_message",
+  })
+  .transform((value) => sanitizeErrorMessage(value)!)
+
 export const roomJoinSchema = z.object({
-  roomId: z.string().min(1),
-  userId: z.string().min(1).optional(),
+  roomId: z.string().min(1).max(128),
+  userId: z.string().min(1).max(128).optional(),
   userSecret: z.string().min(1),
   joinPassword: z.string().min(1).max(256).optional(),
-  username: z.string().min(1).max(64).optional(),
+  username: usernameSchema.optional(),
+  /** Resolved server-side via `resolveStyle` (unknown → default). */
   avatarStyle: z.string().min(1).max(64).optional(),
   sessionKind: sessionKindSchema.default("room"),
   controlToken: z.string().min(1).max(512).optional(),
@@ -58,8 +101,8 @@ export const playlistReorderSchema = z.object({
 })
 
 export const playlistRenameSchema = z.object({
-  itemId: z.string().min(1),
-  name: z.string().min(1).max(256),
+  itemId: z.string().min(1).max(128),
+  name: mediaTitleSchema,
 })
 
 export const playlistRemoveSchema = z.object({
@@ -72,7 +115,7 @@ export const playlistAddUrlSchema = z.object({
 
 export const playlistAddLocalSchema = z.object({
   localMediaId: z.string().uuid(),
-  name: z.string().min(1).max(256),
+  name: mediaTitleSchema,
   mimeType: z.string().min(1).max(128),
   sizeBytes: z
     .number()
@@ -82,10 +125,10 @@ export const playlistAddLocalSchema = z.object({
 })
 
 export const localMediaChunkSchema = z.object({
-  requestId: z.string().min(1),
+  requestId: z.string().min(1).max(128),
   ok: z.boolean(),
   dataBase64: z.string().min(1).optional(),
-  error: z.string().max(300).optional(),
+  error: errorMessageSchema.optional(),
 })
 
 export const localMediaReadySchema = z.object({
@@ -102,14 +145,14 @@ export const localMediaAbrPublishSchema = z.object({
         localMediaId: z.string().uuid(),
         height: z.number().int().min(1).max(16_384),
         bandwidth: z.number().int().min(1).max(500_000_000),
-        label: z.string().min(1).max(64),
+        label: shortLabelSchema,
         mimeType: z.string().min(1).max(128),
         sizeBytes: z
           .number()
           .int()
           .min(1)
           .max(1024 * 1024 * 1024 * 1024),
-        name: z.string().min(1).max(256),
+        name: mediaTitleSchema,
       }),
     )
     .min(1)
@@ -183,30 +226,34 @@ export const playlistRetrySchema = z.object({
 })
 
 export const playlistItemErrorSchema = z.object({
-  itemId: z.string().min(1),
+  itemId: z.string().min(1).max(128),
   /** `null` clears a previously reported ingest error after recovery. */
-  error: z.string().min(1).max(300).nullable(),
+  error: errorMessageSchema.nullable(),
 })
 
 export const viewerMediaPreferencesSchema = z.object({
-  itemId: z.string().min(1),
-  streamId: z.string().min(1).nullable().optional(),
-  textTrackId: z.string().min(1).nullable().optional(),
+  itemId: z.string().min(1).max(128),
+  streamId: z.string().min(1).max(128).nullable().optional(),
+  textTrackId: z.string().min(1).max(128).nullable().optional(),
   audioLanguage: z.string().min(1).max(32).optional(),
 })
 
 export const participantUpdateSchema = z.object({
-  username: z.string().min(1).max(64).optional(),
+  username: usernameSchema.optional(),
+  /** Resolved server-side via `resolveStyle` (unknown → default). */
   avatarStyle: z.string().min(1).max(64).optional(),
   paused: z.boolean().optional(),
   currentTimeMs: z.number().min(0).optional(),
   loading: z.boolean().optional(),
-  /** `null` clears a previously reported local playback error. */
-  error: z.string().max(300).nullable().optional(),
+  /** `null` or `""` clears a previously reported local playback error. */
+  error: z.preprocess(
+    (value) => (value === "" ? null : value),
+    errorMessageSchema.nullable().optional(),
+  ),
 })
 
 export const participantRoleUpdateSchema = z.object({
-  targetUserId: z.string().min(1),
+  targetUserId: z.string().min(1).max(128),
   role: roomRoleSchema,
 })
 

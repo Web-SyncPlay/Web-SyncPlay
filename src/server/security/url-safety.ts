@@ -11,22 +11,39 @@ function allowPrivateUrls(): boolean {
   return env.PROXY_ALLOW_PRIVATE_URLS
 }
 
-function isPrivateOrLocalIp(ip: string): boolean {
+/** Strip brackets and trailing FQDN dots (`localhost.` → `localhost`). */
+function normalizeHostname(hostname: string): string {
+  let host = hostname.replace(/^\[|\]$/g, "").toLowerCase()
+  while (host.endsWith(".")) {
+    host = host.slice(0, -1)
+  }
+  return host
+}
+
+/**
+ * Map IPv4-mapped IPv6 (`::ffff:127.0.0.1` / `::ffff:7f00:1`) back to dotted IPv4.
+ */
+function ipv4MappedToDotted(ip: string): string | null {
   const normalized = ip.toLowerCase()
-  if (normalized === "::1" || normalized === "0.0.0.0") {
-    return true
+  const dotted = normalized.match(
+    /(?:^|:)ffff:(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/,
+  )
+  if (dotted) {
+    return `${dotted[1]}.${dotted[2]}.${dotted[3]}.${dotted[4]}`
   }
 
-  if (normalized.includes(":")) {
-    // IPv6 unique-local / link-local
-    return (
-      normalized.startsWith("fc") ||
-      normalized.startsWith("fd") ||
-      normalized.startsWith("fe80:")
-    )
+  const hex = normalized.match(/(?:^|:)ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/)
+  if (!hex || hex[1] === undefined || hex[2] === undefined) {
+    return null
   }
+  const hi = Number.parseInt(hex[1], 16)
+  const lo = Number.parseInt(hex[2], 16)
+  if (!Number.isFinite(hi) || !Number.isFinite(lo)) return null
+  return `${(hi >> 8) & 255}.${hi & 255}.${(lo >> 8) & 255}.${lo & 255}`
+}
 
-  const parts = normalized.split(".").map((part) => Number(part))
+function isPrivateOrLocalIpv4(ip: string): boolean {
+  const parts = ip.split(".").map((part) => Number(part))
   if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part))) {
     return true
   }
@@ -37,6 +54,33 @@ function isPrivateOrLocalIp(ip: string): boolean {
   if (a === 192 && b === 168) return true
   if (a === 100 && b >= 64 && b <= 127) return true
   return false
+}
+
+function isPrivateOrLocalIp(ip: string): boolean {
+  const normalized = ip.toLowerCase()
+  if (
+    normalized === "::1" ||
+    normalized === "::" ||
+    normalized === "0.0.0.0"
+  ) {
+    return true
+  }
+
+  const mapped = ipv4MappedToDotted(normalized)
+  if (mapped !== null) {
+    return isPrivateOrLocalIpv4(mapped)
+  }
+
+  if (normalized.includes(":")) {
+    // IPv6 unique-local / link-local (fc00::/7, fe80::/10)
+    return (
+      normalized.startsWith("fc") ||
+      normalized.startsWith("fd") ||
+      normalized.startsWith("fe80:")
+    )
+  }
+
+  return isPrivateOrLocalIpv4(normalized)
 }
 
 export type UrlSafetyResult =
@@ -63,7 +107,7 @@ export function assertPublicHttpUrl(raw: string): UrlSafetyResult {
     return { ok: true, url }
   }
 
-  const hostname = url.hostname.replace(/^\[|\]$/g, "").toLowerCase()
+  const hostname = normalizeHostname(url.hostname)
   if (BLOCKED_HOSTNAMES.has(hostname)) {
     return { ok: false, reason: "blocked_hostname" }
   }

@@ -6,6 +6,7 @@ import {
 } from "@/server/media/resolve"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
+import { sanitizeMediaTitle } from "@/lib/sanitize-display"
 import type { PlaylistItem } from "@/zod/types"
 
 /** Process-local dedupe so multi-kick of the same item does not pile up yt-dlp work. */
@@ -35,10 +36,13 @@ export function applyResolvedMediaToItem(
   item.ingestError = undefined
 
   const preferred = options?.preferredTitle?.trim()
+  const safeTitle =
+    (resolved.title ? sanitizeMediaTitle(resolved.title) : null) ?? null
   if (preferred && item.name.trim() === preferred) {
-    item.name = resolved.title || preferred
+    item.name = safeTitle || sanitizeMediaTitle(preferred) || preferred
   } else if (item.name.trim() === item.sourceUrl.trim()) {
-    item.name = resolved.title || item.sourceUrl
+    item.name =
+      safeTitle || sanitizeMediaTitle(item.sourceUrl) || item.sourceUrl
   }
 }
 

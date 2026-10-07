@@ -7,8 +7,12 @@ export type HlsRewriteProxyMeta = Omit<ProxyTokenPayload, "url" | "createdAt">
 
 /**
  * Collect every absolute http(s) URL referenced by an HLS playlist (master or media).
+ * Exported for property tests; production callers use {@link rewriteM3u8ForProxy}.
  */
-function collectM3u8ReferencedUrls(body: string, baseUrl: string): Set<string> {
+export function collectM3u8ReferencedUrls(
+  body: string,
+  baseUrl: string,
+): Set<string> {
   const set = new Set<string>()
 
   const addResolved = (raw: string) => {
@@ -100,6 +104,21 @@ function looksLikeHlsPlaylist(body: string, contentType: string): boolean {
 }
 
 /**
+ * Pure rewrite using a precomputed absolute-URL → proxy-path map (no Redis).
+ * Used by {@link rewriteM3u8ForProxy} and property tests.
+ */
+export function rewriteM3u8BodyWithProxyMap(
+  body: string,
+  baseUrl: string,
+  proxyMap: Map<string, string>,
+): string {
+  return body
+    .split(/\r?\n/)
+    .map((line) => rewriteLineWithMap(line, baseUrl, proxyMap))
+    .join("\n")
+}
+
+/**
  * Rewrites all referenced http(s) URLs in an HLS playlist to same-origin proxy paths
  * so the browser never loads Twitch/CDN URLs directly (avoids CORS / status 0).
  * Child tokens inherit parent referer / room meta so hotlink-protected CDNs keep working.
@@ -117,10 +136,7 @@ export async function rewriteM3u8ForProxy(
     }),
   )
 
-  const lines = body.split(/\r?\n/)
-  return lines
-    .map((line) => rewriteLineWithMap(line, baseUrl, proxyMap))
-    .join("\n")
+  return rewriteM3u8BodyWithProxyMap(body, baseUrl, proxyMap)
 }
 
 export function shouldAttemptPlaylistRewrite(
