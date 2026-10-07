@@ -76,6 +76,7 @@ export function ControlPanel(props: {
           variant="outline"
           className={touchButtonClass}
           disabled={controlsDisabled}
+          aria-label="Previous item"
           onClick={() => onSelectAdjacent("previous")}
         >
           <SkipBack className="size-4" />
@@ -97,6 +98,7 @@ export function ControlPanel(props: {
           variant="outline"
           className={touchButtonClass}
           disabled={controlsDisabled}
+          aria-label="Next item"
           onClick={() => onSelectAdjacent("next")}
         >
           <SkipForward className="size-4" />
@@ -125,6 +127,7 @@ export function ControlPanel(props: {
         max={Math.max(totalDurationMs, 1)}
         value={currentSeek}
         className="touch-manipulation py-2"
+        aria-label="Seek playback position"
         onValueChange={(values) => {
           if (controlsDisabled) {
             return

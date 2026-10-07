@@ -18,6 +18,7 @@
     "test:unit": "bun test src/server src/zod src/lib",
     "test:e2e": "node scripts/e2e-concurrent.mjs",
     "test:e2e:ws": "node scripts/e2e-ws-concurrent.mjs",
+    "test:a11y": "node scripts/a11y-wcag.mjs",
     "format": "prettier --write ."
   },
   "allowScripts": {
@@ -50,6 +51,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@ffmpeg/core": "^0.12.10",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/bun": "^1.4.2",

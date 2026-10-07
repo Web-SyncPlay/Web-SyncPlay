@@ -126,6 +126,7 @@ export function PlaylistAddMediaControls(props: {
         value={url}
         onChange={(event) => setUrl(event.target.value)}
         placeholder="Media URL"
+        aria-label="Media URL"
         disabled={!canManagePlaylist}
         className="min-h-11 touch-manipulation sm:min-h-8 sm:min-w-48 sm:flex-1"
         onKeyDown={(event) => {

@@ -16,7 +16,47 @@ import { cn } from "@/lib/utils"
 import type { PlaylistItem } from "@/zod/types"
 import { useSortable } from "@dnd-kit/react/sortable"
 import { Copy, GripVertical, Loader2, Play, Trash2 } from "lucide-react"
+import { useLayoutEffect, useState } from "react"
 import { toast } from "sonner"
+
+const SORTABLE_ROW_A11Y_ATTRS = [
+  "role",
+  "aria-roledescription",
+  "aria-describedby",
+  "aria-disabled",
+  "aria-pressed",
+  "aria-grabbed",
+  "tabindex",
+] as const
+
+/**
+ * dnd-kit may briefly (or when the handle is absent) apply keyboard-drag ARIA to
+ * the sortable row. That creates nested interactive controls / invalid attrs
+ * because the row contains buttons. Keep those attributes on the handle only.
+ */
+function useStripSortableRowA11y(row: HTMLElement | null) {
+  useLayoutEffect(() => {
+    if (!row) return
+
+    const strip = () => {
+      if (row.getAttribute("role") === "button") {
+        row.removeAttribute("role")
+      }
+      for (const attr of SORTABLE_ROW_A11Y_ATTRS) {
+        if (attr === "role") continue
+        if (row.hasAttribute(attr)) row.removeAttribute(attr)
+      }
+    }
+
+    strip()
+    const observer = new MutationObserver(strip)
+    observer.observe(row, {
+      attributes: true,
+      attributeFilter: [...SORTABLE_ROW_A11Y_ATTRS],
+    })
+    return () => observer.disconnect()
+  }, [row])
+}
 
 export function PlaylistItemRow(props: {
   item: PlaylistItem
@@ -54,10 +94,15 @@ export function PlaylistItemRow(props: {
     index,
     disabled: !canControlPlaylist,
   })
+  const [rowEl, setRowEl] = useState<HTMLDivElement | null>(null)
+  useStripSortableRowA11y(rowEl)
 
   return (
     <div
-      ref={ref}
+      ref={(node) => {
+        if (rowEl !== node) setRowEl(node)
+        ref(node)
+      }}
       className={cn(
         "w-full min-w-0",
         isDragging && "relative z-10 opacity-90",
@@ -85,15 +130,17 @@ export function PlaylistItemRow(props: {
         </span>
         {canControlPlaylist && (
           <ItemMedia>
-            <Button
+            <button
               ref={handleRef}
-              variant="ghost"
+              type="button"
               aria-label="Drag to reorder"
-              className="touch-none cursor-grab active:cursor-grabbing size-8"
-              size="icon-sm"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "icon-sm" }),
+                "size-8 touch-none cursor-grab active:cursor-grabbing",
+              )}
             >
               <GripVertical />
-            </Button>
+            </button>
           </ItemMedia>
         )}
         <ItemContent className="min-w-0 justify-center gap-0.5">

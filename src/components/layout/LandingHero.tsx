@@ -85,10 +85,11 @@ function RoomEntry(props: {
           size="lg"
           className="shrink-0 gap-1.5"
           disabled={!ready}
+          aria-label="Enter room"
         >
           <Play />
           <span className="hidden sm:inline">Go</span>
-          <ArrowRight className="sm:hidden" />
+          <ArrowRight className="sm:hidden" aria-hidden />
         </Button>
       </div>
       <p className="text-center text-sm text-muted-foreground">
