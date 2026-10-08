@@ -4,6 +4,7 @@ import { resolveWithYtDlp } from "@/server/media/providers/yt-dlp-provider"
 import { buildSelectableStreams } from "@/server/media/resolve/build-selectable-streams"
 import { applyRelayToResolvedUrls } from "@/server/media/resolve/relay-urls"
 import { buildStreamPlan } from "@/server/media/stream/stream-plan"
+import { extractMetadata } from "@/server/media/yt-dlp"
 import { emptyYtDlpCatalog } from "@/server/media/yt-dlp/types"
 import { assertPublicHttpUrl } from "@/server/security/url-safety"
 import type { PlaylistMediaStream, PlaylistTextTrack } from "@/zod/types"
@@ -72,15 +73,23 @@ export async function resolveMediaSource(input: {
 
   const native = detectNativeSupport(input.url)
 
+  // Native providers (YouTube/Vimeo) play without a full yt-dlp extract, but
+  // control pages still need catalog title/duration — light metadata only.
+  // Direct file URLs skip the spawn and rely on player write-back.
   const ytResolved = native.canPlayNatively
-    ? {
-        extractOk: true as const,
-        title: null as string | null,
-        durationSeconds: null as number | null,
-        playableUrl: input.url as string | null,
-        ...emptyYtDlpCatalog(),
-        isLive: null as boolean | null,
-      }
+    ? await (async () => {
+        const meta = native.isNativeProvider
+          ? await extractMetadata(input.url)
+          : { title: null as string | null, durationSeconds: null as number | null }
+        return {
+          extractOk: true as const,
+          title: meta.title,
+          durationSeconds: meta.durationSeconds,
+          playableUrl: input.url as string | null,
+          ...emptyYtDlpCatalog(),
+          isLive: null as boolean | null,
+        }
+      })()
     : await resolveWithYtDlp(input.url)
 
   if (!native.canPlayNatively && !ytResolved.extractOk) {

@@ -32,9 +32,11 @@ export interface ClientEventPayloadMap {
     name: string
     mimeType: string
     sizeBytes: number
+    durationSeconds?: number
   }
   "playlist:retry": { itemId: string }
   "playlist:item:error": { itemId: string; error: string | null }
+  "playlist:item:duration": { itemId: string; durationSeconds: number }
   "playlist:rename": { itemId: string; name: string }
   "playlist:remove": { itemId: string }
   "playlist:reorder": { from: number; to: number }

@@ -146,6 +146,29 @@ export function applyPlaylistItemError(
   return { item, cleared: false }
 }
 
+/**
+ * Fill catalog duration from a player observation when missing.
+ * First finite positive value wins — avoids thrash between peers.
+ */
+export function applyPlaylistItemDuration(
+  state: RoomState,
+  itemId: string,
+  durationSeconds: number,
+): PlaylistItem | null {
+  const item = state.playlist.find((entry) => entry.id === itemId)
+  if (!item || item.isLive === true) return null
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) return null
+
+  const next = Math.round(durationSeconds)
+  const existing = Number(item.durationSeconds)
+  if (Number.isFinite(existing) && existing > 0) {
+    return null
+  }
+
+  item.durationSeconds = next
+  return item
+}
+
 export function isPlaylistAtLimit(state: RoomState, limit: number): boolean {
   return state.playlist.length >= limit
 }
@@ -178,6 +201,7 @@ export function buildLocalFilePlaylistItem(params: {
   sizeBytes: number
   createdBy: string
   createdAt?: number
+  durationSeconds?: number
 }): PlaylistItem {
   const {
     id,
@@ -187,8 +211,13 @@ export function buildLocalFilePlaylistItem(params: {
     sizeBytes,
     createdBy,
     createdAt = Date.now(),
+    durationSeconds,
   } = params
   const playableUrl = `/api/media/local/${encodeURIComponent(localMediaId)}`
+  const durationOk =
+    typeof durationSeconds === "number" &&
+    Number.isFinite(durationSeconds) &&
+    durationSeconds > 0
   return {
     id,
     name,
@@ -197,6 +226,9 @@ export function buildLocalFilePlaylistItem(params: {
     sourceUrl: playableUrl,
     playableUrl,
     ingestStatus: "ready",
+    ...(durationOk
+      ? { durationSeconds: Math.round(durationSeconds) }
+      : {}),
     mediaStreams: [
       {
         id: "local-default",

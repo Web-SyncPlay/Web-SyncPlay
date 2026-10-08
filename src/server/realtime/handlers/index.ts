@@ -28,6 +28,7 @@ export const roomMessageHandlers = {
   "playlist:remove": playlist.handlePlaylistRemove,
   "playlist:retry": playlist.handlePlaylistRetry,
   "playlist:item:error": playlist.handlePlaylistItemError,
+  "playlist:item:duration": playlist.handlePlaylistItemDuration,
   "local-media:chunk": localMedia.handleLocalMediaChunk,
   "local-media:ready": localMedia.handleLocalMediaReady,
   "local-media:abr:publish": localMedia.handleLocalMediaAbrPublish,

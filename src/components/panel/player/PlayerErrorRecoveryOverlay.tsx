@@ -6,7 +6,7 @@ export function PlayerErrorRecoveryOverlay(props: {
   currentName: string | undefined
   paused: boolean
   elapsedMs: number
-  totalDurationMs: number
+  totalDurationMs: number | null
   controlsDisabled: boolean
   canControl: boolean
   authorizationHint: string

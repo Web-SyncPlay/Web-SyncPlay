@@ -36,7 +36,8 @@ export function ControlPanel(props: {
   currentName?: string
   paused: boolean
   elapsedMs: number
-  totalDurationMs: number
+  /** `null` when catalog/player duration is unknown — never treat as 0. */
+  totalDurationMs: number | null
   controlsDisabled: boolean
   canControl: boolean
   authorizationHint?: string
@@ -70,7 +71,17 @@ export function ControlPanel(props: {
     onSeekCommit,
   } = props
 
-  const currentSeek = [Math.min(elapsedMs, Math.max(totalDurationMs, 1))]
+  const durationKnown =
+    typeof totalDurationMs === "number" &&
+    Number.isFinite(totalDurationMs) &&
+    totalDurationMs > 0
+  const scrubDisabled = controlsDisabled || !durationKnown
+  const currentSeek = durationKnown
+    ? [Math.min(elapsedMs, totalDurationMs)]
+    : [0]
+  const durationLabel = durationKnown
+    ? formatClockMs(totalDurationMs)
+    : "--:--"
   const viewOnlyBadge = !canControl ? (
     <Badge variant={controlsDisabled ? "outline" : "secondary"}>
       View-only
@@ -140,26 +151,31 @@ export function ControlPanel(props: {
       </div>
       <Slider
         min={0}
-        max={Math.max(totalDurationMs, 1)}
+        max={durationKnown ? totalDurationMs : 1}
         value={currentSeek}
         className="touch-manipulation py-2"
         aria-label="Seek playback position"
+        aria-valuetext={
+          durationKnown
+            ? undefined
+            : "Duration unknown; scrubbing unavailable"
+        }
         onValueChange={(values) => {
-          if (controlsDisabled) {
+          if (scrubDisabled) {
             return
           }
           const targetMs = getSliderTargetMs(values)
           onSeekPreview(targetMs, true)
         }}
         onValueCommitted={(values) => {
-          if (controlsDisabled) {
+          if (scrubDisabled) {
             return
           }
           const targetMs = getSliderTargetMs(values)
           onSeekPreview(targetMs, false)
           onSeekCommit(targetMs)
         }}
-        disabled={controlsDisabled}
+        disabled={scrubDisabled}
       />
       <div className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-sm font-medium">
@@ -167,7 +183,7 @@ export function ControlPanel(props: {
         </span>
         {!title ? viewOnlyBadge : null}
         <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-          {formatClockMs(elapsedMs)} / {formatClockMs(totalDurationMs)}
+          {formatClockMs(elapsedMs)} / {durationLabel}
         </span>
       </div>
     </>

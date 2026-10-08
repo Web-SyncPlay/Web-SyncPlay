@@ -5,6 +5,7 @@ import {
 } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
   handlePlaylistAddLocal,
+  handlePlaylistItemDuration,
   handlePlaylistItemError,
   handlePlaylistRemove,
   handlePlaylistRename,
@@ -151,6 +152,7 @@ describe("playlist handler interfaces", () => {
         name: "My clip",
         mimeType: "video/mp4",
         sizeBytes: 2048,
+        durationSeconds: 88,
       }),
     )
     const item = store.peek("room-1")?.playlist.at(-1)
@@ -160,6 +162,7 @@ describe("playlist handler interfaces", () => {
     expect(item?.defaultStreamId).toBe("local-default")
     expect(item?.localMimeType).toBe("video/mp4")
     expect(item?.localSizeBytes).toBe(2048)
+    expect(item?.durationSeconds).toBe(88)
 
     const { getLocalMediaEntry, deleteLocalMediaEntry } = await import(
       "@/server/media/local-media-store"
@@ -167,6 +170,30 @@ describe("playlist handler interfaces", () => {
     const meta = await getLocalMediaEntry(localMediaId)
     expect(meta?.providerReady).toBe(true)
     await deleteLocalMediaEntry(localMediaId)
+  })
+
+  test("item duration write-back fills missing catalog from any participant", async () => {
+    const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
+    const guestCtx = createHandlerContext({ store, userId: "guest" })
+
+    await handlePlaylistItemDuration(
+      guestCtx,
+      envelope("playlist:item:duration", {
+        itemId: "item-a",
+        durationSeconds: 301,
+      }),
+    )
+    expect(store.peek("room-1")?.playlist[0]?.durationSeconds).toBe(301)
+
+    await handlePlaylistItemDuration(
+      guestCtx,
+      envelope("playlist:item:duration", {
+        itemId: "item-a",
+        durationSeconds: 999,
+      }),
+    )
+    expect(store.peek("room-1")?.playlist[0]?.durationSeconds).toBe(301)
   })
 
   test("item error marks ingest error and may advance current index", async () => {

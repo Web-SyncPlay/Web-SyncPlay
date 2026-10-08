@@ -42,6 +42,7 @@ export type SyncedMediaPlayerHandlerDeps = {
   participantStatusErrorRef: RefObject<string | null>
   pendingSyncRef: RefObject<PendingSyncState | null>
   reportedItemErrorRef: RefObject<string | null>
+  reportedDurationItemIdRef: RefObject<string | null>
   proxyRenewAttemptedRef: RefObject<string | null>
   localBlobFallbackAttemptedRef: RefObject<string | null>
   seekPhase: LocalSeekPhase
@@ -87,6 +88,7 @@ export function useSyncedMediaPlayerHandlers(deps: SyncedMediaPlayerHandlerDeps)
     participantStatusErrorRef,
     pendingSyncRef,
     reportedItemErrorRef,
+    reportedDurationItemIdRef,
     proxyRenewAttemptedRef,
     localBlobFallbackAttemptedRef,
     seekPhase,
@@ -440,6 +442,24 @@ export function useSyncedMediaPlayerHandlers(deps: SyncedMediaPlayerHandlerDeps)
       }
 
       setMediaDurationMs(Math.floor(durationSec * 1000))
+
+      // Fill room catalog so headless control pages get a finite duration.
+      const item = current
+      if (!item || item.isLive === true) {
+        return
+      }
+      const catalogSec = Number(item.durationSeconds)
+      if (Number.isFinite(catalogSec) && catalogSec > 0) {
+        return
+      }
+      if (reportedDurationItemIdRef.current === item.id) {
+        return
+      }
+      reportedDurationItemIdRef.current = item.id
+      send("playlist:item:duration", {
+        itemId: item.id,
+        durationSeconds: Math.round(durationSec),
+      })
     },
   }
 }

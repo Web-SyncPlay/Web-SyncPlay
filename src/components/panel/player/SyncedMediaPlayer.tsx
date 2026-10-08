@@ -59,6 +59,7 @@ export function SyncedMediaPlayer(props: {
   participantStatusErrorRef: RefObject<string | null>
   pendingSyncRef: RefObject<PendingSyncState | null>
   reportedItemErrorRef: RefObject<string | null>
+  reportedDurationItemIdRef: RefObject<string | null>
   proxyRenewAttemptedRef: RefObject<string | null>
   localBlobFallbackAttemptedRef: RefObject<string | null>
   seekPhase: LocalSeekPhase
@@ -111,6 +112,7 @@ export function SyncedMediaPlayer(props: {
     participantStatusErrorRef,
     pendingSyncRef,
     reportedItemErrorRef,
+    reportedDurationItemIdRef,
     proxyRenewAttemptedRef,
     localBlobFallbackAttemptedRef,
     seekPhase,
@@ -151,6 +153,7 @@ export function SyncedMediaPlayer(props: {
     participantStatusErrorRef,
     pendingSyncRef,
     reportedItemErrorRef,
+    reportedDurationItemIdRef,
     proxyRenewAttemptedRef,
     localBlobFallbackAttemptedRef,
     seekPhase,

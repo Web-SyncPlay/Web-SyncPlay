@@ -76,11 +76,17 @@ export function PlaylistAddMediaControls(props: {
           handle,
         })
       }
+      const { probeLocalMediaDurationSec, runLocalMediaAbrPublish } =
+        await import("@/lib/local-media-abr")
+      const durationSeconds = await probeLocalMediaDurationSec(file)
       send("playlist:add:local", {
         localMediaId,
         name: file.name || "Local media",
         mimeType,
         sizeBytes: file.size,
+        ...(durationSeconds !== null
+          ? { durationSeconds: Math.round(durationSeconds) }
+          : {}),
       })
       send("local-media:ready", { localMediaId, ready: true })
       toast.success(
@@ -88,15 +94,13 @@ export function PlaylistAddMediaControls(props: {
           ? "Sharing local media (survives refresh in this browser)"
           : "Sharing local media (streamed from this browser)",
       )
-      void import("@/lib/local-media-abr").then(({ runLocalMediaAbrPublish }) =>
-        runLocalMediaAbrPublish({
-          parentLocalMediaId: localMediaId,
-          file,
-          mimeType,
-          name: file.name || "Local media",
-          send,
-        }),
-      )
+      void runLocalMediaAbrPublish({
+        parentLocalMediaId: localMediaId,
+        file,
+        mimeType,
+        name: file.name || "Local media",
+        send,
+      })
     } catch (error) {
       console.error("[playlist] failed local media share", error)
       toast.error("Could not share local media")

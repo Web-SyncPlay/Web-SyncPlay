@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import {
+  applyPlaylistItemDuration,
   applyPlaylistItemError,
   applyPlaylistRemove,
   applyPlaylistRename,
@@ -174,12 +175,35 @@ describe("playlist-ops", () => {
       mimeType: "video/mp4",
       sizeBytes: 10,
       createdBy: "u1",
+      durationSeconds: 42.6,
     })
     expect(local.playableUrl).toBe("/api/media/local/m1")
     expect(local.defaultStreamId).toBe("local-default")
+    expect(local.durationSeconds).toBe(43)
 
     const state = createRoomState()
     expect(isPlaylistAtLimit(state, 3)).toBe(true)
     expect(isPlaylistAtLimit(state, 10)).toBe(false)
+  })
+
+  test("applyPlaylistItemDuration fills once and ignores live/invalid", () => {
+    const state = createRoomState()
+    const item = state.playlist[0]
+    expect(item?.durationSeconds).toBeUndefined()
+
+    expect(applyPlaylistItemDuration(state, "item-a", 125.4)?.durationSeconds).toBe(
+      125,
+    )
+    expect(state.playlist[0]?.durationSeconds).toBe(125)
+
+    // First finite value wins.
+    expect(applyPlaylistItemDuration(state, "item-a", 200)).toBeNull()
+    expect(state.playlist[0]?.durationSeconds).toBe(125)
+
+    expect(applyPlaylistItemDuration(state, "missing", 10)).toBeNull()
+    expect(applyPlaylistItemDuration(state, "item-a", 0)).toBeNull()
+
+    state.playlist[1]!.isLive = true
+    expect(applyPlaylistItemDuration(state, "item-b", 90)).toBeNull()
   })
 })

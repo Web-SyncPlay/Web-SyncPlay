@@ -18,6 +18,7 @@ import {
   localMediaAbrPublishSchema,
   playlistAddLocalSchema,
   playlistAddUrlSchema,
+  playlistItemDurationSchema,
   playlistItemErrorSchema,
   playlistRemoveSchema,
   playlistRenameSchema,
@@ -245,6 +246,27 @@ describe("playlist payload interfaces", () => {
       playlistItemErrorSchema.safeParse({
         itemId: "i1",
         error: null,
+      }).success,
+    ).toBe(true)
+    expect(
+      playlistItemDurationSchema.safeParse({
+        itemId: "i1",
+        durationSeconds: 125.5,
+      }).success,
+    ).toBe(true)
+    expect(
+      playlistItemDurationSchema.safeParse({
+        itemId: "i1",
+        durationSeconds: 0,
+      }).success,
+    ).toBe(false)
+    expect(
+      playlistAddLocalSchema.safeParse({
+        localMediaId: "00000000-0000-4000-8000-000000000001",
+        name: "clip",
+        mimeType: "video/mp4",
+        sizeBytes: 1024,
+        durationSeconds: 40,
       }).success,
     ).toBe(true)
   })

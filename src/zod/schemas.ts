@@ -127,6 +127,8 @@ export const playlistAddLocalSchema = z.object({
   name: mediaTitleSchema,
   mimeType: z.string().min(1).max(128),
   sizeBytes: sizeBytesSchema,
+  /** Optional early probe from the provider browser (before ABR publish). */
+  durationSeconds: z.number().positive().max(60 * 60 * 24).optional(),
 })
 
 export const localMediaChunkSchema = z.object({
@@ -230,6 +232,12 @@ export const playlistItemErrorSchema = z.object({
   itemId: itemIdSchema,
   /** `null` clears a previously reported ingest error after recovery. */
   error: errorMessageSchema.nullable(),
+})
+
+/** Player-observed VOD duration write-back into the playlist catalog. */
+export const playlistItemDurationSchema = z.object({
+  itemId: itemIdSchema,
+  durationSeconds: z.number().positive().max(60 * 60 * 24),
 })
 
 export const viewerMediaPreferencesSchema = z.object({

@@ -5,6 +5,7 @@ import { useRoomRail } from "@/hooks/use-room-rail"
 import { useRoomSession } from "@/hooks/use-room-session"
 import { getRoomUrl } from "@/lib/control-url"
 import { isClientControlAuthorized } from "@/lib/permissions-utils"
+import { resolveCatalogDurationMs } from "@/lib/playlist-duration"
 import { ControlPanel } from "../../panel/control/ControlPanel"
 import { getPlaybackPermissionsState } from "../../panel/player/playback-control/use-playback-permissions-state"
 import { usePlaybackTimelineController } from "../../panel/player/playback-control/use-playback-timeline-controller"
@@ -59,7 +60,7 @@ function ControlClientReady(props: {
     send,
     controlsDisabled,
   })
-  const totalDurationMs = Math.floor((current?.durationSeconds ?? 0) * 1000)
+  const totalDurationMs = resolveCatalogDurationMs(current)
   const panelProps = {
     roomId,
     roomState,

@@ -7,6 +7,7 @@ import {
   reresolveRemotePlaylistItem,
 } from "@/server/realtime/services/playlist-resolve"
 import {
+  applyPlaylistItemDuration,
   applyPlaylistItemError,
   applyPlaylistRemove,
   applyPlaylistRename,
@@ -22,6 +23,7 @@ import { consumeRateLimit } from "@/server/security/rate-limit"
 import {
   playlistAddLocalSchema,
   playlistAddUrlSchema,
+  playlistItemDurationSchema,
   playlistItemErrorSchema,
   playlistRemoveSchema,
   playlistRenameSchema,
@@ -34,6 +36,7 @@ import {
   connectionAuthFromContext,
   mutateControlledRoomMessage,
 } from "./mutate-controlled"
+import { mutateRoomMessage } from "./mutate-room"
 import type { RoomMessageContext, RoomMessageHandler } from "./types"
 
 const RESOLVE_RATE_LIMIT = { limit: 10, windowMs: 60_000 } as const
@@ -161,6 +164,7 @@ export const handlePlaylistAddLocal: RoomMessageHandler = async (ctx, data) => {
           mimeType: parsed.data.mimeType,
           sizeBytes: parsed.data.sizeBytes,
           createdBy: ctx.userId,
+          durationSeconds: parsed.data.durationSeconds,
         }),
       )
       appendActionLog(state, {
@@ -241,6 +245,33 @@ export const handlePlaylistItemError: RoomMessageHandler = async (
       return true
     },
     { kind: "control+snapshot" },
+  )
+}
+
+/**
+ * Any connected player may fill missing catalog duration once observed.
+ * Does not require control authority — guests load media too.
+ */
+export const handlePlaylistItemDuration: RoomMessageHandler = async (
+  ctx,
+  data,
+) => {
+  const parsed = playlistItemDurationSchema.safeParse(data.payload)
+  if (!parsed.success) return
+
+  await mutateRoomMessage(
+    ctx.store,
+    ctx.roomId,
+    ctx.userId,
+    (state) => {
+      const item = applyPlaylistItemDuration(
+        state,
+        parsed.data.itemId,
+        parsed.data.durationSeconds,
+      )
+      return Boolean(item)
+    },
+    { kind: "snapshot" },
   )
 }
 

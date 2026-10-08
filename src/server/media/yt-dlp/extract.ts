@@ -1,4 +1,3 @@
-import { canPlayNatively } from "@/lib/player-utils"
 import {
   invalidateYtDlpExtractCache,
   readExtractCache,
@@ -145,14 +144,11 @@ async function extractInfoUncached(url: string): Promise<YtDlpExtractResult> {
 }
 
 /**
- * Title/duration only. Skips native hosts (player already knows them) and
- * prefers a warm full-extract cache before a lightweight `--print` spawn.
+ * Title/duration only. Prefers a warm full-extract cache before a lightweight
+ * `--print` spawn. Used for native providers (YouTube/Vimeo) so control pages
+ * get catalog duration without a local player, and for defaults refresh.
  */
 export async function extractMetadata(url: string): Promise<YtDlpMetadata> {
-  if (canPlayNatively(url)) {
-    return { title: null, durationSeconds: null }
-  }
-
   const cached = await readExtractCache(url)
   if (cached?.ok) {
     return {

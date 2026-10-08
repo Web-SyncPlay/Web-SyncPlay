@@ -53,6 +53,17 @@ type ProbeResult = {
   durationSec: number
 }
 
+/**
+ * Quick metadata probe for duration (and optionally dimensions).
+ * Safe to call before playlist:add:local so control UI has a catalog length.
+ */
+export async function probeLocalMediaDurationSec(
+  file: File,
+): Promise<number | null> {
+  const probe = await probeVideoFile(file)
+  return probe?.durationSec ?? null
+}
+
 function probeVideoFile(file: File): Promise<ProbeResult | null> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file)

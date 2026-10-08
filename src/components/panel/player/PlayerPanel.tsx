@@ -5,6 +5,10 @@ import "@vidstack/react/player/styles/default/layouts/audio.css"
 import "@vidstack/react/player/styles/default/layouts/video.css"
 import "@vidstack/react/player/styles/default/theme.css"
 import { useEffect, useMemo, useRef, useState } from "react"
+import {
+  resolveCatalogDurationMs,
+  resolveEffectiveDurationMs,
+} from "@/lib/playlist-duration"
 import { cn } from "@/lib/utils"
 import type { RoomPanelProps } from "../../layout/page/types"
 import {
@@ -49,12 +53,14 @@ export function PlayerPanel({
   const pendingSyncRef = useRef<PendingSyncState | null>(null)
   const lastAppliedTimelineAnchorMsRef = useRef<number | null>(null)
   const reportedItemErrorRef = useRef<string | null>(null)
+  const reportedDurationItemIdRef = useRef<string | null>(null)
   const proxyRenewAttemptedRef = useRef<string | null>(null)
   const playbackPausedRef = useRef(roomState.playback.paused)
   playbackPausedRef.current = roomState.playback.paused
 
   const roomPaused = roomState.playback.paused
   const roomPlaybackRate = roomState.playback.playbackRate
+  const currentItemId = current?.id
 
   const [isBuffering, setIsBuffering] = useState(false)
   const [mediaDurationMs, setMediaDurationMs] = useState(0)
@@ -62,6 +68,11 @@ export function PlayerPanel({
     MediaErrorDetail | undefined
   >(undefined)
   const [playerRemountNonce, setPlayerRemountNonce] = useState(0)
+
+  useEffect(() => {
+    reportedDurationItemIdRef.current = null
+    setMediaDurationMs(0)
+  }, [currentItemId])
 
   const playbackErrorLabel = useMemo(
     () => (playbackError ? formatMediaErrorDetail(playbackError) : undefined),
@@ -87,13 +98,22 @@ export function PlayerPanel({
     roomState,
     userId,
   )
+  const catalogDurationMs = resolveCatalogDurationMs(current)
+  const totalDurationMs = resolveEffectiveDurationMs({
+    mediaDurationMs,
+    catalogDurationMs,
+  })
   const {
     isOtherUserSeeking,
     remoteSeekerName,
     remoteSeekTargetMs,
     seekProgressPercent,
     totalTimeLabel,
-  } = useRemoteSeekOverlay({ mediaDurationMs, roomState, userId })
+  } = useRemoteSeekOverlay({
+    mediaDurationMs: totalDurationMs ?? 0,
+    roomState,
+    userId,
+  })
 
   const {
     activeStream,
@@ -172,8 +192,6 @@ export function PlayerPanel({
   })
 
   const elapsedMs = timeline.elapsedMs
-  const catalogDurationMs = Math.floor((current?.durationSeconds ?? 0) * 1000)
-  const totalDurationMs = Math.max(mediaDurationMs, catalogDurationMs)
 
   return (
     <div
@@ -231,6 +249,7 @@ export function PlayerPanel({
           participantStatusErrorRef={participantStatusErrorRef}
           pendingSyncRef={pendingSyncRef}
           reportedItemErrorRef={reportedItemErrorRef}
+          reportedDurationItemIdRef={reportedDurationItemIdRef}
           proxyRenewAttemptedRef={proxyRenewAttemptedRef}
           localBlobFallbackAttemptedRef={localBlobFallbackAttemptedRef}
           seekPhase={timeline.seekPhase}
