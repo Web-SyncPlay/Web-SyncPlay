@@ -158,9 +158,11 @@ export function createRoomSocketLocalMediaSession(input: {
 
   const handleSfuResult = (envelope: WsEnvelope<string, unknown>) => {
     const requestId = envelope.requestId
-    const resolve = requestId ? sfuPending.get(requestId) : undefined
-    if (!requestId || !resolve) return
+    if (!requestId || !sfuPending.has(requestId)) return
+    const resolve = sfuPending.get(requestId)
     sfuPending.delete(requestId)
+    // Validate own Map entry is a function before invoke (CodeQL js/unvalidated-dynamic-method-call).
+    if (typeof resolve !== "function") return
     resolve(envelope.payload as SfuResult)
   }
 

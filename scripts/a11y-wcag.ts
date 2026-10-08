@@ -13,6 +13,7 @@ import { randomUUID } from "node:crypto"
 import type { BrowserContext, Page } from "playwright"
 import { chromium } from "playwright"
 import { checkHealth } from "./lib/check-health.ts"
+import { identityHash } from "./lib/identity-hash.ts"
 
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000"
 const ROOM = process.env.A11Y_ROOM_ID ?? `a11y-${Date.now().toString(36)}`
@@ -66,23 +67,6 @@ async function seedUsername(context: BrowserContext, userId: string) {
     },
     { userId },
   )
-}
-
-/**
- * Bootstrap identity through the app's hash consumer, which encrypts the secret
- * before persisting (see consumeSessionIdentityFromHash). Avoids cleartext
- * localStorage writes that CodeQL flags in this script.
- */
-function identityHash(
-  userId: string,
-  userSecret: string,
-  controlToken?: string,
-) {
-  let hash = `uid=${encodeURIComponent(userId)}&secret=${encodeURIComponent(userSecret)}`
-  if (controlToken) {
-    hash += `&ct=${encodeURIComponent(controlToken)}`
-  }
-  return `#${hash}`
 }
 
 async function waitForConnected(page: Page, timeoutMs = 45_000) {

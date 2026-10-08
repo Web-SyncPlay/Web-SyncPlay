@@ -14,16 +14,18 @@ COPY . .
 RUN SKIP_ENV_VALIDATION=true bun run build
 
 # Install mediasoup on glibc Node. Prefer official prebuilt workers (no compilers).
+# Use a committed lockfile so npm ci pins by integrity hash (OpenSSF Scorecard).
 FROM node:26-bookworm-slim@sha256:3ffc19ea878019d9e9ae8971732ad4a03cda44f167107173174b60ed7c65bed3 AS mediasoup
 WORKDIR /opt/mediasoup
 
-# mediasoup version must stay in sync with bun.lock / package.json.
+# mediasoup version must stay in sync with bun.lock / package.json and
+# docker/mediasoup/package.json (+ package-lock.json).
+COPY docker/mediasoup/package.json docker/mediasoup/package-lock.json ./
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && npm init -y >/dev/null \
     && printf 'allow-scripts=mediasoup\n' > .npmrc \
-    && npm install mediasoup@3.28.0 --omit=dev --no-save \
+    && npm ci --omit=dev \
     && test -x node_modules/mediasoup/worker/out/Release/mediasoup-worker \
     && cd node_modules/mediasoup \
     && rm -rf \

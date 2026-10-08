@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto"
 import type { BrowserContext, Page } from "playwright"
 import { chromium } from "playwright"
 import { checkHealth } from "./lib/check-health.ts"
+import { identityHash } from "./lib/identity-hash.ts"
 
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000"
 const ROOM = process.env.E2E_ROOM_ID ?? `e2e-${Date.now().toString(36)}`
@@ -27,25 +28,24 @@ async function waitForConnected(page: Page, timeoutMs = 30_000) {
   )
 }
 
-async function seedIdentity(
-  context: BrowserContext,
-  userId: string,
-  secret: string,
-) {
+/** Prefer display name only — secrets bootstrap via identityHash (encrypted). */
+async function seedUsername(context: BrowserContext, userId: string) {
   await context.addInitScript(
-    ({ userId, secret }) => {
-      localStorage.setItem("web-syncplay:user-id", userId)
-      localStorage.setItem("web-syncplay:user-secret", secret)
+    ({ userId }) => {
       localStorage.setItem("web-syncplay:username", userId.slice(0, 8))
     },
-    { userId, secret },
+    { userId },
   )
 }
 
-async function openRoom(context: BrowserContext, path: string) {
+async function openRoom(
+  context: BrowserContext,
+  path: string,
+  hash = "",
+) {
   const page = await context.newPage()
   page.setDefaultTimeout(20_000)
-  await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded" })
+  await page.goto(`${BASE}${path}${hash}`, { waitUntil: "domcontentloaded" })
   await waitForConnected(page)
   return page
 }
@@ -66,8 +66,8 @@ async function main() {
 
   const hostCtx = await browser.newContext()
   const guestCtx = await browser.newContext()
-  await seedIdentity(hostCtx, hostId, hostSecret)
-  await seedIdentity(guestCtx, guestId, guestSecret)
+  await seedUsername(hostCtx, hostId)
+  await seedUsername(guestCtx, guestId)
 
   let hostPage: Page | undefined
   let guestPage: Page | undefined
@@ -75,7 +75,11 @@ async function main() {
   let controlPage: Page | undefined
 
   try {
-    hostPage = await openRoom(hostCtx, `/room/${ROOM}`)
+    hostPage = await openRoom(
+      hostCtx,
+      `/room/${ROOM}`,
+      identityHash(hostId, hostSecret),
+    )
     record("host joins room", true, await hostPage.title())
 
     const hostBody = await hostPage.locator("body").innerText()
@@ -88,7 +92,11 @@ async function main() {
         .isVisible(),
     )
 
-    guestPage = await openRoom(guestCtx, `/room/${ROOM}`)
+    guestPage = await openRoom(
+      guestCtx,
+      `/room/${ROOM}`,
+      identityHash(guestId, guestSecret),
+    )
     record("guest joins same room", true)
 
     await hostPage.waitForTimeout(1500)
@@ -191,9 +199,7 @@ async function main() {
       mintRes.ok ? "token minted" : `${mintRes.status} ${mintJson.error ?? ""}`,
     )
 
-    const controlHash = mintJson.token
-      ? `#uid=${encodeURIComponent(hostId)}&secret=${encodeURIComponent(hostSecret)}&ct=${encodeURIComponent(mintJson.token)}`
-      : `#uid=${encodeURIComponent(hostId)}&secret=${encodeURIComponent(hostSecret)}`
+    const controlHash = identityHash(hostId, hostSecret, mintJson.token)
     controlPage = await hostCtx.newPage()
     await controlPage.goto(`${BASE}/room/${ROOM}/control${controlHash}`, {
       waitUntil: "domcontentloaded",

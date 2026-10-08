@@ -66,13 +66,11 @@ export async function probeLocalMediaDurationSec(
 
 function probeVideoFile(file: File): Promise<ProbeResult | null> {
   return new Promise((resolve) => {
-    const url = URL.createObjectURL(file)
     const video = document.createElement("video")
     video.preload = "metadata"
     video.muted = true
     const done = (result: ProbeResult | null) => {
-      URL.revokeObjectURL(url)
-      video.removeAttribute("src")
+      video.srcObject = null
       video.load()
       resolve(result)
     }
@@ -94,7 +92,9 @@ function probeVideoFile(file: File): Promise<ProbeResult | null> {
       done({ width, height, durationSec })
     }
     video.onerror = () => done(null)
-    video.src = url
+    // Prefer srcObject over blob: URL assignment so DOM text is never
+    // reinterpreted as a media URL (CodeQL js/xss-through-dom).
+    video.srcObject = file
   })
 }
 
