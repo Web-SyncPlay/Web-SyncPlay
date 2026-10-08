@@ -5,6 +5,7 @@ import {
   messageForJoinRejected,
   nextJoinStatusOnConnectAttempt,
   normalizeSessionCapabilities,
+  statusForJoinRejected,
 } from "./room-join-client"
 
 describe("room-join-client", () => {
@@ -23,6 +24,11 @@ describe("room-join-client", () => {
     expect(createDefaultSessionCapabilities("player").isControlSession).toBe(
       false,
     )
+    expect(createDefaultSessionCapabilities("embed")).toMatchObject({
+      isControlSession: false,
+      sessionKind: "embed",
+      canControlPlayback: false,
+    })
   })
 
   test("normalizeSessionCapabilities coerces flags and falls back sessionKind", () => {
@@ -51,8 +57,21 @@ describe("room-join-client", () => {
     expect(messageForJoinRejected("password_required")).toContain(
       "join password",
     )
-    expect(messageForJoinRejected("rate_limited")).toContain("join password")
+    expect(messageForJoinRejected("rate_limited")).toContain("Too many")
+    expect(messageForJoinRejected("media_url_unsupported")).toContain(
+      "not supported",
+    )
     expect(messageForJoinRejected(undefined)).toContain("join password")
+  })
+
+  test("statusForJoinRejected maps media failures to media_unsupported", () => {
+    expect(statusForJoinRejected("media_url_unsupported")).toBe(
+      "media_unsupported",
+    )
+    expect(statusForJoinRejected("password_required")).toBe(
+      "awaiting_password",
+    )
+    expect(statusForJoinRejected("invalid_password")).toBe("awaiting_password")
   })
 
   test("nextJoinStatusOnConnectAttempt preserves reconnecting after connected", () => {
@@ -83,5 +102,20 @@ describe("room-join-client", () => {
       sessionKind: "room",
     })
     expect(envelope.payload).not.toHaveProperty("joinPassword")
+  })
+
+  test("buildRoomJoinEnvelope includes embed sessionKind and initialMediaUrl", () => {
+    const envelope = buildRoomJoinEnvelope({
+      roomId: "party-1",
+      userId: "user-1",
+      userSecret: "secret-1",
+      username: "Host",
+      sessionKind: "embed",
+      initialMediaUrl: "https://youtu.be/abc",
+    })
+    expect(envelope.payload).toMatchObject({
+      sessionKind: "embed",
+      initialMediaUrl: "https://youtu.be/abc",
+    })
   })
 })

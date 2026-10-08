@@ -79,6 +79,36 @@ export function isOriginAllowed(origin: string | null): boolean {
 }
 
 /**
+ * Tokens from `EMBED_FRAME_ANCESTORS` (space-separated origins or a sole `*`).
+ * Empty / unset → no third-party frame ancestors (secure default).
+ * Trailing slashes are stripped so CSP gets bare origins (not path-bearing sources).
+ */
+export function getEmbedFrameAncestors(): string[] {
+  const raw = process.env.EMBED_FRAME_ANCESTORS?.trim()
+  if (!raw) return []
+  return raw.split(/\s+/).filter(Boolean).map((token) => {
+    if (token === "*") return token
+    return token.replace(/\/$/, "")
+  })
+}
+
+function buildFrameAncestorsDirective(): string {
+  const ancestors = getEmbedFrameAncestors()
+  if (ancestors.length === 1 && ancestors[0] === "*") {
+    return "frame-ancestors *"
+  }
+  const publicOrigin = getPublicOrigin()
+  const parts = ["'self'"]
+  if (publicOrigin) parts.push(publicOrigin)
+  for (const origin of ancestors) {
+    if (origin !== "*" && !parts.includes(origin)) {
+      parts.push(origin)
+    }
+  }
+  return `frame-ancestors ${parts.join(" ")}`
+}
+
+/**
  * Content-Security-Policy tuned for SyncPlay + optional public origin.
  *
  * Native providers (YouTube/Vimeo) load via iframes; without an explicit
@@ -99,7 +129,7 @@ export function buildContentSecurityPolicy(): string {
     "default-src 'self'",
     "base-uri 'self'",
     "object-src 'none'",
-    "frame-ancestors 'self'" + (publicOrigin ? ` ${publicOrigin}` : ""),
+    buildFrameAncestorsDirective(),
     // Allow any https/http iframe so YouTube/Vimeo (and similar) embeds work.
     "frame-src 'self' https: http:",
     `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${nativeEmbedScripts}`,

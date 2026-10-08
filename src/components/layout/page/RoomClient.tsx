@@ -62,6 +62,7 @@ export function RoomClient({
         status={status}
         joinError={joinError}
         onSubmitJoinPassword={submitJoinPassword}
+        mediaUrl={seedMediaUrl}
       />
     )
   }
@@ -72,6 +73,7 @@ export function RoomClient({
     role: myRole,
     isControlSession: sessionCapabilities.isControlSession,
     controlAuthorized: sessionCapabilities.controlAuthorized,
+    sessionKind: sessionCapabilities.sessionKind,
   })
   const panelProps: RoomPanelProps = {
     roomId,

@@ -102,6 +102,33 @@ describe("playback handler interfaces", () => {
     expect(store.peek("room-1")?.playback.timelineAnchorMs).toBe(0)
   })
 
+  test("host-site embed session can control playback by role", async () => {
+    const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
+    const ownerEmbed = createHandlerContext({
+      store,
+      userId: "owner",
+      sessionKind: "embed",
+    })
+    const guestEmbed = createHandlerContext({
+      store,
+      userId: "guest",
+      sessionKind: "embed",
+    })
+
+    await handlePlaybackSeek(
+      guestEmbed,
+      envelope("playback:seek", { targetMs: 40 }),
+    )
+    expect(store.peek("room-1")?.playback.timelineAnchorMs).toBe(0)
+
+    await handlePlaybackSeek(
+      ownerEmbed,
+      envelope("playback:seek", { targetMs: 40 }),
+    )
+    expect(store.peek("room-1")?.playback.timelineAnchorMs).toBe(40)
+  })
+
   test("control session requires controlAuthorized", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
     createTestBroadcastBus(store)

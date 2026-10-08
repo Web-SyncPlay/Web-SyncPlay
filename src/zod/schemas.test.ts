@@ -84,6 +84,32 @@ describe("room:join interface", () => {
     }
   })
 
+  test("accepts embed sessionKind", () => {
+    const result = roomJoinSchema.safeParse({
+      roomId: "r1",
+      userSecret: "secret",
+      sessionKind: "embed",
+      initialMediaUrl: "https://youtu.be/abc",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.sessionKind).toBe("embed")
+      expect(result.data.initialMediaUrl).toBe("https://youtu.be/abc")
+    }
+  })
+
+  test("accepts non-url initialMediaUrl strings for server-side create checks", () => {
+    const result = roomJoinSchema.safeParse({
+      roomId: "r1",
+      userSecret: "secret",
+      initialMediaUrl: "ftp://files.example.com/a.mp4",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.initialMediaUrl).toBe("ftp://files.example.com/a.mp4")
+    }
+  })
+
   test("rejects oversized username / password", () => {
     expect(
       roomJoinSchema.safeParse({

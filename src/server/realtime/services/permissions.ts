@@ -36,6 +36,7 @@ export function hasPlaybackAndPlaylistControl(
 }
 
 function passesSessionGate(context: ConnectionAuthContext) {
+  // OBS/display player never mutates. `room` and host-site `embed` use role gates.
   if (context.sessionKind === "player") {
     return false
   }

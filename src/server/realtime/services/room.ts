@@ -25,6 +25,26 @@ function playlistItemFromUrl(input: {
   }
 }
 
+/**
+ * Create-time `?media=` / join `initialMediaUrl` gate.
+ * Existing rooms ignore the seed. New rooms with an explicit seed must pass SSRF checks.
+ */
+export function evaluateCreateMediaSeed(input: {
+  roomExists: boolean
+  initialMediaUrl?: string
+}):
+  | { ok: true; seedUrl?: string }
+  | { ok: false; reason: "media_url_unsupported" } {
+  if (input.roomExists || input.initialMediaUrl === undefined) {
+    return { ok: true }
+  }
+  const safety = assertPublicHttpUrl(input.initialMediaUrl)
+  if (!safety.ok) {
+    return { ok: false, reason: "media_url_unsupported" }
+  }
+  return { ok: true, seedUrl: safety.url.href }
+}
+
 export async function createInitialRoomState(
   store: RoomStateStorePort,
   roomId: string,

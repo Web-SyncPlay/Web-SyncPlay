@@ -17,19 +17,28 @@ describe("parseRoomId", () => {
 })
 
 describe("isRoomEmbedPath", () => {
-  test("matches player and control embeds only", () => {
+  test("matches player, control, and site embed routes", () => {
     expect(isRoomEmbedPath("/room/abc/player")).toBe(true)
     expect(isRoomEmbedPath("/room/abc/control/")).toBe(true)
+    expect(isRoomEmbedPath("/room/abc/embed")).toBe(true)
     expect(isRoomEmbedPath("/room/abc")).toBe(false)
     expect(isRoomEmbedPath("/")).toBe(false)
   })
 })
 
 describe("isPlayerEmbedPath", () => {
-  test("matches player embed only", () => {
+  test("matches chrome-less player and site embed routes", () => {
     expect(isPlayerEmbedPath("/room/abc/player")).toBe(true)
     expect(isPlayerEmbedPath("/room/abc/player/")).toBe(true)
+    expect(isPlayerEmbedPath("/room/abc/embed")).toBe(true)
+    expect(isPlayerEmbedPath("/room/abc/embed/")).toBe(true)
     expect(isPlayerEmbedPath("/room/abc/control")).toBe(false)
     expect(isPlayerEmbedPath("/room/abc")).toBe(false)
+  })
+
+  test("keeps encoded room ids as one segment", () => {
+    expect(isPlayerEmbedPath("/room/hello%20world/embed")).toBe(true)
+    expect(isPlayerEmbedPath("/room/a%2Fb/player")).toBe(true)
+    expect(isPlayerEmbedPath("/room/abc/embed/extra")).toBe(false)
   })
 })

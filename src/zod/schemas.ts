@@ -18,7 +18,7 @@ const sizeBytesSchema = z
 export const roomRoleSchema = z.enum(["owner", "moderator", "guest"])
 export const loopModeSchema = z.enum(["off", "once", "always"])
 export const defaultJoinRoleSchema = roomRoleSchema.exclude(["owner"])
-export const sessionKindSchema = z.enum(["room", "player", "control"])
+export const sessionKindSchema = z.enum(["room", "player", "control", "embed"])
 
 /** Reject XSS-packaged / control-laden usernames; NFC + strip markup delimiters. */
 const usernameSchema = z
@@ -67,8 +67,11 @@ export const roomJoinSchema = z.object({
   avatarStyle: z.string().min(1).max(64).optional(),
   sessionKind: sessionKindSchema.default("room"),
   controlToken: z.string().min(1).max(512).optional(),
-  /** Used only when the room is created by this join; ignored for existing rooms. */
-  initialMediaUrl: z.url().optional(),
+  /**
+   * Used only when the room is created by this join; ignored for existing rooms.
+   * Validated with assertPublicHttpUrl on create — invalid values reject the join.
+   */
+  initialMediaUrl: z.string().trim().min(1).max(2048).optional(),
 })
 
 export const roomPasswordSetSchema = z.object({

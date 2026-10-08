@@ -12,6 +12,7 @@ import {
   messageForJoinRejected,
   nextJoinStatusOnConnectAttempt,
   normalizeSessionCapabilities,
+  statusForJoinRejected,
   type JoinRejectedReason,
   type JoinStatus,
   type SessionCapabilities,
@@ -265,8 +266,19 @@ export function useRoomSocket(
           }
           clearStateTimeout()
           const payload = envelope.payload as { reason?: JoinRejectedReason }
-          setJoinError(messageForJoinRejected(payload.reason))
-          setStatus("awaiting_password")
+          const reason = payload.reason
+          setJoinError(messageForJoinRejected(reason))
+          setStatus(statusForJoinRejected(reason))
+          // Unsupported create-time media will not succeed on retry — stop
+          // reconnect churn for this tab until the host changes the URL.
+          if (reason === "media_url_unsupported") {
+            cancelled = true
+            try {
+              ws.close()
+            } catch {
+              // ignore
+            }
+          }
         }
       }
 

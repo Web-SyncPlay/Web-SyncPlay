@@ -1,6 +1,30 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
+/** Absolute http(s) origin, or bare `*` (must be the sole token). */
+function isValidEmbedFrameAncestorToken(token: string): boolean {
+  if (token === "*") return true
+  try {
+    const url = new URL(token)
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false
+    if (url.username || url.password) return false
+    if (url.search || url.hash) return false
+    if (url.pathname !== "/" && url.pathname !== "") return false
+    return token.replace(/\/$/, "") === url.origin
+  } catch {
+    return false
+  }
+}
+
+function isValidEmbedFrameAncestors(raw: string): boolean {
+  const parts = raw.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return true
+  if (parts.includes("*")) {
+    return parts.length === 1 && parts[0] === "*"
+  }
+  return parts.every(isValidEmbedFrameAncestorToken)
+}
+
 export const env = createEnv({
   /**
    * Specify your server-side environment variables schema here. This way you can ensure the app
@@ -83,6 +107,17 @@ export const env = createEnv({
      * Used for mediasoup ICE announcedAddress, CORS, and CSP.
      */
     PUBLIC_DOMAIN: z.string().min(1).optional(),
+    /**
+     * Space-separated absolute origins allowed to iframe this app (CSP
+     * frame-ancestors), or a single `*`. Unset/empty = no third-party embeds.
+     */
+    EMBED_FRAME_ANCESTORS: z
+      .string()
+      .refine(isValidEmbedFrameAncestors, {
+        message:
+          "EMBED_FRAME_ANCESTORS must be space-separated absolute http(s) origins (no path/query), or a single *",
+      })
+      .optional(),
   },
 
   /**
@@ -115,6 +150,7 @@ export const env = createEnv({
     INTERNAL_NODE_BASE_URL: process.env.INTERNAL_NODE_BASE_URL,
     LOCAL_MEDIA_INTERNAL_SECRET: process.env.LOCAL_MEDIA_INTERNAL_SECRET,
     PUBLIC_DOMAIN: process.env.PUBLIC_DOMAIN,
+    EMBED_FRAME_ANCESTORS: process.env.EMBED_FRAME_ANCESTORS,
   },
 
   /**

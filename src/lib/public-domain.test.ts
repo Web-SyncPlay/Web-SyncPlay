@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import {
   buildContentSecurityPolicy,
+  getEmbedFrameAncestors,
   getPublicHostname,
   getPublicOrigin,
   isOriginAllowed,
@@ -32,7 +33,9 @@ describe("public-domain", () => {
 
   test("CSP allows iframe embeds and remote media URLs", () => {
     const prev = process.env.PUBLIC_DOMAIN
+    const prevAncestors = process.env.EMBED_FRAME_ANCESTORS
     process.env.PUBLIC_DOMAIN = "web-syncplay.de"
+    delete process.env.EMBED_FRAME_ANCESTORS
     const csp = buildContentSecurityPolicy()
     expect(csp).toContain("frame-src 'self' https: http:")
     expect(csp).toContain("media-src 'self' blob: https: http:")
@@ -41,7 +44,71 @@ describe("public-domain", () => {
     expect(csp).toContain("https://player.vimeo.com")
     expect(csp).toContain("img-src 'self' data: blob: https: http:")
     expect(csp).toContain("wss://web-syncplay.de")
+    expect(csp).toContain(
+      "frame-ancestors 'self' https://web-syncplay.de",
+    )
+    expect(csp).not.toContain("https://partner.example")
     process.env.PUBLIC_DOMAIN = prev
+    if (prevAncestors === undefined) {
+      delete process.env.EMBED_FRAME_ANCESTORS
+    } else {
+      process.env.EMBED_FRAME_ANCESTORS = prevAncestors
+    }
+  })
+
+  test("EMBED_FRAME_ANCESTORS appends partner origins to frame-ancestors", () => {
+    const prev = process.env.PUBLIC_DOMAIN
+    const prevAncestors = process.env.EMBED_FRAME_ANCESTORS
+    process.env.PUBLIC_DOMAIN = "web-syncplay.de"
+    process.env.EMBED_FRAME_ANCESTORS =
+      "https://partner.example https://watch.example"
+    expect(getEmbedFrameAncestors()).toEqual([
+      "https://partner.example",
+      "https://watch.example",
+    ])
+    const csp = buildContentSecurityPolicy()
+    expect(csp).toContain(
+      "frame-ancestors 'self' https://web-syncplay.de https://partner.example https://watch.example",
+    )
+    process.env.PUBLIC_DOMAIN = prev
+    if (prevAncestors === undefined) {
+      delete process.env.EMBED_FRAME_ANCESTORS
+    } else {
+      process.env.EMBED_FRAME_ANCESTORS = prevAncestors
+    }
+  })
+
+  test("EMBED_FRAME_ANCESTORS strips trailing slashes for CSP origins", () => {
+    const prev = process.env.PUBLIC_DOMAIN
+    const prevAncestors = process.env.EMBED_FRAME_ANCESTORS
+    process.env.PUBLIC_DOMAIN = "web-syncplay.de"
+    process.env.EMBED_FRAME_ANCESTORS = "https://partner.example/"
+    expect(getEmbedFrameAncestors()).toEqual(["https://partner.example"])
+    const csp = buildContentSecurityPolicy()
+    expect(csp).toContain("https://partner.example")
+    expect(csp).not.toContain("https://partner.example/")
+    process.env.PUBLIC_DOMAIN = prev
+    if (prevAncestors === undefined) {
+      delete process.env.EMBED_FRAME_ANCESTORS
+    } else {
+      process.env.EMBED_FRAME_ANCESTORS = prevAncestors
+    }
+  })
+
+  test("EMBED_FRAME_ANCESTORS=* opens framing", () => {
+    const prev = process.env.PUBLIC_DOMAIN
+    const prevAncestors = process.env.EMBED_FRAME_ANCESTORS
+    process.env.PUBLIC_DOMAIN = "web-syncplay.de"
+    process.env.EMBED_FRAME_ANCESTORS = "*"
+    const csp = buildContentSecurityPolicy()
+    expect(csp).toContain("frame-ancestors *")
+    expect(csp).not.toContain("frame-ancestors 'self'")
+    process.env.PUBLIC_DOMAIN = prev
+    if (prevAncestors === undefined) {
+      delete process.env.EMBED_FRAME_ANCESTORS
+    } else {
+      process.env.EMBED_FRAME_ANCESTORS = prevAncestors
+    }
   })
 
   test("localhost PUBLIC_DOMAIN uses http/ws origins", () => {

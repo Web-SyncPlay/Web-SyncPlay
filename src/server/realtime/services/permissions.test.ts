@@ -42,6 +42,7 @@ describe("permissions / session capabilities", () => {
         role: "owner",
         isControlSession: true,
         controlAuthorized: true,
+        sessionKind: "control",
       }),
     ).toBe(true)
     expect(
@@ -49,8 +50,25 @@ describe("permissions / session capabilities", () => {
         role: "guest",
         isControlSession: false,
         controlAuthorized: false,
+        sessionKind: "room",
       }),
     ).toBe(false)
+    expect(
+      canMutateFromClientSession({
+        role: "owner",
+        isControlSession: false,
+        controlAuthorized: false,
+        sessionKind: "player",
+      }),
+    ).toBe(false)
+    expect(
+      canMutateFromClientSession({
+        role: "owner",
+        isControlSession: false,
+        controlAuthorized: false,
+        sessionKind: "embed",
+      }),
+    ).toBe(true)
   })
 
   test("allows owner in room session", () => {
@@ -79,6 +97,35 @@ describe("permissions / session capabilities", () => {
         sessionKind: "player",
       }),
     ).toBe(false)
+  })
+
+  test("allows host-site embed session mutations by role", () => {
+    expect(
+      canControlFromConnectionContext(state, "owner", {
+        isControlSession: false,
+        controlAuthorized: false,
+        sessionKind: "embed",
+      }),
+    ).toBe(true)
+    expect(
+      canControlFromConnectionContext(state, "guest", {
+        isControlSession: false,
+        controlAuthorized: false,
+        sessionKind: "embed",
+      }),
+    ).toBe(false)
+    expect(
+      computeSessionCapabilities({
+        role: "owner",
+        sessionKind: "embed",
+        isControlSession: false,
+        controlAuthorized: false,
+      }),
+    ).toMatchObject({
+      canControlPlayback: true,
+      canManagePlaylist: true,
+      sessionKind: "embed",
+    })
   })
 
   test("room security is owner-only and session-gated", () => {

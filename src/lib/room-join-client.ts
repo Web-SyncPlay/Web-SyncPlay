@@ -15,11 +15,13 @@ export type JoinStatus =
   | "joining"
   | "connected"
   | "reconnecting"
+  | "media_unsupported"
 
 export type JoinRejectedReason =
   | "password_required"
   | "invalid_password"
   | "rate_limited"
+  | "media_url_unsupported"
 
 export function createDefaultSessionCapabilities(
   sessionKind: SessionKind,
@@ -52,10 +54,26 @@ export function normalizeSessionCapabilities(
 export function messageForJoinRejected(
   reason?: JoinRejectedReason,
 ): string {
+  if (reason === "media_url_unsupported") {
+    return "This media URL is not supported for room creation."
+  }
   if (reason === "invalid_password") {
     return "Incorrect room password. Try again."
   }
+  if (reason === "rate_limited") {
+    return "Too many join attempts. Try again in a moment."
+  }
   return "This room requires a join password."
+}
+
+/** Map join rejection reasons to UI status (password prompt vs media error). */
+export function statusForJoinRejected(
+  reason?: JoinRejectedReason,
+): JoinStatus {
+  if (reason === "media_url_unsupported") {
+    return "media_unsupported"
+  }
+  return "awaiting_password"
 }
 
 /**

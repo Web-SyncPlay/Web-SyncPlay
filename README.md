@@ -110,6 +110,7 @@ Set **both** on every `web` replica for sticky local-media HTTP affinity (miss p
 | `CONTROL_TOKEN_TTL_SECONDS`  | `43200`                        | Control-embed token lifetime (60s–48h; default 12h). Remint from room View menu.    |
 | `WS_HEARTBEAT_INTERVAL_MS`   | `5000`                         | WebSocket ping interval (100–30000). Timeout is always 3× this.                     |
 | `PROXY_ALLOW_PRIVATE_URLS`   | `false`                        | Allow proxying private/LAN URLs. Always forced `false` in production.               |
+| `EMBED_FRAME_ANCESTORS`      | unset                          | Space-separated absolute origins (or `*`) allowed to iframe this app. Default: none. |
 | `NEXT_TELEMETRY_DISABLED`    | `1` (true)                     | Next.js telemetry off by default (dev, Compose, and image). Set `0` only to opt in. |
 | `SKIP_ENV_VALIDATION`        | unset                          | Set truthy to skip env schema validation (e.g. image build).                        |
 
@@ -118,10 +119,40 @@ Set **both** on every `web` replica for sticky local-media HTTP affinity (miss p
 | Route                | Kind      | Mutations                 | Notes                                                                     |
 | -------------------- | --------- | ------------------------- | ------------------------------------------------------------------------- |
 | `/room/[id]`         | `room`    | By role (owner/moderator) | Main session                                                              |
+| `/room/[id]/embed`   | `embed`   | By role (owner/moderator) | Host-site iframe; optional `?media=` seeds **new** rooms only             |
 | `/room/[id]/player`  | `player`  | None                      | OBS / display                                                             |
 | `/room/[id]/control` | `control` | Role + control token      | Minted via `POST /api/control/token` (`#uid=&secret=&ct=` → localStorage) |
 
 Quality and captions are per-participant (`viewerMedia`), shared across that user’s sessions.
+
+## Embed on your site
+
+Use Web-SyncPlay as a synced player inside an existing streaming site. The host supplies a **room ID** and optional **media URL**; SyncPlay’s player UI handles play/pause/seek/playlist and keeps viewers in sync.
+
+**1. Allow framing** — third-party iframes are blocked until you set `EMBED_FRAME_ANCESTORS` (space-separated absolute origins, or `*` for open embedding):
+
+```bash
+EMBED_FRAME_ANCESTORS=https://your-site.example
+```
+
+**2. Embed the interactive player:**
+
+```html
+<iframe
+  allow="fullscreen; autoplay; encrypted-media; picture-in-picture"
+  style="border:none;width:100%;height:100%"
+  src="https://sync.example.com/room/{roomId}/embed?media={encodeURIComponent(mediaUrl)}"
+></iframe>
+```
+
+| Piece | Behavior |
+| ----- | -------- |
+| `roomId` | Host-chosen string (1–128 chars). First visitor creates the room and becomes owner; later visitors join the same session. |
+| `?media=` | Create-time seed only. Ignored (and stripped) if the room already exists. Unsupported/blocked URLs reject **new** room creation with a dedicated embed error page. |
+| `/embed` vs `/player` | `/embed` is interactive (role-gated controls). `/player` remains view-only for OBS/display. |
+| `/control` | Separate remote-control surface with a minted token — not required for basic site embeds. |
+
+Reusing a room ID with a new `media` query does **not** replace the playlist. Change media from SyncPlay’s UI inside the embed, or open a new room ID.
 
 ## Architecture (developers)
 

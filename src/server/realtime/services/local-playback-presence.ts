@@ -13,6 +13,7 @@ export const LOCAL_PLAYBACK_REPORT_STALE_MS = 15_000
 const SESSION_PRIORITY: Record<SessionKind, number> = {
   player: 3,
   room: 2,
+  embed: 2,
   control: 1,
 }
 

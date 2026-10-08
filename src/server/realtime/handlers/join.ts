@@ -16,6 +16,7 @@ import {
 } from "@/server/realtime/services/permissions"
 import {
   createInitialRoomState,
+  evaluateCreateMediaSeed,
   scheduleResolvingPlaylistItems,
 } from "@/server/realtime/services/room"
 import { markCurrentMedia } from "@/server/realtime/services/timeline"
@@ -118,6 +119,19 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
   }
 
   const existingState = await ctx.store.get(roomId)
+  const mediaSeed = evaluateCreateMediaSeed({
+    roomExists: Boolean(existingState),
+    initialMediaUrl,
+  })
+  if (!mediaSeed.ok) {
+    sendEnvelope(ctx.ws, {
+      type: "room:join:rejected",
+      requestId: data.requestId,
+      payload: { reason: mediaSeed.reason },
+    })
+    return
+  }
+
   const admission = evaluateJoinAdmission(existingState, joinPassword)
   if (!admission.allowed) {
     sendEnvelope(ctx.ws, {
@@ -168,7 +182,7 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
     const state =
       existing ??
       (await createInitialRoomState(ctx.store, roomId, userId, {
-        initialMediaUrl,
+        initialMediaUrl: mediaSeed.seedUrl,
       }))
     normalizeParticipantRoles(state)
     const findings = repairCleanupAndCheckRoomState(state)

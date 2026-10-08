@@ -1,4 +1,4 @@
-import type { RoomRole } from "@/zod/types"
+import type { RoomRole, SessionKind } from "@/zod/types"
 
 /** Owner or moderator — shared by playback and playlist mutation gates. */
 export function canMutateByRole(role?: RoomRole): boolean {
@@ -28,11 +28,16 @@ export function isClientControlAuthorized(caps: {
   return !caps.isControlSession || caps.controlAuthorized
 }
 
-/** Role + control-session gate used by room/player embed UIs. */
+/**
+ * Role + session gate used by room / site-embed / control UIs.
+ * Mirrors server `passesSessionGate`: OBS `player` never mutates.
+ */
 export function canMutateFromClientSession(input: {
   role?: RoomRole
   isControlSession: boolean
   controlAuthorized: boolean
+  sessionKind?: SessionKind
 }): boolean {
+  if (input.sessionKind === "player") return false
   return canMutateByRole(input.role) && isClientControlAuthorized(input)
 }

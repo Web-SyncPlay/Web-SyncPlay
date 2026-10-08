@@ -1,6 +1,7 @@
 "use client"
 
 import { RoomJoinPasswordPrompt } from "@/components/dialog/RoomJoinPasswordPrompt"
+import { MediaUrlUnsupportedView } from "@/components/layout/page/MediaUrlUnsupportedView"
 import type { JoinStatus } from "@/lib/room-join-client"
 import { SiteNavbar } from "./SiteNavbar"
 import { SocketStatus } from "./SocketStatus"
@@ -13,7 +14,18 @@ export function RoomConnectingView(props: {
   onSubmitJoinPassword: (password: string) => void
   /** When false, omit site chrome (player embed). Defaults to true. */
   showNavbar?: boolean
+  /** Create-time `?media=` shown on unsupported-media errors. */
+  mediaUrl?: string
 }) {
+  if (props.status === "media_unsupported") {
+    return (
+      <MediaUrlUnsupportedView
+        roomId={props.roomId}
+        mediaUrl={props.mediaUrl}
+      />
+    )
+  }
+
   if (props.status === "awaiting_password") {
     return (
       <>

@@ -64,14 +64,28 @@ export function parseRoomId(raw: string): string | null {
   return bare || null
 }
 
-/** True for player/control embed routes. */
-export function isRoomEmbedPath(pathname: string): boolean {
-  return /\/room\/[^/]+\/(player|control)\/?$/.test(pathname)
+/** Path segments after stripping empty ends (keeps encoded roomId as one segment). */
+function roomRouteSegments(pathname: string): string[] {
+  return pathname.split("/").filter(Boolean)
 }
 
-/** True for the player embed only (site chrome / footer hide here). */
+/** True for player/control/site-embed routes. */
+export function isRoomEmbedPath(pathname: string): boolean {
+  const segments = roomRouteSegments(pathname)
+  if (segments.length !== 3 || segments[0] !== "room") return false
+  const kind = segments[2]
+  return kind === "player" || kind === "control" || kind === "embed"
+}
+
+/**
+ * True for chrome-less player surfaces (OBS `/player` and host-site `/embed`).
+ * Site footer / navbar hide here.
+ */
 export function isPlayerEmbedPath(pathname: string): boolean {
-  return /\/room\/[^/]+\/player\/?$/.test(pathname)
+  const segments = roomRouteSegments(pathname)
+  if (segments.length !== 3 || segments[0] !== "room") return false
+  const kind = segments[2]
+  return kind === "player" || kind === "embed"
 }
 
 /** URL-safe room id, e.g. `crimson-falcon-midnight-luke`. */
