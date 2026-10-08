@@ -15,6 +15,8 @@ import {
   useBufferingWatchdog,
   type PendingSyncState,
 } from "./hooks/use-buffering-watchdog"
+import { usePlayerAudioDelay } from "./hooks/use-player-audio-delay"
+import { usePlayerLocalTracks } from "./hooks/use-player-local-tracks"
 import { usePlayerMediaSource } from "./hooks/use-player-media-source"
 import { usePlayerPermissions } from "./hooks/use-player-permissions"
 import { usePlayerPlaybackSync } from "./hooks/use-player-playback-sync"
@@ -125,6 +127,24 @@ export function PlayerPanel({
     localBlobFallbackAttemptedRef,
   } = usePlayerMediaSource({ current, viewerPrefs, userId })
 
+  const localTracksAttachKey = `${current?.id ?? "none"}:${activeStream?.id ?? "auto"}:${playerRemountNonce}`
+  const {
+    audioTracks,
+    videoQualities,
+    selectAudioTrack,
+    selectVideoQuality,
+  } = usePlayerLocalTracks({
+    playerRef,
+    itemId: current?.id,
+    syncKey: localTracksAttachKey,
+    enabled: Boolean(activePlaybackSrc),
+  })
+  const { delayMs, setDelayMs, nudgeDelayMs } = usePlayerAudioDelay({
+    playerRef,
+    attachKey: localTracksAttachKey,
+    enabled: Boolean(activePlaybackSrc),
+  })
+
   const canControlPlayback = canControlByRole && capabilities.canControlPlayback
   const controlsDisabled = !canControlPlayback || isOtherUserSeeking
   const timeline = usePlaybackTimelineController({
@@ -202,7 +222,7 @@ export function PlayerPanel({
     >
       {!canControlPlayback && (
         <div className="guest-view-hint pointer-events-none absolute left-3 top-3 z-20 rounded-md bg-black/70 px-2 py-1 text-xs text-white/90">
-          Guest view — captions, language & quality only
+          Guest view — local tracks, captions, quality & audio delay
         </div>
       )}
       {isMuted && Boolean(activePlaybackSrc) && (
@@ -217,6 +237,14 @@ export function PlayerPanel({
           onStreamChange={() =>
             setPlayerRemountNonce((value) => value + 1)
           }
+          audioTracks={audioTracks}
+          videoQualities={videoQualities}
+          onSelectAudioTrack={selectAudioTrack}
+          onSelectVideoQuality={selectVideoQuality}
+          audioDelayMs={delayMs}
+          onAudioDelayChange={setDelayMs}
+          onAudioDelayNudge={nudgeDelayMs}
+          showAudioDelay={Boolean(activePlaybackSrc)}
         />
       )}
       {activePlaybackSrc ? (
