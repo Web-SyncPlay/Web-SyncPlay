@@ -7,11 +7,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
-const steps = [
-  "vendor-ffmpeg-core.ts",
-  "vendor-player-libs.ts",
-  "build-local-media-sw.ts",
-] as const
+const steps = ["vendor-player-libs.ts", "build-local-media-sw.ts"] as const
 
 for (const step of steps) {
   const result = spawnSync("bun", [join("scripts", step)], {

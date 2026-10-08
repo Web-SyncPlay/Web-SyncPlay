@@ -1,6 +1,6 @@
 /**
  * Provider-side ABR packaging for local media (Elevate B).
- * Uses single-thread ffmpeg.wasm loaded from /ffmpeg (vendored core).
+ * Uses single-thread ffmpeg.wasm loaded from /vendor (vendored core).
  */
 
 import { registerLocalMediaFile } from "@/lib/local-media-provider"
@@ -139,8 +139,8 @@ async function packageLowers(
   const { fetchFile } = await import("@ffmpeg/util")
   const ffmpeg = new FFmpeg()
   await ffmpeg.load({
-    coreURL: "/ffmpeg/ffmpeg-core.js",
-    wasmURL: "/ffmpeg/ffmpeg-core.wasm",
+    coreURL: "/vendor/ffmpeg-core.js",
+    wasmURL: "/vendor/ffmpeg-core.wasm",
   })
 
   const inputName = "input.bin"

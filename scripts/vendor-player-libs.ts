@@ -1,6 +1,7 @@
 /**
- * Copy hls.js / dash.js UMD builds into public/ for same-origin Vidstack load.
- * Run from postinstall / before build (Docker skips postinstall scripts).
+ * Copy hls.js / dash.js / ffmpeg.wasm UMD builds into public/vendor for
+ * same-origin load. Run from postinstall / before build (Docker skips
+ * postinstall scripts).
  */
 import { copyFileSync, existsSync, mkdirSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -19,6 +20,32 @@ const copies = [
     from: join(root, "node_modules", "dashjs", "dist", "dash.all.min.js"),
     to: join(destDir, "dash.all.min.js"),
     label: "dashjs",
+  },
+  {
+    from: join(
+      root,
+      "node_modules",
+      "@ffmpeg",
+      "core",
+      "dist",
+      "umd",
+      "ffmpeg-core.js",
+    ),
+    to: join(destDir, "ffmpeg-core.js"),
+    label: "@ffmpeg/core js",
+  },
+  {
+    from: join(
+      root,
+      "node_modules",
+      "@ffmpeg",
+      "core",
+      "dist",
+      "umd",
+      "ffmpeg-core.wasm",
+    ),
+    to: join(destDir, "ffmpeg-core.wasm"),
+    label: "@ffmpeg/core wasm",
   },
 ] as const
 

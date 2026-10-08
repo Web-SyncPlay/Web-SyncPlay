@@ -1,6 +1,6 @@
 /**
  * Bundle src/sw/local-media-sw.ts → public/local-media-sw.js.
- * Run from postinstall / prebuild alongside ffmpeg vendor.
+ * Run from postinstall / prebuild alongside player-lib vendoring.
  */
 import { spawnSync } from "node:child_process"
 import { existsSync } from "node:fs"
