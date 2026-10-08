@@ -25,6 +25,16 @@ describe("hostRequiresMediaRelay", () => {
       hostRequiresMediaRelay("https://www.soundhelix.com/examples/mp3/a.mp3"),
     ).toBe(false)
   })
+
+  test("forces relay for loopback and private LAN hosts", () => {
+    expect(
+      hostRequiresMediaRelay("http://127.0.0.1:8096/Videos/x/main.m3u8"),
+    ).toBe(true)
+    expect(hostRequiresMediaRelay("http://localhost:8096/a.m3u8")).toBe(true)
+    expect(
+      hostRequiresMediaRelay("http://192.168.1.10:8096/Videos/x/main.m3u8"),
+    ).toBe(true)
+  })
 })
 
 describe("buildStreamPlan", () => {
@@ -56,6 +66,16 @@ describe("buildStreamPlan", () => {
         playableUrl: "https://cdn.example.com/v.m3u8",
         isNativeProvider: false,
         corsAllowed: false,
+      }).playbackMode,
+    ).toBe("relay")
+  })
+
+  test("forces relay for LAN Jellyfin even when CORS probe passes", () => {
+    expect(
+      buildStreamPlan({
+        playableUrl: "http://127.0.0.1:8096/Videos/x/main.m3u8?api_key=k",
+        isNativeProvider: false,
+        corsAllowed: true,
       }).playbackMode,
     ).toBe("relay")
   })

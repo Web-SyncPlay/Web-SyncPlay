@@ -78,6 +78,19 @@ describe("buildPlayerSrc", () => {
       buildPlayerSrc("https://cdn.example/video", item, null, null),
     ).toBe("https://cdn.example/video")
   })
+
+  test("does not force video/mp4 for progressive m2ts URLs", () => {
+    const m2ts =
+      "https://jf.example/Videos/id/stream?api_key=k&container=m2ts"
+    expect(
+      buildPlayerSrc(
+        m2ts,
+        undefined,
+        stream({ kind: "combined", type: "video/mp4", src: m2ts }),
+        "video/mp4",
+      ),
+    ).toBe(m2ts)
+  })
 })
 
 describe("formatMediaErrorDetail / mediaErrorCode", () => {

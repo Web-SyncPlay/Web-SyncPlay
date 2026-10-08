@@ -1,4 +1,9 @@
 import { probeCorsPlayback } from "@/server/media/cors/cors-probe"
+import {
+  UNSUPPORTED_MPEG_TS_PROGRESSIVE_MESSAGE,
+  isUnsupportedMpegTsProgressiveUrl,
+  shapeJellyfinEmbyHlsUrl,
+} from "@/server/media/providers/jellyfin-emby-url"
 import { detectNativeSupport } from "@/server/media/providers/native-detect"
 import { resolveWithYtDlp } from "@/server/media/providers/yt-dlp-provider"
 import { buildSelectableStreams } from "@/server/media/resolve/build-selectable-streams"
@@ -13,6 +18,7 @@ export type ResolveFailureReason =
   | "metadata_failed"
   | "cors_blocked"
   | "source_unreachable"
+  | "unsupported_format"
   | "unknown"
 
 export type ResolvedMedia = {
@@ -71,7 +77,17 @@ export async function resolveMediaSource(input: {
     })
   }
 
-  const native = detectNativeSupport(input.url)
+  if (isUnsupportedMpegTsProgressiveUrl(input.url)) {
+    return unresolvedMedia(input, {
+      failureReason: "unsupported_format",
+      resolveUserMessage: UNSUPPORTED_MPEG_TS_PROGRESSIVE_MESSAGE,
+    })
+  }
+
+  // Jellyfin/Emby bare HLS often remuxes HEVC; force browser-safe codecs early.
+  const resolvedInputUrl = shapeJellyfinEmbyHlsUrl(input.url)
+
+  const native = detectNativeSupport(resolvedInputUrl)
 
   // Native providers (YouTube/Vimeo) play without a full yt-dlp extract, but
   // control pages still need catalog title/duration — light metadata only.
@@ -79,18 +95,18 @@ export async function resolveMediaSource(input: {
   const ytResolved = native.canPlayNatively
     ? await (async () => {
         const meta = native.isNativeProvider
-          ? await extractMetadata(input.url)
+          ? await extractMetadata(resolvedInputUrl)
           : { title: null as string | null, durationSeconds: null as number | null }
         return {
           extractOk: true as const,
           title: meta.title,
           durationSeconds: meta.durationSeconds,
-          playableUrl: input.url as string | null,
+          playableUrl: resolvedInputUrl as string | null,
           ...emptyYtDlpCatalog(),
           isLive: null as boolean | null,
         }
       })()
-    : await resolveWithYtDlp(input.url)
+    : await resolveWithYtDlp(resolvedInputUrl)
 
   if (!native.canPlayNatively && !ytResolved.extractOk) {
     return unresolvedMedia(input, {
@@ -103,7 +119,9 @@ export async function resolveMediaSource(input: {
     streams: ytResolved.streams,
     videoVariants: ytResolved.videoVariants,
     textTracks: ytResolved.textTracks,
-    playableUrl: ytResolved.playableUrl ?? input.url,
+    playableUrl: shapeJellyfinEmbyHlsUrl(
+      ytResolved.playableUrl ?? resolvedInputUrl,
+    ),
   })
 
   if (selectable.mediaStreams.length === 0 || !selectable.playableUrl) {
@@ -116,8 +134,32 @@ export async function resolveMediaSource(input: {
     })
   }
 
-  let playableUrl = selectable.playableUrl
+  let playableUrl = shapeJellyfinEmbyHlsUrl(selectable.playableUrl)
+  if (isUnsupportedMpegTsProgressiveUrl(playableUrl)) {
+    return unresolvedMedia(input, {
+      title: ytResolved.title ?? input.name ?? input.url,
+      durationSeconds: ytResolved.durationSeconds,
+      failureReason: "unsupported_format",
+      resolveUserMessage: UNSUPPORTED_MPEG_TS_PROGRESSIVE_MESSAGE,
+      isLive: ytResolved.isLive,
+    })
+  }
+
   let mediaStreams = selectable.mediaStreams
+    .filter((entry) => !isUnsupportedMpegTsProgressiveUrl(entry.src))
+    .map((entry) => ({
+      ...entry,
+      src: shapeJellyfinEmbyHlsUrl(entry.src),
+    }))
+  if (mediaStreams.length === 0) {
+    return unresolvedMedia(input, {
+      title: ytResolved.title ?? input.name ?? input.url,
+      durationSeconds: ytResolved.durationSeconds,
+      failureReason: "unsupported_format",
+      resolveUserMessage: UNSUPPORTED_MPEG_TS_PROGRESSIVE_MESSAGE,
+      isLive: ytResolved.isLive,
+    })
+  }
   let textTracks = selectable.textTracks
 
   const corsAllowed = native.isNativeProvider

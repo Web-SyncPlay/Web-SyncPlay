@@ -1,5 +1,6 @@
+/** Browser-playable direct media extensions (not progressive MPEG-TS). */
 export const directMediaPattern =
-  /\.(mp4|webm|m3u8|mpd|mp3|ogg|wav|flac|m4a|aac|weba|m4v|mov|ogv|ts|m2ts)(\?|$)/i
+  /\.(mp4|webm|m3u8|mpd|mp3|ogg|wav|flac|m4a|aac|weba|m4v|mov|ogv)(\?|$)/i
 
 export const nativeProviderHosts = [
   "youtube.com",

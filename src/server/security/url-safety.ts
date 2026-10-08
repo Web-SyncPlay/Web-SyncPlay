@@ -85,6 +85,20 @@ function isPrivateOrLocalIp(ip: string): boolean {
   return isPrivateOrLocalIpv4(normalized)
 }
 
+/** True when the URL host is loopback, .local, or a private/link-local IP. */
+export function isPrivateOrLoopbackHttpUrl(rawUrl: string): boolean {
+  try {
+    const hostname = normalizeHostname(new URL(rawUrl).hostname)
+    if (BLOCKED_HOSTNAMES.has(hostname)) return true
+    if (BLOCKED_HOSTNAME_SUFFIXES.some((suffix) => hostname.endsWith(suffix))) {
+      return true
+    }
+    return isIP(hostname) !== 0 && isPrivateOrLocalIp(hostname)
+  } catch {
+    return false
+  }
+}
+
 export type UrlSafetyResult =
   | { ok: true; url: URL }
   | { ok: false; reason: string }

@@ -1,3 +1,4 @@
+import { isUnsupportedMpegTsProgressiveUrl } from "@/lib/jellyfin-emby-url"
 import { isProgressiveMediaMime } from "@/lib/media-mime"
 import type { MediaErrorDetail } from "@vidstack/react"
 import type { PlaylistItem, PlaylistMediaStream } from "@/zod/types"
@@ -49,6 +50,11 @@ export function buildPlayerSrc(
 
   if (looksAdaptive) {
     return { src: activePlaybackSrc, type: "application/x-mpegurl" }
+  }
+
+  // Progressive MPEG-TS is not HTML5-playable; never invent video/mp4 for it.
+  if (isUnsupportedMpegTsProgressiveUrl(activePlaybackSrc)) {
+    return activePlaybackSrc
   }
 
   // blob: and extension-less `/api/media/local/…` need an explicit type or

@@ -9,8 +9,11 @@ import {
   MediaPlayer,
   MediaProvider,
   Track,
+  isDASHProvider,
+  isHLSProvider,
   type MediaErrorDetail,
   type MediaPlayerInstance,
+  type MediaProviderAdapter,
   type PlayerSrc,
 } from "@vidstack/react"
 import {
@@ -135,6 +138,17 @@ export function SyncedMediaPlayer(props: {
 
   const playerStreamType = resolvePlayerStreamType(current)
   const playerDurationSec = resolvePlayerDurationSec(current)
+
+  // Same-origin UMD builds (scripts/vendor-player-libs.ts) — never jsDelivr.
+  const onProviderChange = (provider: MediaProviderAdapter | null) => {
+    if (isHLSProvider(provider)) {
+      provider.library = "/vendor/hls.min.js"
+    }
+    if (isDASHProvider(provider)) {
+      provider.library = "/vendor/dash.all.min.js"
+    }
+  }
+
   const handlers = useSyncedMediaPlayerHandlers({
     playerRef,
     current,
@@ -208,6 +222,7 @@ export function SyncedMediaPlayer(props: {
       onPause={handlers.onPause}
       onPlaying={handlers.onPlaying}
       onWaiting={handlers.onWaiting}
+      onProviderChange={onProviderChange}
       onLoadStart={handlers.onLoadStart}
       onCanPlay={handlers.onCanPlay}
       onError={handlers.onError}

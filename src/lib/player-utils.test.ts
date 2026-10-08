@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import {
+  canPlayNatively,
   readMediaSeekableEndSec,
   readPlayerPlayheadSec,
   readPlayerSeekableEndSec,
@@ -7,6 +8,19 @@ import {
   resolvePlayerDurationSec,
   resolvePlayerStreamType,
 } from "./player-utils"
+
+describe("canPlayNatively", () => {
+  test("treats common progressive and adaptive media as native", () => {
+    expect(canPlayNatively("https://cdn.example/a.mp4")).toBe(true)
+    expect(canPlayNatively("https://cdn.example/a.m3u8?token=1")).toBe(true)
+    expect(canPlayNatively("https://cdn.example/a.webm")).toBe(true)
+  })
+
+  test("does not treat progressive MPEG-TS as browser-native", () => {
+    expect(canPlayNatively("https://cdn.example/a.ts")).toBe(false)
+    expect(canPlayNatively("https://cdn.example/a.m2ts")).toBe(false)
+  })
+})
 
 describe("resolvePlayerStreamType", () => {
   test("forces on-demand for VOD and unknown items", () => {
