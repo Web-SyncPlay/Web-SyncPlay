@@ -6,12 +6,10 @@
     "node": ">=26"
   },
   "scripts": {
-    "postinstall": "bun scripts/vendor-ffmpeg-core.ts && bun scripts/vendor-player-libs.ts && bun scripts/build-local-media-sw.ts",
-    "vendor:ffmpeg": "bun scripts/vendor-ffmpeg-core.ts",
-    "vendor:player-libs": "bun scripts/vendor-player-libs.ts",
-    "build:local-media-sw": "bun scripts/build-local-media-sw.ts",
+    "postinstall": "bun scripts/prepare-static-assets.ts",
+    "prepare:assets": "bun scripts/prepare-static-assets.ts",
     "dev": "NEXT_TELEMETRY_DISABLED=1 next dev",
-    "prebuild": "bun scripts/vendor-ffmpeg-core.ts && bun scripts/vendor-player-libs.ts && bun scripts/build-local-media-sw.ts",
+    "prebuild": "bun scripts/prepare-static-assets.ts",
     "build": "NEXT_TELEMETRY_DISABLED=1 next build",
     "start": "NEXT_TELEMETRY_DISABLED=1 next start",
     "lint": "eslint",
@@ -21,8 +19,6 @@
     "test:fuzz": "bun scripts/run-property-fuzz.ts",
     "test:e2e": "bun scripts/e2e-concurrent.ts",
     "test:e2e:ws": "bun scripts/e2e-ws-concurrent.ts",
-    "test:e2e:tracks": "bun scripts/e2e-local-tracks.ts",
-    "fixture:multi-audio": "bun scripts/generate-multi-audio-fixture.ts",
     "test:a11y": "bun scripts/a11y-wcag.ts",
     "format": "prettier --write ."
   },
