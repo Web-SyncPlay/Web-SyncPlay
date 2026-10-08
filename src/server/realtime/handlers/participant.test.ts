@@ -161,6 +161,46 @@ describe("participant handler interfaces", () => {
     )
   })
 
+  test("identical paused heartbeat refreshes lastSeen without room snapshot", async () => {
+    const store = new InMemoryRoomStateStore(createRoomState())
+    const bus = createTestBroadcastBus(store)
+    const ctx = createHandlerContext({ store, userId: "guest" })
+    const pausedPayload = {
+      paused: true,
+      currentTimeMs: 2500,
+      loading: false,
+    }
+
+    await handleParticipantUpdate(
+      ctx,
+      envelope("participant:update", pausedPayload),
+    )
+    const afterFirst = await store.getPresenceDataAll("room-1")
+    const firstSeenAt = afterFirst.guest?.lastSeenAt ?? 0
+    const firstReportUpdatedAt =
+      afterFirst.guest?.localPlaybackReports?.["conn-test"]?.updatedAt ?? 0
+    const beforeGen = store.peek("room-1")!.generation
+
+    await Bun.sleep(5)
+
+    await handleParticipantUpdate(
+      ctx,
+      envelope("participant:update", pausedPayload),
+    )
+    const afterSecond = await store.getPresenceDataAll("room-1")
+    expect(afterSecond.guest?.lastSeenAt).toBeGreaterThan(firstSeenAt)
+    expect(
+      afterSecond.guest?.localPlaybackReports?.["conn-test"]?.updatedAt,
+    ).toBeGreaterThan(firstReportUpdatedAt)
+    expect(store.peek("room-1")!.generation).toBe(beforeGen)
+
+    bus.captured.length = 0
+    await bus.flushPresence("room-1")
+    expect(bus.captured.some((c) => c.envelope.type === "presence:batch")).toBe(
+      true,
+    )
+  })
+
   test("room + player connections aggregate loading without last-write flicker", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
     const bus = createTestBroadcastBus(store)

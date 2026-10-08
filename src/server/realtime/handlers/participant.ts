@@ -138,14 +138,14 @@ export const handleParticipantUpdate: RoomMessageHandler = async (
     { ...participant, localPlayback: previousForConnection },
     participantResult.data,
   )
-  if (!update.identityDirty && !update.playbackDirty) {
-    return
-  }
+  // Unchanged playback payloads are still presence heartbeats: refresh
+  // lastSeenAt + report updatedAt without rewriting room state.
+  const isHeartbeat = !update.identityDirty && !update.playbackDirty
 
   let aggregatedPlayback = update.localPlayback
 
   // Presence ticks never rewrite full room state.
-  if (update.playbackDirty) {
+  if (update.playbackDirty || isHeartbeat) {
     const reports = upsertLocalPlaybackReport({
       reports: existingReports,
       connectionId,
