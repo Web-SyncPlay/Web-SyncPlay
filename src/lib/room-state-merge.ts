@@ -36,6 +36,26 @@ function mergeParticipantPresence(
   return changed ? next : prev
 }
 
+/**
+ * Control patches carry `currentIndex` without the playlist. When the playlist
+ * is still stale (snapshot pending), a remapped index can point at the wrong
+ * neighbor. Prefer the stable `playback.mediaId` identity when they disagree.
+ */
+function reconcileControlCurrentIndex(
+  prev: RoomState,
+  payload: RoomControlPayload,
+): number {
+  const mediaId = payload.playback.mediaId
+  if (!mediaId) {
+    return payload.currentIndex
+  }
+  if (prev.playlist[payload.currentIndex]?.id === mediaId) {
+    return payload.currentIndex
+  }
+  const byMediaId = prev.playlist.findIndex((item) => item.id === mediaId)
+  return byMediaId >= 0 ? byMediaId : prev.currentIndex
+}
+
 export function applyRoomControl(
   prev: RoomState | null,
   payload: RoomControlPayload,
@@ -48,7 +68,7 @@ export function applyRoomControl(
   return {
     ...prev,
     playback: payload.playback,
-    currentIndex: payload.currentIndex,
+    currentIndex: reconcileControlCurrentIndex(prev, payload),
     updatedAt: payload.updatedAt,
     generation: payload.generation,
   }

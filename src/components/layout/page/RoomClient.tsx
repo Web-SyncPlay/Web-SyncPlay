@@ -12,6 +12,7 @@ import {
   canControlPlayback,
   canMutateFromClientSession,
 } from "@/lib/permissions-utils"
+import { resolveCurrentPlaylistItem } from "@/lib/playlist-current"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -87,7 +88,7 @@ export function RoomClient({
       canManagePlaylist: canMutateFromThisSession,
     },
   }
-  const current = roomState.playlist[roomState.currentIndex]
+  const current = resolveCurrentPlaylistItem(roomState)
 
   return (
     <RoomClientReady

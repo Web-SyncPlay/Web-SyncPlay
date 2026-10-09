@@ -355,6 +355,6 @@ export const handlePlaylistRemove: RoomMessageHandler = async (ctx, data) => {
       })
       return true
     },
-    { kind: "control+snapshot" },
+    { kind: "snapshot" },
   )
 }

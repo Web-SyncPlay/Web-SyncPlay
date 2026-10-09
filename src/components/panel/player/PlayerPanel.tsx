@@ -5,6 +5,7 @@ import "@vidstack/react/player/styles/default/layouts/audio.css"
 import "@vidstack/react/player/styles/default/layouts/video.css"
 import "@vidstack/react/player/styles/default/theme.css"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { resolveCurrentPlaylistItem } from "@/lib/playlist-current"
 import {
   resolveCatalogDurationMs,
   resolveEffectiveDurationMs,
@@ -42,7 +43,7 @@ export function PlayerPanel({
   capabilities,
   className,
 }: RoomPanelProps & { className?: string }) {
-  const current = roomState.playlist[roomState.currentIndex]
+  const current = resolveCurrentPlaylistItem(roomState)
   const viewerPrefs = roomState.participants[userId]?.viewerMedia?.byItemId[
     current?.id ?? ""
   ]

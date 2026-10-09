@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card"
 import { ItemGroup } from "@/components/ui/item"
 import { canControlPlaylist } from "@/lib/permissions-utils"
+import { resolveCurrentPlaylistItemId } from "@/lib/playlist-current"
 import { formatDurationSeconds } from "@/lib/time-format"
 import { RestrictToVerticalAxis } from "@dnd-kit/abstract/modifiers"
 import { DragDropProvider } from "@dnd-kit/react"
@@ -113,9 +114,7 @@ export function PlaylistPanel({
         >
           <ItemGroup className="min-h-0 flex-1 gap-3 overflow-y-auto pt-1 text-sm">
             {roomState.playlist.map((x, i) => {
-              const isCurrent =
-                (roomState.playback.mediaId ??
-                  roomState.playlist[roomState.currentIndex]?.id) === x.id
+              const isCurrent = resolveCurrentPlaylistItemId(roomState) === x.id
 
               return (
                 <PlaylistItemRow

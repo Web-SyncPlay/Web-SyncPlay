@@ -5,6 +5,7 @@ import { useRoomRail } from "@/hooks/use-room-rail"
 import { useRoomSession } from "@/hooks/use-room-session"
 import { getRoomUrl } from "@/lib/control-url"
 import { isClientControlAuthorized } from "@/lib/permissions-utils"
+import { resolveCurrentPlaylistItem } from "@/lib/playlist-current"
 import { resolveCatalogDurationMs } from "@/lib/playlist-duration"
 import { ControlPanel } from "../../panel/control/ControlPanel"
 import { getPlaybackPermissionsState } from "../../panel/player/playback-control/use-playback-permissions-state"
@@ -54,7 +55,7 @@ function ControlClientReady(props: {
     unauthorizedHint:
       "Secret verification failed: this session is view-only until authenticated.",
   })
-  const current = roomState.playlist[roomState.currentIndex]
+  const current = resolveCurrentPlaylistItem(roomState)
   const timeline = usePlaybackTimelineController({
     roomState,
     send,

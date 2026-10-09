@@ -88,4 +88,77 @@ describe("room-state-merge", () => {
     expect(afterSnapshot.currentIndex).toBe(1)
     expect(afterSnapshot.generation).toBe(3)
   })
+
+  test("control remaps decremented index via mediaId when playlist is stale", () => {
+    // Playing B at index 1; server removed A and sent control with index 0
+    // before the snapshot updates the playlist.
+    const prev = createRoomState({
+      generation: 1,
+      currentIndex: 1,
+      playback: {
+        ...createRoomState().playback,
+        mediaId: "item-b",
+      },
+    })
+    const next = applyRoomControl(prev, {
+      generation: 2,
+      currentIndex: 0,
+      updatedAt: Date.now(),
+      playback: {
+        ...prev.playback,
+        mediaId: "item-b",
+      },
+    })
+    expect(next?.currentIndex).toBe(1)
+    expect(next?.playlist[next.currentIndex]?.id).toBe("item-b")
+    expect(next?.playback.mediaId).toBe("item-b")
+  })
+
+  test("control resolves delete-current mediaId against stale playlist", () => {
+    // Playing B at index 1; server removed B, advanced to C (mediaId), and
+    // sent control before the snapshot drops B from the playlist.
+    const prev = createRoomState({
+      generation: 1,
+      currentIndex: 1,
+      playback: {
+        ...createRoomState().playback,
+        mediaId: "item-b",
+      },
+    })
+    const next = applyRoomControl(prev, {
+      generation: 2,
+      currentIndex: 1,
+      updatedAt: Date.now(),
+      playback: {
+        ...prev.playback,
+        mediaId: "item-c",
+        timelineAnchorMs: 0,
+      },
+    })
+    expect(next?.currentIndex).toBe(2)
+    expect(next?.playlist[next.currentIndex]?.id).toBe("item-c")
+    expect(next?.playback.mediaId).toBe("item-c")
+  })
+
+  test("control keeps previous index when mediaId is absent from playlist", () => {
+    const prev = createRoomState({
+      generation: 1,
+      currentIndex: 1,
+      playback: {
+        ...createRoomState().playback,
+        mediaId: "item-b",
+      },
+    })
+    const next = applyRoomControl(prev, {
+      generation: 2,
+      currentIndex: 0,
+      updatedAt: Date.now(),
+      playback: {
+        ...prev.playback,
+        mediaId: "missing-item",
+      },
+    })
+    expect(next?.currentIndex).toBe(1)
+    expect(next?.playback.mediaId).toBe("missing-item")
+  })
 })
