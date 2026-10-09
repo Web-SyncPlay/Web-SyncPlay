@@ -106,10 +106,11 @@ function SiteNavbarBrand(props: { roomId?: string }) {
         <>
           <Separator
             orientation="vertical"
-            className="mx-1 h-6 self-center sm:mx-4"
+            className="mx-1 h-6 self-center lg:mx-4"
           />
           <span className="ml-0.5 text-base font-semibold tracking-tight">
-            Room {roomId}
+            <span className="hidden sm:inline">Room </span>
+            {roomId}
           </span>
         </>
       ) : null}
@@ -207,7 +208,10 @@ export function SiteNavbar(props: SiteNavbarProps) {
               {copied ? "Copied" : "Copy room link"}
             </span>
           </Button>
-          <Badge variant={paused ? "outline" : "secondary"}>
+          <Badge
+            variant={paused ? "outline" : "secondary"}
+            className="hidden xl:inline-flex"
+          >
             {paused ? "Paused" : "Playing"}
           </Badge>
           <span className="hidden min-w-0 truncate text-muted-foreground xl:inline">
