@@ -84,6 +84,7 @@ export function usePlayerPlaybackSync(config: {
     src: activePlaybackSrc,
     viewType,
   })
+  /* eslint-disable react-hooks/refs -- sync latest snapshots for event handlers */
   applyFailContextRef.current = {
     itemId: current?.id,
     itemName: current?.name,
@@ -126,6 +127,7 @@ export function usePlayerPlaybackSync(config: {
 
   // Keep authority readable from media event handlers in the same commit.
   playbackRef.current = roomState.playback
+  /* eslint-enable react-hooks/refs */
 
   useEffect(() => {
     isMediaReadyRef.current = false

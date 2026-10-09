@@ -62,9 +62,15 @@ export interface PlaylistItem {
   defaultStreamId?: string
   /** Resolve-time catalog default caption (not room-wide viewer selection). */
   defaultTextTrackId?: string
-  /** @deprecated Migrated to defaultStreamId by repair. */
+  /**
+   * @deprecated Migrated to defaultStreamId by repair on join / resolve.
+   * Removal target: 2026-06 after persisted rooms have been touched.
+   */
   selectedStreamId?: string
-  /** @deprecated Migrated to defaultTextTrackId by repair. */
+  /**
+   * @deprecated Migrated to defaultTextTrackId by repair on join / resolve.
+   * Removal target: 2026-06 after persisted rooms have been touched.
+   */
   selectedTextTrackId?: string
   /** From yt-dlp when resolve succeeds (live broadcast vs VOD). */
   isLive?: boolean

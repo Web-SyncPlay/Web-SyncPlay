@@ -14,7 +14,7 @@ import {
   mediasoupCreateTransport,
   mediasoupProduceData,
   onMediasoupTransportClosed,
-} from "@/server/media/mediasoup-sfu-client"
+} from "@/server/media/mediasoup-runtime"
 import type {
   RoomMessageContext,
   RoomMessageHandler,

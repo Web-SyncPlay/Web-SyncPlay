@@ -40,19 +40,6 @@ export function derivedExtractFailoverWaitMs(timeoutMs: number): number {
   return timeoutMs * 2 + 15_000
 }
 
-/** @deprecated use derivedLockHeartbeatTtlSeconds — kept for health alias */
-export function derivedExtractLockTtlSeconds(timeoutMs: number): number {
-  return derivedLockHeartbeatTtlSeconds(timeoutMs)
-}
-
-/** @deprecated use derivedExtractFailoverWaitMs */
-export function derivedExtractLockWaitMs(
-  timeoutMs: number,
-  _lockTtlSeconds: number,
-): number {
-  return derivedExtractFailoverWaitMs(timeoutMs)
-}
-
 /** Playlist resolve lease heartbeat (same cadence as extract lock). */
 export function derivedResolveLeaseTtlSeconds(timeoutMs: number): number {
   return derivedLockHeartbeatTtlSeconds(timeoutMs)

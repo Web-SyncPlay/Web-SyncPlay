@@ -75,3 +75,7 @@ test("rejects corrupt cache payloads", () => {
   expect(parseCachedExtract("{not-json")).toBeNull()
   expect(parseCachedExtract(JSON.stringify({ v: 1, extractedAt: 1 }))).toBeNull()
 })
+
+test("rejects legacy bare extract results without envelope", () => {
+  expect(parseCachedExtract(JSON.stringify(success()))).toBeNull()
+})

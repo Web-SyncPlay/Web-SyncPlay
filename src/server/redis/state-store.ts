@@ -1,5 +1,8 @@
 import { env } from "@/env"
-import { extractMetadata } from "@/server/media/yt-dlp"
+import {
+  dailyDefaultsForRead,
+  hydrateMissingDailyDefaultTitles,
+} from "@/server/redis/daily-defaults"
 import { getAppNodeId } from "@/server/node-id"
 import { listAliveAppNodeIds } from "@/server/node-heartbeat"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
@@ -178,25 +181,25 @@ export class RoomStateStore implements RoomStateStorePort {
     const client = await getCommandClient()
     const raw = await client.get(keys.dailyDefaults())
     const defaults = raw ? parseJson<DailyDefaultVideo[]>(raw) : []
+    return dailyDefaultsForRead(defaults)
+  }
 
-    let didHydrateMissingTitle = false
-    const normalized = await Promise.all(
-      defaults.map(async (entry) => {
-        const cleanTitle = entry.title?.trim() ?? ""
-        if (cleanTitle) return { title: cleanTitle, url: entry.url }
-
-        const metadata = await extractMetadata(entry.url)
-        const hydratedTitle = metadata.title ?? "Resolved media"
-        didHydrateMissingTitle = true
-        return { title: hydratedTitle, url: entry.url }
-      }),
-    )
-
-    if (didHydrateMissingTitle) {
-      await this.setDailyDefaults(normalized)
+  /** Maintenance: resolve missing default titles via yt-dlp and persist. */
+  async hydrateDailyDefaultTitlesIfNeeded(): Promise<number> {
+    const client = await getCommandClient()
+    const raw = await client.get(keys.dailyDefaults())
+    const defaults = raw ? parseJson<DailyDefaultVideo[]>(raw) : []
+    const needsHydration = defaults.some((entry) => !entry.title?.trim())
+    if (!needsHydration) {
+      return 0
     }
 
-    return normalized
+    const { videos, hydratedCount } =
+      await hydrateMissingDailyDefaultTitles(defaults)
+    if (hydratedCount > 0) {
+      await this.setDailyDefaults(videos)
+    }
+    return hydratedCount
   }
 
   async setDailyDefaults(videos: DailyDefaultVideo[]) {

@@ -14,7 +14,7 @@ import { createLocalMediaReadHandler } from "./room-socket-local-media-read"
 import { createSendEnvelope } from "./room-socket-local-media-send"
 import { createLocalMediaSfuSession } from "./room-socket-local-media-sfu"
 
-type LocalMediaSocketSession = {
+export type RoomSocketLocalMediaSession = {
   sendSfuRequest: SfuSendRequest
   provideViaSfu: (localMediaId: string) => void
   /** Returns true when the envelope was handled as a local-media message. */
@@ -35,7 +35,7 @@ export function createRoomSocketLocalMediaSession(input: {
   roomStateRef: MutableRefObject<RoomState | null>
   getDetachSwBridge: () => (() => void) | null
   setDetachSwBridge: (detach: (() => void) | null) => void
-}): LocalMediaSocketSession {
+}): RoomSocketLocalMediaSession {
   const { ws, roomId, userId, roomStateRef } = input
 
   const sendEnvelope = createSendEnvelope(ws)

@@ -76,4 +76,23 @@ describe("identity-store", () => {
     expect(store.get("user-1")?.startsWith("h1:")).toBe(true)
     expect(store.get("user-1")).not.toBe("legacy-cleartext")
   })
+
+  test("matchIdentitySecret migrates legacy cleartext without claiming", async () => {
+    const store: HashStore = new Map([["user-1", "legacy-cleartext"]])
+    mock.module("@/server/redis/client", () => ({
+      getCommandClient: async () => createRedisMock(store),
+    }))
+
+    const { matchIdentitySecret } = await import(
+      "@/server/realtime/services/identity-store"
+    )
+
+    const ok = await matchIdentitySecret({
+      roomId: "room-1",
+      userId: "user-1",
+      userSecret: "legacy-cleartext",
+    })
+    expect(ok).toBe(true)
+    expect(store.get("user-1")?.startsWith("h1:")).toBe(true)
+  })
 })

@@ -41,7 +41,9 @@ export function useApplyRoomClock(config: {
   const { applyClockToPlayer, nudgeTransport } = usePlayerSync()
   const playRetryTimerRef = useRef<number | undefined>(undefined)
   const onApplyFailedRef = useRef(onApplyFailed)
+  /* eslint-disable react-hooks/refs -- latest callback for async apply retries */
   onApplyFailedRef.current = onApplyFailed
+  /* eslint-enable react-hooks/refs */
 
   const scheduleTransportNudge = useCallback(
     (player: MediaPlayerInstance) => {

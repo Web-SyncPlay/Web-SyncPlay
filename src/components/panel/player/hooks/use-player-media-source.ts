@@ -36,7 +36,9 @@ export function usePlayerMediaSource(config: {
   const localBlobFallbackAttemptedRef = useRef<string | null>(null)
 
   useEffect(() => {
-    setForceLocalRelaySrc(false)
+    queueMicrotask(() => {
+      setForceLocalRelaySrc(false)
+    })
     localBlobFallbackAttemptedRef.current = null
   }, [current?.id])
 

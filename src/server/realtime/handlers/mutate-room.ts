@@ -6,6 +6,7 @@ import {
   reconcileParticipantsConnectivity,
   schedulePrune,
 } from "@/server/realtime/services/participants"
+import { applyRoomStateRepair } from "@/server/realtime/services/room-state-repair"
 import { markCurrentMedia } from "@/server/realtime/services/timeline"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
 import type { RoomState } from "@/zod/types"
@@ -95,6 +96,8 @@ export async function mutateRoomMessage(
     if (!body(state, participant)) {
       return null
     }
+
+    applyRoomStateRepair(state)
 
     participant.connected = true
     participant.lastSeenAt = Date.now()

@@ -67,6 +67,11 @@ async function verifyAndMaybeMigrate(params: {
 /**
  * Redis-backed identity secret hashes so verification survives restarts /
  * multi-instance. First claim wins; later joins must match.
+ *
+ * Legacy cleartext values in Redis are compared on verify, then rewritten to
+ * `h1:` SHA-256 hashes on success (claimOrVerifyIdentitySecret and
+ * matchIdentitySecret). Do not reject cleartext at the boundary until all
+ * active rooms have been verified at least once post-migration.
  */
 export async function claimOrVerifyIdentitySecret(params: {
   roomId: string

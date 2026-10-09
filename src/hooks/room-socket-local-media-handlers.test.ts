@@ -64,8 +64,10 @@ describe("createLocalMediaEnvelopeHandler", () => {
 describe("createSendEnvelope", () => {
   test("sends JSON envelopes only while the socket is open", () => {
     const sent: string[] = []
+    const OPEN = 1
+    const CLOSED = 3
     const ws = {
-      readyState: WebSocket.OPEN,
+      readyState: OPEN,
       send(data: string) {
         sent.push(data)
       },
@@ -85,7 +87,7 @@ describe("createSendEnvelope", () => {
     expect(typeof parsed.requestId).toBe("string")
     expect(parsed.requestId.length).toBeGreaterThan(0)
 
-    ;(ws as { readyState: number }).readyState = WebSocket.CLOSED
+    ;(ws as { readyState: number }).readyState = CLOSED
     expect(send("local-media:reannounce", {})).toBe(false)
     expect(sent).toHaveLength(1)
   })

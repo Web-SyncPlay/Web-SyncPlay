@@ -20,6 +20,7 @@ export default defineConfig([
     "**/build/**",
     "**/dist/**",
     ".next/**",
+    "public/vendor/**",
     "src/components/ui/**",
     "next-env.d.ts",
   ]),

@@ -114,14 +114,7 @@ export function parseCachedExtract(raw: string): YtDlpExtractResult | null {
     return freshnessFilter(envelope.data)
   }
 
-  // Legacy cache entries were bare YtDlpExtractResult without an envelope.
-  const legacy = extractResultSchema.safeParse(parsed)
-  if (!legacy.success) return null
-  return freshnessFilter({
-    v: CACHE_VERSION,
-    extractedAt: 0,
-    result: legacy.data,
-  })
+  return null
 }
 
 function freshnessFilter(envelope: YtDlpCacheEnvelope): YtDlpExtractResult | null {

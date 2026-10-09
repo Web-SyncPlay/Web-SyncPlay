@@ -9,6 +9,8 @@
  * - `providers.ts` — local WS / internal HTTP / Redis fetch paths
  * - `subscriber.ts` — cluster pub/sub request handler
  * - `fetch.ts` — range orchestration, aligned blocks, byte stream
+ *
+ * Block-cache invalidation is re-exported for store lifecycle hooks.
  */
 
 export type {

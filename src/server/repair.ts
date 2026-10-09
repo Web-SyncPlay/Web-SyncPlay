@@ -277,7 +277,7 @@ function repairPlaylistItemFields(item: PlaylistItem): string[] {
     findings.push("playlist-item-default-text-track-migrated")
   }
 
-  // Strip legacy dual-write fields
+  // Strip legacy dual-write fields (persisted rooms lose these on join repair).
   delete legacy.isResolving
   delete legacy.resolutionError
   delete legacy.originalUrl

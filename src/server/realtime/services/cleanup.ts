@@ -6,6 +6,7 @@ import {
   pruneOfflineParticipants,
   reconcileParticipantsConnectivity,
 } from "./participants"
+import { applyRoomStateRepair } from "./room-state-repair"
 import { bumpRoomRevisions } from "./timeline"
 
 /**
@@ -34,13 +35,24 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
         return null
       }
 
+      const repairFindings = applyRoomStateRepair(current)
+      let didMutate = repairFindings.length > 0
+      if (repairFindings.length > 0) {
+        console.warn("[rooms] room state repaired during cleanup sweep", {
+          roomId,
+          findings: repairFindings,
+        })
+      }
+
       const activeConnections = await store.getWsPresenceUserIds(roomId)
       const recon = reconcileParticipantsConnectivity(
         current,
         activeConnections,
       )
-      let didMutate =
-        recon.disconnecting.length > 0 || recon.reconnecting.length > 0
+      didMutate =
+        didMutate ||
+        recon.disconnecting.length > 0 ||
+        recon.reconnecting.length > 0
 
       const prunedUserIds = pruneOfflineParticipants(current, Date.now())
       lastPruned = prunedUserIds.length

@@ -73,6 +73,28 @@ ICE is STUN-only (Google + Cloudflare). No TURN — UDP-blocked clients use HTTP
 
 Room cleanup, ownership repair, and playlist-resolve reclaim run on a background tick. Daily defaults reseed from `FALLBACK_DEFAULT_MEDIA_URL` when the cache is empty or expired.
 
+### Multi-replica operations (SFU)
+
+Room sync and remote media scale across replicas via Valkey. Local-media HTTP can too when `INTERNAL_NODE_BASE_URL` and `LOCAL_MEDIA_INTERNAL_SECRET` are set. **mediasoup SFU does not** — routers, transports, and the WS registry are process-local.
+
+| Path | Cross-replica? | Notes |
+| ---- | -------------- | ----- |
+| Room sync / playlist / presence | Yes | Valkey + Redis pub/sub |
+| Remote media (yt-dlp / proxy) | Yes | Shared cache and locks |
+| Local-media HTTP relay | Yes* | Needs internal URL + secret; prefer affinity to the provider’s node |
+| mediasoup SFU (WebRTC) | **No** | Provider and SFU viewers must share the replica that holds the provider WS; UDP `40000` on that process |
+
+**Affinity-sensitive paths**
+
+- `/api/ws` — room control works without stickiness; SFU signaling and DataChannels require the viewer’s WS on the **same replica** as the file provider’s WS.
+- UDP `40000` — must reach the mediasoup process on that replica (fixed port; not configurable).
+
+**Recommendations**
+
+- ICE remains STUN-only. No TURN — UDP-blocked clients use HTTP local-media relay (or P2P), not SFU.
+- Prefer a **single `web` replica** for SFU-heavy deployments, or L7 sticky sessions on `/api/ws` so provider and SFU consumers stay co-located.
+- Valkey does not globalize SFU; do not expect round-robin replicas to share a WebRTC session.
+
 ## Environment variables
 
 Schema: [`src/env.ts`](./src/env.ts). Copy [`.env.example`](./.env.example) for local use. Empty strings are treated as unset. Set `SKIP_ENV_VALIDATION=1` to skip validation (e.g. Docker image build).
@@ -86,7 +108,7 @@ Schema: [`src/env.ts`](./src/env.ts). Copy [`.env.example`](./.env.example) for 
 
 ### Multi-replica
 
-Set **both** on every `web` replica for sticky local-media HTTP affinity (miss path: provider WS → internal HTTP → Redis pub/sub). Keep the internal route off public ingress. SFU remains process-local either way.
+Set **both** on every `web` replica for sticky local-media HTTP affinity (miss path: provider WS → internal HTTP → Redis pub/sub). Keep the internal route off public ingress. SFU remains process-local either way — see [Multi-replica operations (SFU)](#multi-replica-operations-sfu).
 
 | Variable                      | Default | Description                                                                |
 | ----------------------------- | ------- | -------------------------------------------------------------------------- |
@@ -168,7 +190,7 @@ Reusing a room ID with a new `media` query does **not** replace the playlist. Ch
 
 **Remote media:** resolve (yt-dlp or native host) → Valkey-cached extract → stream catalog → same-origin proxy when CORS blocks → HLS rewrite. Cluster-safe locks/leases reclaim abandoned resolves.
 
-**Local files:** stay on the sharer’s browser `File` (no upload). Delivery order: **SFU → P2P → HTTP relay**. SFU is process-local (UDP 40000); cross-replica viewers use P2P or HTTP. Optional ABR via ffmpeg.wasm on the provider.
+**Local files:** stay on the sharer’s browser `File` (no upload). Delivery order: **SFU → P2P → HTTP relay**. SFU is process-local (UDP 40000); cross-replica viewers use P2P or HTTP. Ops checklist: [Multi-replica operations (SFU)](#multi-replica-operations-sfu). Optional ABR via ffmpeg.wasm on the provider.
 
 ## Security & accessibility
 
