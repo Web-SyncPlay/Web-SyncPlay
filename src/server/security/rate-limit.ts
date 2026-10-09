@@ -4,12 +4,15 @@ type RateLimitResult = { allowed: boolean; remaining: number }
 
 /**
  * Redis fixed-window rate limiter (INCR + EXPIRE).
- * Fail-open on Redis errors so rooms stay available during Valkey blips.
+ * Fail-closed on Redis errors by default so abusable endpoints stay protected
+ * during Valkey outages. Pass `failOpen: true` only for non-abusable reads.
  */
 export async function consumeRateLimit(params: {
   key: string
   limit: number
   windowMs: number
+  /** Allow the request when Redis is unavailable. Default: deny. */
+  failOpen?: boolean
 }): Promise<RateLimitResult> {
   const windowSeconds = Math.max(1, Math.ceil(params.windowMs / 1000))
   const redisKey = `rate:${params.key}`
@@ -31,8 +34,15 @@ export async function consumeRateLimit(params: {
       remaining: Math.max(0, params.limit - count),
     }
   } catch (error) {
-    console.warn("[rate-limit] redis unavailable; allowing request", error)
-    return { allowed: true, remaining: params.limit }
+    if (params.failOpen) {
+      console.warn(
+        "[rate-limit] redis unavailable; allowing request (failOpen)",
+        error,
+      )
+      return { allowed: true, remaining: params.limit }
+    }
+    console.warn("[rate-limit] redis unavailable; denying request", error)
+    return { allowed: false, remaining: 0 }
   }
 }
 

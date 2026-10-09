@@ -1,6 +1,9 @@
 import { expect, test } from "bun:test"
 import fc from "fast-check"
-import { assertPublicHttpUrl } from "./url-safety"
+import {
+  assertPublicHttpUrl,
+  assertPublicHttpUrlResolved,
+} from "./url-safety"
 
 const privateIpv4 = fc
   .oneof(
@@ -178,6 +181,62 @@ test("public https hosts and public IPv4 are accepted", () => {
         expect(assertPublicHttpUrl(url).ok).toBe(true)
       },
     ),
+    { numRuns: 80 },
+  )
+})
+
+test("resolved check rejects when DNS returns any private IPv4", async () => {
+  await fc.assert(
+    fc.asyncProperty(
+      publicHostname,
+      privateIpv4,
+      publicIpv4,
+      fc.constantFrom("http", "https"),
+      async (host, privateIp, publicIp, scheme) => {
+        const result = await assertPublicHttpUrlResolved(
+          `${scheme}://${host}/x`,
+          {
+            lookup: async () => [publicIp, privateIp],
+          },
+        )
+        expect(result.ok).toBe(false)
+        if (!result.ok) expect(result.reason).toBe("private_ip")
+      },
+    ),
+    { numRuns: 60 },
+  )
+})
+
+test("resolved check accepts when DNS returns only public IPv4", async () => {
+  await fc.assert(
+    fc.asyncProperty(
+      publicHostname,
+      fc.array(publicIpv4, { minLength: 1, maxLength: 3 }),
+      async (host, addresses) => {
+        const result = await assertPublicHttpUrlResolved(
+          `https://${host}/media.mp4`,
+          { lookup: async () => addresses },
+        )
+        expect(result.ok).toBe(true)
+      },
+    ),
+    { numRuns: 60 },
+  )
+})
+
+test("resolved check never throws on arbitrary strings with failing DNS", async () => {
+  await fc.assert(
+    fc.asyncProperty(fc.string({ maxLength: 200 }), async (raw) => {
+      const result = await assertPublicHttpUrlResolved(raw, {
+        lookup: async () => {
+          throw new Error("ENOTFOUND")
+        },
+      })
+      expect(typeof result.ok).toBe("boolean")
+      if (!result.ok) {
+        expect(typeof result.reason).toBe("string")
+      }
+    }),
     { numRuns: 80 },
   )
 })

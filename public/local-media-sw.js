@@ -22,12 +22,40 @@
 
   // src/sw/local-media-sw.ts
   var sw = self;
+  var viewerCapability = null;
   sw.addEventListener("install", (event) => {
-    event.waitUntil(sw.skipWaiting());
+    event.waitUntil?.(sw.skipWaiting());
   });
   sw.addEventListener("activate", (event) => {
-    event.waitUntil(sw.clients.claim());
+    event.waitUntil?.(sw.clients.claim());
   });
+  sw.addEventListener("message", (event) => {
+    const data = event.data;
+    if (!data || data.type !== "local-media-sw-viewer-capability")
+      return;
+    const token = data.record?.token?.trim();
+    const userId = data.record?.userId?.trim();
+    viewerCapability = token && userId ? { token, userId } : null;
+  });
+  function withViewerCapabilityOnRequest(request) {
+    if (!viewerCapability)
+      return request;
+    try {
+      const url = new URL(request.url);
+      if (!url.pathname.startsWith("/api/media/local/"))
+        return request;
+      if (url.pathname.includes("/internal/"))
+        return request;
+      if (url.searchParams.has("vt") && url.searchParams.has("uid")) {
+        return request;
+      }
+      url.searchParams.set("vt", viewerCapability.token);
+      url.searchParams.set("uid", viewerCapability.userId);
+      return new Request(url.toString(), request);
+    } catch {
+      return request;
+    }
+  }
   async function askClientForRange(client, mediaId, start, end) {
     const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     return new Promise((resolve) => {
@@ -63,6 +91,8 @@
     });
   }
   sw.addEventListener("fetch", (event) => {
+    if (!event.request || !event.respondWith)
+      return;
     const url = new URL(event.request.url);
     if (!url.pathname.startsWith("/api/media/local/"))
       return;
@@ -74,10 +104,11 @@
     const mediaId = parts[3];
     if (!mediaId)
       return;
+    const request = event.request;
     event.respondWith((async () => {
-      const range = parseRawBytesRangeHeader(event.request.headers.get("range"));
+      const range = parseRawBytesRangeHeader(request.headers.get("range"));
       if (!range) {
-        return fetch(event.request);
+        return fetch(withViewerCapabilityOnRequest(request));
       }
       const clients = await sw.clients.matchAll({
         type: "window",
@@ -102,7 +133,7 @@
           });
         }
       }
-      return fetch(event.request);
+      return fetch(withViewerCapabilityOnRequest(request));
     })());
   });
 })();

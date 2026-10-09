@@ -29,7 +29,9 @@ import {
   addSocket,
   getSocketClientIp,
   getSocketMeta,
+  removeSocket,
   setSocketControlAuthorized,
+  setSocketJoinCommitted,
   setSocketPresenceTracked,
 } from "@/server/ws/registry"
 import { consumeRateLimit } from "@/server/security/rate-limit"
@@ -37,11 +39,12 @@ import { roomJoinSchema } from "@/zod/schemas"
 import type { SessionCapabilities } from "@/server/realtime/services/permissions"
 import type { ParticipantState, SessionKind, WsEnvelope } from "@/zod/types"
 import { randomUUID } from "node:crypto"
-import type { WebSocket } from "ws"
+import { WebSocket } from "ws"
 import {
   ensureRoomSecurity,
   evaluateJoinAdmission,
 } from "../services/room-security"
+import type { RoomStateStorePort } from "../ports"
 import type { JoinHandler } from "./types"
 
 export function resolveJoinParticipantProfile(
@@ -67,6 +70,27 @@ function sendEnvelope<TPayload>(
   } catch (error) {
     console.error(`[realtime] failed to send ${envelope.type}`, error)
   }
+}
+
+/** R1/D3: roll back presence and reject when the socket died mid-join. */
+async function abortJoinAfterCommit(options: {
+  ws: WebSocket
+  store: RoomStateStorePort
+  roomId: string
+  userId: string
+  requestId?: string
+  /** Only clear when this join added a presence ref (avoid wiping multi-tab). */
+  didAddPresence: boolean
+}) {
+  if (options.didAddPresence) {
+    await options.store.clearWsConnectionRef(options.roomId, options.userId)
+  }
+  removeSocket(options.ws)
+  sendEnvelope(options.ws, {
+    type: "room:join:rejected",
+    requestId: options.requestId,
+    payload: { reason: "connection_closed" },
+  })
 }
 
 export const handleRoomJoin: JoinHandler = async (ctx, data) => {
@@ -185,20 +209,13 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
     userId,
   })
 
-  addSocket(ctx.ws, {
-    roomId,
-    userId,
-    controlAuthorized,
-    isControlSession,
-    sessionKind,
-  })
-  setSocketControlAuthorized(ctx.ws, controlAuthorized)
-  const activeMeta = getSocketMeta(ctx.ws)
-  const isPresenceAlreadyTracked = Boolean(activeMeta?.presenceTracked)
+  // R2: delay room membership (addSocket) until after commit so room:control
+  // cannot land on a half-joined socket. R3 gates non-join until joinCommitted.
+  const isPresenceAlreadyTracked = Boolean(previousMeta?.presenceTracked)
 
   let reconnectingUserIds: string[] = []
   let disconnectingUserIds: string[] = []
-
+  let admissionRejectReason: "password_required" | "invalid_password" | undefined
   let sessionCapabilities: SessionCapabilities | undefined
 
   const committed = await ctx.store.updateRoom(roomId, async (existing) => {
@@ -207,6 +224,14 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
       (await createInitialRoomState(ctx.store, roomId, userId, {
         initialMediaUrl: mediaSeed.seedUrl,
       }))
+
+    // R5: re-check admission inside WATCH so password flips cannot race in.
+    const admissionInWatch = evaluateJoinAdmission(state, joinPassword)
+    if (!admissionInWatch.allowed) {
+      admissionRejectReason = admissionInWatch.reason
+      return null
+    }
+
     normalizeParticipantRoles(state)
     logRoomStateRepairFindings({
       roomId,
@@ -289,12 +314,77 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
     return state
   })
 
-  // Persist-first: presence ref only after a successful room commit.
+  if (admissionRejectReason) {
+    sendEnvelope(ctx.ws, {
+      type: "room:join:rejected",
+      requestId: data.requestId,
+      payload: { reason: admissionRejectReason },
+    })
+    return
+  }
+
+  // Persist-first: membership + presence only after a successful room commit.
   if (committed) {
+    let didAddPresence = false
+
+    // R1: socket must still be open before membership / presence.
+    if (ctx.ws.readyState !== WebSocket.OPEN) {
+      await abortJoinAfterCommit({
+        ws: ctx.ws,
+        store: ctx.store,
+        roomId,
+        userId,
+        requestId: data.requestId,
+        didAddPresence: false,
+      })
+      return
+    }
+
+    addSocket(ctx.ws, {
+      roomId,
+      userId,
+      controlAuthorized,
+      isControlSession,
+      sessionKind,
+      joinCommitted: false,
+    })
+    setSocketControlAuthorized(ctx.ws, controlAuthorized)
+
+    if (!getSocketMeta(ctx.ws)) {
+      await abortJoinAfterCommit({
+        ws: ctx.ws,
+        store: ctx.store,
+        roomId,
+        userId,
+        requestId: data.requestId,
+        didAddPresence: false,
+      })
+      return
+    }
+
     if (!isPresenceAlreadyTracked) {
       await ctx.store.addWsConnectionRef(roomId, userId)
       setSocketPresenceTracked(ctx.ws, true)
+      didAddPresence = true
     }
+
+    // R1 again after presence: close may have raced addWsConnectionRef (D3).
+    if (
+      ctx.ws.readyState !== WebSocket.OPEN ||
+      !getSocketMeta(ctx.ws)
+    ) {
+      await abortJoinAfterCommit({
+        ws: ctx.ws,
+        store: ctx.store,
+        roomId,
+        userId,
+        requestId: data.requestId,
+        didAddPresence,
+      })
+      return
+    }
+
+    setSocketJoinCommitted(ctx.ws, true)
 
     scheduleResolvingPlaylistItems(ctx.store, roomId, committed.playlist)
 
@@ -322,9 +412,26 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
   }
 
   if (sessionCapabilities) {
+    let viewerToken: string | undefined
+    try {
+      const { mintViewerCapabilityToken } = await import(
+        "@/server/media/viewer-capability-token"
+      )
+      const minted = await mintViewerCapabilityToken({
+        roomId,
+        userId,
+        boundIp: getSocketClientIp(ctx.ws),
+      })
+      viewerToken = minted.token
+    } catch (error) {
+      console.warn("[realtime] viewer capability mint failed", error)
+    }
     sendEnvelope(ctx.ws, {
       type: "session:capabilities",
-      payload: sessionCapabilities,
+      payload: {
+        ...sessionCapabilities,
+        ...(viewerToken ? { viewerToken } : {}),
+      },
     })
   }
 

@@ -62,7 +62,7 @@ jobs:
       - name: Build app
         run: bun run build
 
-      - name: Start app for a11y and e2e:ws
+      - name: Start app for a11y and e2e
         run: |
           bun run start &
           echo "APP_PID=$!" >> "$GITHUB_ENV"
@@ -78,6 +78,11 @@ jobs:
 
       - name: WCAG 2.2 AAA (all pages)
         run: bun run test:a11y
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3000
+
+      - name: Browser e2e concurrency
+        run: bun run test:e2e
         env:
           E2E_BASE_URL: http://127.0.0.1:3000
 

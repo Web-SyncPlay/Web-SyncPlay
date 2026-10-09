@@ -91,18 +91,50 @@ Room sync and remote media scale across replicas via Valkey. Local-media HTTP ca
 | Room sync / playlist / presence | Yes | Valkey + Redis pub/sub |
 | Remote media (yt-dlp / proxy) | Yes | Shared cache and locks |
 | Local-media HTTP relay | Yes* | Needs internal URL + secret; prefer affinity to the provider’s node |
+| Local-media P2P signaling | Yes | Redis user-targeted fan-out; ICE/UDP is peer-side |
 | mediasoup SFU (WebRTC) | **No** | Provider and SFU viewers must share the replica that holds the provider WS; UDP `40000` on that process |
 
 **Affinity-sensitive paths**
 
 - `/api/ws` — room control works without stickiness; SFU signaling and DataChannels require the viewer’s WS on the **same replica** as the file provider’s WS.
-- UDP `40000` — must reach the mediasoup process on that replica (fixed port; not configurable).
+- UDP `40000` — fixed, process-local, and **not configurable**. It must reach the mediasoup process on that replica. Multiple `web` replicas on one host **cannot** share the port (one bind wins; others fail or never receive media).
+
+**Sticky WS is not enough alone.** L7 stickiness on `/api/ws` co-locates signaling, but SFU media still fails if UDP `40000` cannot reach the provider’s pod (e.g. a NodePort/host mapping that lands on a different replica, or no per-pod UDP path at all).
 
 **Recommendations**
 
 - ICE remains STUN-only. No TURN — UDP-blocked clients use HTTP local-media relay (or P2P), not SFU.
-- Prefer a **single `web` replica** for SFU-heavy deployments, or L7 sticky sessions on `/api/ws` so provider and SFU consumers stay co-located.
+- Prefer a **single `web` replica** for SFU-heavy deployments.
+- If you run multiple replicas: sticky `/api/ws` **and** ensure UDP `40000` reaches the **same** replica that holds the provider WS (e.g. `hostNetwork`, or a per-pod/host UDP mapping). Stickiness without that UDP path is insufficient.
 - Valkey does not globalize SFU; do not expect round-robin replicas to share a WebRTC session.
+- Without WS stickiness, **SFU fails** (process-local registry). P2P signaling may still work via Redis across replicas; ICE/UDP for P2P is peer-side and does not need the same `/api/ws` node.
+
+**Sticky `/api/ws` (reverse proxy)** — key on a cookie or client IP so provider and SFU viewers stay on one replica:
+
+```nginx
+# nginx — cookie hash (set Cookie wsp_node on first response if absent), or ip_hash
+upstream websyncplay {
+  hash $cookie_wsp_node consistent;
+  # ip_hash;  # alternative: client-IP affinity
+  server 10.0.0.1:3000;
+  server 10.0.0.2:3000;
+}
+
+location /api/ws {
+  proxy_pass http://websyncplay;
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection "upgrade";
+}
+```
+
+```caddy
+# Caddy — cookie affinity (or lb_policy ip_hash)
+reverse_proxy /api/ws 10.0.0.1:3000 10.0.0.2:3000 {
+  lb_policy cookie wsp_node
+  # lb_policy ip_hash
+}
+```
 
 ## Environment variables
 
@@ -121,7 +153,7 @@ Set **both** on every `web` replica for sticky local-media HTTP affinity (miss p
 
 | Variable                      | Default | Description                                                                |
 | ----------------------------- | ------- | -------------------------------------------------------------------------- |
-| `INTERNAL_NODE_BASE_URL`      | unset   | This replica’s reachable base URL (e.g. `http://web:3000` or per-pod DNS). |
+| `INTERNAL_NODE_BASE_URL`      | unset   | **Per-replica** reachable base URL (pod DNS / unique hostname). Do **not** use a shared service DNS like `http://web:3000` — round-robin misses the provider node. |
 | `LOCAL_MEDIA_INTERNAL_SECRET` | unset   | Shared secret (≥16 chars) for `/api/media/local/internal/*`.               |
 
 ### Optional
@@ -203,7 +235,7 @@ Reusing a room ID with a new `media` query does **not** replace the playlist. Ch
 
 **Remote media:** resolve (yt-dlp or native host) → Valkey-cached extract → stream catalog → same-origin proxy when CORS blocks → HLS rewrite. Cluster-safe locks/leases reclaim abandoned resolves.
 
-**Local files:** stay on the sharer’s browser `File` (no upload). Delivery order: **SFU → P2P → HTTP relay**. SFU is process-local (UDP 40000); cross-replica viewers use P2P or HTTP. Ops checklist: [Multi-replica operations (SFU)](#multi-replica-operations-sfu). Optional ABR via ffmpeg.wasm on the provider.
+**Local files:** stay on the sharer’s browser `File` (no upload). Delivery order: **SFU → P2P → HTTP relay**. SFU is process-local (UDP 40000). **P2P signaling is cluster-aware** (Redis user-targeted fan-out); ICE/UDP remains peer-side. Cross-replica viewers use P2P or HTTP when SFU is unavailable. Ops checklist: [Multi-replica operations (SFU)](#multi-replica-operations-sfu). Optional ABR via ffmpeg.wasm on the provider.
 
 ## Security & accessibility
 

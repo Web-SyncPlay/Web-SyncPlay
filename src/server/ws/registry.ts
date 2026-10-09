@@ -7,6 +7,11 @@ export type SocketMeta = {
   /** Stable id for this WS so multi-tab playback reports do not clobber each other. */
   connectionId: string
   presenceTracked: boolean
+  /**
+   * True only after `room:join` has committed room membership.
+   * Non-join messages are ignored until this is set (R3).
+   */
+  joinCommitted: boolean
   controlAuthorized: boolean
   isControlSession: boolean
   sessionKind: SessionKind
@@ -51,7 +56,13 @@ function detachFromRoom(
 function patchSocketMeta(
   ws: WebSocket,
   patch: Partial<
-    Pick<SocketMeta, "presenceTracked" | "controlAuthorized" | "clientIp">
+    Pick<
+      SocketMeta,
+      | "presenceTracked"
+      | "controlAuthorized"
+      | "clientIp"
+      | "joinCommitted"
+    >
   >,
 ) {
   const { sockets } = getRegistrySlot()
@@ -80,8 +91,13 @@ export function getSocketClientIp(ws: WebSocket): string {
 
 export function addSocket(
   ws: WebSocket,
-  meta: Omit<SocketMeta, "presenceTracked" | "connectionId" | "clientIp"> & {
+  meta: Omit<
+    SocketMeta,
+    "presenceTracked" | "connectionId" | "clientIp" | "joinCommitted"
+  > & {
     clientIp?: string
+    /** Defaults to false; set true only after join commit (R2/R3). */
+    joinCommitted?: boolean
   },
 ) {
   const { rooms, sockets, earlyClientIps } = getRegistrySlot()
@@ -98,6 +114,7 @@ export function addSocket(
     userId: meta.userId,
     connectionId: previousMeta?.connectionId ?? crypto.randomUUID(),
     presenceTracked: previousMeta?.presenceTracked ?? false,
+    joinCommitted: meta.joinCommitted ?? false,
     controlAuthorized: meta.controlAuthorized,
     isControlSession: meta.isControlSession,
     sessionKind: meta.sessionKind,
@@ -113,6 +130,10 @@ export function setSocketPresenceTracked(
   presenceTracked: boolean,
 ) {
   patchSocketMeta(ws, { presenceTracked })
+}
+
+export function setSocketJoinCommitted(ws: WebSocket, joinCommitted: boolean) {
+  patchSocketMeta(ws, { joinCommitted })
 }
 
 export function setSocketControlAuthorized(

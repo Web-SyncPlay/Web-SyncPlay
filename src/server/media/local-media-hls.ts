@@ -9,9 +9,24 @@ export type LocalMediaHlsVariant = {
   label: string
 }
 
+/** Append viewer capability query (`vt` / `uid`) to playlist child URLs. */
+function withViewerQuery(
+  path: string,
+  viewerQuery?: Record<string, string> | null,
+): string {
+  if (!viewerQuery) return path
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(viewerQuery)) {
+    if (value) params.set(key, value)
+  }
+  const qs = params.toString()
+  return qs ? `${path}?${qs}` : path
+}
+
 export function buildLocalMediaMasterPlaylist(input: {
   parentId: string
   variants?: LocalMediaHlsVariant[] | null
+  viewerQuery?: Record<string, string> | null
 }): string {
   const parentId = encodeURIComponent(input.parentId)
   const variants = input.variants?.filter((v) => v.localMediaId) ?? []
@@ -22,7 +37,10 @@ export function buildLocalMediaMasterPlaylist(input: {
       "#EXT-X-VERSION:3",
       "#EXT-X-INDEPENDENT-SEGMENTS",
       '#EXT-X-STREAM-INF:BANDWIDTH=5000000,CODECS="avc1.42E01E,mp4a.40.2"',
-      `/api/media/local/${parentId}/hls/${parentId}`,
+      withViewerQuery(
+        `/api/media/local/${parentId}/hls/${parentId}`,
+        input.viewerQuery,
+      ),
       "",
     ].join("\n")
   }
@@ -39,7 +57,12 @@ export function buildLocalMediaMasterPlaylist(input: {
     lines.push(
       `#EXT-X-STREAM-INF:BANDWIDTH=${Math.max(1, Math.round(variant.bandwidth))}${res},CODECS="avc1.42E01E,mp4a.40.2",NAME="${escapeHlsQuoted(variant.label)}"`,
     )
-    lines.push(`/api/media/local/${parentId}/hls/${id}`)
+    lines.push(
+      withViewerQuery(
+        `/api/media/local/${parentId}/hls/${id}`,
+        input.viewerQuery,
+      ),
+    )
   }
   lines.push("")
   return lines.join("\n")
@@ -48,9 +71,13 @@ export function buildLocalMediaMasterPlaylist(input: {
 export function buildLocalMediaVariantPlaylist(input: {
   variantLocalMediaId: string
   durationSec: number
+  viewerQuery?: Record<string, string> | null
 }): string {
   const duration = Math.max(1, Math.ceil(input.durationSec || 1))
-  const mediaPath = `/api/media/local/${encodeURIComponent(input.variantLocalMediaId)}`
+  const mediaPath = withViewerQuery(
+    `/api/media/local/${encodeURIComponent(input.variantLocalMediaId)}`,
+    input.viewerQuery,
+  )
   return [
     "#EXTM3U",
     "#EXT-X-VERSION:3",

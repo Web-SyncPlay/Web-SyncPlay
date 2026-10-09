@@ -142,6 +142,9 @@ function createConnectionHarness(input?: {
     },
     controlTokenRef,
     controlTokenReminter,
+    hasReceivedStateRef,
+    joinPasswordRef,
+    sendJoinRef,
   }
 }
 
@@ -169,6 +172,29 @@ describe("createRoomSocketConnection", () => {
     expect(harness.ws?.sent).toHaveLength(1)
     const join = JSON.parse(harness.ws!.sent[0]!) as { type: string }
     expect(join.type).toBe("room:join")
+    harness.connection.dispose()
+  })
+
+  test("ignores room:control until snapshot/state (R2)", async () => {
+    const harness = createConnectionHarness()
+    await harness.connection.connect()
+    harness.ws?.simulateOpen()
+
+    harness.ws?.simulateMessage({
+      type: "room:control",
+      payload: {
+        playback: {
+          paused: false,
+          playbackRate: 1,
+          timelineAnchorMs: 0,
+          serverNowMs: Date.now(),
+        },
+      },
+    })
+
+    // Control must not admit the client; only snapshot/state sets this ref.
+    expect(harness.hasReceivedStateRef.current).toBe(false)
+    expect(harness.roomState).toBeNull()
     harness.connection.dispose()
   })
 
@@ -290,6 +316,69 @@ describe("createRoomSocketConnection", () => {
     } finally {
       jest.useRealTimers()
     }
+  })
+
+  test("room:admission:changed with password prompts re-admit", async () => {
+    jest.useFakeTimers()
+    try {
+      const harness = createConnectionHarness()
+      await harness.connection.connect()
+      harness.ws?.simulateOpen()
+      harness.hasReceivedStateRef.current = true
+      harness.ws?.simulateMessage({
+        type: "room:admission:changed",
+        payload: {
+          admissionVersion: 1,
+          ownerId: "owner",
+          joinPasswordEnabled: true,
+        },
+      })
+
+      expect(harness.statuses.at(-1)).toBe("awaiting_password")
+      expect(harness.joinErrors.at(-1)).toContain("join password")
+      expect(harness.hasReceivedStateRef.current).toBe(false)
+
+      harness.ws?.close()
+      jest.advanceTimersByTime(2000)
+      await Promise.resolve()
+      // Paused: no auto-reconnect after force-close.
+      expect(harness.statuses).not.toContain("reconnecting")
+      harness.connection.dispose()
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  test("submitJoinPassword reconnects after admission force-close", async () => {
+    const harness = createConnectionHarness()
+    await harness.connection.connect()
+    harness.ws?.simulateOpen()
+    const firstWs = harness.ws!
+    firstWs.simulateMessage({
+      type: "room:admission:changed",
+      payload: {
+        admissionVersion: 1,
+        ownerId: "owner",
+        joinPasswordEnabled: true,
+      },
+    })
+    firstWs.close()
+    expect(harness.statuses.at(-1)).toBe("awaiting_password")
+
+    harness.joinPasswordRef.current = "secret"
+    harness.sendJoinRef.current?.()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(FakeWebSocket.latest).not.toBe(firstWs)
+    FakeWebSocket.latest?.simulateOpen()
+    const join = JSON.parse(FakeWebSocket.latest!.sent[0]!) as {
+      type: string
+      payload: { joinPassword?: string }
+    }
+    expect(join.type).toBe("room:join")
+    expect(join.payload.joinPassword).toBe("secret")
+    harness.connection.dispose()
   })
 
   test("stops reconnect after identity_mismatch", async () => {

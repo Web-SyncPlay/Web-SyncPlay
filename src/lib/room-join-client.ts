@@ -25,6 +25,7 @@ export type JoinRejectedReason =
   | "rate_limited"
   | "media_url_unsupported"
   | "identity_mismatch"
+  | "connection_closed"
 
 /** Cooldown before auto-reconnect after a rate_limited rejection. */
 export const RATE_LIMITED_RECONNECT_MS = 15_000
@@ -72,6 +73,9 @@ export function messageForJoinRejected(
   if (reason === "identity_mismatch") {
     return "Your session identity does not match this connection. Refresh the page and try again."
   }
+  if (reason === "connection_closed") {
+    return "Connection closed during join. Reconnecting…"
+  }
   return "This room requires a join password."
 }
 
@@ -87,6 +91,9 @@ export function statusForJoinRejected(
   }
   if (reason === "identity_mismatch") {
     return "identity_mismatch"
+  }
+  if (reason === "connection_closed") {
+    return "reconnecting"
   }
   return "awaiting_password"
 }
@@ -105,6 +112,7 @@ export function shouldPauseAutoReconnect(
     reason === "identity_mismatch" ||
     reason === "media_url_unsupported" ||
     reason === undefined
+    // connection_closed: allow normal reconnect
   )
 }
 

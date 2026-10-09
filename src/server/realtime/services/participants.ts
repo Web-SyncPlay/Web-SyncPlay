@@ -1,7 +1,10 @@
+import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
 import type { RoomState } from "@/zod/types"
+import { transferOwnershipIfNeeded } from "./ownership"
+import { bumpRoomRevisions } from "./timeline"
 
 export const PARTICIPANT_PRUNE_MS = 60_000
 const PARTICIPANT_PRUNE_SECONDS = Math.ceil(PARTICIPANT_PRUNE_MS / 1000)
@@ -125,6 +128,9 @@ export async function processDuePrunes(
           return null
         }
         delete state.participants[parsed.userId]
+        // R4: pruning the owner must transfer ownership and bump revisions.
+        transferOwnershipIfNeeded(state, "prune")
+        bumpRoomRevisions(state)
         state.updatedAt = Date.now()
         return state
       })
@@ -133,6 +139,7 @@ export async function processDuePrunes(
       mutated = true
       if (next && !next.participants[parsed.userId]) {
         pruned += 1
+        getRoomBroadcastBus().markSnapshotDirty(parsed.roomId)
       }
     }
 

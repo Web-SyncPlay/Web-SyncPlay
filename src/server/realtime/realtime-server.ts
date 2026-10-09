@@ -49,6 +49,10 @@ export async function createRealtimeServer(server: HttpServer) {
 function setupWebSocketConnection(ws: WebSocket, store: RoomStateStorePort) {
   console.log("[realtime] websocket connected")
 
+  // Serialize async message handlers per socket so join commit / presence
+  // cannot race later room:* handlers on the same connection (R3).
+  let messageQueue: Promise<void> = Promise.resolve()
+
   ws.on("close", async (code, reason) => {
     console.log(
       `[realtime] websocket disconnected code=${code} reason=${reason.toString()}`,
@@ -64,12 +68,18 @@ function setupWebSocketConnection(ws: WebSocket, store: RoomStateStorePort) {
     }
   })
 
-  ws.on("message", async (message, isBinary) => {
-    try {
-      await handleSocketMessage(ws, store, message, isBinary)
-    } catch (error) {
-      console.error("[realtime] message handling failed", error)
-    }
+  ws.on("message", (message, isBinary) => {
+    messageQueue = messageQueue
+      .then(async () => {
+        try {
+          await handleSocketMessage(ws, store, message, isBinary)
+        } catch (error) {
+          console.error("[realtime] message handling failed", error)
+        }
+      })
+      .catch((error) => {
+        console.error("[realtime] message queue failed", error)
+      })
   })
 }
 
@@ -125,7 +135,8 @@ async function dispatchJsonEnvelope(
   }
 
   const meta = getSocketMeta(ws)
-  if (!meta) {
+  // Reject non-join traffic until room:join has committed membership (R3).
+  if (!meta?.joinCommitted) {
     return
   }
 

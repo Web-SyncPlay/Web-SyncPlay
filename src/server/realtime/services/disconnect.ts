@@ -210,6 +210,19 @@ export async function handleSocketDisconnect(
     return
   }
 
+  // Last socket for this user — drop local-media viewer capability (S4).
+  try {
+    const { invalidateViewerCapabilityToken } = await import(
+      "@/server/media/viewer-capability-token"
+    )
+    await invalidateViewerCapabilityToken({
+      roomId: meta.roomId,
+      userId: meta.userId,
+    })
+  } catch (error) {
+    console.warn("[disconnect] viewer capability invalidate failed", error)
+  }
+
   if (!next) {
     return
   }

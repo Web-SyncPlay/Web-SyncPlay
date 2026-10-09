@@ -1,4 +1,5 @@
 import { appendActionLog } from "@/server/log"
+import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
   roomDefaultRoleSetSchema,
   roomPasswordClearSchema,
@@ -24,10 +25,10 @@ async function withOwnerSecurityMutation<T extends z.ZodType>(
   schema: T,
   payload: unknown,
   body: (parsed: z.infer<T>) => OwnerMutateBody,
-): Promise<void> {
+): Promise<RoomState | null> {
   const result = schema.safeParse(payload)
-  if (!result.success) return
-  await mutateOwnerRoomMessage(ctx, body(result.data))
+  if (!result.success) return null
+  return await mutateOwnerRoomMessage(ctx, body(result.data))
 }
 
 function logSecurityAction(
@@ -46,8 +47,20 @@ function logSecurityAction(
   })
 }
 
+/** Evict non-owners after admissionVersion bump (password set / clear / rotate). */
+async function publishAdmissionEviction(
+  roomId: string,
+  state: RoomState,
+): Promise<void> {
+  await getRoomBroadcastBus().publishAdmissionChanged(roomId, {
+    admissionVersion: state.roomSecurity.admissionVersion,
+    ownerId: state.ownerId,
+    joinPasswordEnabled: state.roomSecurity.joinPasswordEnabled,
+  })
+}
+
 export const handleRoomPasswordSet: RoomMessageHandler = async (ctx, data) => {
-  await withOwnerSecurityMutation(
+  const next = await withOwnerSecurityMutation(
     ctx,
     roomPasswordSetSchema,
     data.payload,
@@ -59,13 +72,16 @@ export const handleRoomPasswordSet: RoomMessageHandler = async (ctx, data) => {
       return true
     },
   )
+  if (next) {
+    await publishAdmissionEviction(ctx.roomId, next)
+  }
 }
 
 export const handleRoomPasswordClear: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  await withOwnerSecurityMutation(
+  const next = await withOwnerSecurityMutation(
     ctx,
     roomPasswordClearSchema,
     data.payload,
@@ -77,6 +93,9 @@ export const handleRoomPasswordClear: RoomMessageHandler = async (
       return true
     },
   )
+  if (next) {
+    await publishAdmissionEviction(ctx.roomId, next)
+  }
 }
 
 export const handleRoomDefaultRoleSet: RoomMessageHandler = async (

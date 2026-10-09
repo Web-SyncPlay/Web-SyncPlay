@@ -1,7 +1,7 @@
 import { appendActionLog } from "@/server/log"
 import type { ParticipantState, RoomState } from "@/zod/types"
 
-type TransferReason = "disconnect" | "cleanup" | "join"
+type TransferReason = "disconnect" | "cleanup" | "join" | "prune"
 
 function participantSortKey(participant: ParticipantState) {
   return (
@@ -34,20 +34,29 @@ export function transferOwnershipIfNeeded(
   reason: TransferReason,
 ): boolean {
   const owner = state.participants[state.ownerId]
+  // Missing owner (e.g. just pruned) or disconnected owner needs a successor.
   if (owner?.connected) {
     return false
   }
 
-  const connectedParticipants = Object.values(state.participants).filter(
-    (participant) => participant.connected,
-  )
-  if (connectedParticipants.length === 0) {
+  const pool = Object.values(state.participants)
+  // Prefer connected peers; on prune, fall back to any remaining participant so
+  // ownerId cannot point at a deleted user.
+  const connectedParticipants = pool.filter((p) => p.connected)
+  const candidates =
+    connectedParticipants.length > 0
+      ? connectedParticipants
+      : reason === "prune"
+        ? pool
+        : []
+  if (candidates.length === 0) {
     return false
   }
 
   const nextOwner =
-    pickNextOwner(connectedParticipants, "moderator") ??
-    pickNextOwner(connectedParticipants, "guest")
+    pickNextOwner(candidates, "moderator") ??
+    pickNextOwner(candidates, "guest") ??
+    (reason === "prune" ? pickNextOwner(candidates, "owner") : undefined)
   if (!nextOwner) {
     return false
   }

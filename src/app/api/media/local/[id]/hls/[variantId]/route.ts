@@ -1,4 +1,9 @@
-import { resolveServeableLocalMedia } from "@/server/media/local-media-access"
+import {
+  LOCAL_MEDIA_VIEWER_TOKEN_PARAM,
+  LOCAL_MEDIA_VIEWER_USER_PARAM,
+  resolveServeableLocalMedia,
+  viewerAuthFromLocalMediaRequest,
+} from "@/server/media/local-media-access"
 import { localMediaJsonError } from "@/server/media/local-media-http"
 import { buildLocalMediaVariantPlaylist } from "@/server/media/local-media-hls"
 import { touchLocalMediaEntry } from "@/server/media/local-media-store"
@@ -8,11 +13,15 @@ import { touchLocalMediaEntry } from "@/server/media/local-media-store"
  * Single-segment VOD media playlist for one ladder rung.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string; variantId: string }> },
 ) {
   const { id, variantId } = await context.params
-  const access = await resolveServeableLocalMedia(id, { rejectAbrChild: true })
+  const viewer = viewerAuthFromLocalMediaRequest(request)
+  const access = await resolveServeableLocalMedia(id, {
+    rejectAbrChild: true,
+    viewer,
+  })
   if (!access.ok) {
     return access.response
   }
@@ -35,6 +44,10 @@ export async function GET(
   const body = buildLocalMediaVariantPlaylist({
     variantLocalMediaId: variantId,
     durationSec,
+    viewerQuery: {
+      [LOCAL_MEDIA_VIEWER_TOKEN_PARAM]: viewer.token,
+      [LOCAL_MEDIA_VIEWER_USER_PARAM]: viewer.userId,
+    },
   })
 
   return new Response(body, {

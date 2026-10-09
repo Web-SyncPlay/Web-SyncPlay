@@ -77,7 +77,7 @@ export function createRoomState(overrides: Partial<RoomState> = {}): RoomState {
     roomSecurity: {
       joinPasswordEnabled: false,
       joinPasswordUpdatedAt: null,
-      defaultJoinRole: "moderator",
+      defaultJoinRole: "guest",
       admissionVersion: 0,
     },
     playback: {
@@ -285,14 +285,26 @@ export class InMemoryRoomStateStore implements RoomStateStorePort {
 
 export function createFakeWs() {
   const sent: unknown[] = []
+  let closed = false
   const ws = {
     readyState: 1,
     OPEN: 1,
+    CLOSED: 3,
     send(raw: string) {
       sent.push(JSON.parse(raw))
     },
+    close() {
+      closed = true
+      ;(ws as { readyState: number }).readyState = 3
+    },
   } as unknown as WebSocket
-  return { ws, sent }
+  return {
+    ws,
+    sent,
+    get closed() {
+      return closed
+    },
+  }
 }
 
 export function createHandlerContext(options: {

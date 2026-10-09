@@ -81,6 +81,7 @@ export const roomJoinRejectedReasonSchema = z.enum([
   "rate_limited",
   "media_url_unsupported",
   "identity_mismatch",
+  "connection_closed",
 ])
 export type RoomJoinRejectedReason = z.infer<
   typeof roomJoinRejectedReasonSchema

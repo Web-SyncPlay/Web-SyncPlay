@@ -8,6 +8,7 @@ import {
   readPlayerPlayheadSec,
   readPlayerSeekableEndSec,
 } from "@/lib/player-utils"
+import { serverNowEstimateMs } from "@/lib/server-clock"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import {
   useEffect,
@@ -23,6 +24,8 @@ import {
 const WATCHDOG_INTERVAL_MS = 1_000
 /** HLS often no-ops the first currentTime write; retry while the anchor is fresh. */
 const ANCHOR_RETRY_DELAYS_MS = [200, 600, 1_200, 2_400] as const
+/** Cap force-threshold seeks per anchor to avoid HLS seek storms. */
+const MAX_FORCE_SEEKS_PER_ANCHOR = 4
 
 /**
  * Resolve the sync snapshot for a watchdog tick, then decide apply vs clear.
@@ -89,6 +92,10 @@ export function usePlaybackDriftCorrection(config: {
   const holdLocalSeekRef = useLatestRef(holdLocalSeek)
   const applyRoomClockRef = useLatestRef(applyRoomClock)
   const retryTimersRef = useRef<number[]>([])
+  const forceSeeksForAnchorRef = useRef({
+    anchorMs: timelineAnchorMs,
+    count: 0,
+  })
 
   const clearRetryTimers = () => {
     for (const id of retryTimersRef.current) {
@@ -101,14 +108,39 @@ export function usePlaybackDriftCorrection(config: {
     measurePlaybackDriftSec(
       readPlayerPlayheadSec(player),
       syncState,
-      Date.now(),
+      serverNowEstimateMs(),
       Number(player.duration),
       readPlayerSeekableEndSec(player),
     )
 
+  const tryForceSeek = (
+    player: MediaPlayerInstance,
+    syncState: PendingSyncState,
+    anchorMs: number,
+  ) => {
+    if (forceSeeksForAnchorRef.current.anchorMs !== anchorMs) {
+      forceSeeksForAnchorRef.current = { anchorMs, count: 0 }
+    }
+    if (forceSeeksForAnchorRef.current.count >= MAX_FORCE_SEEKS_PER_ANCHOR) {
+      return
+    }
+    forceSeeksForAnchorRef.current.count += 1
+    // First force seek uses threshold 0; later retries use the default threshold
+    // so we do not spam seeks when HLS keeps no-op'ing.
+    const threshold =
+      forceSeeksForAnchorRef.current.count === 1
+        ? 0
+        : DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC
+    applyRoomClockRef.current(player, syncState, threshold)
+  }
+
   // Burst retries after an authority seek — HLS/proxy often ignores the first write.
   useEffect(() => {
     clearRetryTimers()
+    forceSeeksForAnchorRef.current = {
+      anchorMs: timelineAnchorMs,
+      count: 0,
+    }
     if (holdLocalSeek) {
       return clearRetryTimers
     }
@@ -140,7 +172,7 @@ export function usePlaybackDriftCorrection(config: {
           return
         }
 
-        applyRoomClockRef.current(player, syncState, 0)
+        tryForceSeek(player, syncState, anchorAtSchedule)
       }, delayMs)
       retryTimersRef.current.push(timerId)
     }
@@ -185,8 +217,7 @@ export function usePlaybackDriftCorrection(config: {
         return
       }
 
-      // Pair apply with the measured syncState (not a fresh playback read).
-      applyRoomClockRef.current(player, syncState, 0)
+      tryForceSeek(player, syncState, playbackRef.current.timelineAnchorMs)
     }, WATCHDOG_INTERVAL_MS)
 
     return () => window.clearInterval(timer)

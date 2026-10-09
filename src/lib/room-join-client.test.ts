@@ -66,6 +66,9 @@ describe("room-join-client", () => {
     expect(messageForJoinRejected("media_url_unsupported")).toContain(
       "not supported",
     )
+    expect(messageForJoinRejected("connection_closed")).toContain(
+      "Connection closed",
+    )
     expect(messageForJoinRejected(undefined)).toContain("join password")
   })
 
@@ -77,6 +80,7 @@ describe("room-join-client", () => {
     expect(statusForJoinRejected("identity_mismatch")).toBe(
       "identity_mismatch",
     )
+    expect(statusForJoinRejected("connection_closed")).toBe("reconnecting")
     expect(statusForJoinRejected("password_required")).toBe(
       "awaiting_password",
     )
@@ -89,6 +93,7 @@ describe("room-join-client", () => {
     expect(shouldPauseAutoReconnect("rate_limited")).toBe(true)
     expect(shouldPauseAutoReconnect("identity_mismatch")).toBe(true)
     expect(shouldPauseAutoReconnect("media_url_unsupported")).toBe(true)
+    expect(shouldPauseAutoReconnect("connection_closed")).toBe(false)
     expect(shouldPauseAutoReconnect(undefined)).toBe(true)
     expect(isTerminalJoinRejection("identity_mismatch")).toBe(true)
     expect(isTerminalJoinRejection("media_url_unsupported")).toBe(true)

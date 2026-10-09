@@ -14,7 +14,6 @@ import { getLocalMediaFile } from "@/lib/local-media-provider"
 import type { types as MsTypes } from "mediasoup-client"
 import {
   call,
-  ENSURE_RETRY_COOLDOWN_MS,
   getActiveSession,
   getTransport,
   OPEN_TIMEOUT_MS,
@@ -25,6 +24,11 @@ import {
   type SfuSendRequest,
   type ViewerSlot,
 } from "./local-media-sfu-session"
+import {
+  isSfuViewerChannelReady,
+  shouldActAsSfuViewer,
+  shouldWarmSfuViewer,
+} from "./local-media-sfu-transitions"
 
 function parseReadyAck(message: unknown): string | null {
   if (typeof message !== "string") return null
@@ -117,7 +121,9 @@ export function ensureLocalMediaSfuViewer(
   sendRequest: SfuSendRequest,
 ): Promise<boolean> {
   const session = sessionFor(sendRequest)
-  if (getLocalMediaFile(localMediaId)) return Promise.resolve(false)
+  if (!shouldActAsSfuViewer(Boolean(getLocalMediaFile(localMediaId)))) {
+    return Promise.resolve(false)
+  }
 
   let promise = session.viewers.get(localMediaId)
   if (!promise) {
@@ -220,25 +226,43 @@ function readyViewerSlot(
   localMediaId: string,
 ): ViewerSlot | null {
   const slot = session.readyViewers.get(localMediaId)
-  if (!slot || !slot.ready) return null
-  if (slot.requestProducer.closed || slot.consumer.closed) return null
+  if (!slot) return null
+  if (
+    !isSfuViewerChannelReady({
+      ready: slot.ready,
+      requestProducerClosed: slot.requestProducer.closed,
+      consumerClosed: slot.consumer.closed,
+    })
+  ) {
+    return null
+  }
   return slot
 }
 
 /** True only when a viewer slot has completed the provider ready handshake. */
 export function isLocalMediaSfuViewerReady(localMediaId: string): boolean {
   const session = getActiveSession()
-  if (!session || getLocalMediaFile(localMediaId)) return false
+  if (!session || !shouldActAsSfuViewer(Boolean(getLocalMediaFile(localMediaId)))) {
+    return false
+  }
   return readyViewerSlot(session, localMediaId) != null
 }
 
 /** Fire-and-forget viewer setup (respects the failure cooldown). */
 export function warmLocalMediaSfuViewer(localMediaId: string) {
   const session = getActiveSession()
-  if (!session || getLocalMediaFile(localMediaId)) return
-  if (session.viewers.has(localMediaId)) return
-  const failedAt = session.lastFailure.get(localMediaId) ?? 0
-  if (Date.now() - failedAt < ENSURE_RETRY_COOLDOWN_MS) return
+  if (!session) return
+  const holdsLocalFile = Boolean(getLocalMediaFile(localMediaId))
+  if (
+    !shouldWarmSfuViewer({
+      holdsLocalFile,
+      hasInFlightEnsure: session.viewers.has(localMediaId),
+      lastFailureAtMs: session.lastFailure.get(localMediaId) ?? 0,
+      nowMs: Date.now(),
+    })
+  ) {
+    return
+  }
   void ensureLocalMediaSfuViewer(localMediaId, session.sendRequest)
 }
 
@@ -254,7 +278,12 @@ export async function fetchLocalMediaRangeViaSfu(
   timeoutMs = 5_000,
 ): Promise<Uint8Array | null> {
   const session = getActiveSession()
-  if (!session || getLocalMediaFile(localMediaId)) return null
+  if (
+    !session ||
+    !shouldActAsSfuViewer(Boolean(getLocalMediaFile(localMediaId)))
+  ) {
+    return null
+  }
 
   const slot = readyViewerSlot(session, localMediaId)
   if (!slot) {

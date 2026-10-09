@@ -5,9 +5,10 @@
 import type { ClientEventType } from "@/lib/room-events"
 import { Device, type types as MsTypes } from "mediasoup-client"
 
+export { ENSURE_RETRY_COOLDOWN_MS } from "./local-media-sfu-transitions"
+
 export const BUFFER_HIGH_WATER = 1024 * 1024
 export const OPEN_TIMEOUT_MS = 8_000
-export const ENSURE_RETRY_COOLDOWN_MS = 3_000
 
 export type SfuRequestType = Extract<
   ClientEventType,

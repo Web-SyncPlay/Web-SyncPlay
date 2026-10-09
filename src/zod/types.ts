@@ -209,6 +209,16 @@ export interface PresenceBatchPayload {
   serverNowMs: number
 }
 
+/**
+ * Published when join-password set/clear bumps admissionVersion.
+ * Non-owners are force-disconnected and must re-admit.
+ */
+export interface AdmissionChangedPayload {
+  admissionVersion: number
+  ownerId: string
+  joinPasswordEnabled: boolean
+}
+
 /** Snapshot after sanitize: public security only (no joinPasswordHash/Salt). */
 export type RoomSnapshotPayload = Omit<RoomState, "roomSecurity"> & {
   roomSecurity: PublicRoomSecurityState

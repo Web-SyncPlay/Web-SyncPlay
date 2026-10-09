@@ -4,7 +4,8 @@
 
 - **Product / ops docs:** [README.md](./README.md) — requirements, env vars, architecture, multi-replica SFU (sticky `/api/ws`).
 - **Env schema:** [`src/env.ts`](./src/env.ts) (copy [`.env.example`](./.env.example)).
-- **Tests:** `bun run test:unit`, `test:a11y`, `test:e2e:ws` (latter two need a healthy app; see CI).
+- **Tests:** `bun run test:unit`, `test:a11y`, `test:e2e`, `test:e2e:ws` (latter three need a healthy app; see CI).
+- **Typecheck:** CI truth is `bun run typecheck` (TypeScript **7** via `@typescript/native`). The IDE uses the workspace `typescript` package → `@typescript/typescript6` (TS6); `.vscode/settings.json` sets `typescript.tsdk` to `node_modules/typescript/lib`. Prefer fixing issues that fail `typecheck`.
 
 ## Git Commits
 

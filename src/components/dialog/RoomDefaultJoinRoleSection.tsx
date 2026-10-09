@@ -27,7 +27,7 @@ export function RoomDefaultJoinRoleSection(props: {
   send: TypedRoomEventSender
 }) {
   const { roomSecurity, canManageRoomSecurity, send } = props
-  const defaultJoinRole = roomSecurity.defaultJoinRole ?? "moderator"
+  const defaultJoinRole = roomSecurity.defaultJoinRole ?? "guest"
 
   const setRole = (role: DefaultJoinRole) => {
     if (role === defaultJoinRole) return

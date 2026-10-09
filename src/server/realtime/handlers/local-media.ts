@@ -11,7 +11,6 @@ import {
 } from "@/server/media/local-media-store"
 import { mutateRoomMessage } from "@/server/realtime/handlers/mutate-room"
 import type { RoomMessageHandler } from "@/server/realtime/handlers/types"
-import { getSocketsForUser } from "@/server/ws/registry"
 import type { PlaylistMediaStream } from "@/zod/types"
 import {
   localMediaAbrPublishSchema,
@@ -157,7 +156,7 @@ export const handleLocalMediaAbrPublish: RoomMessageHandler = async (
 
 /**
  * Relay WebRTC signaling between peers in the same room.
- * Does not interpret SDP — only fan-out to the target user's sockets.
+ * Does not interpret SDP — fan-out via Redis so cross-replica peers receive it.
  */
 export const handleLocalMediaWebrtcSignal: RoomMessageHandler = async (
   ctx,
@@ -167,19 +166,20 @@ export const handleLocalMediaWebrtcSignal: RoomMessageHandler = async (
   if (!parsed.success) return
   if (parsed.data.targetUserId === ctx.userId) return
 
-  const envelope = JSON.stringify({
-    type: "local-media:webrtc:signal",
-    requestId: randomUUID(),
-    payload: {
-      localMediaId: parsed.data.localMediaId,
-      fromUserId: ctx.userId,
-      signal: parsed.data.signal,
+  const { getRoomBroadcastBus } = await import(
+    "@/server/realtime/broadcast/room-broadcast-bus"
+  )
+  await getRoomBroadcastBus().publishUserEphemeral(
+    ctx.roomId,
+    parsed.data.targetUserId,
+    {
+      type: "local-media:webrtc:signal",
+      requestId: randomUUID(),
+      payload: {
+        localMediaId: parsed.data.localMediaId,
+        fromUserId: ctx.userId,
+        signal: parsed.data.signal,
+      },
     },
-  })
-
-  for (const socket of getSocketsForUser(ctx.roomId, parsed.data.targetUserId)) {
-    if (socket.readyState === socket.OPEN) {
-      socket.send(envelope)
-    }
-  }
+  )
 }

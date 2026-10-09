@@ -1,6 +1,7 @@
 "use client"
 
 import { computeExpectedPlaybackTimeSec } from "@/lib/playback-sync"
+import { serverNowEstimateMs } from "@/lib/server-clock"
 import type { TypedRoomEventSender } from "@/lib/room-events"
 import type { RoomState } from "@/zod/types"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -16,7 +17,10 @@ const SEEK_PREVIEW_IDLE_COMMIT_MS = 750
 
 export type LocalSeekPhase = "idle" | "previewing" | "awaitingAck"
 
-export function projectPlaybackMs(roomState: RoomState, nowMs = Date.now()) {
+export function projectPlaybackMs(
+  roomState: RoomState,
+  nowMs = serverNowEstimateMs(),
+) {
   return Math.floor(computeExpectedPlaybackTimeSec(roomState.playback, nowMs) * 1000)
 }
 
@@ -26,7 +30,7 @@ export function usePlaybackTimelineController(config: {
   controlsDisabled: boolean
 }) {
   const { roomState, send, controlsDisabled } = config
-  const [nowMs, setNowMs] = useState(() => Date.now())
+  const [nowMs, setNowMs] = useState(() => serverNowEstimateMs())
   const [seekPhase, setSeekPhase] = useState<LocalSeekPhase>("idle")
   const [localSeekTargetMs, setLocalSeekTargetMs] = useState<number | null>(null)
   const awaitingSeekSinceRef = useRef<number | null>(null)
@@ -35,7 +39,7 @@ export function usePlaybackTimelineController(config: {
   useEffect(() => {
     const intervalMs = roomState.playback.paused ? 500 : 200
     const timer = window.setInterval(() => {
-      setNowMs(Date.now())
+      setNowMs(serverNowEstimateMs())
     }, intervalMs)
     return () => window.clearInterval(timer)
   }, [roomState.playback.paused])

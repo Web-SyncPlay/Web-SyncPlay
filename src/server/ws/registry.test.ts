@@ -8,6 +8,7 @@ import {
   removeSocket,
   setSocketClientIp,
   setSocketControlAuthorized,
+  setSocketJoinCommitted,
   setSocketPresenceTracked,
 } from "./registry"
 
@@ -135,6 +136,33 @@ test("getSocketsForUser returns sockets for matching room+user", () => {
 
   removeSocket(wsA)
   removeSocket(wsB)
+})
+
+test("joinCommitted defaults false and can be patched after commit", () => {
+  const ws = createWs()
+  addSocket(ws, {
+    roomId: "room-1",
+    userId: "u1",
+    controlAuthorized: false,
+    isControlSession: false,
+    sessionKind: "room",
+  })
+  expect(getSocketMeta(ws)?.joinCommitted).toBe(false)
+
+  setSocketJoinCommitted(ws, true)
+  expect(getSocketMeta(ws)?.joinCommitted).toBe(true)
+
+  addSocket(ws, {
+    roomId: "room-1",
+    userId: "u1",
+    controlAuthorized: false,
+    isControlSession: false,
+    sessionKind: "room",
+    joinCommitted: true,
+  })
+  expect(getSocketMeta(ws)?.joinCommitted).toBe(true)
+
+  removeSocket(ws)
 })
 
 test("setSocketClientIp stashes early and survives addSocket", () => {

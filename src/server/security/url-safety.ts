@@ -1,4 +1,5 @@
 import { env } from "@/env"
+import { promises as dns } from "node:dns"
 import { isIP } from "node:net"
 
 const BLOCKED_HOSTNAMES = new Set([
@@ -11,6 +12,19 @@ const BLOCKED_HOSTNAME_SUFFIXES = [".localhost", ".local"] as const
 
 function allowPrivateUrls(): boolean {
   return env.PROXY_ALLOW_PRIVATE_URLS
+}
+
+/** Resolve A/AAAA (and /etc/hosts) addresses for a hostname. */
+export type DnsAddressLookup = (hostname: string) => Promise<readonly string[]>
+
+async function defaultDnsLookup(hostname: string): Promise<readonly string[]> {
+  const results = await dns.lookup(hostname, { all: true, verbatim: true })
+  return results.map((entry) => entry.address)
+}
+
+export type AssertPublicHttpUrlResolvedOptions = {
+  /** Injectable DNS lookup for tests; defaults to `dns.lookup({ all: true })`. */
+  lookup?: DnsAddressLookup
 }
 
 /** Strip brackets and trailing FQDN dots (`localhost.` → `localhost`). */
@@ -139,4 +153,47 @@ export function assertPublicHttpUrl(raw: string): UrlSafetyResult {
   }
 
   return { ok: true, url }
+}
+
+/**
+ * Same as {@link assertPublicHttpUrl}, then DNS-resolves the hostname and
+ * rejects when any A/AAAA (or hosts-file) address is private/link-local/metadata.
+ * Skipped when PROXY_ALLOW_PRIVATE_URLS is set, or when the host is already an IP.
+ */
+export async function assertPublicHttpUrlResolved(
+  raw: string,
+  options?: AssertPublicHttpUrlResolvedOptions,
+): Promise<UrlSafetyResult> {
+  const sync = assertPublicHttpUrl(raw)
+  if (!sync.ok) return sync
+
+  if (allowPrivateUrls()) {
+    return sync
+  }
+
+  const hostname = normalizeHostname(sync.url.hostname)
+  if (isIP(hostname) !== 0) {
+    // Literal IPs were already checked by the sync path.
+    return sync
+  }
+
+  const lookup = options?.lookup ?? defaultDnsLookup
+  let addresses: readonly string[]
+  try {
+    addresses = await lookup(hostname)
+  } catch {
+    return { ok: false, reason: "dns_lookup_failed" }
+  }
+
+  if (addresses.length === 0) {
+    return { ok: false, reason: "dns_lookup_failed" }
+  }
+
+  for (const address of addresses) {
+    if (isPrivateOrLocalIp(address)) {
+      return { ok: false, reason: "private_ip" }
+    }
+  }
+
+  return sync
 }

@@ -62,4 +62,24 @@ describe("local-media HLS builders", () => {
     )
     expect(body).toContain("#EXT-X-ENDLIST")
   })
+
+  test("viewerQuery is appended to playlist child URLs", () => {
+    const master = buildLocalMediaMasterPlaylist({
+      parentId: "00000000-0000-4000-8000-000000000001",
+      viewerQuery: { vt: "tok", uid: "u1" },
+    })
+    expect(master).toContain(
+      "/api/media/local/00000000-0000-4000-8000-000000000001/hls/00000000-0000-4000-8000-000000000001?vt=tok&uid=u1",
+    )
+
+    const variant = buildLocalMediaVariantPlaylist({
+      variantLocalMediaId: "00000000-0000-4000-8000-0000000000dd",
+      durationSec: 10,
+      viewerQuery: { vt: "tok", uid: "u1" },
+    })
+    expect(variant).toContain(
+      "/api/media/local/00000000-0000-4000-8000-0000000000dd?vt=tok&uid=u1",
+    )
+  })
 })
+

@@ -8,9 +8,11 @@ import {
   queryPlayerMediaElement,
   readPlayerSeekableEndSec,
 } from "@/lib/player-utils"
+import { serverNowEstimateMs } from "@/lib/server-clock"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import {
   useCallback,
+  useEffect,
   useRef,
   type RefObject,
 } from "react"
@@ -75,6 +77,8 @@ export function useApplyRoomClock(config: {
     }
   }, [])
 
+  useEffect(() => () => clearTransportNudge(), [clearTransportNudge])
+
   const applyRoomClock = useCallback(
     (
       player: MediaPlayerInstance,
@@ -111,7 +115,7 @@ export function useApplyRoomClock(config: {
         const driftSec = measurePlaybackDriftSec(
           Number(mediaEl?.currentTime ?? player.currentTime ?? 0),
           syncState,
-          Date.now(),
+          serverNowEstimateMs(),
           Number(player.duration),
           seekableEndSec,
         )

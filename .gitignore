@@ -22,7 +22,8 @@ packages/**/dist
 !.env.example
 
 # Editor and OS files
-.vscode/
+.vscode/*
+!.vscode/settings.json
 .idea/
 *.iml
 .DS_Store

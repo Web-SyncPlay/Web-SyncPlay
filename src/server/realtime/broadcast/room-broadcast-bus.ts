@@ -3,8 +3,13 @@ import { keys } from "@/server/redis/keys"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
 import { sanitizeRoomStateForClient } from "@/server/realtime/services/room-security"
 import { getAppNodeId } from "@/server/node-id"
-import { getSocketsForRoom } from "@/server/ws/registry"
+import {
+  getSocketMeta,
+  getSocketsForRoom,
+  getSocketsForUser,
+} from "@/server/ws/registry"
 import type {
+  AdmissionChangedPayload,
   PresenceBatchPayload,
   PresencePatch,
   RoomControlPayload,
@@ -13,6 +18,7 @@ import type {
 } from "@/zod/types"
 import type { WebSocket } from "ws"
 import type {
+  AdmissionChangedEnvelope,
   ControlEnvelope,
   PresenceEnvelope,
   RoomBroadcastEnvelope,
@@ -121,6 +127,34 @@ function sendRawToRoom(roomId: string, raw: string) {
 }
 
 /**
+ * Notify then close every non-owner socket in this process's registry.
+ * Owners stay connected. Copy the set first — close handlers mutate it.
+ */
+function forceRejoinNonOwners(
+  roomId: string,
+  ownerId: string,
+  envelope: AdmissionChangedEnvelope,
+) {
+  const raw = JSON.stringify(envelope)
+  for (const client of [...getSocketsForRoom(roomId)]) {
+    const meta = getSocketMeta(client)
+    if (!meta || meta.userId === ownerId) continue
+    if (client.readyState === client.OPEN) {
+      try {
+        client.send(raw)
+      } catch {
+        // Best-effort notify before close.
+      }
+    }
+    try {
+      client.close()
+    } catch {
+      // Already closing / closed.
+    }
+  }
+}
+
+/**
  * Coalesces presence/snapshot on the mutating node, then local fan-out + Redis PUBLISH.
  * Subscribers on other nodes fan out immediately; same-node Redis echo is ignored.
  */
@@ -194,6 +228,14 @@ export class RoomBroadcastBus {
       return
     }
     const { originNodeId: _origin, ...envelope } = wired
+    if (envelope.type === "room:admission:changed") {
+      forceRejoinNonOwners(
+        roomId,
+        envelope.payload.ownerId,
+        envelope as AdmissionChangedEnvelope,
+      )
+      return
+    }
     sendRawToRoom(roomId, JSON.stringify(envelope as RoomBroadcastEnvelope))
   }
 
@@ -240,6 +282,87 @@ export class RoomBroadcastBus {
     payload: RoomControlPayload,
   ) {
     await this.publishControl(roomId, payload)
+  }
+
+  /**
+   * Deliver a user-targeted ephemeral WS envelope (local sockets + Redis).
+   * Used for cross-replica WebRTC signaling.
+   */
+  async publishUserEphemeral(
+    roomId: string,
+    targetUserId: string,
+    envelope: { type: string; requestId?: string; payload: unknown },
+  ) {
+    this.fanOutUserEphemeral(roomId, targetUserId, envelope)
+
+    if (this.captureOnly) {
+      return
+    }
+
+    try {
+      const wired = {
+        ...envelope,
+        originNodeId: BROADCAST_NODE_ID,
+      }
+      const client = await getCommandClient()
+      await client.publish(
+        keys.roomUserEphemeralChannel(roomId, targetUserId),
+        JSON.stringify(wired),
+      )
+    } catch (error) {
+      console.warn("[broadcast] user-ephemeral redis publish failed", error)
+    }
+  }
+
+  /** Local delivery for user-targeted ephemerals (also used by Redis subscriber). */
+  fanOutUserEphemeral(
+    roomId: string,
+    targetUserId: string,
+    envelope: { type: string; requestId?: string; payload: unknown },
+  ) {
+    const raw = JSON.stringify(envelope)
+    for (const socket of getSocketsForUser(roomId, targetUserId)) {
+      // Prefer OPEN (1); tolerate test fakes that omit the OPEN constant.
+      const open =
+        typeof socket.OPEN === "number" ? socket.OPEN : 1
+      if (socket.readyState === open) {
+        socket.send(raw)
+      }
+    }
+  }
+
+  /**
+   * Force non-owners to re-admit after join-password / admissionVersion bump.
+   * Local registry + Redis control channel (other replicas apply the same kick).
+   */
+  async publishAdmissionChanged(
+    roomId: string,
+    payload: AdmissionChangedPayload,
+  ) {
+    const envelope: AdmissionChangedEnvelope = {
+      type: "room:admission:changed",
+      payload,
+    }
+    this.captured.push({ roomId, envelope })
+    forceRejoinNonOwners(roomId, payload.ownerId, envelope)
+
+    if (this.captureOnly) {
+      return
+    }
+
+    try {
+      const wired: WiredEnvelope = {
+        ...envelope,
+        originNodeId: BROADCAST_NODE_ID,
+      }
+      const client = await getCommandClient()
+      await client.publish(
+        keys.roomControlChannel(roomId),
+        JSON.stringify(wired),
+      )
+    } catch (error) {
+      console.warn("[broadcast] admission-changed redis publish failed", error)
+    }
   }
 
   markPresenceDirty(roomId: string, userId: string, patch: PresencePatch) {

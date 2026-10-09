@@ -30,6 +30,46 @@ export function isLocalMediaInternalConfigured(): boolean {
   )
 }
 
+async function warnIfDuplicateBaseUrl(
+  client: Awaited<ReturnType<typeof getCommandClient>>,
+  selfNodeId: string,
+  baseUrl: string,
+): Promise<void> {
+  try {
+    let cursor = "0"
+    do {
+      const result = await client.scan(cursor, {
+        MATCH: keys.localMediaNodeScanPattern(),
+        COUNT: 32,
+      })
+      cursor = result.cursor
+      for (const key of result.keys) {
+        const raw = await client.get(String(key))
+        if (!raw) continue
+        let other: LocalMediaNodeRecord
+        try {
+          other = JSON.parse(raw) as LocalMediaNodeRecord
+        } catch {
+          continue
+        }
+        if (
+          other.nodeId &&
+          other.nodeId !== selfNodeId &&
+          other.baseUrl === baseUrl
+        ) {
+          console.warn(
+            "[local-media-node] INTERNAL_NODE_BASE_URL is shared by multiple node ids; use a per-replica URL",
+            { baseUrl, selfNodeId, otherNodeId: other.nodeId },
+          )
+          return
+        }
+      }
+    } while (cursor !== "0")
+  } catch {
+    // Best-effort diagnostic only.
+  }
+}
+
 export async function registerLocalMediaNode(): Promise<void> {
   const baseUrl = resolveSelfBaseUrl()
   if (!baseUrl || !env.LOCAL_MEDIA_INTERNAL_SECRET?.trim()) {
@@ -44,6 +84,7 @@ export async function registerLocalMediaNode(): Promise<void> {
 
   try {
     const client = await getCommandClient()
+    await warnIfDuplicateBaseUrl(client, record.nodeId, baseUrl)
     await client.set(
       keys.localMediaNode(record.nodeId),
       JSON.stringify(record),

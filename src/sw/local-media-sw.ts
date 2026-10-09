@@ -5,6 +5,9 @@
  * Intercepts /api/media/local/* Range requests and asks the page for
  * bytes via SFU → P2P before falling back to network (HTTP relay).
  * Default open-ended range length matches LOCAL_MEDIA_MAX_BLOCK_BYTES (256KiB).
+ *
+ * Viewer capability (`?vt=` / `uid=`): page posts the active token; network
+ * fallback fetches are decorated when the request URL lacks them.
  */
 import { LOCAL_MEDIA_MAX_BLOCK_BYTES } from "../lib/local-media-block-protocol"
 import { parseRawBytesRangeHeader } from "../lib/local-media-range"
@@ -22,9 +25,10 @@ const sw = self as unknown as {
   addEventListener: (
     type: string,
     listener: (event: {
-      waitUntil: (p: Promise<unknown>) => void
-      request: Request
-      respondWith: (r: Promise<Response> | Response) => void
+      waitUntil?: (p: Promise<unknown>) => void
+      request?: Request
+      respondWith?: (r: Promise<Response> | Response) => void
+      data?: unknown
     }) => void,
   ) => void
 }
@@ -36,13 +40,50 @@ type RangeResult = {
   source: "sfu" | "webrtc"
 }
 
+type ViewerCapabilitySwRecord = {
+  token: string
+  userId: string
+}
+
+let viewerCapability: ViewerCapabilitySwRecord | null = null
+
 sw.addEventListener("install", (event) => {
-  event.waitUntil(sw.skipWaiting())
+  event.waitUntil?.(sw.skipWaiting())
 })
 
 sw.addEventListener("activate", (event) => {
-  event.waitUntil(sw.clients.claim())
+  event.waitUntil?.(sw.clients.claim())
 })
+
+sw.addEventListener("message", (event) => {
+  const data = event.data as {
+    type?: string
+    record?: { token?: string; userId?: string } | null
+  } | null
+  if (!data || data.type !== "local-media-sw-viewer-capability") return
+  const token = data.record?.token?.trim()
+  const userId = data.record?.userId?.trim()
+  viewerCapability =
+    token && userId ? { token, userId } : null
+})
+
+/** Ensure `vt` / `uid` are present on local-media HTTP fallback URLs. */
+function withViewerCapabilityOnRequest(request: Request): Request {
+  if (!viewerCapability) return request
+  try {
+    const url = new URL(request.url)
+    if (!url.pathname.startsWith("/api/media/local/")) return request
+    if (url.pathname.includes("/internal/")) return request
+    if (url.searchParams.has("vt") && url.searchParams.has("uid")) {
+      return request
+    }
+    url.searchParams.set("vt", viewerCapability.token)
+    url.searchParams.set("uid", viewerCapability.userId)
+    return new Request(url.toString(), request)
+  } catch {
+    return request
+  }
+}
 
 async function askClientForRange(
   client: { postMessage: (msg: unknown, transfer?: Transferable[]) => void },
@@ -101,6 +142,7 @@ async function askClientForRange(
 }
 
 sw.addEventListener("fetch", (event) => {
+  if (!event.request || !event.respondWith) return
   const url = new URL(event.request.url)
   if (!url.pathname.startsWith("/api/media/local/")) return
   if (url.pathname.includes("/internal/")) return
@@ -111,13 +153,14 @@ sw.addEventListener("fetch", (event) => {
   const mediaId = parts[3]
   if (!mediaId) return
 
+  const request = event.request
   event.respondWith(
     (async () => {
       const range = parseRawBytesRangeHeader(
-        event.request.headers.get("range"),
+        request.headers.get("range"),
       )
       if (!range) {
-        return fetch(event.request)
+        return fetch(withViewerCapabilityOnRequest(request))
       }
 
       const clients = await sw.clients.matchAll({
@@ -148,7 +191,7 @@ sw.addEventListener("fetch", (event) => {
           })
         }
       }
-      return fetch(event.request)
+      return fetch(withViewerCapabilityOnRequest(request))
     })(),
   )
 })

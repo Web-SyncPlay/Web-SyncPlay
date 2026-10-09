@@ -24,6 +24,9 @@ end
 return 0
 `
 
+/** Per-process single-flight when Valkey lock is unavailable. */
+const localInflightByHash = new Map<string, Promise<unknown>>()
+
 export class YtDlpExtractLockTimeoutError extends Error {
   constructor(message = "Timed out waiting for clustered yt-dlp extract") {
     super(message)
@@ -96,12 +99,49 @@ function startHeartbeat(
 }
 
 /**
+ * In-process single-flight for a URL hash. Used when the clustered Valkey
+ * lock is unavailable so we never fall back to unbounded yt-dlp spawns.
+ */
+async function withLocalExtractSingleFlight<T>(
+  urlHash: string,
+  work: () => Promise<T>,
+): Promise<T> {
+  const existing = localInflightByHash.get(urlHash)
+  if (existing) {
+    return (await existing) as T
+  }
+  const pending = work().finally(() => {
+    if (localInflightByHash.get(urlHash) === pending) {
+      localInflightByHash.delete(urlHash)
+    }
+  })
+  localInflightByHash.set(urlHash, pending)
+  return await pending
+}
+
+async function runWithoutClusterLock<T>(params: {
+  urlHash: string
+  work: () => Promise<T>
+  readReady: () => Promise<T | null>
+}): Promise<T> {
+  const ready = await params.readReady()
+  if (ready !== null) return ready
+  return await withLocalExtractSingleFlight(params.urlHash, params.work)
+}
+
+/** Test helper: clear in-process single-flight state. */
+export function resetLocalExtractInflightForTest() {
+  localInflightByHash.clear()
+}
+
+/**
  * Cluster-wide single-flight for a URL hash.
  *
  * - Only the lock holder may run `work` (spawn yt-dlp).
  * - Lock TTL is short and renewed via heartbeat; crash ⇒ TTL expires ⇒ failover.
  * - Waiters poll the shared cache and attempt acquire when the lock is free.
  * - Waiters never spawn without holding the lock.
+ * - When Valkey is unavailable: in-process single-flight only (no unbounded spawn).
  */
 export async function withYtDlpExtractLock<T>(
   params: {
@@ -121,9 +161,10 @@ export async function withYtDlpExtractLock<T>(
   try {
     store = lockStore ?? (await defaultLockStore())
   } catch {
-    // Valkey unavailable: degrade to local work (in-process inflight still coalesces).
-    console.warn("[yt-dlp] extract lock unavailable; running locally")
-    return await params.work()
+    console.warn(
+      "[yt-dlp] extract lock unavailable; using in-process single-flight",
+    )
+    return await runWithoutClusterLock(params)
   }
 
   let waited = false
@@ -137,8 +178,10 @@ export async function withYtDlpExtractLock<T>(
     try {
       acquired = await store.tryAcquire(lockKey, token, heartbeatTtlSeconds)
     } catch {
-      console.warn("[yt-dlp] extract lock acquire failed; running locally")
-      return await params.work()
+      console.warn(
+        "[yt-dlp] extract lock acquire failed; using in-process single-flight",
+      )
+      return await runWithoutClusterLock(params)
     }
 
     if (acquired) {

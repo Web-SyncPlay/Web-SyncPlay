@@ -149,6 +149,7 @@ export function usePlayerCaptionPreferences(options: {
     let player: MediaPlayerInstance | null = null
     // Suppress publish while restoring prefs / settling Track defaults.
     let suppressPublish = true
+    let suppressTimer: ReturnType<typeof setTimeout> | null = null
 
     const clearRetry = () => {
       if (retryTimer) {
@@ -157,8 +158,17 @@ export function usePlayerCaptionPreferences(options: {
       }
     }
 
+    const clearSuppressTimer = () => {
+      if (suppressTimer) {
+        clearTimeout(suppressTimer)
+        suppressTimer = null
+      }
+    }
+
     const endSuppressSoon = (delayMs: number) => {
-      window.setTimeout(() => {
+      clearSuppressTimer()
+      suppressTimer = setTimeout(() => {
+        suppressTimer = null
         if (!cancelled) {
           suppressPublish = false
         }
@@ -272,6 +282,7 @@ export function usePlayerCaptionPreferences(options: {
     return () => {
       cancelled = true
       clearRetry()
+      clearSuppressTimer()
       unbind()
     }
   }, [enabled, itemId, playerRef, syncKey, viewerPrefs?.textTrackId])

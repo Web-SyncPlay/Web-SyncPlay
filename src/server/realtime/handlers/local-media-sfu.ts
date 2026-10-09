@@ -190,6 +190,12 @@ export const handleLocalMediaSfuCreateTransport: RoomMessageHandler = async (
         ? { localMediaId: parsed.data.localMediaId }
         : {}),
     })
+    // Close raced the await — do not leak an owned transport after disconnect.
+    if (ctx.ws.readyState !== ctx.ws.OPEN) {
+      mediasoupCloseTransport(transport.id)
+      reply(ctx, data, { ok: false, error: "socket_closed" })
+      return
+    }
     const transportId = transport.id
     const ownedTransports = owned
     ownedTransports.add(transportId)

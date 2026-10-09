@@ -41,7 +41,7 @@ export function createDefaultRoomSecurity(): RoomSecurityState {
     joinPasswordEnabled: false,
     joinPasswordUpdatedAt: null,
     admissionVersion: 0,
-    defaultJoinRole: "moderator",
+    defaultJoinRole: "guest",
   }
 }
 

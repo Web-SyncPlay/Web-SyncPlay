@@ -183,6 +183,16 @@ async function main() {
       await playerPage.waitForTimeout(1_000)
       results.push(await scanPage(playerPage, "player-embed"))
 
+      const embedPage = await context.newPage()
+      embedPage.setDefaultTimeout(45_000)
+      console.log(`Scanning site embed (/room/${ROOM}/embed)…`)
+      await embedPage.goto(`${BASE}/room/${ROOM}/embed`, {
+        waitUntil: "domcontentloaded",
+      })
+      await waitForConnected(embedPage)
+      await embedPage.waitForTimeout(1_000)
+      results.push(await scanPage(embedPage, "site-embed"))
+
       const token = await mintControlToken(ROOM, userId, userSecret)
       const controlPage = await context.newPage()
       controlPage.setDefaultTimeout(45_000)

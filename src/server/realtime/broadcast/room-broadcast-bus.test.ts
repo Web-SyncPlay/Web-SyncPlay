@@ -4,9 +4,11 @@ import {
   setRoomBroadcastBusForTests,
 } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
+  createFakeWs,
   createRoomState,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
+import { addSocket, removeSocket } from "@/server/ws/registry"
 
 describe("RoomBroadcastBus", () => {
   afterEach(() => {
@@ -76,5 +78,49 @@ describe("RoomBroadcastBus", () => {
       (c) => c.envelope.type === "room:snapshot",
     )
     expect(snapshots.length).toBe(1)
+  })
+
+  test("fanOutFromPubSub admission:changed kicks non-owners only", () => {
+    const store = new InMemoryRoomStateStore(createRoomState())
+    const bus = createTestBroadcastBus(store)
+
+    const owner = createFakeWs()
+    const guest = createFakeWs()
+    addSocket(owner.ws, {
+      roomId: "room-1",
+      userId: "owner",
+      controlAuthorized: true,
+      isControlSession: true,
+      sessionKind: "room",
+    })
+    addSocket(guest.ws, {
+      roomId: "room-1",
+      userId: "guest",
+      controlAuthorized: false,
+      isControlSession: false,
+      sessionKind: "room",
+    })
+
+    try {
+      bus.fanOutFromPubSub("room-1", {
+        type: "room:admission:changed",
+        payload: {
+          admissionVersion: 2,
+          ownerId: "owner",
+          joinPasswordEnabled: true,
+        },
+        originNodeId: "other-node",
+      })
+      expect(owner.closed).toBe(false)
+      expect(guest.closed).toBe(true)
+      expect(
+        guest.sent.some(
+          (m) => (m as { type?: string }).type === "room:admission:changed",
+        ),
+      ).toBe(true)
+    } finally {
+      removeSocket(owner.ws)
+      removeSocket(guest.ws)
+    }
   })
 })

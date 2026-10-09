@@ -1,4 +1,7 @@
-import { resolveServeableLocalMedia } from "@/server/media/local-media-access"
+import {
+  resolveServeableLocalMedia,
+  viewerAuthFromLocalMediaRequest,
+} from "@/server/media/local-media-access"
 import {
   createLocalMediaRangeHttpResponse,
   parseLocalMediaRangeHeader,
@@ -14,7 +17,9 @@ async function handleLocalMediaRequest(
   void ensureRelaySubscriber()
 
   const { id } = await context.params
-  const access = await resolveServeableLocalMedia(id)
+  const access = await resolveServeableLocalMedia(id, {
+    viewer: viewerAuthFromLocalMediaRequest(request),
+  })
   if (!access.ok) {
     return access.response
   }

@@ -1,4 +1,9 @@
-import { resolveServeableLocalMedia } from "@/server/media/local-media-access"
+import {
+  LOCAL_MEDIA_VIEWER_TOKEN_PARAM,
+  LOCAL_MEDIA_VIEWER_USER_PARAM,
+  resolveServeableLocalMedia,
+  viewerAuthFromLocalMediaRequest,
+} from "@/server/media/local-media-access"
 import { buildLocalMediaMasterPlaylist } from "@/server/media/local-media-hls"
 import { touchLocalMediaEntry } from "@/server/media/local-media-store"
 
@@ -7,11 +12,15 @@ import { touchLocalMediaEntry } from "@/server/media/local-media-store"
  * Multi-variant master when ABR is ready; otherwise single-variant wrapper.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params
-  const access = await resolveServeableLocalMedia(id, { rejectAbrChild: true })
+  const viewer = viewerAuthFromLocalMediaRequest(request)
+  const access = await resolveServeableLocalMedia(id, {
+    rejectAbrChild: true,
+    viewer,
+  })
   if (!access.ok) {
     return access.response
   }
@@ -22,6 +31,10 @@ export async function GET(
     parentId: id,
     variants:
       access.entry.abr?.status === "ready" ? access.entry.abr.variants : null,
+    viewerQuery: {
+      [LOCAL_MEDIA_VIEWER_TOKEN_PARAM]: viewer.token,
+      [LOCAL_MEDIA_VIEWER_USER_PARAM]: viewer.userId,
+    },
   })
 
   return new Response(body, {

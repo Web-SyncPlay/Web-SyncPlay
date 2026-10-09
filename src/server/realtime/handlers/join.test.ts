@@ -265,6 +265,7 @@ describe("handleRoomJoin", () => {
     await handleRoomJoin({ ws, store }, joinEnvelope())
 
     expect(getSocketMeta(ws)?.presenceTracked).toBe(true)
+    expect(getSocketMeta(ws)?.joinCommitted).toBe(true)
     expect(totalPresenceRefs(store.presence.get("room-1")?.get("guest") ?? {})).toBe(
       1,
     )
@@ -278,6 +279,51 @@ describe("handleRoomJoin", () => {
     ).toBe(false)
 
     removeSocket(ws)
+  })
+
+  test("aborts presence when socket closes after commit (R1)", async () => {
+    const store = new InMemoryRoomStateStore(
+      createRoomState({
+        participants: {
+          owner: createParticipant({
+            userId: "owner",
+            role: "owner",
+            connected: true,
+          }),
+          guest: createParticipant({
+            userId: "guest",
+            role: "guest",
+            connected: false,
+          }),
+        },
+      }),
+    )
+    expect(store.presence.get("room-1")?.has("guest")).toBe(false)
+    createTestBroadcastBus(store)
+    const { ws, sent } = createFakeWs()
+    setSocketClientIp(ws, "192.0.2.55")
+
+    const originalUpdate = store.updateRoom.bind(store)
+    store.updateRoom = async (roomId, mutate) => {
+      const next = await originalUpdate(roomId, mutate)
+      // Race: client disconnects after WATCH commit, before presence/membership.
+      ws.close()
+      removeSocket(ws)
+      return next
+    }
+
+    await handleRoomJoin({ ws, store }, joinEnvelope())
+
+    expect(sent).toContainEqual({
+      type: "room:join:rejected",
+      requestId: "req-join-1",
+      payload: { reason: "connection_closed" },
+    })
+    expect(getSocketMeta(ws)).toBeUndefined()
+    expect(store.presence.get("room-1")?.has("guest")).toBe(false)
+    expect(
+      sent.some((m) => (m as { type?: string }).type === "room:snapshot"),
+    ).toBe(false)
   })
 
   test("heals ownership on join when owner is offline", async () => {

@@ -1,4 +1,7 @@
-import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
+import {
+  BROADCAST_NODE_ID,
+  getRoomBroadcastBus,
+} from "@/server/realtime/broadcast/room-broadcast-bus"
 import { getSubscriberClient } from "./client"
 import { keys } from "./keys"
 
@@ -63,11 +66,37 @@ export async function subscribeRoomUpdates() {
     }
   }
 
-  await Promise.all(
-    ROOM_PUBSUB_SUBSCRIPTIONS.map(({ kind, pattern, suffix }) =>
+  const handleUserEphemeral = (message: string, channel: string) => {
+    const parsed = keys.parseRoomUserEphemeralChannel(String(channel))
+    if (!parsed) return
+    try {
+      const wired = JSON.parse(message) as {
+        type: string
+        requestId?: string
+        payload: unknown
+        originNodeId?: string
+      }
+      if (wired.originNodeId && wired.originNodeId === BROADCAST_NODE_ID) {
+        return
+      }
+      const { originNodeId: _o, ...envelope } = wired
+      bus.fanOutUserEphemeral(parsed.roomId, parsed.userId, envelope)
+    } catch (e) {
+      console.error("[pubsub] invalid user-ephemeral message", e)
+    }
+  }
+
+  await Promise.all([
+    ...ROOM_PUBSUB_SUBSCRIPTIONS.map(({ kind, pattern, suffix }) =>
       sub.pSubscribe<false>(pattern(), (message, channel) => {
         handle(String(message), String(channel), kind, suffix)
       }),
     ),
-  )
+    sub.pSubscribe<false>(
+      keys.roomUserEphemeralChannelPattern(),
+      (message, channel) => {
+        handleUserEphemeral(String(message), String(channel))
+      },
+    ),
+  ])
 }

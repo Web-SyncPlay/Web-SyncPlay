@@ -227,7 +227,14 @@ export class RoomStateStore implements RoomStateStorePort {
     const client = await getCommandClient()
     const raw = await client.get(keys.dailyDefaults())
     const defaults = raw ? parseJson<DailyDefaultVideo[]>(raw) : []
-    return dailyDefaultsForRead(defaults)
+    const usable = Array.isArray(defaults)
+      ? defaults.filter(
+          (entry) =>
+            typeof entry?.url === "string" && entry.url.trim().length > 0,
+        )
+      : []
+    const entries = usable.length > 0 ? usable : fallbackDefaults
+    return dailyDefaultsForRead(entries)
   }
 
   /** Maintenance: resolve missing default titles via yt-dlp and persist. */
@@ -370,7 +377,13 @@ export class RoomStateStore implements RoomStateStorePort {
     const raw = await client.get(dk)
     if (raw) {
       const parsed = tryParseJson<DailyDefaultVideo[]>(raw)
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      const usable = Array.isArray(parsed)
+        ? parsed.filter(
+            (entry) =>
+              typeof entry?.url === "string" && entry.url.trim().length > 0,
+          )
+        : []
+      if (usable.length > 0) {
         return
       }
     }

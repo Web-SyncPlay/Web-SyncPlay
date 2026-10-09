@@ -25,6 +25,33 @@ function isValidEmbedFrameAncestors(raw: string): boolean {
   return parts.every(isValidEmbedFrameAncestorToken)
 }
 
+/** Clear message when only one of the multi-replica local-media pair is set. */
+export const LOCAL_MEDIA_INTERNAL_PAIR_MESSAGE =
+  "INTERNAL_NODE_BASE_URL and LOCAL_MEDIA_INTERNAL_SECRET must both be set or both be unset"
+
+/**
+ * Cross-field check for multi-replica local-media HTTP affinity.
+ * Both unset and both set are valid; exactly one set is not.
+ */
+export function refineLocalMediaInternalEnvPair(
+  data: {
+    INTERNAL_NODE_BASE_URL?: string
+    LOCAL_MEDIA_INTERNAL_SECRET?: string
+  },
+  ctx: z.RefinementCtx,
+): void {
+  const hasBase = data.INTERNAL_NODE_BASE_URL !== undefined
+  const hasSecret = data.LOCAL_MEDIA_INTERNAL_SECRET !== undefined
+  if (hasBase === hasSecret) return
+  ctx.addIssue({
+    code: "custom",
+    message: LOCAL_MEDIA_INTERNAL_PAIR_MESSAGE,
+    path: hasBase
+      ? ["LOCAL_MEDIA_INTERNAL_SECRET"]
+      : ["INTERNAL_NODE_BASE_URL"],
+  })
+}
+
 export const env = createEnv({
   /**
    * Specify your server-side environment variables schema here. This way you can ensure the app
@@ -100,11 +127,14 @@ export const env = createEnv({
       .default(1800),
     /**
      * This replica's reachable base URL for internal local-media range fetch
-     * (e.g. http://web:3000). When unset with LOCAL_MEDIA_INTERNAL_SECRET,
-     * cross-node HTTP affinity is disabled and Redis pub/sub remains the path.
+     * (e.g. http://web:3000). Must be set together with LOCAL_MEDIA_INTERNAL_SECRET
+     * (both unset disables cross-node HTTP affinity; Redis pub/sub remains the path).
      */
     INTERNAL_NODE_BASE_URL: z.url().optional(),
-    /** Shared secret for /api/media/local/internal/* (min 16 chars when set). */
+    /**
+     * Shared secret for /api/media/local/internal/* (min 16 chars when set).
+     * Must be set together with INTERNAL_NODE_BASE_URL.
+     */
     LOCAL_MEDIA_INTERNAL_SECRET: z.string().min(16).optional(),
     /**
      * Public hostname or origin (e.g. web-syncplay.de or https://web-syncplay.de).
@@ -166,4 +196,6 @@ export const env = createEnv({
    * `SOME_VAR=''` will throw an error.
    */
   emptyStringAsUndefined: true,
+  createFinalSchema: (shape) =>
+    z.object(shape).superRefine(refineLocalMediaInternalEnvPair),
 })

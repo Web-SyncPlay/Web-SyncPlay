@@ -1,4 +1,10 @@
 import type { SfuResult, SfuSendRequest } from "@/lib/local-media-sfu"
+import {
+  decideSfuProducerWireAction,
+  isSfuSessionGenerationCurrent,
+  nextSfuSessionGeneration,
+  planSfuProvideAttempt,
+} from "@/lib/local-media-sfu-transitions"
 import type { WsEnvelope } from "@/zod/types"
 
 /**
@@ -12,6 +18,7 @@ export function createLocalMediaSfuSession(input: {
 
   const sfuPending = new Map<string, (result: SfuResult) => void>()
   let sfuAvailable = false
+  let sessionGeneration = 0
   const pendingSfuProvide = new Set<string>()
 
   const sendSfuRequest: SfuSendRequest = (type, payload) =>
@@ -40,7 +47,7 @@ export function createLocalMediaSfuSession(input: {
   }
 
   const provideViaSfu = (localMediaId: string) => {
-    if (!sfuAvailable) {
+    if (planSfuProvideAttempt(sfuAvailable) === "queue") {
       pendingSfuProvide.add(localMediaId)
       return
     }
@@ -60,7 +67,6 @@ export function createLocalMediaSfuSession(input: {
   }
 
   const handleSfuProducer = (envelope: WsEnvelope<string, unknown>) => {
-    if (!sfuAvailable) return
     const payload = envelope.payload as {
       localMediaId?: string
       dataProducerId?: string
@@ -70,22 +76,30 @@ export function createLocalMediaSfuSession(input: {
     const { localMediaId, dataProducerId, ownerUserId } = payload
     if (!localMediaId || !dataProducerId || !ownerUserId) return
     const isSelfOwner = ownerUserId === userId
+    const workGeneration = sessionGeneration
 
     void (async () => {
       const sfu = await import("@/lib/local-media-sfu")
       const { getLocalMediaFile } = await import("@/lib/local-media-provider")
-      const holdsFile = Boolean(getLocalMediaFile(localMediaId))
-      if (payload.kind === "requests") {
-        if (isSelfOwner && holdsFile) {
-          await sfu.ensureLocalMediaSfuRequestConsumer(
-            localMediaId,
-            dataProducerId,
-            sendSfuRequest,
-          )
-        }
+      if (!isSfuSessionGenerationCurrent(sessionGeneration, workGeneration)) {
         return
       }
-      if (!holdsFile) {
+      const holdsFile = Boolean(getLocalMediaFile(localMediaId))
+      const action = decideSfuProducerWireAction({
+        sfuAvailable,
+        kind: payload.kind,
+        isSelfOwner,
+        holdsLocalFile: holdsFile,
+      })
+      if (action === "consume-requests") {
+        await sfu.ensureLocalMediaSfuRequestConsumer(
+          localMediaId,
+          dataProducerId,
+          sendSfuRequest,
+        )
+        return
+      }
+      if (action === "ensure-viewer") {
         await sfu.ensureLocalMediaSfuViewer(localMediaId, sendSfuRequest)
       }
     })()
@@ -104,6 +118,7 @@ export function createLocalMediaSfuSession(input: {
   const markSfuUnavailable = () => {
     sfuAvailable = false
     pendingSfuProvide.clear()
+    sessionGeneration = nextSfuSessionGeneration(sessionGeneration)
   }
 
   /** Process-wide SFU death / reset — fail pending requests and tear down. */

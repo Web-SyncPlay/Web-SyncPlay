@@ -25,6 +25,7 @@ import {
   type Session,
   type SfuSendRequest,
 } from "./local-media-sfu-session"
+import { shouldEnsureSfuProvider } from "./local-media-sfu-transitions"
 
 async function waitForDrain(producer: MsTypes.DataProducer) {
   producer.bufferedAmountLowThreshold = BUFFER_HIGH_WATER / 2
@@ -160,7 +161,9 @@ export function ensureLocalMediaSfuProvider(
   sendRequest: SfuSendRequest,
 ): Promise<boolean> {
   const session = sessionFor(sendRequest)
-  if (!getLocalMediaFile(localMediaId)) return Promise.resolve(false)
+  if (!shouldEnsureSfuProvider(Boolean(getLocalMediaFile(localMediaId)))) {
+    return Promise.resolve(false)
+  }
 
   let promise = session.providers.get(localMediaId)
   if (!promise) {

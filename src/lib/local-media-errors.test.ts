@@ -18,4 +18,12 @@ describe("local-media-errors", () => {
     expect(localMediaErrorMessage("owner_offline")).toContain("offline")
     expect(localMediaErrorMessage("provider_unavailable")).toContain("share")
   })
+
+  test("viewer capability denial is forbidden", () => {
+    expect(httpStatusForLocalMediaError("viewer_capability_denied")).toBe(403)
+    expect(localMediaErrorMessage("viewer_capability_denied")).toContain(
+      "session",
+    )
+  })
 })
+

@@ -30,6 +30,8 @@ export interface RoomStateStorePort {
   // --- WS connection presence (HASH refcounts) ---
   addWsConnectionRef(roomId: string, userId: string): Promise<void>
   removeWsConnectionRef(roomId: string, userId: string): Promise<void>
+  /** Drop one user's presence field (join rollback / explicit clear). */
+  clearWsConnectionRef(roomId: string, userId: string): Promise<void>
   touchWsPresence(roomId: string, userId: string): Promise<void>
   getWsPresenceUserIds(roomId: string): Promise<Set<string>>
 

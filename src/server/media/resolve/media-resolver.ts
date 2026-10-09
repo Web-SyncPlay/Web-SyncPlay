@@ -11,7 +11,7 @@ import { applyRelayToResolvedUrls } from "@/server/media/resolve/relay-urls"
 import { buildStreamPlan } from "@/server/media/stream/stream-plan"
 import { extractMetadata } from "@/server/media/yt-dlp"
 import { emptyYtDlpCatalog } from "@/server/media/yt-dlp/types"
-import { assertPublicHttpUrl } from "@/server/security/url-safety"
+import { assertPublicHttpUrlResolved } from "@/server/security/url-safety"
 import type { PlaylistMediaStream, PlaylistTextTrack } from "@/zod/types"
 
 export type ResolveFailureReason =
@@ -69,7 +69,7 @@ export async function resolveMediaSource(input: {
   /** When false, skip minting proxy tokens (playability probes). Default true. */
   mintRelay?: boolean
 }): Promise<ResolvedMedia> {
-  const urlSafety = assertPublicHttpUrl(input.url)
+  const urlSafety = await assertPublicHttpUrlResolved(input.url)
   if (!urlSafety.ok) {
     return unresolvedMedia(input, {
       failureReason: "source_unreachable",

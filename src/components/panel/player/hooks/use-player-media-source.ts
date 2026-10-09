@@ -5,6 +5,7 @@ import {
   getLocalMediaObjectUrl,
 } from "@/lib/local-media-provider"
 import { localMediaIdFromSrc } from "@/lib/local-media-resolve"
+import { withLocalMediaViewerToken } from "@/lib/local-media-viewer-token"
 import { inferMediaViewType } from "@/lib/playback-sync"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { PlaylistItem, ViewerMediaItemPreference } from "@/zod/types"
@@ -97,10 +98,10 @@ export function usePlayerMediaSource(config: {
       fromStream &&
       /^https?:\/\//i.test(fromStream)
     ) {
-      return current.playableUrl ?? ""
+      return withLocalMediaViewerToken(current.playableUrl ?? "")
     }
 
-    return fromStream ?? current.playableUrl ?? ""
+    return withLocalMediaViewerToken(fromStream ?? current.playableUrl ?? "")
   }, [activeStream, current, forceLocalRelaySrc, userId])
 
   const localMimeHint = (() => {

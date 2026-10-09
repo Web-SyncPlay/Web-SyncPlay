@@ -10,6 +10,7 @@ export type LocalMediaErrorCode =
   | "provider_read_failed"
   | "invalid_range"
   | "relay_failed"
+  | "viewer_capability_denied"
 
 export function localMediaErrorMessage(code: LocalMediaErrorCode): string {
   switch (code) {
@@ -27,6 +28,8 @@ export function localMediaErrorMessage(code: LocalMediaErrorCode): string {
       return "Invalid media range request."
     case "relay_failed":
       return "Could not stream this local file through the server. Try again in a moment."
+    case "viewer_capability_denied":
+      return "This local file requires an active room session. Rejoin the room and try again."
   }
 }
 
@@ -56,6 +59,8 @@ export function httpStatusForLocalMediaError(code: LocalMediaErrorCode): number 
   switch (code) {
     case "not_found":
       return 404
+    case "viewer_capability_denied":
+      return 403
     case "invalid_range":
       return 416
     case "owner_offline":

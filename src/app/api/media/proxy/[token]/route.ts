@@ -22,7 +22,7 @@ import {
   clientIpFromRequest,
   consumeRateLimit,
 } from "@/server/security/rate-limit"
-import { assertPublicHttpUrl } from "@/server/security/url-safety"
+import { assertPublicHttpUrlResolved } from "@/server/security/url-safety"
 import { NextResponse } from "next/server"
 
 function buildUpstreamHeaders(
@@ -107,7 +107,7 @@ async function loadAuthorizedProxy(
     }
   }
 
-  const safety = assertPublicHttpUrl(payload.url)
+  const safety = await assertPublicHttpUrlResolved(payload.url)
   if (!safety.ok) {
     if (mode === "json") {
       console.warn("[media-proxy] blocked upstream", { reason: safety.reason })
@@ -196,7 +196,7 @@ export async function GET(
     response.headers.get("location")
   ) {
     const redirected = new URL(response.headers.get("location")!, target).href
-    const redirectSafety = assertPublicHttpUrl(redirected)
+    const redirectSafety = await assertPublicHttpUrlResolved(redirected)
     if (!redirectSafety.ok) {
       return NextResponse.json({ error: "Forbidden redirect" }, { status: 403 })
     }

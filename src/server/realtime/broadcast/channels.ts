@@ -1,4 +1,5 @@
 import type {
+  AdmissionChangedPayload,
   PresenceBatchPayload,
   RoomControlPayload,
   RoomSnapshotPayload,
@@ -18,8 +19,13 @@ export type RoomPublishHint =
 export type ControlEnvelope = WsEnvelope<"room:control", RoomControlPayload>
 export type PresenceEnvelope = WsEnvelope<"presence:batch", PresenceBatchPayload>
 export type SnapshotEnvelope = WsEnvelope<"room:snapshot", RoomSnapshotPayload>
+export type AdmissionChangedEnvelope = WsEnvelope<
+  "room:admission:changed",
+  AdmissionChangedPayload
+>
 
 export type RoomBroadcastEnvelope =
   | ControlEnvelope
   | PresenceEnvelope
   | SnapshotEnvelope
+  | AdmissionChangedEnvelope

@@ -30,6 +30,7 @@ describe("redis keys", () => {
     expect(keys.roomPresenceRef("r")).toBe("room:r:presenceRef")
     expect(keys.roomPresenceData("r")).toBe("room:r:presenceData")
     expect(keys.roomIdentity("r")).toBe("room:r:identity")
+    expect(keys.roomViewerCapability("r", "u1")).toBe("room:r:viewer:u1")
     expect(keys.dailyDefaults()).toBe("defaults:daily-top-10")
     expect(keys.appNodeAlive("nid")).toBe("app:node:nid:alive")
     expect(keys.appNodeAliveScanPattern()).toBe("app:node:*:alive")

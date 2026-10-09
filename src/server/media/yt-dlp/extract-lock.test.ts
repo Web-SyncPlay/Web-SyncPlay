@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test"
 import {
+  resetLocalExtractInflightForTest,
   withYtDlpExtractLock,
   YtDlpExtractLockTimeoutError,
   type YtDlpLockStore,
@@ -114,4 +115,73 @@ test("YtDlpExtractLockTimeoutError is distinct", () => {
   const err = new YtDlpExtractLockTimeoutError()
   expect(err).toBeInstanceOf(Error)
   expect(err.name).toBe("YtDlpExtractLockTimeoutError")
+})
+
+test("Valkey acquire failure uses in-process single-flight, not unbounded spawn", async () => {
+  resetYtDlpMetricsForTest()
+  resetLocalExtractInflightForTest()
+
+  const store: YtDlpLockStore = {
+    async tryAcquire() {
+      throw new Error("redis down")
+    },
+    async renew() {
+      return false
+    },
+    async release() {},
+  }
+
+  let workCount = 0
+  let cached: string | null = null
+
+  const run = () =>
+    withYtDlpExtractLock(
+      {
+        urlHash: "local-sf",
+        readReady: async () => cached,
+        work: async () => {
+          workCount += 1
+          await new Promise((r) => setTimeout(r, 60))
+          cached = "local-done"
+          return "local-done"
+        },
+      },
+      store,
+    )
+
+  const [a, b, c] = await Promise.all([run(), run(), run()])
+  expect(a).toBe("local-done")
+  expect(b).toBe("local-done")
+  expect(c).toBe("local-done")
+  expect(workCount).toBe(1)
+})
+
+test("Valkey unavailable prefers warm cache over local work", async () => {
+  resetLocalExtractInflightForTest()
+
+  const store: YtDlpLockStore = {
+    async tryAcquire() {
+      throw new Error("redis down")
+    },
+    async renew() {
+      return false
+    },
+    async release() {},
+  }
+
+  let workCount = 0
+  const result = await withYtDlpExtractLock(
+    {
+      urlHash: "cached-hash",
+      readReady: async () => "from-cache",
+      work: async () => {
+        workCount += 1
+        return "spawned"
+      },
+    },
+    store,
+  )
+
+  expect(result).toBe("from-cache")
+  expect(workCount).toBe(0)
 })

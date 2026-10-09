@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { MEDIA_FETCH_UA } from "@/server/media/media-ua"
 import { sha256HexUrl } from "@/server/media/url-hash"
-import { assertPublicHttpUrl } from "@/server/security/url-safety"
+import { assertPublicHttpUrlResolved } from "@/server/security/url-safety"
 import { getCommandClient } from "../redis/client"
 import { keys } from "../redis/keys"
 import { roomStateTtlSeconds } from "@/zod/types"
@@ -68,7 +68,7 @@ export async function createProxyUrl(
   targetUrl: string,
   meta?: Omit<ProxyTokenPayload, "url" | "createdAt">,
 ): Promise<string> {
-  const safety = assertPublicHttpUrl(targetUrl)
+  const safety = await assertPublicHttpUrlResolved(targetUrl)
   if (!safety.ok) {
     throw new Error(`Refusing to proxy unsafe URL (${safety.reason})`)
   }

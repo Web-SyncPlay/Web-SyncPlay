@@ -4,7 +4,7 @@ import { resolveMediaSource } from "./media-resolver"
 describe("resolveMediaSource progressive MPEG-TS", () => {
   test("rejects stream?container=m2ts with unsupported_format", async () => {
     const resolved = await resolveMediaSource({
-      url: "https://jellyfin.example/Videos/abc/stream?api_key=k&container=m2ts",
+      url: "https://93.184.216.34/Videos/abc/stream?api_key=k&container=m2ts",
       mintRelay: false,
     })
     expect(resolved.failureReason).toBe("unsupported_format")
@@ -14,7 +14,7 @@ describe("resolveMediaSource progressive MPEG-TS", () => {
 
   test("rejects progressive .ts URLs", async () => {
     const resolved = await resolveMediaSource({
-      url: "https://cdn.example/movie.ts",
+      url: "https://93.184.216.34/movie.ts",
       mintRelay: false,
     })
     expect(resolved.failureReason).toBe("unsupported_format")

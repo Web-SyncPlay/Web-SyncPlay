@@ -109,8 +109,8 @@ async function main() {
         ? "guest username present"
         : "guest username missing",
     )
-    // Default join role is moderator. Self card layout is:
-    // You / username / playback / Online · Ready / Moderator|Guest
+    // Default join role is guest. Self card layout is:
+    // You / username / playback / Online · Ready / Guest|Moderator
     // (host Owner appears on the next card — keep this match line-anchored)
     record(
       "guest is not owner",
@@ -118,16 +118,26 @@ async function main() {
       "guest self-card role",
     )
 
-    const guestAddDisabled = await guestPage
-      .getByRole("button", { name: "Add Media" })
-      .first()
-      .isDisabled()
-    record("guest cannot add media", guestAddDisabled)
+    // Guests lack playlist-panel "Add Media"; empty-state may still show a
+    // disabled "Add first media" control.
+    const guestAddMedia = guestPage.getByRole("button", {
+      name: /^(Add Media|Add first media)$/,
+    })
+    const guestAddCount = await guestAddMedia.count()
+    const guestCannotAdd =
+      guestAddCount === 0 ||
+      (await guestAddMedia.evaluateAll((nodes) =>
+        nodes.every((node) => (node as HTMLButtonElement).disabled),
+      ))
+    record("guest cannot add media", guestCannotAdd)
 
     const mediaUrl =
       "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
     await hostPage.getByPlaceholder("Media URL").first().fill(mediaUrl)
-    await hostPage.getByRole("button", { name: "Add Media" }).first().click()
+    const hostAdd = hostPage
+      .getByRole("button", { name: /^(Add Media|Add first media)$/ })
+      .first()
+    await hostAdd.click()
     record("host queued media URL", true, mediaUrl)
 
     await hostPage.waitForTimeout(10_000)
@@ -179,6 +189,14 @@ async function main() {
         "expected for player-only layout",
       )
     }
+
+    const siteEmbedPage = await openRoom(hostCtx, `/room/${ROOM}/embed`)
+    const siteEmbedBody = await siteEmbedPage.locator("body").innerText()
+    record(
+      "site embed connects",
+      !siteEmbedBody.includes("Connecting to room session"),
+    )
+    await siteEmbedPage.close().catch(() => {})
 
     const mintRes = await fetch(`${BASE}/api/control/token`, {
       method: "POST",

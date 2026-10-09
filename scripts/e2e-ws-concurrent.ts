@@ -23,7 +23,7 @@ function wait(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
 }
 
-type SessionKind = "room" | "player" | "control"
+type SessionKind = "room" | "player" | "control" | "embed"
 
 type RoomClientOptions = {
   userId: string
@@ -302,13 +302,7 @@ async function main() {
       )
     }
 
-    // Product default for first-time joiners is moderator; force guest for this check.
-    host.send("room:default-role:set", { role: "guest" })
-    await host.waitFor(
-      (c) => c.roomState?.roomSecurity?.defaultJoinRole === "guest",
-      10_000,
-    )
-
+    // Product default for first-time joiners is guest (S2).
     await guest.connect()
     await guest.waitFor((c) => c.roomState && c.capabilities)
     record("guest joined", true)
@@ -346,6 +340,23 @@ async function main() {
         player.capabilities.sessionKind === "player",
       JSON.stringify(player.capabilities),
     )
+
+    // Host-site embed session kind (role-gated, interactive)
+    const embed = new RoomClient({
+      userId: hostId,
+      userSecret: hostSecret,
+      username: "HostAlice",
+      sessionKind: "embed",
+    })
+    await embed.connect()
+    await embed.waitFor((c) => c.capabilities)
+    record(
+      "embed session can control as owner",
+      embed.capabilities.canControlPlayback === true &&
+        embed.capabilities.sessionKind === "embed",
+      JSON.stringify(embed.capabilities),
+    )
+    embed.close()
 
     // Mint control token
     const mintRes = await fetch(`${BASE}/api/control/token`, {

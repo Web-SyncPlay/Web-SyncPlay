@@ -6,6 +6,7 @@ import {
   resolveSeekCeilingSec,
   type PlaybackSyncState,
 } from "@/lib/playback-sync"
+import { serverNowEstimateMs } from "@/lib/server-clock"
 
 export type ApplyPlaybackClockResult = {
   seekAttempted: boolean
@@ -51,7 +52,7 @@ export function applyPlaybackSyncToPlayer(config: {
     player,
     syncState,
     driftThresholdSec = DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
-    nowMs = Date.now(),
+    nowMs = serverNowEstimateMs(),
     mode = "full",
     seekableEndSec,
   } = config
@@ -92,7 +93,7 @@ export function applyPlaybackClockToPlayer(config: {
     player,
     syncState,
     driftThresholdSec = DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
-    nowMs = Date.now(),
+    nowMs = serverNowEstimateMs(),
     seekableEndSec,
   } = config
 

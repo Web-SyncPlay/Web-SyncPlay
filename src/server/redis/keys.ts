@@ -103,6 +103,24 @@ export const keys = {
     return `${ROOM_PREFIX}*:snapshot`
   },
 
+  /** User-targeted ephemeral (e.g. WebRTC signal) — room:{id}:user:{userId}:ephemeral */
+  roomUserEphemeralChannel(roomId: string, userId: string) {
+    return `${ROOM_PREFIX}${roomId}:user:${userId}:ephemeral`
+  },
+
+  roomUserEphemeralChannelPattern() {
+    return `${ROOM_PREFIX}*:user:*:ephemeral`
+  },
+
+  parseRoomUserEphemeralChannel(
+    channel: string,
+  ): { roomId: string; userId: string } | null {
+    const trimmed = channel.trim()
+    const match = /^room:(.+):user:(.+):ephemeral$/.exec(trimmed)
+    if (!match?.[1] || !match[2]) return null
+    return { roomId: match[1], userId: match[2] }
+  },
+
   parseRoomTypedChannel(
     channel: string,
     suffix: ":control" | ":presence" | ":snapshot",
@@ -154,6 +172,14 @@ export const keys = {
     return `${ROOM_PREFIX}${roomId}${ROOM_IDENTITY_SUFFIX}`
   },
 
+  /**
+   * Per-room viewer capability for public local-media HTTP (finding S4).
+   * Value: JSON `{ tokenHash, boundIp }`.
+   */
+  roomViewerCapability(roomId: string, userId: string) {
+    return `${ROOM_PREFIX}${roomId}:viewer:${userId}`
+  },
+
   mediaProxyToken(token: string) {
     return `${MEDIA_PROXY_PREFIX}${token}`
   },
@@ -198,6 +224,11 @@ export const keys = {
   /** JSON { nodeId, baseUrl, lastSeen } for multi-replica internal range fetch */
   localMediaNode(nodeId: string) {
     return `${LOCAL_MEDIA_PREFIX}node:${nodeId}`
+  },
+
+  /** SCAN MATCH for local-media node registry entries */
+  localMediaNodeScanPattern() {
+    return `${LOCAL_MEDIA_PREFIX}node:*`
   },
 
   /** Pub/sub: ask all nodes to reannounce local-media ready for a user */

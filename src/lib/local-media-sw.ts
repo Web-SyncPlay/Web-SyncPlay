@@ -1,6 +1,12 @@
 "use client"
 
 import { LOCAL_MEDIA_MAX_BLOCK_BYTES } from "@/lib/local-media-block-protocol"
+import {
+  nextDeliveryModeAfterFailure,
+  pickFirstReadyDeliveryMode,
+  planLocalMediaDeliveryAttempts,
+  type LocalMediaDeliveryMode,
+} from "@/lib/local-media-sfu-transitions"
 
 /** Register the local-media Service Worker that prefers WebRTC ranges. */
 export async function registerLocalMediaServiceWorker(): Promise<void> {
@@ -47,52 +53,65 @@ export function attachLocalMediaServiceWorkerBridge(input: {
       try {
         const start = data.start ?? 0
         const end = data.end ?? start + LOCAL_MEDIA_MAX_BLOCK_BYTES - 1
+        const mediaId = data.mediaId!
+        const providerUserId = input.resolveProviderUserId(mediaId)
 
         // Prefer a warm SFU viewer, then P2P mesh; failing both lets the SW
         // fall back to HTTP. A cold SFU viewer is warmed in the background and
         // never awaited here.
         let bytes: Uint8Array | null = null
         let source: "sfu" | "webrtc" = "sfu"
-        try {
-          const {
-            fetchLocalMediaRangeViaSfu,
-            isLocalMediaSfuViewerReady,
-            warmLocalMediaSfuViewer,
-          } = await import("@/lib/local-media-sfu")
-          if (isLocalMediaSfuViewerReady(data.mediaId!)) {
-            bytes = await fetchLocalMediaRangeViaSfu(
-              data.mediaId!,
-              start,
-              end,
-              5000,
-            )
-          } else {
-            warmLocalMediaSfuViewer(data.mediaId!)
-          }
-        } catch (error) {
-          console.warn("[local-media] sfu range fetch failed", error)
+        const {
+          fetchLocalMediaRangeViaSfu,
+          isLocalMediaSfuViewerReady,
+          warmLocalMediaSfuViewer,
+        } = await import("@/lib/local-media-sfu")
+        const attempts = planLocalMediaDeliveryAttempts({
+          sfuAvailable: true,
+          sfuViewerReady: isLocalMediaSfuViewerReady(mediaId),
+          providerUserId,
+        })
+        if (attempts.some((a) => a.mode === "sfu" && !a.ready)) {
+          warmLocalMediaSfuViewer(mediaId)
         }
 
-        if (!bytes) {
-          source = "webrtc"
-          const providerUserId = input.resolveProviderUserId(data.mediaId!)
-          if (providerUserId) {
-            const { fetchLocalMediaRangeViaWebrtc } = await import(
-              "@/lib/local-media-webrtc"
-            )
-            bytes = await fetchLocalMediaRangeViaWebrtc({
-              localMediaId: data.mediaId!,
-              providerUserId,
-              start,
-              end,
-            })
+        let mode: LocalMediaDeliveryMode | null =
+          pickFirstReadyDeliveryMode(attempts)
+        while (mode === "sfu" || mode === "p2p") {
+          try {
+            if (mode === "sfu") {
+              source = "sfu"
+              bytes = await fetchLocalMediaRangeViaSfu(
+                mediaId,
+                start,
+                end,
+                5000,
+              )
+            } else {
+              source = "webrtc"
+              const { fetchLocalMediaRangeViaWebrtc } = await import(
+                "@/lib/local-media-webrtc"
+              )
+              bytes = await fetchLocalMediaRangeViaWebrtc({
+                localMediaId: mediaId,
+                providerUserId: providerUserId!,
+                start,
+                end,
+              })
+            }
+          } catch (error) {
+            console.warn(`[local-media] ${mode} range fetch failed`, error)
+            bytes = null
           }
+          if (bytes) break
+          mode = nextDeliveryModeAfterFailure(attempts, mode)
         }
+
         if (!bytes) {
           port.postMessage({ requestId: data.requestId, ok: false })
           return
         }
-        const meta = input.resolveMediaMeta(data.mediaId!)
+        const meta = input.resolveMediaMeta(mediaId)
         port.postMessage(
           {
             requestId: data.requestId,

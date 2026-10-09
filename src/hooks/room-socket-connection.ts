@@ -25,6 +25,7 @@ import {
   type JoinStatus,
   type SessionCapabilities,
 } from "@/lib/room-join-client"
+import { observeServerNowMs } from "@/lib/server-clock"
 import {
   loadPersistedControlToken,
   persistUsername,
@@ -227,6 +228,8 @@ export function createRoomSocketConnection(
         return
       }
       if (ws.readyState !== WebSocket.OPEN) {
+        // Force-closed (e.g. admission change); reconnect with current password.
+        void connect()
         return
       }
       if (options.hasReceivedStateRef.current) {
@@ -291,6 +294,12 @@ export function createRoomSocketConnection(
         clearStateTimeout()
         options.setJoinError(null)
         const payload = envelope.payload as RoomSnapshotPayload
+        if (
+          payload.playback &&
+          typeof payload.playback.serverNowMs === "number"
+        ) {
+          observeServerNowMs(payload.playback.serverNowMs)
+        }
         const selfParticipant = payload.participants[options.identity.userId]
         if (selfParticipant?.username) {
           options.usernameRef.current = selfParticipant.username
@@ -308,11 +317,20 @@ export function createRoomSocketConnection(
       }
 
       if (envelope.type === "room:control") {
-        options.hasReceivedStateRef.current = true
+        // Do not treat control as "joined" — only snapshot/state admit the client.
+        const payload = envelope.payload as RoomControlPayload
+        if (
+          payload.playback &&
+          typeof payload.playback.serverNowMs === "number"
+        ) {
+          observeServerNowMs(payload.playback.serverNowMs)
+        }
+        if (!options.hasReceivedStateRef.current) {
+          return
+        }
         pauseAutoReconnect = false
         clearStateTimeout()
         options.setJoinError(null)
-        const payload = envelope.payload as RoomControlPayload
         options.setRoomState((prev) => {
           const next = applyRoomControl(prev, payload)
           options.roomStateRef.current = next
@@ -327,9 +345,22 @@ export function createRoomSocketConnection(
       }
 
       if (envelope.type === "session:capabilities") {
-        const payload = envelope.payload as Partial<SessionCapabilities>
+        const payload = envelope.payload as Partial<SessionCapabilities> & {
+          viewerToken?: string
+        }
         const caps = normalizeSessionCapabilities(payload, options.sessionKind)
         options.setSessionCapabilities(caps)
+        if (typeof payload.viewerToken === "string" && payload.viewerToken) {
+          void import("@/lib/local-media-viewer-token").then(
+            ({ persistLocalMediaViewerToken }) => {
+              persistLocalMediaViewerToken({
+                roomId: options.roomId,
+                userId: options.identity.userId,
+                token: payload.viewerToken!,
+              })
+            },
+          )
+        }
         const role =
           options.roomStateRef.current?.participants[options.identity.userId]
             ?.role
@@ -358,6 +389,31 @@ export function createRoomSocketConnection(
               // reconnect via onclose
             }
           })
+        return
+      }
+
+      if (envelope.type === "room:admission:changed") {
+        if (joinRetryTimer) {
+          window.clearTimeout(joinRetryTimer)
+          joinRetryTimer = undefined
+        }
+        clearStateTimeout()
+        // Revoke local admission so a later sendJoin / reconnect can re-join.
+        options.hasReceivedStateRef.current = false
+        options.roomStateRef.current = null
+        options.setRoomState(null)
+        options.setSessionCapabilities(
+          createDefaultSessionCapabilities(options.sessionKind),
+        )
+        const payload = envelope.payload as { joinPasswordEnabled?: boolean }
+        if (payload.joinPasswordEnabled) {
+          options.setJoinError(messageForJoinRejected("password_required"))
+          options.setStatus(statusForJoinRejected("password_required"))
+          clearReconnectTimers?.()
+          pauseAutoReconnect = true
+        }
+        // Password cleared: allow onclose auto-reconnect to re-admit without prompt.
+        // Server closes non-owner sockets after this envelope.
         return
       }
 

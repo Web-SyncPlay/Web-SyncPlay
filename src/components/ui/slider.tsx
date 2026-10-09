@@ -9,11 +9,19 @@ function Slider({
   min = 0,
   max = 100,
   "aria-label": ariaLabel,
+  "aria-valuetext": ariaValueText,
   getAriaLabel,
+  getAriaValueText,
   ...props
 }: SliderPrimitive.Root.Props & {
   /** Accessible name applied to each thumb's range input. */
   getAriaLabel?: (index: number) => string
+  /** Accessible value text applied to each thumb (not the root). */
+  getAriaValueText?: (
+    formattedValue: string,
+    value: number,
+    index: number,
+  ) => string
 }) {
   const _values = Array.isArray(value)
     ? value
@@ -28,6 +36,12 @@ function Slider({
           _values.length > 1 ? `${ariaLabel} (${index + 1})` : ariaLabel
       : undefined)
 
+  const resolveThumbValueText =
+    getAriaValueText ??
+    (ariaValueText
+      ? (_formatted: string, _value: number, _index: number) => ariaValueText
+      : undefined)
+
   return (
     <SliderPrimitive.Root
       className={cn("data-horizontal:w-full data-vertical:h-full", className)}
@@ -37,7 +51,6 @@ function Slider({
       min={min}
       max={max}
       thumbAlignment="edge"
-      aria-label={ariaLabel}
       {...props}
     >
       <SliderPrimitive.Control className="relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col">
@@ -56,6 +69,12 @@ function Slider({
             key={index}
             getAriaLabel={
               resolveThumbLabel ? () => resolveThumbLabel(index) : undefined
+            }
+            getAriaValueText={
+              resolveThumbValueText
+                ? (formattedValue, thumbValue) =>
+                    resolveThumbValueText(formattedValue, thumbValue, index)
+                : undefined
             }
             className="relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
           />
