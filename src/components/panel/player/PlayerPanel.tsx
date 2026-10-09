@@ -4,7 +4,7 @@ import type { MediaErrorDetail, MediaPlayerInstance } from "@vidstack/react"
 import "@vidstack/react/player/styles/default/layouts/audio.css"
 import "@vidstack/react/player/styles/default/layouts/video.css"
 import "@vidstack/react/player/styles/default/theme.css"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { resolveCurrentPlaylistItem } from "@/lib/playlist-current"
 import {
   resolveCatalogDurationMs,
@@ -24,6 +24,7 @@ import { usePlayerPlaybackSync } from "./hooks/use-player-playback-sync"
 import { usePlayerVolume } from "./hooks/use-player-volume"
 import { usePlaylistNavigation } from "./hooks/use-playlist-navigation"
 import { useRemoteSeekOverlay } from "./hooks/use-remote-seek-overlay"
+import type { PlaylistNavSnapshot } from "./hooks/use-synced-media-player-handlers"
 import { usePlaybackTimelineController } from "./playback-control/use-playback-timeline-controller"
 import { formatMediaErrorDetail } from "./player-src"
 import { PlayerEmptyState } from "./PlayerEmptyState"
@@ -50,6 +51,10 @@ export function PlayerPanel({
 
   const playerRef = useRef<MediaPlayerInstance>(null)
   const playbackRef = useRef(roomState.playback)
+  const playlistNavRef = useRef<PlaylistNavSnapshot>({
+    currentIndex: roomState.currentIndex,
+    playlistLoop: roomState.playback.playlistLoop,
+  })
   const isMediaReadyRef = useRef(false)
   const bufferingSinceRef = useRef<number | null>(null)
   const participantStatusErrorRef = useRef<string | null>(null)
@@ -59,10 +64,19 @@ export function PlayerPanel({
   const reportedDurationItemIdRef = useRef<string | null>(null)
   const proxyRenewAttemptedRef = useRef<string | null>(null)
   const playbackPausedRef = useRef(roomState.playback.paused)
+  /* eslint-disable react-hooks/refs -- sync latest snapshots for event handlers */
   playbackPausedRef.current = roomState.playback.paused
+  // Ended/nav handlers read playlistNavRef so presence churn stays off the
+  // memoized SyncedMediaPlayer prop surface.
+  playlistNavRef.current = {
+    currentIndex: roomState.currentIndex,
+    playlistLoop: roomState.playback.playlistLoop,
+  }
+  /* eslint-enable react-hooks/refs */
 
   const roomPaused = roomState.playback.paused
   const roomPlaybackRate = roomState.playback.playbackRate
+  const videoLoop = roomState.playback.videoLoop
   const currentItemId = current?.id
 
   const [isBuffering, setIsBuffering] = useState(false)
@@ -217,6 +231,21 @@ export function PlayerPanel({
 
   const elapsedMs = timeline.elapsedMs
 
+  // Stable unless current/send change — both already re-render the player.
+  const onSelectStreamId = useCallback(
+    (streamId: string) => {
+      if (!current) {
+        return
+      }
+      send("viewer:media:preferences", {
+        itemId: current.id,
+        streamId,
+      })
+      setPlayerRemountNonce((value) => value + 1)
+    },
+    [current, send, setPlayerRemountNonce],
+  )
+
   return (
     <div
       className={cn(
@@ -244,7 +273,7 @@ export function PlayerPanel({
           viewType={viewType}
           useCrossOriginAnonymous={useCrossOriginAnonymous}
           playerRemountNonce={playerRemountNonce}
-          roomState={roomState}
+          videoLoop={videoLoop}
           roomPaused={roomPaused}
           roomPlaybackRate={roomPlaybackRate}
           userId={userId}
@@ -259,17 +288,9 @@ export function PlayerPanel({
           nextButtonSlot={nextButtonSlot}
           audioDelayMs={delayMs}
           onAudioDelayChange={setDelayMs}
-          onSelectStreamId={(streamId) => {
-            if (!current) {
-              return
-            }
-            send("viewer:media:preferences", {
-              itemId: current.id,
-              streamId,
-            })
-            setPlayerRemountNonce((value) => value + 1)
-          }}
+          onSelectStreamId={onSelectStreamId}
           playbackRef={playbackRef}
+          playlistNavRef={playlistNavRef}
           isMediaReadyRef={isMediaReadyRef}
           bufferingSinceRef={bufferingSinceRef}
           participantStatusErrorRef={participantStatusErrorRef}

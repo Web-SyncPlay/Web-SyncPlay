@@ -21,8 +21,9 @@ import {
   DefaultVideoLayout,
   defaultLayoutIcons,
 } from "@vidstack/react/player/layouts/default"
-import type { ReactNode, RefObject } from "react"
+import { memo, useMemo, type ReactNode, type RefObject } from "react"
 import type {
+  LoopMode,
   PlaylistItem,
   PlaylistMediaStream,
   RoomState,
@@ -30,11 +31,16 @@ import type {
 } from "@/zod/types"
 import type { PlayerSrcInput } from "./player-src"
 import type { PendingSyncState } from "./hooks/use-buffering-watchdog"
-import { useSyncedMediaPlayerHandlers } from "./hooks/use-synced-media-player-handlers"
+import {
+  useSyncedMediaPlayerHandlers,
+  type PlaylistNavSnapshot,
+} from "./hooks/use-synced-media-player-handlers"
 import type { LocalSeekPhase } from "./playback-control/use-playback-timeline-controller"
 import { buildPlayerSettingsSlots } from "./player-settings-slots"
 
-export function SyncedMediaPlayer(props: {
+const EMPTY_MEDIA_STREAMS: PlaylistMediaStream[] = []
+
+export type SyncedMediaPlayerProps = {
   playerRef: RefObject<MediaPlayerInstance | null>
   current: PlaylistItem | undefined
   activeStream: PlaylistMediaStream | null
@@ -44,7 +50,7 @@ export function SyncedMediaPlayer(props: {
   viewType: "audio" | "video"
   useCrossOriginAnonymous: boolean
   playerRemountNonce: number
-  roomState: RoomState
+  videoLoop: LoopMode
   roomPaused: boolean
   roomPlaybackRate: number
   userId: string
@@ -61,6 +67,7 @@ export function SyncedMediaPlayer(props: {
   onAudioDelayChange: (delayMs: number) => void
   onSelectStreamId: (streamId: string) => void
   playbackRef: RefObject<RoomState["playback"]>
+  playlistNavRef: RefObject<PlaylistNavSnapshot>
   isMediaReadyRef: RefObject<boolean>
   bufferingSinceRef: RefObject<number | null>
   participantStatusErrorRef: RefObject<string | null>
@@ -89,7 +96,11 @@ export function SyncedMediaPlayer(props: {
   setMediaDurationMs: (value: number) => void
   setForceLocalRelaySrc: (value: boolean) => void
   setPlayerRemountNonce: (updater: (n: number) => number) => void
-}) {
+}
+
+export const SyncedMediaPlayer = memo(function SyncedMediaPlayer(
+  props: SyncedMediaPlayerProps,
+) {
   const {
     playerRef,
     current,
@@ -100,7 +111,7 @@ export function SyncedMediaPlayer(props: {
     viewType,
     useCrossOriginAnonymous,
     playerRemountNonce,
-    roomState,
+    videoLoop,
     roomPaused,
     roomPlaybackRate,
     userId,
@@ -117,6 +128,7 @@ export function SyncedMediaPlayer(props: {
     onAudioDelayChange,
     onSelectStreamId,
     playbackRef,
+    playlistNavRef,
     isMediaReadyRef,
     bufferingSinceRef,
     participantStatusErrorRef,
@@ -145,17 +157,34 @@ export function SyncedMediaPlayer(props: {
 
   const playerStreamType = resolvePlayerStreamType(current)
   const playerDurationSec = resolvePlayerDurationSec(current)
-  const layoutSlots = buildPlayerSettingsSlots({
-    previousButtonSlot,
-    nextButtonSlot,
-    streams: current?.mediaStreams ?? [],
-    selectedStreamId:
-      activeStream?.id ?? current?.defaultStreamId ?? "",
-    onSelectStreamId,
-    audioDelayMs,
-    onAudioDelayChange,
-    canControlPlayback,
-  })
+  const streams = current?.mediaStreams ?? EMPTY_MEDIA_STREAMS
+  const selectedStreamId =
+    activeStream?.id ?? current?.defaultStreamId ?? ""
+  // Explicit useMemo: slots feed Vidstack and must stay referentially stable
+  // for memo(SyncedMediaPlayer) even when the React Compiler is active.
+  const layoutSlots = useMemo(
+    () =>
+      buildPlayerSettingsSlots({
+        previousButtonSlot,
+        nextButtonSlot,
+        streams,
+        selectedStreamId,
+        onSelectStreamId,
+        audioDelayMs,
+        onAudioDelayChange,
+        canControlPlayback,
+      }),
+    [
+      previousButtonSlot,
+      nextButtonSlot,
+      streams,
+      selectedStreamId,
+      onSelectStreamId,
+      audioDelayMs,
+      onAudioDelayChange,
+      canControlPlayback,
+    ],
+  )
 
   // Same-origin UMD builds (scripts/vendor-player-libs.ts) — never jsDelivr.
   const onProviderChange = (provider: MediaProviderAdapter | null) => {
@@ -172,7 +201,6 @@ export function SyncedMediaPlayer(props: {
     current,
     playerSrc,
     activePlaybackSrc,
-    roomState,
     send,
     canControlPlayback,
     isMuted,
@@ -180,6 +208,7 @@ export function SyncedMediaPlayer(props: {
     unmute,
     handleVolumeChange,
     playbackRef,
+    playlistNavRef,
     isMediaReadyRef,
     bufferingSinceRef,
     participantStatusErrorRef,
@@ -214,7 +243,7 @@ export function SyncedMediaPlayer(props: {
       src={playerSrc as PlayerSrc}
       title={current?.name ?? "Web-SyncPlay"}
       viewType={viewType}
-      loop={roomState.playback.videoLoop !== "off"}
+      loop={videoLoop !== "off"}
       crossOrigin={useCrossOriginAnonymous ? "anonymous" : undefined}
       playsInline
       // Room playback is the transport authority — player follows.
@@ -267,16 +296,19 @@ export function SyncedMediaPlayer(props: {
           )}
         />
       ))}
-      <DefaultAudioLayout
-        icons={defaultLayoutIcons}
-        {...(!canControlPlayback ? { playbackRates: [] as number[] } : {})}
-        slots={layoutSlots}
-      />
-      <DefaultVideoLayout
-        icons={defaultLayoutIcons}
-        {...(!canControlPlayback ? { playbackRates: [] as number[] } : {})}
-        slots={layoutSlots}
-      />
+      {viewType === "audio" ? (
+        <DefaultAudioLayout
+          icons={defaultLayoutIcons}
+          {...(!canControlPlayback ? { playbackRates: [] as number[] } : {})}
+          slots={layoutSlots}
+        />
+      ) : (
+        <DefaultVideoLayout
+          icons={defaultLayoutIcons}
+          {...(!canControlPlayback ? { playbackRates: [] as number[] } : {})}
+          slots={layoutSlots}
+        />
+      )}
     </MediaPlayer>
   )
-}
+})
