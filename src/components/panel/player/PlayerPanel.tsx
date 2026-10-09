@@ -5,6 +5,7 @@ import "@vidstack/react/player/styles/default/layouts/audio.css"
 import "@vidstack/react/player/styles/default/layouts/video.css"
 import "@vidstack/react/player/styles/default/theme.css"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useLatestRef } from "@/hooks/use-latest-ref"
 import { resolveCurrentPlaylistItem } from "@/lib/playlist-current"
 import {
   resolveCatalogDurationMs,
@@ -50,8 +51,10 @@ export function PlayerPanel({
   ]
 
   const playerRef = useRef<MediaPlayerInstance>(null)
-  const playbackRef = useRef(roomState.playback)
-  const playlistNavRef = useRef<PlaylistNavSnapshot>({
+  const playbackRef = useLatestRef(roomState.playback)
+  // Ended/nav handlers read playlistNavRef so presence churn stays off the
+  // memoized SyncedMediaPlayer prop surface.
+  const playlistNavRef = useLatestRef<PlaylistNavSnapshot>({
     currentIndex: roomState.currentIndex,
     playlistLoop: roomState.playback.playlistLoop,
   })
@@ -63,16 +66,7 @@ export function PlayerPanel({
   const reportedItemErrorRef = useRef<string | null>(null)
   const reportedDurationItemIdRef = useRef<string | null>(null)
   const proxyRenewAttemptedRef = useRef<string | null>(null)
-  const playbackPausedRef = useRef(roomState.playback.paused)
-  /* eslint-disable react-hooks/refs -- sync latest snapshots for event handlers */
-  playbackPausedRef.current = roomState.playback.paused
-  // Ended/nav handlers read playlistNavRef so presence churn stays off the
-  // memoized SyncedMediaPlayer prop surface.
-  playlistNavRef.current = {
-    currentIndex: roomState.currentIndex,
-    playlistLoop: roomState.playback.playlistLoop,
-  }
-  /* eslint-enable react-hooks/refs */
+  const playbackPausedRef = useLatestRef(roomState.playback.paused)
 
   const roomPaused = roomState.playback.paused
   const roomPlaybackRate = roomState.playback.playbackRate

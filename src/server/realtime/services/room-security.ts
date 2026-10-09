@@ -1,6 +1,8 @@
 import type {
   DefaultJoinRole,
+  PublicRoomSecurityState,
   RoomSecurityState,
+  RoomSnapshotPayload,
   RoomState,
 } from "@/zod/types"
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto"
@@ -70,7 +72,7 @@ export function ensureRoomSecurity(state: RoomState): RoomSecurityState {
 /** Client-safe security view: never includes hash/salt secrets. */
 export function publicRoomSecurity(
   security: RoomSecurityState,
-): RoomSecurityState {
+): PublicRoomSecurityState {
   return {
     joinPasswordEnabled: security.joinPasswordEnabled,
     joinPasswordUpdatedAt: security.joinPasswordUpdatedAt,
@@ -79,7 +81,9 @@ export function publicRoomSecurity(
   }
 }
 
-export function sanitizeRoomStateForClient(state: RoomState): RoomState {
+export function sanitizeRoomStateForClient(
+  state: RoomState,
+): RoomSnapshotPayload {
   return {
     ...state,
     roomSecurity: publicRoomSecurity(ensureRoomSecurity(state)),

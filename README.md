@@ -11,6 +11,15 @@ Watch video or audio in sync with friends. One Next.js app: WebSocket realtime, 
 
 **Stack:** Bun · Next.js · React · TypeScript · Tailwind · Vidstack · mediasoup · Valkey · yt-dlp
 
+## Requirements
+
+| Tool | Version |
+| ---- | ------- |
+| [Bun](https://bun.sh) | **1.4.2** (`packageManager` / CI) |
+| Node.js | **≥ 26** (`engines.node`; Docker image / native tooling) |
+
+**TypeScript:** the IDE uses TypeScript **6** (`typescript` → `@typescript/typescript6`). CI/`bun run typecheck` uses TypeScript **7** via `@typescript/native`. Prefer fixing issues that fail `typecheck`.
+
 ## Quick start (development)
 
 ```bash
@@ -20,7 +29,7 @@ docker compose up -d valkey   # or any Valkey/Redis at VALKEY_URL
 bun run dev
 ```
 
-Open [http://127.0.0.1:3000](http://127.0.0.1:3000). Scripts: `typecheck`, `test`, `lint`, `test:a11y` (app must be running).
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000). Scripts: `typecheck`, `test`, `lint`, `test:a11y` / `test:e2e:ws` (app must be running).
 
 Local Bun may skip the mediasoup native worker; the Docker image runs the in-process SFU.
 
@@ -123,7 +132,7 @@ Set **both** on every `web` replica for sticky local-media HTTP affinity (miss p
 | `YTDLP_BIN`                  | `yt-dlp`                       | yt-dlp binary (installed in the Docker image).                                      |
 | `YTDLP_MAX_CONCURRENT`       | `2`                            | Max concurrent extracts per process. Raise carefully under load.                    |
 | `YTDLP_TIMEOUT_MS`           | `30000`                        | Extract timeout (1s–120s). Also drives lock heartbeat / reclaim intervals.          |
-| `YTDLP_CACHE_TTL_SECONDS`    | `1800`                         | Valkey extract cache TTL (0–86400). Stream URL freshness derives from this.         |
+| `YTDLP_CACHE_TTL_SECONDS`    | `1800`                         | Retention input for the Valkey extract cache (0–86400). Successful writes use a shorter TTL capped by derived stream-URL max age; failures stay short-lived (~60s). |
 | `FALLBACK_DEFAULT_MEDIA_URL` | `https://youtu.be/uD4izuDMUQA` | Seed media when daily defaults cache is empty.                                      |
 | `ROOM_PARTICIPANTS_LIMIT`    | `100`                          | Max participants per room (1–100).                                                  |
 | `ROOM_PLAYLIST_LIMIT`        | `50`                           | Max playlist items per room (1–200).                                                |
@@ -177,14 +186,18 @@ Reusing a room ID with a new `media` query does **not** replace the playlist. Ch
 
 ## Architecture (developers)
 
-| Path                  | Role                                                  |
-| --------------------- | ----------------------------------------------------- |
-| `src/app`             | App Router pages + HTTP APIs                          |
-| `src/pages/api/ws.ts` | WebSocket upgrade                                     |
-| `src/server/realtime` | Join, playlist, playback, permissions                 |
-| `src/server/media`    | Resolve, proxy, HLS rewrite, yt-dlp, local media, SFU |
-| `src/zod`             | Shared types / schemas                                |
-| `src/components`      | UI                                                    |
+| Path                  | Role                                                              |
+| --------------------- | ----------------------------------------------------------------- |
+| `src/app`             | App Router pages + HTTP APIs                                      |
+| `src/pages/api/ws.ts` | WebSocket upgrade                                                 |
+| `src/proxy.ts`        | Edge proxy (CSP / CORS)                                           |
+| `src/server/realtime` | Join, playlist, playback, permissions                             |
+| `src/server/media`    | Resolve, media proxy, HLS rewrite, yt-dlp, local media, SFU       |
+| `src/hooks`           | Client room socket, session, and UI hooks                         |
+| `src/lib`             | Shared client/server helpers (playback sync, local media, etc.)   |
+| `src/sw`              | Service worker (local-media fetch/cache)                          |
+| `src/zod`             | Shared types / schemas                                            |
+| `src/components`      | UI                                                                |
 
 **Realtime outbound:** `room:control` (instant play/pause/seek), `presence:batch` (~250ms clocks), `room:snapshot` (~100ms structure). Presence ticks do not rewrite full Redis room state.
 

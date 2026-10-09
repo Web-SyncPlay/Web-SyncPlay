@@ -24,6 +24,9 @@ export function createLocalMediaEnvelopeHandler(input: {
       case "local-media:sfu:producer":
         sfu.handleSfuProducer(envelope)
         return true
+      case "local-media:sfu:unavailable":
+        sfu.handleSfuUnavailable()
+        return true
       case "local-media:webrtc:signal":
         handleWebrtcSignal(envelope)
         return true

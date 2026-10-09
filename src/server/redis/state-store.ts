@@ -18,7 +18,6 @@ import {
 import { getCommandClient } from "./client"
 import { keys } from "./keys"
 import {
-  bumpPresenceNodeCount,
   encodePresenceNodeCounts,
   parsePresenceNodeCounts,
 } from "./presence-ref"
@@ -30,6 +29,53 @@ const fallbackDefaults: DailyDefaultVideo[] = [
 const UPDATE_ROOM_MAX_ATTEMPTS = 12
 const UPDATE_ROOM_BACKOFF_BASE_MS = 50
 const UPDATE_ROOM_BACKOFF_CAP_MS = 400
+
+/**
+ * Atomic node-map presence bump: HGET → decode → adjust nodeId → HSET/HDEL + EXPIRE.
+ * Legacy plain-integer fields are treated as empty (orphaned) maps.
+ * KEYS[1]=hash  ARGV[1]=userId  ARGV[2]=nodeId  ARGV[3]=delta  ARGV[4]=ttlSeconds
+ * Returns remaining total refcount for the user (0 if field removed).
+ */
+const PRESENCE_BUMP_SCRIPT = `
+local raw = redis.call('HGET', KEYS[1], ARGV[1])
+local counts = {}
+if raw and raw ~= '' then
+  local asInt = tonumber(raw)
+  if not (asInt and tostring(asInt) == raw) then
+    local ok, parsed = pcall(cjson.decode, raw)
+    if ok and type(parsed) == 'table' then
+      counts = parsed
+    end
+  end
+end
+
+local nodeId = ARGV[2]
+local delta = tonumber(ARGV[3]) or 0
+local n = (tonumber(counts[nodeId]) or 0) + delta
+if n <= 0 then
+  counts[nodeId] = nil
+else
+  counts[nodeId] = math.floor(n)
+end
+
+local cleaned = {}
+local remaining = 0
+for k, v in pairs(counts) do
+  local vn = tonumber(v)
+  if vn and vn > 0 and type(k) == 'string' and #k > 0 then
+    cleaned[k] = math.floor(vn)
+    remaining = remaining + vn
+  end
+end
+
+if remaining <= 0 then
+  redis.call('HDEL', KEYS[1], ARGV[1])
+else
+  redis.call('HSET', KEYS[1], ARGV[1], cjson.encode(cleaned))
+end
+redis.call('EXPIRE', KEYS[1], tonumber(ARGV[4]))
+return remaining
+`
 
 function parseJson<T>(raw: string): T {
   return JSON.parse(raw) as T
@@ -211,32 +257,46 @@ export class RoomStateStore implements RoomStateStorePort {
 
   /** Increment this node's WS refcount for a user (call on join). */
   async addWsConnectionRef(roomId: string, userId: string) {
-    const client = await getCommandClient()
-    const hkey = keys.roomPresenceRef(roomId)
-    const nodeId = getAppNodeId()
-    const raw = await client.hGet(hkey, userId)
-    const next = bumpPresenceNodeCount(parsePresenceNodeCounts(raw), nodeId, 1)
-    const encoded = encodePresenceNodeCounts(next)
-    if (encoded) {
-      await client.hSet(hkey, { [userId]: encoded })
-    }
-    await client.expire(hkey, roomStateTtlSeconds)
+    await this.bumpWsConnectionRef(roomId, userId, 1)
   }
 
   /** Decrement this node's WS refcount; removes the user when all nodes are zero. */
   async removeWsConnectionRef(roomId: string, userId: string) {
+    await this.bumpWsConnectionRef(roomId, userId, -1)
+  }
+
+  /**
+   * Atomic presence node-map adjust for this process's node id.
+   * Prefer {@link addWsConnectionRef} / {@link removeWsConnectionRef}.
+   */
+  async bumpWsConnectionRef(roomId: string, userId: string, delta: number) {
+    if (delta === 0) return
     const client = await getCommandClient()
     const hkey = keys.roomPresenceRef(roomId)
-    const nodeId = getAppNodeId()
-    const raw = await client.hGet(hkey, userId)
-    const next = bumpPresenceNodeCount(parsePresenceNodeCounts(raw), nodeId, -1)
-    const encoded = encodePresenceNodeCounts(next)
-    if (encoded) {
-      await client.hSet(hkey, { [userId]: encoded })
-    } else {
-      await client.hDel(hkey, userId)
-    }
-    await client.expire(hkey, roomStateTtlSeconds)
+    await client.eval(PRESENCE_BUMP_SCRIPT, {
+      keys: [hkey],
+      arguments: [
+        userId,
+        getAppNodeId(),
+        String(delta),
+        String(roomStateTtlSeconds),
+      ],
+    })
+  }
+
+  /**
+   * Remove one user's presence field entirely (join rollback / explicit clear).
+   * A1 can call this when a committed join must roll back presence.
+   */
+  async clearWsConnectionRef(roomId: string, userId: string) {
+    const client = await getCommandClient()
+    await client.hDel(keys.roomPresenceRef(roomId), userId)
+  }
+
+  /** Drop all WS presence refs for a room. */
+  async clearWsPresenceRefs(roomId: string) {
+    const client = await getCommandClient()
+    await client.del([keys.roomPresenceRef(roomId)])
   }
 
   /** Refresh TTL while the room is active (all room-related keys). */
@@ -251,12 +311,13 @@ export class RoomStateStore implements RoomStateStorePort {
 
   /**
    * User IDs with at least one live WS connection on an alive app node.
-   * Orphaned legacy integer refs and dead-node maps are ignored.
+   * Orphaned legacy integer refs and dead-node maps are ignored when the alive
+   * list is reliable. On unreliable alive fetch, skip hDel / dead-node rewrite.
    */
   async getWsPresenceUserIds(roomId: string) {
     const client = await getCommandClient()
     const entries = await client.hGetAll(keys.roomPresenceRef(roomId))
-    const alive = await listAliveAppNodeIds()
+    const { ids: alive, reliable } = await listAliveAppNodeIds()
     // This process is always considered alive for its own refs (heartbeat race).
     alive.add(getAppNodeId())
 
@@ -267,8 +328,14 @@ export class RoomStateStore implements RoomStateStorePort {
     for (const [uid, raw] of Object.entries(entries)) {
       const counts = parsePresenceNodeCounts(raw)
       if (Object.keys(counts).length === 0) {
-        // Legacy integer or empty — drop so it cannot resurrect "online".
-        staleFields.push(uid)
+        // Legacy integer or empty — only drop when alive list is reliable.
+        if (reliable) staleFields.push(uid)
+        continue
+      }
+
+      if (!reliable) {
+        // Fail closed: assume remotes may still be alive; do not rewrite/hDel.
+        online.add(uid)
         continue
       }
 
@@ -290,7 +357,7 @@ export class RoomStateStore implements RoomStateStorePort {
       }
     }
 
-    if (staleFields.length > 0) {
+    if (reliable && staleFields.length > 0) {
       await client.hDel(hkey, staleFields)
     }
 

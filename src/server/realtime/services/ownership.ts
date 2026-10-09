@@ -1,7 +1,7 @@
 import { appendActionLog } from "@/server/log"
 import type { ParticipantState, RoomState } from "@/zod/types"
 
-type TransferReason = "disconnect" | "cleanup"
+type TransferReason = "disconnect" | "cleanup" | "join"
 
 function participantSortKey(participant: ParticipantState) {
   return (

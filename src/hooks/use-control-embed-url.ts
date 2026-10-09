@@ -1,9 +1,28 @@
 "use client"
 
-import { getControlEmbedUrl, mintControlEmbedUrl } from "@/lib/control-url"
+import {
+  createControlTokenRefreshScheduler,
+  mintRoomControlTokenWithRetry,
+} from "@/lib/control-token-client"
+import { getControlEmbedUrl } from "@/lib/control-url"
 import { canMutateByRole } from "@/lib/permissions-utils"
 import type { RoomRole } from "@/zod/types"
 import { useEffect, useMemo, useState } from "react"
+
+/**
+ * Picks the control embed URL for the current role.
+ * Mutators never get a tokenless `/control` fallback — empty until mint succeeds.
+ */
+export function pickControlEmbedUrl(input: {
+  canMutate: boolean
+  identityControlEmbedUrl: string | null
+  mintedUrl: string | null
+}): string {
+  if (!input.canMutate) {
+    return input.identityControlEmbedUrl ?? ""
+  }
+  return input.mintedUrl ?? ""
+}
 
 /**
  * Builds the control embed URL for the current identity.
@@ -31,10 +50,7 @@ export function useControlEmbedUrl(input: {
     return getControlEmbedUrl(roomId, userId, userSecret)
   }, [roomId, userId, userSecret])
 
-  const fallbackControlEmbedUrl =
-    typeof window === "undefined"
-      ? `/room/${roomId}/control`
-      : `${window.location.origin}/room/${roomId}/control`
+  const canMutate = canMutateByRole(participantRole)
 
   useEffect(() => {
     // Identity is empty until session storage/crypto finishes; minting then
@@ -42,28 +58,61 @@ export function useControlEmbedUrl(input: {
     if (!userId || !userSecret) {
       return
     }
-    if (!canMutateByRole(participantRole)) {
+    if (!canMutate) {
       return
     }
 
     let cancelled = false
-    void mintControlEmbedUrl({ roomId, userId, userSecret }).then((url) => {
-      // Mint failure returns null — do not publish a tokenless mutator URL.
-      if (!cancelled && url) {
-        setMintedControlEmbedUrl({ scopeKey: mintScopeKey, url })
-      }
+    const scheduler = createControlTokenRefreshScheduler({
+      onMinted: (minted) => {
+        if (cancelled) {
+          return
+        }
+        setMintedControlEmbedUrl({
+          scopeKey: mintScopeKey,
+          url: getControlEmbedUrl(
+            roomId,
+            userId,
+            userSecret,
+            minted.token,
+          ),
+        })
+      },
     })
+
+    void (async () => {
+      const minted = await mintRoomControlTokenWithRetry({
+        roomId,
+        userId,
+        userSecret,
+      })
+      if (cancelled || !minted) {
+        return
+      }
+      setMintedControlEmbedUrl({
+        scopeKey: mintScopeKey,
+        url: getControlEmbedUrl(roomId, userId, userSecret, minted.token),
+      })
+      scheduler.arm(
+        { roomId, userId, userSecret },
+        minted.expiresAt,
+      )
+    })()
+
     return () => {
       cancelled = true
+      scheduler.disarm()
     }
-  }, [mintScopeKey, participantRole, roomId, userId, userSecret])
+  }, [mintScopeKey, canMutate, roomId, userId, userSecret])
 
-  if (identityControlEmbedUrl && !canMutateByRole(participantRole)) {
-    return identityControlEmbedUrl
-  }
   const scopedMintedUrl =
     mintedControlEmbedUrl?.scopeKey === mintScopeKey
       ? mintedControlEmbedUrl.url
       : null
-  return scopedMintedUrl ?? fallbackControlEmbedUrl
+
+  return pickControlEmbedUrl({
+    canMutate,
+    identityControlEmbedUrl,
+    mintedUrl: scopedMintedUrl,
+  })
 }

@@ -14,6 +14,7 @@ import {
   useRef,
   type RefObject,
 } from "react"
+import { useLatestRef } from "@/hooks/use-latest-ref"
 import {
   pendingSyncFromPlayback,
   type PendingSyncState,
@@ -22,6 +23,38 @@ import {
 const WATCHDOG_INTERVAL_MS = 1_000
 /** HLS often no-ops the first currentTime write; retry while the anchor is fresh. */
 const ANCHOR_RETRY_DELAYS_MS = [200, 600, 1_200, 2_400] as const
+
+/**
+ * Resolve the sync snapshot for a watchdog tick, then decide apply vs clear.
+ * Measure and apply must share this same `syncState` (not a fresh playback read).
+ */
+export function planPlaybackDriftCorrection(input: {
+  pending: PendingSyncState | null
+  playback: {
+    paused: boolean
+    playbackRate: number
+    timelineAnchorMs: number
+    serverNowMs: number
+    videoLoop: string | boolean
+  }
+  driftSec: number | null
+  thresholdSec?: number
+}):
+  | { action: "noop"; syncState: PendingSyncState }
+  | { action: "clear"; syncState: PendingSyncState }
+  | { action: "apply"; syncState: PendingSyncState } {
+  const syncState =
+    input.pending ?? pendingSyncFromPlayback(input.playback)
+  if (input.driftSec === null) {
+    return { action: "noop", syncState }
+  }
+  const threshold =
+    input.thresholdSec ?? DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC
+  if (input.driftSec <= threshold) {
+    return { action: "clear", syncState }
+  }
+  return { action: "apply", syncState }
+}
 
 export function usePlaybackDriftCorrection(config: {
   playerRef: RefObject<MediaPlayerInstance | null>
@@ -53,12 +86,8 @@ export function usePlaybackDriftCorrection(config: {
     applyRoomClock,
   } = config
 
-  const holdLocalSeekRef = useRef(holdLocalSeek)
-  const applyRoomClockRef = useRef(applyRoomClock)
-  /* eslint-disable react-hooks/refs -- latest flags/callbacks for watchdog timers */
-  holdLocalSeekRef.current = holdLocalSeek
-  applyRoomClockRef.current = applyRoomClock
-  /* eslint-enable react-hooks/refs */
+  const holdLocalSeekRef = useLatestRef(holdLocalSeek)
+  const applyRoomClockRef = useLatestRef(applyRoomClock)
   const retryTimersRef = useRef<number[]>([])
 
   const clearRetryTimers = () => {
@@ -143,20 +172,21 @@ export function usePlaybackDriftCorrection(config: {
       const syncState =
         pendingSyncRef.current ??
         pendingSyncFromPlayback(playbackRef.current)
-      const driftSec = measureDrift(player, syncState)
-      if (driftSec === null) {
+      const plan = planPlaybackDriftCorrection({
+        pending: pendingSyncRef.current,
+        playback: playbackRef.current,
+        driftSec: measureDrift(player, syncState),
+      })
+      if (plan.action === "noop") {
         return
       }
-      if (driftSec <= DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC) {
+      if (plan.action === "clear") {
         pendingSyncRef.current = null
         return
       }
 
-      applyRoomClockRef.current(
-        player,
-        pendingSyncFromPlayback(playbackRef.current),
-        0,
-      )
+      // Pair apply with the measured syncState (not a fresh playback read).
+      applyRoomClockRef.current(player, syncState, 0)
     }, WATCHDOG_INTERVAL_MS)
 
     return () => window.clearInterval(timer)

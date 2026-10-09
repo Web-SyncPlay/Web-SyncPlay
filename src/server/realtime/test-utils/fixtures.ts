@@ -1,4 +1,11 @@
+import { getAppNodeId } from "@/server/node-id"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
+import {
+  bumpPresenceNodeCount,
+  isPresentOnAliveNode,
+  totalPresenceRefs,
+  type PresenceNodeCounts,
+} from "@/server/redis/presence-ref"
 import type {
   ParticipantState,
   PlaylistItem,
@@ -113,18 +120,29 @@ export function createRoomState(overrides: Partial<RoomState> = {}): RoomState {
 
 export class InMemoryRoomStateStore implements RoomStateStorePort {
   rooms = new Map<string, RoomState>()
-  /** Mirrors Redis presence hash: userId → connection refcount. */
-  presence = new Map<string, Map<string, number>>()
+  /**
+   * Mirrors Redis presence hash: userId → nodeId → refcount.
+   * Matches production node-map encoding (not legacy flat integers).
+   */
+  presence = new Map<string, Map<string, PresenceNodeCounts>>()
+  /**
+   * Nodes treated as alive for {@link getWsPresenceUserIds}.
+   * Defaults to this process; tests can inject remote/dead nodes.
+   */
+  aliveNodeIds = new Set<string>([getAppNodeId()])
+  /** When false, mirrors fail-closed alive-list fetch (no dead-node filtering). */
+  aliveListReliable = true
   presenceData = new Map<string, Map<string, import("@/zod/types").PresencePatch>>()
   dailyDefaults: Array<{ title: string; url: string }> = []
 
   constructor(initial?: RoomState) {
     if (initial) {
       this.rooms.set(initial.roomId, structuredClone(initial))
-      const refs = new Map<string, number>()
+      const refs = new Map<string, PresenceNodeCounts>()
+      const nodeId = getAppNodeId()
       for (const participant of Object.values(initial.participants)) {
         if (participant.connected) {
-          refs.set(participant.userId, 1)
+          refs.set(participant.userId, { [nodeId]: 1 })
         }
       }
       this.presence.set(initial.roomId, refs)
@@ -197,20 +215,33 @@ export class InMemoryRoomStateStore implements RoomStateStorePort {
   }
 
   async addWsConnectionRef(roomId: string, userId: string) {
-    const refs = this.presence.get(roomId) ?? new Map<string, number>()
-    refs.set(userId, (refs.get(userId) ?? 0) + 1)
+    const refs =
+      this.presence.get(roomId) ?? new Map<string, PresenceNodeCounts>()
+    const nodeId = getAppNodeId()
+    const next = bumpPresenceNodeCount(refs.get(userId) ?? {}, nodeId, 1)
+    refs.set(userId, next)
     this.presence.set(roomId, refs)
   }
 
   async removeWsConnectionRef(roomId: string, userId: string) {
     const refs = this.presence.get(roomId)
     if (!refs) return
-    const next = (refs.get(userId) ?? 0) - 1
-    if (next <= 0) {
+    const nodeId = getAppNodeId()
+    const next = bumpPresenceNodeCount(refs.get(userId) ?? {}, nodeId, -1)
+    if (Object.keys(next).length === 0) {
       refs.delete(userId)
     } else {
       refs.set(userId, next)
     }
+  }
+
+  /** Clear one user's presence field (join rollback helper parity). */
+  async clearWsConnectionRef(roomId: string, userId: string) {
+    this.presence.get(roomId)?.delete(userId)
+  }
+
+  async clearWsPresenceRefs(roomId: string) {
+    this.presence.delete(roomId)
   }
 
   async touchWsPresence() {
@@ -218,7 +249,24 @@ export class InMemoryRoomStateStore implements RoomStateStorePort {
   }
 
   async getWsPresenceUserIds(roomId: string) {
-    return new Set(this.presence.get(roomId)?.keys() ?? [])
+    const refs = this.presence.get(roomId)
+    const online = new Set<string>()
+    if (!refs) return online
+
+    const alive = new Set(this.aliveNodeIds)
+    alive.add(getAppNodeId())
+
+    for (const [uid, counts] of refs) {
+      if (Object.keys(counts).length === 0) continue
+      if (!this.aliveListReliable) {
+        if (totalPresenceRefs(counts) > 0) online.add(uid)
+        continue
+      }
+      if (isPresentOnAliveNode(counts, alive)) {
+        online.add(uid)
+      }
+    }
+    return online
   }
 
   async seedDailyDefaultsIfEmpty() {

@@ -66,7 +66,7 @@ async function verifyAndMaybeMigrate(params: {
 
 /**
  * Redis-backed identity secret hashes so verification survives restarts /
- * multi-instance. First claim wins; later joins must match.
+ * multi-instance. First claim wins (atomic HSETNX); later joins must match.
  *
  * Legacy cleartext values in Redis are compared on verify, then rewritten to
  * `h1:` SHA-256 hashes on success (claimOrVerifyIdentitySecret and
@@ -80,13 +80,18 @@ export async function claimOrVerifyIdentitySecret(params: {
 }): Promise<boolean> {
   const client = await getCommandClient()
   const key = keys.roomIdentity(params.roomId)
-  const existing = await client.hGet(key, params.userId)
   const secretHash = hashIdentitySecret(params.userSecret)
 
-  if (!existing) {
-    await client.hSet(key, params.userId, secretHash)
+  // Atomic first claim — concurrent losers fall through to verify the winner.
+  const claimed = await client.hSetNX(key, params.userId, secretHash)
+  if (claimed) {
     await touchIdentityKey(client, key)
     return true
+  }
+
+  const existing = await client.hGet(key, params.userId)
+  if (!existing) {
+    return false
   }
 
   return verifyAndMaybeMigrate({

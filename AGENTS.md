@@ -1,5 +1,11 @@
 # Agent Guidelines
 
+## Project map
+
+- **Product / ops docs:** [README.md](./README.md) — requirements, env vars, architecture, multi-replica SFU (sticky `/api/ws`).
+- **Env schema:** [`src/env.ts`](./src/env.ts) (copy [`.env.example`](./.env.example)).
+- **Tests:** `bun run test:unit`, `test:a11y`, `test:e2e:ws` (latter two need a healthy app; see CI).
+
 ## Git Commits
 
 Commit messages must adhere to the [Conventional Commits](https://www.conventionalcommits.org/) naming scheme.

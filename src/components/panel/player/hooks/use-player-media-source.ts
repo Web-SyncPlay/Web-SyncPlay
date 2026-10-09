@@ -4,6 +4,7 @@ import {
   getLocalMediaMimeType,
   getLocalMediaObjectUrl,
 } from "@/lib/local-media-provider"
+import { localMediaIdFromSrc } from "@/lib/local-media-resolve"
 import { inferMediaViewType } from "@/lib/playback-sync"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { PlaylistItem, ViewerMediaItemPreference } from "@/zod/types"
@@ -12,16 +13,6 @@ import {
   isSameOriginPlaybackUrl,
   type PlayerSrcInput,
 } from "../player-src"
-
-function decodeLocalMediaIdFromStreamSrc(streamSrc: string): string | null {
-  const match = /\/api\/media\/local\/([^/?#]+)/i.exec(streamSrc)
-  if (!match?.[1]) return null
-  try {
-    return decodeURIComponent(match[1])
-  } catch {
-    return match[1]
-  }
-}
 
 /**
  * Resolve active stream, playback URL (blob vs relay), MIME hint, and Vidstack src.
@@ -87,7 +78,7 @@ export function usePlayerMediaSource(config: {
         /\/hls(\?|$)/i.test(streamSrc)
       let blobId = current.localMediaId
       if (!isHlsAuto && streamSrc) {
-        const fromStream = decodeLocalMediaIdFromStreamSrc(streamSrc)
+        const fromStream = localMediaIdFromSrc(streamSrc)
         if (fromStream) {
           blobId = fromStream
         }
@@ -117,8 +108,7 @@ export function usePlayerMediaSource(config: {
     if (activePlaybackSrc.startsWith("blob:") && current.localMediaId) {
       // Prefer mime for whichever File we are playing (parent or ABR child).
       const streamSrc = activeStream?.src ?? ""
-      const id =
-        decodeLocalMediaIdFromStreamSrc(streamSrc) ?? current.localMediaId
+      const id = localMediaIdFromSrc(streamSrc) ?? current.localMediaId
       return getLocalMediaMimeType(id) ?? getLocalMediaMimeType(current.localMediaId)
     }
     return current.localMediaId

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
+import { getAppNodeId } from "@/server/node-id"
 import {
   createTestBroadcastBus,
   setRoomBroadcastBusForTests,
@@ -51,10 +52,23 @@ describe("disconnect lifecycle", () => {
     ).toBe(true)
   })
 
-  test("handleSocketDisconnect deletes empty rooms", async () => {
+  test("handleSocketDisconnect deletes empty rooms outside WATCH", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
     createTestBroadcastBus(store)
     store.presence.set("room-1", new Map())
+
+    let deleteDuringMutate = false
+    const originalUpdate = store.updateRoom.bind(store)
+    store.updateRoom = async (roomId, mutate) => {
+      const next = await originalUpdate(roomId, async (state) => {
+        const result = await mutate(state)
+        if (store.rooms.has(roomId) === false) {
+          deleteDuringMutate = true
+        }
+        return result
+      })
+      return next
+    }
 
     await handleSocketDisconnect(store, {
       roomId: "room-1",
@@ -63,18 +77,20 @@ describe("disconnect lifecycle", () => {
       presenceTracked: true,
     })
 
+    expect(deleteDuringMutate).toBe(false)
     expect(await store.get("room-1")).toBeNull()
   })
 
   test("handleSocketDisconnect no-ops when user still has another connection", async () => {
     const store = new InMemoryRoomStateStore(createRoomState())
     createTestBroadcastBus(store)
+    const nodeId = getAppNodeId()
     // Owner has two sockets (refcount 2); closing one must leave them online.
     store.presence.set(
       "room-1",
       new Map([
-        ["owner", 2],
-        ["guest", 1],
+        ["owner", { [nodeId]: 2 }],
+        ["guest", { [nodeId]: 1 }],
       ]),
     )
     await store.mergePresenceData("room-1", "owner", {
@@ -110,10 +126,35 @@ describe("disconnect lifecycle", () => {
     })
 
     expect(store.peek("room-1")?.participants.owner?.connected).toBe(true)
-    expect(store.presence.get("room-1")?.get("owner")).toBe(1)
+    expect(store.presence.get("room-1")?.get("owner")).toEqual({ [nodeId]: 1 })
     const presence = await store.getPresenceDataAll("room-1")
     expect(presence.owner?.localPlaybackReports?.["conn-room"]).toBeUndefined()
     expect(presence.owner?.localPlaybackReports?.["conn-player"]).toBeDefined()
     expect(presence.owner?.localPlayback?.loading).toBe(false)
+  })
+
+  test("alive filtering ignores refs on dead remote nodes", async () => {
+    const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
+    const local = getAppNodeId()
+    store.aliveNodeIds = new Set([local])
+    store.presence.set(
+      "room-1",
+      new Map([
+        ["owner", { [local]: 1 }],
+        ["guest", { "dead-node": 1 }],
+      ]),
+    )
+
+    await handleSocketDisconnect(store, {
+      roomId: "room-1",
+      userId: "guest",
+      connectionId: "conn-guest",
+      presenceTracked: false,
+    })
+
+    // guest only had a dead-node ref → treated offline; owner stays.
+    expect(store.peek("room-1")?.participants.guest?.connected).toBe(false)
+    expect(store.peek("room-1")?.participants.owner?.connected).toBe(true)
   })
 })

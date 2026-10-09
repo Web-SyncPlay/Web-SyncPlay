@@ -2,9 +2,11 @@ import { expect, test } from "bun:test"
 import type { WebSocket } from "ws"
 import {
   addSocket,
+  getSocketClientIp,
   getSocketMeta,
   getSocketsForUser,
   removeSocket,
+  setSocketClientIp,
   setSocketControlAuthorized,
   setSocketPresenceTracked,
 } from "./registry"
@@ -133,4 +135,25 @@ test("getSocketsForUser returns sockets for matching room+user", () => {
 
   removeSocket(wsA)
   removeSocket(wsB)
+})
+
+test("setSocketClientIp stashes early and survives addSocket", () => {
+  const ws = createWs()
+  expect(getSocketClientIp(ws)).toBe("unknown")
+
+  setSocketClientIp(ws, "203.0.113.50")
+  expect(getSocketClientIp(ws)).toBe("203.0.113.50")
+  expect(getSocketMeta(ws)).toBeUndefined()
+
+  addSocket(ws, {
+    roomId: "room-1",
+    userId: "u1",
+    controlAuthorized: false,
+    isControlSession: false,
+    sessionKind: "room",
+  })
+  expect(getSocketClientIp(ws)).toBe("203.0.113.50")
+  expect(getSocketMeta(ws)?.clientIp).toBe("203.0.113.50")
+
+  removeSocket(ws)
 })

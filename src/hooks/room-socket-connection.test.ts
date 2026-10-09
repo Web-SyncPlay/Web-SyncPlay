@@ -3,11 +3,16 @@ import {
   beforeEach,
   describe,
   expect,
+  jest,
   mock,
   test,
 } from "bun:test"
 import { createControlTokenReminter } from "@/lib/control-token-client"
-import type { JoinStatus, SessionCapabilities } from "@/lib/room-join-client"
+import {
+  RATE_LIMITED_RECONNECT_MS,
+  type JoinStatus,
+  type SessionCapabilities,
+} from "@/lib/room-join-client"
 import type { RoomState } from "@/zod/types"
 import { createRoomSocketConnection } from "./room-socket-connection"
 
@@ -183,8 +188,33 @@ describe("createRoomSocketConnection", () => {
     harness.connection.dispose()
   })
 
-  test("stops reconnect churn after media_url_unsupported", async () => {
+  test("maps rate_limited and identity_mismatch to dedicated statuses", async () => {
+    const rateLimited = createConnectionHarness()
+    await rateLimited.connection.connect()
+    rateLimited.ws?.simulateOpen()
+    rateLimited.ws?.simulateMessage({
+      type: "room:join:rejected",
+      payload: { reason: "rate_limited" },
+    })
+    expect(rateLimited.statuses.at(-1)).toBe("rate_limited")
+    expect(rateLimited.joinErrors.at(-1)).toContain("Too many")
+    rateLimited.connection.dispose()
+
+    const mismatch = createConnectionHarness()
+    await mismatch.connection.connect()
+    mismatch.ws?.simulateOpen()
+    mismatch.ws?.simulateMessage({
+      type: "room:join:rejected",
+      payload: { reason: "identity_mismatch" },
+    })
+    expect(mismatch.statuses.at(-1)).toBe("identity_mismatch")
+    expect(mismatch.joinErrors.at(-1)).toContain("identity")
+    mismatch.connection.dispose()
+  })
+
+  function createInitCountingConnection() {
     let initCalls = 0
+    const statuses: JoinStatus[] = []
     const connection = createRoomSocketConnection({
       roomId: "room-1",
       sessionKind: "room",
@@ -201,7 +231,13 @@ describe("createRoomSocketConnection", () => {
       sendJoinRef: { current: null },
       controlTokenReminter: createControlTokenReminter(),
       setRoomState: () => undefined,
-      setStatus: () => undefined,
+      setStatus: (value) => {
+        statuses.push(
+          typeof value === "function"
+            ? value(statuses.at(-1) ?? "connecting")
+            : value,
+        )
+      },
       setJoinError: () => undefined,
       setSessionCapabilities: () => undefined,
       fetchWsInit: async () => {
@@ -211,8 +247,18 @@ describe("createRoomSocketConnection", () => {
       createWebSocket: (url) => new FakeWebSocket(url) as unknown as WebSocket,
       wsOrigin: "ws://test.local/api/ws",
     })
+    return {
+      connection,
+      statuses,
+      get initCalls() {
+        return initCalls
+      },
+    }
+  }
 
-    await connection.connect()
+  test("stops reconnect churn after media_url_unsupported", async () => {
+    const harness = createInitCountingConnection()
+    await harness.connection.connect()
     FakeWebSocket.latest?.simulateOpen()
     FakeWebSocket.latest?.simulateMessage({
       type: "room:join:rejected",
@@ -220,8 +266,76 @@ describe("createRoomSocketConnection", () => {
     })
     FakeWebSocket.latest?.close()
     await new Promise((resolve) => setTimeout(resolve, 20))
-    expect(initCalls).toBe(1)
-    connection.dispose()
+    expect(harness.initCalls).toBe(1)
+    harness.connection.dispose()
+  })
+
+  test("pauses reconnect while awaiting_password", async () => {
+    jest.useFakeTimers()
+    try {
+      const harness = createInitCountingConnection()
+      await harness.connection.connect()
+      FakeWebSocket.latest?.simulateOpen()
+      FakeWebSocket.latest?.simulateMessage({
+        type: "room:join:rejected",
+        payload: { reason: "password_required" },
+      })
+      FakeWebSocket.latest?.close()
+      jest.advanceTimersByTime(2000)
+      await Promise.resolve()
+      expect(harness.initCalls).toBe(1)
+      expect(harness.statuses.at(-1)).toBe("awaiting_password")
+      expect(harness.statuses).not.toContain("reconnecting")
+      harness.connection.dispose()
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  test("stops reconnect after identity_mismatch", async () => {
+    jest.useFakeTimers()
+    try {
+      const harness = createInitCountingConnection()
+      await harness.connection.connect()
+      FakeWebSocket.latest?.simulateOpen()
+      FakeWebSocket.latest?.simulateMessage({
+        type: "room:join:rejected",
+        payload: { reason: "identity_mismatch" },
+      })
+      jest.advanceTimersByTime(2000)
+      await Promise.resolve()
+      expect(harness.initCalls).toBe(1)
+      expect(harness.statuses.at(-1)).toBe("identity_mismatch")
+      harness.connection.dispose()
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  test("pauses reconnect during rate_limited cooldown then resumes", async () => {
+    jest.useFakeTimers()
+    try {
+      const harness = createInitCountingConnection()
+      await harness.connection.connect()
+      FakeWebSocket.latest?.simulateOpen()
+      FakeWebSocket.latest?.simulateMessage({
+        type: "room:join:rejected",
+        payload: { reason: "rate_limited" },
+      })
+      expect(harness.statuses.at(-1)).toBe("rate_limited")
+      expect(harness.initCalls).toBe(1)
+
+      jest.advanceTimersByTime(1000)
+      await Promise.resolve()
+      expect(harness.initCalls).toBe(1)
+
+      jest.advanceTimersByTime(RATE_LIMITED_RECONNECT_MS)
+      await Promise.resolve()
+      expect(harness.initCalls).toBe(2)
+      harness.connection.dispose()
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   test("remints control token once and reconnects", async () => {

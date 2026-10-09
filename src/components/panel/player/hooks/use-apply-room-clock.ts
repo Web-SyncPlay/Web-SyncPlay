@@ -14,6 +14,7 @@ import {
   useRef,
   type RefObject,
 } from "react"
+import { useLatestRef } from "@/hooks/use-latest-ref"
 import type { PendingSyncState } from "./use-buffering-watchdog"
 import { usePlayerSync } from "./use-player-sync"
 
@@ -40,10 +41,7 @@ export function useApplyRoomClock(config: {
 
   const { applyClockToPlayer, nudgeTransport } = usePlayerSync()
   const playRetryTimerRef = useRef<number | undefined>(undefined)
-  const onApplyFailedRef = useRef(onApplyFailed)
-  /* eslint-disable react-hooks/refs -- latest callback for async apply retries */
-  onApplyFailedRef.current = onApplyFailed
-  /* eslint-enable react-hooks/refs */
+  const onApplyFailedRef = useLatestRef(onApplyFailed)
 
   const scheduleTransportNudge = useCallback(
     (player: MediaPlayerInstance) => {

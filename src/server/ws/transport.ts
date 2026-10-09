@@ -3,6 +3,7 @@ import {
   installShutdownOnce,
   registerShutdownHandler,
 } from "@/server/lifecycle"
+import { setSocketClientIp } from "@/server/ws/registry"
 import type { Server as HttpServer, IncomingMessage } from "node:http"
 import type { Socket } from "node:net"
 import { WebSocketServer, type WebSocket } from "ws"
@@ -16,7 +17,7 @@ type UpgradeListener = (
 type WsTransportSlot = {
   wss?: WebSocketServer
   heartbeat?: ReturnType<typeof setInterval>
-  onConnection?: (ws: WebSocket) => void
+  onConnection?: (ws: WebSocket, req: IncomingMessage) => void
   lastPongAt: WeakMap<WebSocket, number>
 }
 
@@ -57,9 +58,23 @@ function registerWsShutdown(slot: WsTransportSlot) {
       await new Promise<void>((resolve, reject) => {
         slot.wss!.close((err) => (err ? reject(err) : resolve()))
       }).catch((e) => console.error("[ws] close error", e))
-      slot.wss = undefined
     }
+    slot.wss = undefined
   })
+}
+
+/** Best-effort client IP from the HTTP upgrade request. */
+export function clientIpFromUpgradeRequest(req: IncomingMessage): string {
+  const forwarded = req.headers["x-forwarded-for"]
+  const forwardedValue = Array.isArray(forwarded) ? forwarded[0] : forwarded
+  if (forwardedValue) {
+    const first = forwardedValue.split(",")[0]?.trim()
+    if (first) return first
+  }
+  const realIp = req.headers["x-real-ip"]
+  const realIpValue = Array.isArray(realIp) ? realIp[0] : realIp
+  if (realIpValue?.trim()) return realIpValue.trim()
+  return req.socket?.remoteAddress?.trim() || "unknown"
 }
 
 /**
@@ -67,7 +82,7 @@ function registerWsShutdown(slot: WsTransportSlot) {
  */
 export function attachWebSocketTransport(
   server: HttpServer,
-  onConnection: (ws: WebSocket) => void,
+  onConnection: (ws: WebSocket, req: IncomingMessage) => void,
 ) {
   const slot = getTransportSlot()
   slot.onConnection = onConnection
@@ -129,14 +144,15 @@ export function attachWebSocketTransport(
     clearHeartbeat(slot)
   })
 
-  wss.on("connection", (ws) => {
+  wss.on("connection", (ws, req: IncomingMessage) => {
     slot.lastPongAt.set(ws, Date.now())
+    setSocketClientIp(ws, clientIpFromUpgradeRequest(req))
     ws.on("pong", () => {
       slot.lastPongAt.set(ws, Date.now())
     })
     ws.on("close", () => {
       slot.lastPongAt.delete(ws)
     })
-    slot.onConnection?.(ws)
+    slot.onConnection?.(ws, req)
   })
 }

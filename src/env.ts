@@ -87,6 +87,11 @@ export const env = createEnv({
       .min(60)
       .max(60 * 60 * 48)
       .default(60 * 60 * 12),
+    /**
+     * Retention input for the Valkey yt-dlp extract cache (0–86400).
+     * Successful writes use a shorter TTL capped by derived stream-URL max age;
+     * this is not always the Redis EX on success.
+     */
     YTDLP_CACHE_TTL_SECONDS: z.coerce
       .number()
       .int()

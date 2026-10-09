@@ -41,5 +41,7 @@ export function RoomConnectingView(props: {
     )
   }
 
-  return <SocketStatus status={props.status} />
+  return (
+    <SocketStatus status={props.status} message={props.joinError} />
+  )
 }

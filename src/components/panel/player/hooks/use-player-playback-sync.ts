@@ -11,10 +11,10 @@ import type { MediaPlayerInstance } from "@vidstack/react"
 import {
   useCallback,
   useEffect,
-  useRef,
   type RefObject,
 } from "react"
 import { toast } from "sonner"
+import { useLatestRef } from "@/hooks/use-latest-ref"
 import type { PlaylistItem, RoomState } from "@/zod/types"
 import {
   pendingSyncFromPlayback,
@@ -78,19 +78,12 @@ export function usePlayerPlaybackSync(config: {
     commitSeek,
   } = config
 
-  const applyFailContextRef = useRef({
+  const applyFailContextRef = useLatestRef({
     itemId: current?.id,
     itemName: current?.name,
     src: activePlaybackSrc,
     viewType,
   })
-  /* eslint-disable react-hooks/refs -- sync latest snapshots for event handlers */
-  applyFailContextRef.current = {
-    itemId: current?.id,
-    itemName: current?.name,
-    src: activePlaybackSrc,
-    viewType,
-  }
 
   const { applyRoomClock, clearTransportNudge } = useApplyRoomClock({
     isMediaReadyRef,
@@ -124,10 +117,6 @@ export function usePlayerPlaybackSync(config: {
     reportedItemErrorRef.current = current.id
     toast.error(localMediaErrorMessage("owner_offline"))
   }, [current, playerRef, reportedItemErrorRef, roomState.participants])
-
-  // Keep authority readable from media event handlers in the same commit.
-  playbackRef.current = roomState.playback
-  /* eslint-enable react-hooks/refs */
 
   useEffect(() => {
     isMediaReadyRef.current = false

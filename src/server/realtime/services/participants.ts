@@ -120,8 +120,9 @@ export async function processDuePrunes(
       const next = await store.updateRoom(parsed.roomId, (state) => {
         if (!state) return null
         const participant = state.participants[parsed.userId]
+        // No-op: avoid spurious Redis SET / WATCH contention.
         if (!participant || participant.connected) {
-          return state
+          return null
         }
         delete state.participants[parsed.userId]
         state.updatedAt = Date.now()

@@ -32,10 +32,10 @@ export function createLocalMediaSfuSession(input: {
       ws.send(JSON.stringify({ type, payload, requestId }))
     })
 
-  const flushSfuPending = () => {
+  const flushSfuPending = (error = "socket_closed") => {
     for (const [id, resolve] of sfuPending) {
       sfuPending.delete(id)
-      resolve({ ok: false, error: "socket_closed" })
+      resolve({ ok: false, error })
     }
   }
 
@@ -106,11 +106,21 @@ export function createLocalMediaSfuSession(input: {
     pendingSfuProvide.clear()
   }
 
+  /** Process-wide SFU death / reset — fail pending requests and tear down. */
+  const handleSfuUnavailable = () => {
+    markSfuUnavailable()
+    flushSfuPending("sfu_unavailable")
+    void import("@/lib/local-media-sfu").then(({ closeLocalMediaSfu }) =>
+      closeLocalMediaSfu(sendSfuRequest),
+    )
+  }
+
   return {
     sendSfuRequest,
     provideViaSfu,
     handleSfuResult,
     handleSfuProducer,
+    handleSfuUnavailable,
     markSfuAvailable,
     markSfuUnavailable,
     drainPendingProvides,

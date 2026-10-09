@@ -51,6 +51,35 @@ const g = globalThis as typeof globalThis & {
   __webSyncPlayMediasoupStarting?: Promise<Runtime | null>
 }
 
+type WorkerDiedListener = () => void
+const workerDiedListeners = new Set<WorkerDiedListener>()
+
+/** Register a callback when the mediasoup worker process dies. */
+export function onMediasoupWorkerDied(listener: WorkerDiedListener) {
+  workerDiedListeners.add(listener)
+  return () => {
+    workerDiedListeners.delete(listener)
+  }
+}
+
+function notifyWorkerDied() {
+  for (const listener of workerDiedListeners) {
+    try {
+      listener()
+    } catch (error) {
+      console.error("[mediasoup] worker-died listener failed", error)
+    }
+  }
+}
+
+function clearRuntimeMaps(runtime: Runtime) {
+  runtime.localMediaProducers.clear()
+  runtime.localMediaRequestProducers.clear()
+  runtime.dataProducers.clear()
+  runtime.transports.clear()
+  runtime.routers.clear()
+}
+
 /**
  * Boot mediasoup Worker + single-port WebRtcServer in this process.
  * Always attempted; returns null if the native worker cannot start (e.g. Bun).
@@ -69,7 +98,10 @@ export async function ensureMediasoupRuntime(): Promise<Runtime | null> {
       })
       worker.on("died", () => {
         console.error("[mediasoup] worker died")
+        const runtime = g.__webSyncPlayMediasoup
         g.__webSyncPlayMediasoup = null
+        if (runtime) clearRuntimeMaps(runtime)
+        notifyWorkerDied()
       })
 
       const announced = getPublicHostname()
@@ -287,6 +319,19 @@ export function clearLocalMediaSfuProducer(localMediaId: string) {
   for (const id of requests?.keys() ?? []) {
     runtime.dataProducers.get(id)?.close()
   }
+}
+
+/**
+ * Close a single DataProducer. Observer hooks unregister it without wiping
+ * sibling request/provider channels for the same media id.
+ */
+export function closeLocalMediaSfuDataProducer(producerId: string) {
+  g.__webSyncPlayMediasoup?.dataProducers.get(producerId)?.close()
+}
+
+/** Test helper: fire worker-died listeners without mutating a live runtime. */
+export function notifyMediasoupWorkerDiedForTests() {
+  notifyWorkerDied()
 }
 
 export function getMediasoupTransportAppData(

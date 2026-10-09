@@ -74,6 +74,18 @@ export const roomJoinSchema = z.object({
   initialMediaUrl: z.string().trim().min(1).max(2048).optional(),
 })
 
+/** Reasons sent on `room:join:rejected` (server → client). */
+export const roomJoinRejectedReasonSchema = z.enum([
+  "password_required",
+  "invalid_password",
+  "rate_limited",
+  "media_url_unsupported",
+  "identity_mismatch",
+])
+export type RoomJoinRejectedReason = z.infer<
+  typeof roomJoinRejectedReasonSchema
+>
+
 export const roomPasswordSetSchema = z.object({
   password: z.string().min(1).max(256),
 })

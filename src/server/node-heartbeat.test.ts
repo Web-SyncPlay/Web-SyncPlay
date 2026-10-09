@@ -45,8 +45,10 @@ describe("listAliveAppNodeIds cache", () => {
     const first = await listAliveAppNodeIds()
     const second = await listAliveAppNodeIds()
 
-    expect(first).toEqual(new Set(["node-a", "node-b"]))
-    expect(second).toEqual(first)
+    expect(first.ids).toEqual(new Set(["node-a", "node-b"]))
+    expect(first.reliable).toBe(true)
+    expect(second.ids).toEqual(first.ids)
+    expect(second.reliable).toBe(true)
     expect(redis.scanCount).toBe(1)
   })
 
@@ -74,8 +76,9 @@ describe("listAliveAppNodeIds cache", () => {
     expect(scans).toBe(1)
     resolveScan?.()
     const [idsA, idsB] = await Promise.all([a, b])
-    expect(idsA).toEqual(new Set(["only"]))
-    expect(idsB).toEqual(idsA)
+    expect(idsA.ids).toEqual(new Set(["only"]))
+    expect(idsA.reliable).toBe(true)
+    expect(idsB.ids).toEqual(idsA.ids)
     expect(scans).toBe(1)
   })
 
@@ -90,14 +93,14 @@ describe("listAliveAppNodeIds cache", () => {
 
     const { listAliveAppNodeIds } = await import("@/server/node-heartbeat")
 
-    expect(await listAliveAppNodeIds()).toEqual(new Set(["first"]))
+    expect((await listAliveAppNodeIds()).ids).toEqual(new Set(["first"]))
     expect(redis.scanCount).toBe(1)
 
     const originalNow = Date.now
     Date.now = () => originalNow() + ALIVE_NODE_LIST_CACHE_TTL_MS + 1
 
     try {
-      expect(await listAliveAppNodeIds()).toEqual(new Set(["second"]))
+      expect((await listAliveAppNodeIds()).ids).toEqual(new Set(["second"]))
       expect(redis.scanCount).toBe(2)
     } finally {
       Date.now = originalNow
@@ -113,9 +116,52 @@ describe("listAliveAppNodeIds cache", () => {
     const { listAliveAppNodeIds } = await import("@/server/node-heartbeat")
 
     const first = await listAliveAppNodeIds()
-    first.add("injected")
+    first.ids.add("injected")
     const second = await listAliveAppNodeIds()
-    expect(second).toEqual(new Set(["n1"]))
-    expect(second.has("injected")).toBe(false)
+    expect(second.ids).toEqual(new Set(["n1"]))
+    expect(second.ids.has("injected")).toBe(false)
+  })
+
+  test("fail-closed: Redis error with no cache is unreliable empty set", async () => {
+    mock.module("@/server/redis/client", () => ({
+      getCommandClient: async () => ({
+        scan: async () => {
+          throw new Error("redis down")
+        },
+      }),
+    }))
+
+    const { listAliveAppNodeIds } = await import("@/server/node-heartbeat")
+
+    const result = await listAliveAppNodeIds()
+    expect(result.ids).toEqual(new Set())
+    expect(result.reliable).toBe(false)
+  })
+
+  test("Redis error with cache returns last-good as reliable", async () => {
+    let shouldFail = false
+    mock.module("@/server/redis/client", () => ({
+      getCommandClient: async () => ({
+        scan: async () => {
+          if (shouldFail) throw new Error("redis down")
+          return { cursor: "0", keys: ["app:node:cached:alive"] }
+        },
+      }),
+    }))
+
+    const { listAliveAppNodeIds } = await import("@/server/node-heartbeat")
+
+    expect((await listAliveAppNodeIds()).ids).toEqual(new Set(["cached"]))
+
+    const originalNow = Date.now
+    Date.now = () => originalNow() + ALIVE_NODE_LIST_CACHE_TTL_MS + 1
+    shouldFail = true
+    try {
+      const result = await listAliveAppNodeIds()
+      expect(result.ids).toEqual(new Set(["cached"]))
+      expect(result.reliable).toBe(true)
+    } finally {
+      Date.now = originalNow
+    }
   })
 })

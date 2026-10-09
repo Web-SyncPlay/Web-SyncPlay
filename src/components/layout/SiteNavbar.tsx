@@ -22,7 +22,7 @@ import {
 import type { RoomRailTab } from "@/hooks/use-room-rail"
 import type { TypedRoomEventSender } from "@/lib/room-events"
 import { cn } from "@/lib/utils"
-import type { RoomSecurityState } from "@/zod/types"
+import type { PublicRoomSecurityState } from "@/zod/types"
 import {
   Check,
   Copy,
@@ -73,7 +73,7 @@ type SiteNavbarFullProps = {
   shareUrl: string
   copied: boolean
   onCopyShareUrl: () => void
-  roomSecurity?: RoomSecurityState
+  roomSecurity?: PublicRoomSecurityState
   canManageRoomSecurity?: boolean
   send?: TypedRoomEventSender
   showEmbedsMenu?: boolean

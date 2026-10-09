@@ -1,6 +1,6 @@
 import { getLocalMediaEntry } from "@/server/media/local-media-store"
 import {
-  clearLocalMediaSfuProducer,
+  closeLocalMediaSfuDataProducer,
   ensureMediasoupRuntime,
   getLocalMediaSfuProducer,
   getMediasoupDataProducerAppData,
@@ -14,12 +14,13 @@ import {
   mediasoupCreateTransport,
   mediasoupProduceData,
   onMediasoupTransportClosed,
+  onMediasoupWorkerDied,
 } from "@/server/media/mediasoup-runtime"
 import type {
   RoomMessageContext,
   RoomMessageHandler,
 } from "@/server/realtime/handlers/types"
-import { getSocketsForRoom } from "@/server/ws/registry"
+import { getAllSockets, getSocketsForRoom } from "@/server/ws/registry"
 import {
   localMediaSfuCapabilitiesSchema,
   localMediaSfuConnectTransportSchema,
@@ -101,11 +102,39 @@ function broadcastProducer(
   }
 }
 
+function broadcastSfuUnavailable(reason: string) {
+  const envelope = JSON.stringify({
+    type: "local-media:sfu:unavailable",
+    requestId: randomUUID(),
+    payload: { error: reason },
+  })
+  for (const socket of getAllSockets()) {
+    if (socket.readyState === socket.OPEN) {
+      socket.send(envelope)
+    }
+  }
+}
+
+// Clients fall back to HTTP/P2P when the in-process worker dies.
+onMediasoupWorkerDied(() => {
+  broadcastSfuUnavailable("sfu_worker_died")
+})
+
+/** @internal Test helper — avoids mock.module preload races in the full suite. */
+export function broadcastSfuUnavailableForTests(
+  reason = "sfu_worker_died",
+) {
+  broadcastSfuUnavailable(reason)
+}
+
 export const handleLocalMediaSfuCapabilities: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  if (!localMediaSfuCapabilitiesSchema.safeParse(data.payload).success) return
+  if (!localMediaSfuCapabilitiesSchema.safeParse(data.payload).success) {
+    reply(ctx, data, { ok: false, error: "invalid_payload" })
+    return
+  }
   try {
     const runtime = await ensureMediasoupRuntime()
     if (!runtime) {
@@ -261,8 +290,9 @@ export const handleLocalMediaSfuProduceData: RoomMessageHandler = async (
         : {}),
     })
   } catch (error) {
-    if (producerId && role === "provider") {
-      clearLocalMediaSfuProducer(localMediaId)
+    // Only tear down the failed producer — keep sibling request channels.
+    if (producerId) {
+      closeLocalMediaSfuDataProducer(producerId)
     }
     fail(ctx, data, error)
   }

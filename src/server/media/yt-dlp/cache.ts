@@ -96,6 +96,7 @@ export type YtDlpCacheEnvelope = z.infer<typeof envelopeSchema>
 
 export const urlHash = sha256HexUrl
 
+/** Operator retention input (`YTDLP_CACHE_TTL_SECONDS`); success writes use a shorter derived TTL. */
 function cacheTtlSeconds(): number {
   const raw = env.YTDLP_CACHE_TTL_SECONDS
   return typeof raw === "number" && Number.isFinite(raw) ? raw : 1800
@@ -159,7 +160,8 @@ export async function readExtractCache(
 export async function writeExtractCache(url: string, result: YtDlpExtractResult) {
   const configuredTtl = cacheTtlSeconds()
   if (configuredTtl <= 0) return
-  // Success TTL is stream-URL-safe (derived); failures stay short-lived.
+  // YTDLP_CACHE_TTL_SECONDS is retention input; success EX is capped by
+  // derived stream-URL max age. Failures stay short-lived.
   const ttl = result.ok
     ? derivedStreamUrlMaxAgeSeconds(configuredTtl)
     : 60

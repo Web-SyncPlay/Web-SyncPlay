@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test"
 import { createDefaultRoomSecurity } from "@/server/realtime/services/room-security"
 import {
+  createDefaultPlayback,
   repairCleanupAndCheckRoomState,
   repairPlaylistState,
 } from "@/server/repair"
@@ -75,4 +76,32 @@ test("repairCleanupAndCheckRoomState strips legacy history and shuffle", () => {
   expect(
     (state.playback as { shuffle?: unknown }).shuffle,
   ).toBeUndefined()
+})
+
+test("repairCleanupAndCheckRoomState reconstructs missing playback object", () => {
+  const state = createRoomState()
+  // Corrupt Redis payloads may omit playback entirely.
+  ;(state as { playback?: unknown }).playback = null
+
+  const findings = repairCleanupAndCheckRoomState(state)
+
+  expect(findings).toContain("playback-object-repaired")
+  expect(state.playback.paused).toBe(true)
+  expect(state.playback.playbackRate).toBe(1)
+  expect(state.playback.timelineAnchorMs).toBe(0)
+  expect(state.playback.videoLoop).toBe("off")
+  expect(state.playback.playlistLoop).toBe("off")
+  expect(typeof state.playback.serverNowMs).toBe("number")
+  expect(createDefaultPlayback().playbackRate).toBe(1)
+})
+
+test("repairCleanupAndCheckRoomState reconstructs undefined playback object", () => {
+  const state = createRoomState()
+  delete (state as { playback?: unknown }).playback
+
+  const findings = repairCleanupAndCheckRoomState(state)
+
+  expect(findings).toContain("playback-object-repaired")
+  expect(state.playback).toBeDefined()
+  expect(typeof state.playback.serverNowMs).toBe("number")
 })

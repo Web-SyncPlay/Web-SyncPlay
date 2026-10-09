@@ -5,6 +5,7 @@ import {
   getOrCreateSessionIdentity,
   getPersistedUsername,
   loadPersistedControlToken,
+  loadPersistedControlTokenRecord,
   persistControlToken,
   persistUsername,
   stripIdentityHashFromUrl,
@@ -69,6 +70,7 @@ function createMockWindow(hash: string) {
 
   return {
     storage,
+    sessionStorage: sessionMap,
     getReplacedUrl: () => replacedUrl,
   }
 }
@@ -160,7 +162,35 @@ test("persistControlToken round-trips via sessionStorage", () => {
 
   persistControlToken("room-1", "tok-abc")
   expect(loadPersistedControlToken("room-1")).toBe("tok-abc")
+  expect(loadPersistedControlTokenRecord("room-1")).toEqual({
+    token: "tok-abc",
+  })
   clearPersistedControlToken("room-1")
   expect(loadPersistedControlToken("room-1")).toBeUndefined()
+  cleanupWindow()
+})
+
+test("persistControlToken stores expiresAt when provided", () => {
+  createMockWindow("")
+
+  persistControlToken("room-1", "tok-abc", 1_700_000_000_000)
+  expect(loadPersistedControlTokenRecord("room-1")).toEqual({
+    token: "tok-abc",
+    expiresAt: 1_700_000_000_000,
+  })
+  cleanupWindow()
+})
+
+test("loadPersistedControlTokenRecord accepts legacy plain token strings", () => {
+  const mock = createMockWindow("")
+  mock.sessionStorage.set(
+    "web-syncplay:control-token:room-1",
+    "legacy-plain-tok",
+  )
+
+  expect(loadPersistedControlTokenRecord("room-1")).toEqual({
+    token: "legacy-plain-tok",
+  })
+  expect(loadPersistedControlToken("room-1")).toBe("legacy-plain-tok")
   cleanupWindow()
 })

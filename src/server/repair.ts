@@ -5,6 +5,7 @@ import {
 } from "@/server/realtime/services/room-security"
 import {
   roomActionLogMaxAgeMs,
+  type PlaybackState,
   type PlaylistItem,
   type RoomState,
 } from "@/zod/types"
@@ -134,6 +135,11 @@ export function repairCleanupAndCheckRoomState(state: RoomState) {
       findings.push("action-log-trimmed")
     }
     state.actionLog = pruned
+  }
+
+  if (!state.playback || typeof state.playback !== "object") {
+    state.playback = createDefaultPlayback()
+    findings.push("playback-object-repaired")
   }
 
   const playbackRepairs = sanitizePlayback(state)
@@ -287,8 +293,25 @@ function repairPlaylistItemFields(item: PlaylistItem): string[] {
   return findings
 }
 
+/** Safe default when Redis payloads lack a playback object. */
+export function createDefaultPlayback(nowMs = Date.now()): PlaybackState {
+  return {
+    paused: true,
+    playbackRate: 1,
+    timelineAnchorMs: 0,
+    serverNowMs: nowMs,
+    videoLoop: "off",
+    playlistLoop: "off",
+  }
+}
+
 export function sanitizePlayback(state: RoomState) {
   let repairs = 0
+  if (!state.playback || typeof state.playback !== "object") {
+    state.playback = createDefaultPlayback()
+    return 1
+  }
+
   state.playback.paused = Boolean(state.playback.paused)
   state.playback.playbackRate = Math.min(
     3,

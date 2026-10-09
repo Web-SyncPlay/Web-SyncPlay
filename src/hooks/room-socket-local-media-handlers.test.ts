@@ -19,6 +19,7 @@ describe("createLocalMediaEnvelopeHandler", () => {
       reannounce: 0,
       sfuResult: 0,
       sfuProducer: 0,
+      sfuUnavailable: 0,
     }
 
     const sfu = {
@@ -28,7 +29,13 @@ describe("createLocalMediaEnvelopeHandler", () => {
       handleSfuProducer: () => {
         calls.sfuProducer += 1
       },
-    } as Pick<LocalMediaSfuSession, "handleSfuResult" | "handleSfuProducer">
+      handleSfuUnavailable: () => {
+        calls.sfuUnavailable += 1
+      },
+    } as Pick<
+      LocalMediaSfuSession,
+      "handleSfuResult" | "handleSfuProducer" | "handleSfuUnavailable"
+    >
 
     const handle = createLocalMediaEnvelopeHandler({
       sfu: sfu as LocalMediaSfuSession,
@@ -46,6 +53,7 @@ describe("createLocalMediaEnvelopeHandler", () => {
     expect(handle(envelope("local-media:read"))).toBe(true)
     expect(handle(envelope("local-media:sfu:result"))).toBe(true)
     expect(handle(envelope("local-media:sfu:producer"))).toBe(true)
+    expect(handle(envelope("local-media:sfu:unavailable"))).toBe(true)
     expect(handle(envelope("local-media:webrtc:signal"))).toBe(true)
     expect(handle(envelope("local-media:reannounce"))).toBe(true)
     expect(handle(envelope("room:state"))).toBe(false)
@@ -57,6 +65,7 @@ describe("createLocalMediaEnvelopeHandler", () => {
       reannounce: 1,
       sfuResult: 1,
       sfuProducer: 1,
+      sfuUnavailable: 1,
     })
   })
 })

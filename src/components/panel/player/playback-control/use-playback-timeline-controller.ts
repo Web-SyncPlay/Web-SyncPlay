@@ -4,6 +4,7 @@ import { computeExpectedPlaybackTimeSec } from "@/lib/playback-sync"
 import type { TypedRoomEventSender } from "@/lib/room-events"
 import type { RoomState } from "@/zod/types"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useLatestRef } from "@/hooks/use-latest-ref"
 import { createPlaybackActions } from "./use-playback-actions"
 
 /** Local seek ack: room timeline must land within this of the requested target. */
@@ -134,10 +135,7 @@ export function usePlaybackTimelineController(config: {
     [playbackActions],
   )
 
-  const commitSeekRef = useRef(commitSeek)
-  /* eslint-disable react-hooks/refs -- latest commitSeek for idle scrub fallback */
-  commitSeekRef.current = commitSeek
-  /* eslint-enable react-hooks/refs */
+  const commitSeekRef = useLatestRef(commitSeek)
 
   // Vidstack sometimes applies a local scrub without emitting the final
   // seek-request (notably after MediaError). Commit the last preview target

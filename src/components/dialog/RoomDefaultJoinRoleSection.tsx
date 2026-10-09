@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/field"
 import type { TypedRoomEventSender } from "@/lib/room-events"
 import { cn } from "@/lib/utils"
-import type { DefaultJoinRole, RoomSecurityState } from "@/zod/types"
+import type { DefaultJoinRole, PublicRoomSecurityState } from "@/zod/types"
 import { Shield } from "lucide-react"
 
 const JOIN_ROLE_OPTIONS: ReadonlyArray<{
@@ -22,7 +22,7 @@ const JOIN_ROLE_OPTIONS: ReadonlyArray<{
 ]
 
 export function RoomDefaultJoinRoleSection(props: {
-  roomSecurity: RoomSecurityState
+  roomSecurity: PublicRoomSecurityState
   canManageRoomSecurity: boolean
   send: TypedRoomEventSender
 }) {

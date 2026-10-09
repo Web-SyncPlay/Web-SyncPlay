@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import {
   createRoomSocketConnection,
 } from "./room-socket-connection"
+import { useLatestRef } from "./use-latest-ref"
 import { useSessionIdentityBootstrap } from "./use-session-identity-bootstrap"
 
 export type { JoinStatus, SessionCapabilities } from "@/lib/room-join-client"
@@ -30,10 +31,7 @@ export function useRoomSocket(
   submitJoinPassword: (password: string) => void
 } {
   const sessionKind = options?.sessionKind ?? "room"
-  const initialMediaUrlRef = useRef(options?.initialMediaUrl)
-  /* eslint-disable react-hooks/refs -- latest initialMediaUrl for join payload */
-  initialMediaUrlRef.current = options?.initialMediaUrl
-  /* eslint-enable react-hooks/refs */
+  const initialMediaUrlRef = useLatestRef(options?.initialMediaUrl)
   const [roomState, setRoomState] = useState<RoomState | null>(null)
   const [status, setStatus] = useState<JoinStatus>("connecting")
   const [joinError, setJoinError] = useState<string | null>(null)

@@ -118,3 +118,18 @@ test("does not change owner when current owner is still connected", () => {
   expect(changed).toBe(false)
   expect(state.ownerId).toBe("owner")
 })
+
+test("join reason transfers ownership when owner is offline", () => {
+  const state = createState()
+  const changed = transferOwnershipIfNeeded(state, "join")
+
+  expect(changed).toBe(true)
+  expect(state.ownerId).toBe("modOld")
+  expect(
+    state.actionLog.some(
+      (e) =>
+        e.action === "participant:owner:transferred" &&
+        (e.payload as { reason?: string }).reason === "join",
+    ),
+  ).toBe(true)
+})

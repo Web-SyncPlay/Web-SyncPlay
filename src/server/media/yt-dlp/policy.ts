@@ -10,9 +10,10 @@ export const PLAYBACK_MAX_HEIGHT =
   PLAYBACK_LADDER_HEIGHTS[PLAYBACK_LADDER_HEIGHTS.length - 1]!
 
 /**
- * How long cached stream/CDN URLs stay usable.
- * Derived from the Valkey extract TTL: fresher than the entry, capped for
- * typical signed-URL lifetimes, never exceeding the configured cache TTL.
+ * How long cached stream/CDN URLs stay usable (and the EX used on successful
+ * extract cache writes). Derived from `YTDLP_CACHE_TTL_SECONDS` (retention
+ * input): fresher than a full retention window, capped for typical signed-URL
+ * lifetimes, never exceeding the configured cache TTL.
  */
 export function derivedStreamUrlMaxAgeSeconds(cacheTtlSeconds: number): number {
   if (cacheTtlSeconds <= 0) return 0

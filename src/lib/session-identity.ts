@@ -179,22 +179,74 @@ function controlTokenStorageKey(roomId: string): string {
   return `${CONTROL_TOKEN_KEY_PREFIX}${roomId}`
 }
 
-/** Persist a minted control token for refresh of `/control` (session-scoped). */
-export function persistControlToken(roomId: string, token: string): void {
+export type PersistedControlToken = {
+  token: string
+  expiresAt?: number
+}
+
+function parsePersistedControlToken(
+  raw: string | null,
+): PersistedControlToken | undefined {
+  if (!isValidIdentityValue(raw)) {
+    return undefined
+  }
+  // Legacy: plain token string before { token, expiresAt } records.
+  if (!raw.startsWith("{")) {
+    return { token: raw }
+  }
+  try {
+    const parsed = JSON.parse(raw) as {
+      token?: unknown
+      expiresAt?: unknown
+    }
+    if (typeof parsed.token !== "string" || !isValidIdentityValue(parsed.token)) {
+      return undefined
+    }
+    const record: PersistedControlToken = { token: parsed.token }
+    if (
+      typeof parsed.expiresAt === "number" &&
+      Number.isFinite(parsed.expiresAt)
+    ) {
+      record.expiresAt = parsed.expiresAt
+    }
+    return record
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Persist a minted control token (and optional expiry) for `/control` refresh.
+ * Session-scoped so a refresh can rejoin without the hash fragment.
+ */
+export function persistControlToken(
+  roomId: string,
+  token: string,
+  expiresAt?: number,
+): void {
   if (typeof window === "undefined") {
     return
   }
   if (!isValidIdentityValue(roomId) || !isValidIdentityValue(token)) {
     return
   }
+  const record: PersistedControlToken = { token }
+  if (typeof expiresAt === "number" && Number.isFinite(expiresAt)) {
+    record.expiresAt = expiresAt
+  }
   try {
-    window.sessionStorage.setItem(controlTokenStorageKey(roomId), token)
+    window.sessionStorage.setItem(
+      controlTokenStorageKey(roomId),
+      JSON.stringify(record),
+    )
   } catch {
     // ignore quota / private-mode failures
   }
 }
 
-export function loadPersistedControlToken(roomId: string): string | undefined {
+export function loadPersistedControlTokenRecord(
+  roomId: string,
+): PersistedControlToken | undefined {
   if (typeof window === "undefined") {
     return undefined
   }
@@ -202,11 +254,16 @@ export function loadPersistedControlToken(roomId: string): string | undefined {
     return undefined
   }
   try {
-    const token = window.sessionStorage.getItem(controlTokenStorageKey(roomId))
-    return isValidIdentityValue(token) ? token : undefined
+    return parsePersistedControlToken(
+      window.sessionStorage.getItem(controlTokenStorageKey(roomId)),
+    )
   } catch {
     return undefined
   }
+}
+
+export function loadPersistedControlToken(roomId: string): string | undefined {
+  return loadPersistedControlTokenRecord(roomId)?.token
 }
 
 export function clearPersistedControlToken(roomId: string): void {

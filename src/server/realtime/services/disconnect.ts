@@ -159,6 +159,8 @@ export async function handleSocketDisconnect(
   const before = await store.get(meta.roomId)
   const pausedBefore = before?.playback.paused
   let userStillConnected = false
+  /** Destroy after WATCH commit — never DEL room keys inside mutate. */
+  let pendingDestroy = false
 
   const next = await store.updateRoom(meta.roomId, async (state) => {
     if (!state) {
@@ -168,7 +170,8 @@ export async function handleSocketDisconnect(
     const activeUsers = await store.getWsPresenceUserIds(meta.roomId)
     if (activeUsers.size === 0) {
       await deleteLocalMediaForRoomOwners(state, meta.roomId, [meta.userId])
-      await destroyRoom(store, meta.roomId)
+      pendingDestroy = true
+      // Abort write; destroyRoom runs after WATCH is released.
       return null
     }
 
@@ -191,6 +194,11 @@ export async function handleSocketDisconnect(
     bumpRoomRevisions(state)
     return state
   })
+
+  if (pendingDestroy) {
+    await destroyRoom(store, meta.roomId)
+    return
+  }
 
   if (userStillConnected) {
     await clearConnectionLocalPlaybackReport(

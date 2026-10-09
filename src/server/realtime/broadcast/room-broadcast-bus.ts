@@ -338,7 +338,7 @@ export class RoomBroadcastBus {
     return sanitizeRoomStateForClient({
       ...state,
       playback: { ...state.playback, seekPreview: undefined },
-    }) as RoomSnapshotPayload
+    })
   }
 
   controlPayloadFromState(state: RoomState): RoomControlPayload {

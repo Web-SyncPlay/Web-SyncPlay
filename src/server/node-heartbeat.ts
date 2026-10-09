@@ -13,13 +13,22 @@ const APP_NODE_HEARTBEAT_INTERVAL_MS = 15_000
 /** In-process TTL so mutateRoom does not SCAN Valkey on every presence read. */
 export const ALIVE_NODE_LIST_CACHE_TTL_MS = 10_000
 
+export type AliveAppNodeListResult = {
+  ids: Set<string>
+  /**
+   * False when Redis SCAN failed and there is no last-good cache.
+   * Callers must skip destructive presence cleanup (hDel / dead-node rewrite).
+   */
+  reliable: boolean
+}
+
 const g = globalThis as typeof globalThis & {
   __webSyncPlayAppNodeHeartbeat?: ReturnType<typeof setInterval>
   __webSyncPlayAliveNodeListCache?: {
     ids: Set<string>
     fetchedAt: number
   }
-  __webSyncPlayAliveNodeListInflight?: Promise<Set<string>>
+  __webSyncPlayAliveNodeListInflight?: Promise<AliveAppNodeListResult>
 }
 
 /** Test-only: drop the alive-node list cache and any in-flight refresh. */
@@ -58,35 +67,39 @@ export async function touchAppNodeAlive(): Promise<void> {
   }
 }
 
-export async function listAliveAppNodeIds(): Promise<Set<string>> {
+export async function listAliveAppNodeIds(): Promise<AliveAppNodeListResult> {
   const cached = g.__webSyncPlayAliveNodeListCache
   if (cached && Date.now() - cached.fetchedAt < ALIVE_NODE_LIST_CACHE_TTL_MS) {
-    return new Set(cached.ids)
+    return { ids: new Set(cached.ids), reliable: true }
   }
 
   if (g.__webSyncPlayAliveNodeListInflight) {
-    return new Set(await g.__webSyncPlayAliveNodeListInflight)
+    const inflight = await g.__webSyncPlayAliveNodeListInflight
+    return { ids: new Set(inflight.ids), reliable: inflight.reliable }
   }
 
-  const refresh = (async () => {
+  const refresh = (async (): Promise<AliveAppNodeListResult> => {
     try {
       const ids = await scanAliveAppNodeIdsFromRedis()
       g.__webSyncPlayAliveNodeListCache = {
         ids,
         fetchedAt: Date.now(),
       }
-      return ids
+      return { ids, reliable: true }
     } catch (error) {
       console.warn("[node-heartbeat] list alive failed", error)
-      if (cached) return cached.ids
-      return new Set<string>()
+      // Last-good cache is still usable for destructive cleanup.
+      if (cached) return { ids: cached.ids, reliable: true }
+      // Fail closed: empty + unreliable — do not treat remotes as dead.
+      return { ids: new Set<string>(), reliable: false }
     } finally {
       g.__webSyncPlayAliveNodeListInflight = undefined
     }
   })()
 
   g.__webSyncPlayAliveNodeListInflight = refresh
-  return new Set(await refresh)
+  const result = await refresh
+  return { ids: new Set(result.ids), reliable: result.reliable }
 }
 
 /** Idempotent process heartbeat so presence refs on dead nodes are ignored. */

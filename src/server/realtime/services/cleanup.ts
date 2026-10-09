@@ -26,11 +26,12 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
 
   for (const roomId of roomIds) {
     let lastPruned = 0
-    let lastDeleted = false
+    /** Destroy after WATCH commit — never DEL room keys inside mutate. */
+    let pendingDestroy = false
 
     const written = await store.updateRoom(roomId, async (current) => {
       lastPruned = 0
-      lastDeleted = false
+      pendingDestroy = false
       if (!current) {
         return null
       }
@@ -67,8 +68,8 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
       const hasConnections = activeConnections.size > 0
       const hasParticipants = Object.keys(current.participants).length > 0
       if (!hasConnections && !hasParticipants) {
-        await destroyRoom(store, roomId)
-        lastDeleted = true
+        pendingDestroy = true
+        // Abort write; destroyRoom runs after WATCH is released.
         return null
       }
 
@@ -81,13 +82,15 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
       return current
     })
 
+    if (pendingDestroy) {
+      await destroyRoom(store, roomId)
+      removedRooms += 1
+    }
+
     if (written) {
       bus.markSnapshotDirty(roomId)
     }
 
-    if (lastDeleted) {
-      removedRooms += 1
-    }
     removedParticipants += lastPruned
   }
 

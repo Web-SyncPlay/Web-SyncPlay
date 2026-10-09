@@ -129,9 +129,11 @@ test("cleanup removes participants past prune grace", async () => {
 test("cleanup marks everyone offline when WS presence is empty (crash ghosts)", async () => {
   const state = createState()
   let deleted = false
+  let deletedDuringMutate = false
 
   const fakeStore = {
     listRoomIds: async () => ["room-1"],
+    get: async () => state,
     delete: async () => {
       deleted = true
     },
@@ -143,9 +145,7 @@ test("cleanup marks everyone offline when WS presence is empty (crash ghosts)", 
       ) => Promise<RoomState | null> | RoomState | null,
     ) => {
       const next = await mutate(roomId === "room-1" ? state : null)
-      if (next === null && deleted) {
-        return null
-      }
+      if (deleted) deletedDuringMutate = true
       if (next) {
         Object.assign(state, next)
       }
@@ -158,6 +158,39 @@ test("cleanup marks everyone offline when WS presence is empty (crash ghosts)", 
   expect(state.participants.owner?.connected).toBe(false)
   expect(state.participants.mod?.connected).toBe(false)
   expect(deleted).toBe(false)
+  expect(deletedDuringMutate).toBe(false)
+})
+
+test("cleanup destroys empty rooms after WATCH mutate returns", async () => {
+  const state = createState()
+  state.participants = {}
+  let deleted = false
+  let deletedDuringMutate = false
+
+  const fakeStore = {
+    listRoomIds: async () => ["room-1"],
+    get: async () => null,
+    delete: async () => {
+      deleted = true
+    },
+    getWsPresenceUserIds: async () => new Set<string>(),
+    updateRoom: async (
+      roomId: string,
+      mutate: (
+        current: RoomState | null,
+      ) => Promise<RoomState | null> | RoomState | null,
+    ) => {
+      const next = await mutate(roomId === "room-1" ? state : null)
+      if (deleted) deletedDuringMutate = true
+      return next
+    },
+  }
+
+  const result = await cleanupInactiveRooms(fakeStore as never)
+
+  expect(deletedDuringMutate).toBe(false)
+  expect(deleted).toBe(true)
+  expect(result.removedRooms).toBe(1)
 })
 
 test("cleanup migrates legacy room fields without waiting for join", async () => {

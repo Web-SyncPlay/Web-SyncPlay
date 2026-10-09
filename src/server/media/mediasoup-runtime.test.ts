@@ -27,6 +27,18 @@ describe("mediasoup-runtime", () => {
     expect(runtimeModule.listLocalMediaSfuProducers()).toEqual([])
   })
 
+  test("worker-died listeners fire when notified", () => {
+    let calls = 0
+    const stop = runtimeModule.onMediasoupWorkerDied(() => {
+      calls += 1
+    })
+    runtimeModule.notifyMediasoupWorkerDiedForTests()
+    expect(calls).toBe(1)
+    stop()
+    runtimeModule.notifyMediasoupWorkerDiedForTests()
+    expect(calls).toBe(1)
+  })
+
   sfuTest("creates a router and a WebRTC transport with SCTP", async () => {
     const roomKey = `test-room-${crypto.randomUUID()}`
     const router = await runtimeModule.mediasoupCreateRouter(roomKey)
@@ -43,5 +55,51 @@ describe("mediasoup-runtime", () => {
 
     runtimeModule.mediasoupCloseTransport(transport.id)
     expect(runtimeModule.getMediasoupTransportAppData(transport.id)).toBeNull()
+  })
+
+  sfuTest("closeLocalMediaSfuDataProducer only closes one producer", async () => {
+    const roomKey = `test-room-${crypto.randomUUID()}`
+    await runtimeModule.mediasoupCreateRouter(roomKey)
+    const transport = await runtimeModule.mediasoupCreateTransport(roomKey, {
+      direction: "send",
+    })
+    const mediaId = crypto.randomUUID()
+    const provider = await runtimeModule.mediasoupProduceData({
+      transportId: transport.id,
+      sctpStreamParameters: { streamId: 0, ordered: true },
+      appData: {
+        localMediaId: mediaId,
+        roomId: roomKey,
+        ownerUserId: "owner",
+        role: "provider",
+      },
+    })
+    const request = await runtimeModule.mediasoupProduceData({
+      transportId: transport.id,
+      sctpStreamParameters: { streamId: 1, ordered: true },
+      appData: {
+        localMediaId: mediaId,
+        roomId: roomKey,
+        ownerUserId: "owner",
+        role: "requests",
+      },
+    })
+
+    expect(runtimeModule.getLocalMediaSfuProducer(mediaId)?.dataProducerId).toBe(
+      provider.id,
+    )
+    expect(runtimeModule.listLocalMediaSfuRequestProducers(mediaId)).toHaveLength(
+      1,
+    )
+
+    runtimeModule.closeLocalMediaSfuDataProducer(provider.id)
+
+    expect(runtimeModule.getLocalMediaSfuProducer(mediaId)).toBeNull()
+    expect(runtimeModule.listLocalMediaSfuRequestProducers(mediaId)).toEqual([
+      expect.objectContaining({ dataProducerId: request.id }),
+    ])
+
+    runtimeModule.clearLocalMediaSfuProducer(mediaId)
+    runtimeModule.mediasoupCloseTransport(transport.id)
   })
 })

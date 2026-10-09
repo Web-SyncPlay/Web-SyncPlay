@@ -1,7 +1,10 @@
 "use client"
 
 import { createRoomSocketLocalMediaSession } from "@/hooks/room-socket-local-media"
-import { createControlTokenReminter } from "@/lib/control-token-client"
+import {
+  createControlTokenRefreshScheduler,
+  createControlTokenReminter,
+} from "@/lib/control-token-client"
 import {
   applyPresenceBatches,
   applyRoomControl,
@@ -11,15 +14,21 @@ import {
 import {
   buildRoomJoinEnvelope,
   createDefaultSessionCapabilities,
+  isTerminalJoinRejection,
   messageForJoinRejected,
   nextJoinStatusOnConnectAttempt,
   normalizeSessionCapabilities,
+  RATE_LIMITED_RECONNECT_MS,
+  shouldPauseAutoReconnect,
   statusForJoinRejected,
   type JoinRejectedReason,
   type JoinStatus,
   type SessionCapabilities,
 } from "@/lib/room-join-client"
-import { persistUsername } from "@/lib/session-identity"
+import {
+  loadPersistedControlToken,
+  persistUsername,
+} from "@/lib/session-identity"
 import type {
   PresenceBatchPayload,
   RoomControlPayload,
@@ -82,16 +91,53 @@ export function createRoomSocketConnection(
   dispose: () => void
 } {
   let cancelled = false
+  /** When set, onclose must not schedule the default short reconnect. */
+  let pauseAutoReconnect = false
   let reconnectTimer: number | undefined
   let detachSwBridge: (() => void) | null = null
   let disposePresenceCoalesce: (() => void) | null = null
-  let stopReconnectOnJoinReject: (() => void) | null = null
+  let clearReconnectTimers: (() => void) | null = null
 
   const fetchWsInit = options.fetchWsInit ?? defaultFetchWsInit
   const createWebSocket = options.createWebSocket ?? ((url) => new WebSocket(url))
   const wsOrigin = options.wsOrigin ?? defaultWsOrigin()
 
+  /** Proactive remint before expiry; reconnect so join uses the new `ct`. */
+  const controlTokenRefresh =
+    options.sessionKind === "control"
+      ? createControlTokenRefreshScheduler({
+          onMinted: (minted) => {
+            if (cancelled) {
+              return
+            }
+            options.controlTokenRef.current = minted.token
+            try {
+              options.wsRef.current?.close()
+            } catch {
+              // reconnect via onclose
+            }
+          },
+        })
+      : null
+
+  const syncControlTokenFromStorage = (): void => {
+    if (options.sessionKind !== "control") {
+      return
+    }
+    const persisted = loadPersistedControlToken(options.roomId)
+    if (persisted) {
+      options.controlTokenRef.current = persisted
+    }
+  }
+
   const connect = async (): Promise<void> => {
+    pauseAutoReconnect = false
+    syncControlTokenFromStorage()
+    controlTokenRefresh?.armFromStorage({
+      roomId: options.roomId,
+      userId: options.identity.userId,
+      userSecret: options.identity.userSecret,
+    })
     options.hasReceivedStateRef.current = false
     options.setJoinError(null)
     options.setSessionCapabilities(
@@ -187,6 +233,9 @@ export function createRoomSocketConnection(
         return
       }
 
+      // Prefer latest reminted token from sessionStorage on each join attempt.
+      syncControlTokenFromStorage()
+
       joinAttempts += 1
       options.setStatus(
         options.getJoinPassword() ? "joining" : "connecting",
@@ -238,6 +287,7 @@ export function createRoomSocketConnection(
       if (envelope.type === "room:snapshot" || envelope.type === "room:state") {
         const firstStateAfterJoin = !options.hasReceivedStateRef.current
         options.hasReceivedStateRef.current = true
+        pauseAutoReconnect = false
         clearStateTimeout()
         options.setJoinError(null)
         const payload = envelope.payload as RoomSnapshotPayload
@@ -259,6 +309,7 @@ export function createRoomSocketConnection(
 
       if (envelope.type === "room:control") {
         options.hasReceivedStateRef.current = true
+        pauseAutoReconnect = false
         clearStateTimeout()
         options.setJoinError(null)
         const payload = envelope.payload as RoomControlPayload
@@ -296,6 +347,11 @@ export function createRoomSocketConnection(
               return
             }
             options.controlTokenRef.current = token
+            controlTokenRefresh?.armFromStorage({
+              roomId: options.roomId,
+              userId: options.identity.userId,
+              userSecret: options.identity.userSecret,
+            })
             try {
               options.wsRef.current?.close()
             } catch {
@@ -315,15 +371,40 @@ export function createRoomSocketConnection(
         const reason = payload.reason
         options.setJoinError(messageForJoinRejected(reason))
         options.setStatus(statusForJoinRejected(reason))
-        if (reason === "media_url_unsupported") {
+
+        if (!shouldPauseAutoReconnect(reason)) {
+          return
+        }
+
+        clearReconnectTimers?.()
+        pauseAutoReconnect = true
+
+        if (isTerminalJoinRejection(reason)) {
           cancelled = true
-          stopReconnectOnJoinReject?.()
           try {
             ws.close()
           } catch {
             // ignore
           }
+          return
         }
+
+        if (reason === "rate_limited") {
+          // Close and resume after cooldown so we do not join-storm.
+          try {
+            ws.close()
+          } catch {
+            // ignore
+          }
+          if (!cancelled) {
+            reconnectTimer = window.setTimeout(() => {
+              pauseAutoReconnect = false
+              void connect()
+            }, RATE_LIMITED_RECONNECT_MS)
+          }
+        }
+        // awaiting_password: keep the open socket for submitJoinPassword;
+        // onclose must not auto-reconnect until the user succeeds or leaves.
       }
     }
 
@@ -347,16 +428,18 @@ export function createRoomSocketConnection(
       }
       clearStateTimeout()
 
-      if (!cancelled) {
-        options.setStatus("reconnecting")
-        reconnectTimer = window.setTimeout(() => {
-          void connect()
-        }, DEFAULT_RECONNECT_MS)
+      if (cancelled || pauseAutoReconnect) {
+        return
       }
+
+      options.setStatus("reconnecting")
+      reconnectTimer = window.setTimeout(() => {
+        void connect()
+      }, DEFAULT_RECONNECT_MS)
     }
   }
 
-  stopReconnectOnJoinReject = () => {
+  clearReconnectTimers = () => {
     if (reconnectTimer) {
       window.clearTimeout(reconnectTimer)
       reconnectTimer = undefined
@@ -365,6 +448,8 @@ export function createRoomSocketConnection(
 
   const dispose = (): void => {
     cancelled = true
+    pauseAutoReconnect = false
+    controlTokenRefresh?.disarm()
     options.hasReceivedStateRef.current = false
     options.sendJoinRef.current = null
     options.sfuProvideRef.current = null
@@ -372,9 +457,7 @@ export function createRoomSocketConnection(
     disposePresenceCoalesce = null
     detachSwBridge?.()
     detachSwBridge = null
-    if (reconnectTimer) {
-      window.clearTimeout(reconnectTimer)
-    }
+    clearReconnectTimers?.()
 
     if (options.stateTimeoutRef.current) {
       window.clearTimeout(options.stateTimeoutRef.current)

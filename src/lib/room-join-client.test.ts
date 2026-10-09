@@ -2,9 +2,11 @@ import { describe, expect, test } from "bun:test"
 import {
   buildRoomJoinEnvelope,
   createDefaultSessionCapabilities,
+  isTerminalJoinRejection,
   messageForJoinRejected,
   nextJoinStatusOnConnectAttempt,
   normalizeSessionCapabilities,
+  shouldPauseAutoReconnect,
   statusForJoinRejected,
 } from "./room-join-client"
 
@@ -58,20 +60,40 @@ describe("room-join-client", () => {
       "join password",
     )
     expect(messageForJoinRejected("rate_limited")).toContain("Too many")
+    expect(messageForJoinRejected("identity_mismatch")).toContain(
+      "identity",
+    )
     expect(messageForJoinRejected("media_url_unsupported")).toContain(
       "not supported",
     )
     expect(messageForJoinRejected(undefined)).toContain("join password")
   })
 
-  test("statusForJoinRejected maps media failures to media_unsupported", () => {
+  test("statusForJoinRejected maps dedicated statuses (not awaiting_password)", () => {
     expect(statusForJoinRejected("media_url_unsupported")).toBe(
       "media_unsupported",
+    )
+    expect(statusForJoinRejected("rate_limited")).toBe("rate_limited")
+    expect(statusForJoinRejected("identity_mismatch")).toBe(
+      "identity_mismatch",
     )
     expect(statusForJoinRejected("password_required")).toBe(
       "awaiting_password",
     )
     expect(statusForJoinRejected("invalid_password")).toBe("awaiting_password")
+  })
+
+  test("shouldPauseAutoReconnect covers password, rate limit, and terminal reasons", () => {
+    expect(shouldPauseAutoReconnect("password_required")).toBe(true)
+    expect(shouldPauseAutoReconnect("invalid_password")).toBe(true)
+    expect(shouldPauseAutoReconnect("rate_limited")).toBe(true)
+    expect(shouldPauseAutoReconnect("identity_mismatch")).toBe(true)
+    expect(shouldPauseAutoReconnect("media_url_unsupported")).toBe(true)
+    expect(shouldPauseAutoReconnect(undefined)).toBe(true)
+    expect(isTerminalJoinRejection("identity_mismatch")).toBe(true)
+    expect(isTerminalJoinRejection("media_url_unsupported")).toBe(true)
+    expect(isTerminalJoinRejection("rate_limited")).toBe(false)
+    expect(isTerminalJoinRejection("password_required")).toBe(false)
   })
 
   test("nextJoinStatusOnConnectAttempt preserves reconnecting after connected", () => {

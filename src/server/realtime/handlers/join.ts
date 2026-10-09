@@ -10,6 +10,7 @@ import {
 import { authorizeControlSession } from "@/server/realtime/services/control-auth"
 import { claimOrVerifyIdentitySecret } from "@/server/realtime/services/identity-store"
 import { clearConnectionLocalPlaybackReport } from "@/server/realtime/services/local-playback-report-lifecycle"
+import { transferOwnershipIfNeeded } from "@/server/realtime/services/ownership"
 import {
   computeSessionCapabilities,
   normalizeParticipantRoles,
@@ -26,6 +27,7 @@ import {
 } from "@/server/realtime/services/room-state-repair"
 import {
   addSocket,
+  getSocketClientIp,
   getSocketMeta,
   setSocketControlAuthorized,
   setSocketPresenceTracked,
@@ -89,12 +91,27 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
   const controlToken = joinResult.data.controlToken
   const initialMediaUrl = joinResult.data.initialMediaUrl
 
-  const joinLimit = await consumeRateLimit({
-    key: `join:${roomId}`,
+  const joinRoomLimit = await consumeRateLimit({
+    key: `join:room:${roomId}`,
     limit: 60,
     windowMs: 60_000,
   })
-  if (!joinLimit.allowed) {
+  if (!joinRoomLimit.allowed) {
+    sendEnvelope(ctx.ws, {
+      type: "room:join:rejected",
+      requestId: data.requestId,
+      payload: { reason: "rate_limited" },
+    })
+    return
+  }
+
+  const clientIp = getSocketClientIp(ctx.ws)
+  const joinIpLimit = await consumeRateLimit({
+    key: `join:ip:${clientIp}:room:${roomId}`,
+    limit: 12,
+    windowMs: 60_000,
+  })
+  if (!joinIpLimit.allowed) {
     sendEnvelope(ctx.ws, {
       type: "room:join:rejected",
       requestId: data.requestId,
@@ -147,11 +164,19 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
     return
   }
 
-  await claimOrVerifyIdentitySecret({
+  const identityOk = await claimOrVerifyIdentitySecret({
     roomId,
     userId,
     userSecret,
   })
+  if (!identityOk) {
+    sendEnvelope(ctx.ws, {
+      type: "room:join:rejected",
+      requestId: data.requestId,
+      payload: { reason: "identity_mismatch" },
+    })
+    return
+  }
 
   const { isControlSession, controlAuthorized } = await authorizeControlSession({
     sessionKind,
@@ -170,10 +195,6 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
   setSocketControlAuthorized(ctx.ws, controlAuthorized)
   const activeMeta = getSocketMeta(ctx.ws)
   const isPresenceAlreadyTracked = Boolean(activeMeta?.presenceTracked)
-  if (!activeMeta?.presenceTracked) {
-    await ctx.store.addWsConnectionRef(roomId, userId)
-    setSocketPresenceTracked(ctx.ws, true)
-  }
 
   let reconnectingUserIds: string[] = []
   let disconnectingUserIds: string[] = []
@@ -242,6 +263,10 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
       },
       viewerMedia: existingParticipant?.viewerMedia,
     }
+
+    // Heal orphaned ownership once the joiner is connected in this commit.
+    transferOwnershipIfNeeded(state, "join")
+
     if (!isPresenceAlreadyTracked || !existingParticipant?.connected) {
       appendActionLog(state, {
         roomId,
@@ -252,7 +277,7 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
       })
     }
     sessionCapabilities = computeSessionCapabilities({
-      role,
+      role: state.participants[userId]?.role ?? role,
       sessionKind,
       isControlSession,
       controlAuthorized,
@@ -264,8 +289,13 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
     return state
   })
 
-  // Persist-first: kick (or re-kick stuck) resolving items only after Redis write.
+  // Persist-first: presence ref only after a successful room commit.
   if (committed) {
+    if (!isPresenceAlreadyTracked) {
+      await ctx.store.addWsConnectionRef(roomId, userId)
+      setSocketPresenceTracked(ctx.ws, true)
+    }
+
     scheduleResolvingPlaylistItems(ctx.store, roomId, committed.playlist)
 
     const bus = getRoomBroadcastBus()

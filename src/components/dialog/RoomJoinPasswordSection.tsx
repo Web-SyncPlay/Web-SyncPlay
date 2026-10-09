@@ -18,7 +18,7 @@ import {
 import { useInlineEdit } from "@/hooks/use-inline-edit"
 import type { TypedRoomEventSender } from "@/lib/room-events"
 import { cn } from "@/lib/utils"
-import type { RoomSecurityState } from "@/zod/types"
+import type { PublicRoomSecurityState } from "@/zod/types"
 import {
   Copy,
   Dices,
@@ -82,7 +82,7 @@ function IconAction(props: {
 
 export function RoomJoinPasswordSection(props: {
   roomId: string
-  roomSecurity: RoomSecurityState
+  roomSecurity: PublicRoomSecurityState
   canManageRoomSecurity: boolean
   send: TypedRoomEventSender
 }) {

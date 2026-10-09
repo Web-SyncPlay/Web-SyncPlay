@@ -140,12 +140,17 @@ export interface ActionLogEntry {
   error?: string
 }
 
-export interface RoomSecurityState {
+/** Client-safe security fields (no password material). */
+export interface PublicRoomSecurityState {
   joinPasswordEnabled: boolean
   joinPasswordUpdatedAt: number | null
   admissionVersion: number
   /** Role assigned to first-time joiners (owner always stays owner). */
   defaultJoinRole: DefaultJoinRole
+}
+
+/** Server/persisted security; includes hash/salt used only server-side. */
+export interface RoomSecurityState extends PublicRoomSecurityState {
   joinPasswordHash?: string
   joinPasswordSalt?: string
 }
@@ -204,8 +209,10 @@ export interface PresenceBatchPayload {
   serverNowMs: number
 }
 
-/** Snapshot omits password hash/salt via sanitize; shape matches RoomState. */
-export type RoomSnapshotPayload = RoomState
+/** Snapshot after sanitize: public security only (no joinPasswordHash/Salt). */
+export type RoomSnapshotPayload = Omit<RoomState, "roomSecurity"> & {
+  roomSecurity: PublicRoomSecurityState
+}
 
 export interface WsEnvelope<T extends string, P> {
   type: T
