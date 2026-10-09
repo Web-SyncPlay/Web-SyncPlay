@@ -3,7 +3,8 @@
  */
 export function createSendEnvelope(ws: WebSocket) {
   return (type: string, payload: Record<string, unknown>): boolean => {
-    if (ws.readyState !== WebSocket.OPEN) return false
+    // Numeric OPEN (1) — avoid relying on global WebSocket (missing in some bun:test contexts).
+    if (ws.readyState !== 1) return false
     ws.send(
       JSON.stringify({
         type,

@@ -54,9 +54,11 @@ export function usePlaybackDriftCorrection(config: {
   } = config
 
   const holdLocalSeekRef = useRef(holdLocalSeek)
-  holdLocalSeekRef.current = holdLocalSeek
   const applyRoomClockRef = useRef(applyRoomClock)
+  /* eslint-disable react-hooks/refs -- latest flags/callbacks for watchdog timers */
+  holdLocalSeekRef.current = holdLocalSeek
   applyRoomClockRef.current = applyRoomClock
+  /* eslint-enable react-hooks/refs */
   const retryTimersRef = useRef<number[]>([])
 
   const clearRetryTimers = () => {

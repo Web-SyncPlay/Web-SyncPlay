@@ -1,11 +1,10 @@
 "use client"
 
+import { resolveBootstrapControlToken } from "@/lib/control-token-client"
 import {
   consumeSessionIdentityFromHash,
   getOrCreateSessionIdentity,
   getPersistedUsername,
-  loadPersistedControlToken,
-  persistControlToken,
   persistUsername,
   stripIdentityHashFromUrl,
 } from "@/lib/session-identity"
@@ -41,16 +40,13 @@ export function useSessionIdentityBootstrap(options?: {
     let cancelled = false
     void (async () => {
       const fromHash = await consumeSessionIdentityFromHash()
-      if (fromHash.controlToken) {
-        controlTokenRef.current = fromHash.controlToken
-        if (roomId) {
-          persistControlToken(roomId, fromHash.controlToken)
-        }
-      } else if (sessionKind === "control" && roomId) {
-        const persisted = loadPersistedControlToken(roomId)
-        if (persisted) {
-          controlTokenRef.current = persisted
-        }
+      const bootstrapToken = resolveBootstrapControlToken({
+        sessionKind,
+        roomId,
+        hashControlToken: fromHash.controlToken,
+      })
+      if (bootstrapToken) {
+        controlTokenRef.current = bootstrapToken
       }
       const session = await getOrCreateSessionIdentity()
       if (cancelled) {

@@ -88,7 +88,9 @@ export function PlayerPanel({
 
   useEffect(() => {
     reportedDurationItemIdRef.current = null
-    setMediaDurationMs(0)
+    queueMicrotask(() => {
+      setMediaDurationMs(0)
+    })
   }, [currentItemId])
 
   const playbackErrorLabel = useMemo(

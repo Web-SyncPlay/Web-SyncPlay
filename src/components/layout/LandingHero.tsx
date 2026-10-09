@@ -8,7 +8,7 @@ import { ArrowRight, Dice5, Play } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useState, type FormEvent } from "react"
+import { useState, type FormEvent } from "react"
 
 function RoomEntry(props: {
   roomInput: string
@@ -67,12 +67,8 @@ function RoomEntry(props: {
 }
 
 export function LandingHero(): React.JSX.Element {
-  const [roomInput, setRoomInput] = useState("")
+  const [roomInput, setRoomInput] = useState(() => randomRoomId())
   const router = useRouter()
-
-  useEffect(() => {
-    setRoomInput(randomRoomId())
-  }, [])
 
   function shuffleRoomId() {
     setRoomInput(randomRoomId())

@@ -135,7 +135,9 @@ export function usePlaybackTimelineController(config: {
   )
 
   const commitSeekRef = useRef(commitSeek)
+  /* eslint-disable react-hooks/refs -- latest commitSeek for idle scrub fallback */
   commitSeekRef.current = commitSeek
+  /* eslint-enable react-hooks/refs */
 
   // Vidstack sometimes applies a local scrub without emitting the final
   // seek-request (notably after MediaError). Commit the last preview target

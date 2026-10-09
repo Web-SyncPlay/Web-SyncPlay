@@ -20,7 +20,10 @@ import {
   scheduleResolvingPlaylistItems,
 } from "@/server/realtime/services/room"
 import { markCurrentMedia } from "@/server/realtime/services/timeline"
-import { repairCleanupAndCheckRoomState } from "@/server/repair"
+import {
+  applyRoomStateRepair,
+  logRoomStateRepairFindings,
+} from "@/server/realtime/services/room-state-repair"
 import {
   addSocket,
   getSocketMeta,
@@ -184,13 +187,11 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
         initialMediaUrl: mediaSeed.seedUrl,
       }))
     normalizeParticipantRoles(state)
-    const findings = repairCleanupAndCheckRoomState(state)
-    if (findings.length > 0) {
-      console.warn("[realtime] room state repaired during join", {
-        roomId,
-        findings,
-      })
-    }
+    logRoomStateRepairFindings({
+      roomId,
+      source: "join",
+      findings: applyRoomStateRepair(state),
+    })
 
     const active = await ctx.store.getWsPresenceUserIds(roomId)
     const recon = reconcileParticipantsConnectivity(state, active)

@@ -24,3 +24,7 @@ export function useSyncedMediaPlayerHandlers(deps: SyncedMediaPlayerHandlerDeps)
     ...createDurationChangeHandler(deps),
   }
 }
+
+export type SyncedMediaPlayerHandlers = ReturnType<
+  typeof useSyncedMediaPlayerHandlers
+>

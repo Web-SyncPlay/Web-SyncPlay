@@ -33,6 +33,6 @@ What happened instead? Include error messages or UI symptoms.
 
 ## Logs and health (if relevant)
 
-Paste redacted server logs, browser console errors, or `GET /api/health` output. For sync/WebRTC issues, note whether UDP 40000 is reachable and whether local media used SFU, P2P, or HTTP relay.
+Paste redacted server logs, browser console errors, or `GET /api/health` output. For sync/WebRTC issues, note whether UDP 40000 is reachable and whether local media used SFU, P2P, or HTTP relay. Self-hosted multi-replica: confirm sticky `/api/ws` / same replica as the provider — see [Multi-replica operations (SFU)](../../README.md#multi-replica-operations-sfu).
 
 Do **not** report security vulnerabilities here — see [SECURITY.md](../../SECURITY.md).

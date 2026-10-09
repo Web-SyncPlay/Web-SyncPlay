@@ -11,7 +11,7 @@ import {
 import type { TypedRoomEventSender } from "@/lib/room-events"
 import { cn } from "@/lib/utils"
 import type { ParticipantState } from "@/zod/types"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar"
 import {
   DropdownMenu,
@@ -94,15 +94,9 @@ export function UserAvatar({
   const confirmedStyle = resolveStyle(user.avatarStyle)
   const [pendingStyle, setPendingStyle] = useState<AvatarStyleId | null>(null)
 
-  useEffect(() => {
-    if (pendingStyle === null) return
-    if (confirmedStyle === pendingStyle) {
-      setPendingStyle(null)
-    }
-  }, [confirmedStyle, pendingStyle])
-
   const displayStyle = pendingStyle ?? confirmedStyle
-  const isPending = pendingStyle !== null
+  const isPending =
+    pendingStyle !== null && confirmedStyle !== pendingStyle
 
   const face = isSelf ? (
     <DropdownMenu>

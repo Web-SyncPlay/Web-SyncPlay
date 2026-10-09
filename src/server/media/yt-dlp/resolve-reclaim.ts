@@ -54,6 +54,19 @@ export function startResolveReclaimLoop(store: RoomStateStorePort) {
         console.info("[rooms] inactive cleanup sweep", result)
       }
     })
+
+    const hydrate = (
+      store as RoomStateStorePort & {
+        hydrateDailyDefaultTitlesIfNeeded?: () => Promise<number>
+      }
+    ).hydrateDailyDefaultTitlesIfNeeded
+    if (typeof hydrate === "function") {
+      void hydrate.call(store).then((count) => {
+        if (count > 0) {
+          console.info("[defaults] hydrated daily default titles", { count })
+        }
+      })
+    }
   }
 
   reclaimTimer = setInterval(tick, intervalMs)

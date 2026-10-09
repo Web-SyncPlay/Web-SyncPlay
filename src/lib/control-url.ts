@@ -1,4 +1,5 @@
-import { buildIdentityHash, persistControlToken } from "./session-identity"
+import { mintRoomControlToken } from "./control-token-client"
+import { buildIdentityHash } from "./session-identity"
 
 function roomPath(roomId: string, embed?: "control" | "player"): string {
   return embed ? `/room/${roomId}/${embed}` : `/room/${roomId}`
@@ -55,39 +56,7 @@ export async function requestControlToken(input: {
   userId: string
   userSecret: string
 }): Promise<{ token: string; expiresAt?: number } | null> {
-  if (!input.roomId || !input.userId || !input.userSecret) {
-    return null
-  }
-  try {
-    const response = await fetch("/api/control/token", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        roomId: input.roomId,
-        userId: input.userId,
-        userSecret: input.userSecret,
-      }),
-    })
-    if (!response.ok) {
-      return null
-    }
-    const payload = (await response.json()) as {
-      token?: string
-      expiresAt?: number
-    }
-    if (typeof payload.token !== "string" || payload.token.length === 0) {
-      return null
-    }
-    persistControlToken(input.roomId, payload.token)
-    return {
-      token: payload.token,
-      ...(typeof payload.expiresAt === "number"
-        ? { expiresAt: payload.expiresAt }
-        : {}),
-    }
-  } catch {
-    return null
-  }
+  return mintRoomControlToken(input)
 }
 
 /**
@@ -100,7 +69,7 @@ export async function mintControlEmbedUrl(input: {
   userId: string
   userSecret: string
 }): Promise<string | null> {
-  const minted = await requestControlToken(input)
+  const minted = await mintRoomControlToken(input)
   if (!minted) {
     return null
   }

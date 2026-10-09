@@ -104,8 +104,10 @@ export function RoomJoinPasswordSection(props: {
 
   useEffect(() => {
     if (!passwordEnabled) {
-      setKnownPassword("")
-      setVisible(false)
+      queueMicrotask(() => {
+        setKnownPassword("")
+        setVisible(false)
+      })
     }
   }, [passwordEnabled])
 

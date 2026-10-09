@@ -160,3 +160,37 @@ test("cleanup marks everyone offline when WS presence is empty (crash ghosts)", 
   expect(deleted).toBe(false)
 })
 
+test("cleanup migrates legacy room fields without waiting for join", async () => {
+  const state = createState()
+  const legacy = state as RoomState & { history?: unknown }
+  legacy.history = [{ at: 1 }]
+  ;(
+    state.playback as typeof state.playback & { shuffle?: unknown }
+  ).shuffle = true
+
+  const fakeStore = {
+    listRoomIds: async () => ["room-1"],
+    delete: async () => undefined,
+    getWsPresenceUserIds: async () => new Set<string>(["owner", "mod"]),
+    updateRoom: async (
+      _roomId: string,
+      mutate: (
+        current: RoomState | null,
+      ) => Promise<RoomState | null> | RoomState | null,
+    ) => {
+      const next = await mutate(state)
+      if (next) {
+        Object.assign(state, next)
+      }
+      return next
+    },
+  }
+
+  await cleanupInactiveRooms(fakeStore as never)
+
+  expect(legacy.history).toBeUndefined()
+  expect(
+    (state.playback as { shuffle?: unknown }).shuffle,
+  ).toBeUndefined()
+})
+

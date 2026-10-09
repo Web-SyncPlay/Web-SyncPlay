@@ -67,13 +67,15 @@ export function usePlayerCaptionPreferences(options: {
 }) {
   const { playerRef, current, viewerPrefs, send, syncKey, enabled } = options
   const viewerPrefsRef = useRef(viewerPrefs)
-  viewerPrefsRef.current = viewerPrefs
   const sendRef = useRef(send)
-  sendRef.current = send
   const itemId = current?.id
   const catalog = current?.textTracks ?? []
   const catalogRef = useRef(catalog)
+  /* eslint-disable react-hooks/refs -- latest prefs/send/catalog for track listeners */
+  viewerPrefsRef.current = viewerPrefs
+  sendRef.current = send
   catalogRef.current = catalog
+  /* eslint-enable react-hooks/refs */
 
   useEffect(() => {
     if (!enabled || !itemId) {
