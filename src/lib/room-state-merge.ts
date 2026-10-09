@@ -92,6 +92,92 @@ export function applyPresenceBatch(
   }
 }
 
+/** Fold several presence envelopes in arrival order (one React update). */
+export function applyPresenceBatches(
+  prev: RoomState | null,
+  payloads: readonly PresenceBatchPayload[],
+): RoomState | null {
+  let next = prev
+  for (const payload of payloads) {
+    next = applyPresenceBatch(next, payload)
+  }
+  return next
+}
+
+export type PresenceCoalesceCancel = () => void
+
+export type PresenceCoalesceSchedule = (
+  flush: () => void,
+) => PresenceCoalesceCancel
+
+/**
+ * Default: one flush per animation frame; falls back to a microtask when rAF
+ * is unavailable (tests / non-DOM).
+ */
+export const schedulePresenceCoalesce: PresenceCoalesceSchedule = (flush) => {
+  if (typeof requestAnimationFrame === "function") {
+    const id = requestAnimationFrame(() => {
+      flush()
+    })
+    return () => {
+      cancelAnimationFrame(id)
+    }
+  }
+  let cancelled = false
+  queueMicrotask(() => {
+    if (!cancelled) flush()
+  })
+  return () => {
+    cancelled = true
+  }
+}
+
+export type PresenceBatchCoalescer = {
+  enqueue: (payload: PresenceBatchPayload) => void
+  /** Drop pending batches and cancel a scheduled flush (socket teardown). */
+  dispose: () => void
+  /** Test helper: how many envelopes are waiting for the next flush. */
+  pendingCount: () => number
+}
+
+/**
+ * Coalesce rapid `presence:batch` envelopes into a single flush per frame/turn.
+ * Callers should apply the flushed payloads via `startTransition` so presence
+ * yields to urgent `room:control` / snapshot updates.
+ */
+export function createPresenceBatchCoalescer(options: {
+  onFlush: (payloads: PresenceBatchPayload[]) => void
+  schedule?: PresenceCoalesceSchedule
+}): PresenceBatchCoalescer {
+  const schedule = options.schedule ?? schedulePresenceCoalesce
+  let pending: PresenceBatchPayload[] = []
+  let cancelScheduled: PresenceCoalesceCancel | null = null
+
+  const flush = () => {
+    cancelScheduled = null
+    if (pending.length === 0) return
+    const payloads = pending
+    pending = []
+    options.onFlush(payloads)
+  }
+
+  return {
+    enqueue(payload) {
+      pending.push(payload)
+      if (cancelScheduled) return
+      cancelScheduled = schedule(flush)
+    },
+    dispose() {
+      cancelScheduled?.()
+      cancelScheduled = null
+      pending = []
+    },
+    pendingCount() {
+      return pending.length
+    },
+  }
+}
+
 export function applyRoomSnapshot(
   prev: RoomState | null,
   payload: RoomSnapshotPayload,

@@ -2,9 +2,10 @@
 
 import type { ClientEventPayloadMap, TypedRoomEventSender } from "@/lib/room-events"
 import {
-  applyPresenceBatch,
+  applyPresenceBatches,
   applyRoomControl,
   applyRoomSnapshot,
+  createPresenceBatchCoalescer,
 } from "@/lib/room-state-merge"
 import {
   buildRoomJoinEnvelope,
@@ -26,7 +27,7 @@ import type {
   SessionKind,
   WsEnvelope,
 } from "@/zod/types"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { startTransition, useCallback, useEffect, useRef, useState } from "react"
 import { createRoomSocketLocalMediaSession } from "./room-socket-local-media"
 import { useSessionIdentityBootstrap } from "./use-session-identity-bootstrap"
 
@@ -77,6 +78,7 @@ export function useRoomSocket(
     let cancelled = false
     let reconnectTimer: number | undefined
     let detachSwBridge: (() => void) | null = null
+    let disposePresenceCoalesce: (() => void) | null = null
     const wsOrigin = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/api/ws`
 
     const connect = async (): Promise<void> => {
@@ -148,6 +150,23 @@ export function useRoomSocket(
         },
       })
       sfuProvideRef.current = localMedia.provideViaSfu
+
+      // Presence clocks are frequent; coalesce to one React update per frame and
+      // mark it as a transition so control/playback stay urgent.
+      disposePresenceCoalesce?.()
+      const presenceCoalescer = createPresenceBatchCoalescer({
+        onFlush: (payloads) => {
+          if (cancelled) return
+          startTransition(() => {
+            setRoomState((prev) => {
+              const next = applyPresenceBatches(prev, payloads)
+              roomStateRef.current = next
+              return next
+            })
+          })
+        },
+      })
+      disposePresenceCoalesce = () => presenceCoalescer.dispose()
 
       const sendJoin = (): void => {
         if (cancelled) {
@@ -242,12 +261,7 @@ export function useRoomSocket(
         }
 
         if (envelope.type === "presence:batch") {
-          const payload = envelope.payload as PresenceBatchPayload
-          setRoomState((prev) => {
-            const next = applyPresenceBatch(prev, payload)
-            roomStateRef.current = next
-            return next
-          })
+          presenceCoalescer.enqueue(envelope.payload as PresenceBatchPayload)
           return
         }
 
@@ -292,6 +306,8 @@ export function useRoomSocket(
         if (!cancelled) {
           console.warn("[realtime] websocket closed")
         }
+        disposePresenceCoalesce?.()
+        disposePresenceCoalesce = null
         if (sfuProvideRef.current === localMedia.provideViaSfu) {
           sfuProvideRef.current = null
         }
@@ -316,6 +332,8 @@ export function useRoomSocket(
       hasReceivedStateRef.current = false
       sendJoinRef.current = null
       sfuProvideRef.current = null
+      disposePresenceCoalesce?.()
+      disposePresenceCoalesce = null
       detachSwBridge?.()
       detachSwBridge = null
       if (reconnectTimer) {

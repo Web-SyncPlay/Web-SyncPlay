@@ -33,7 +33,7 @@
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "@t3-oss/env-nextjs": "^0.13.11",
-    "@vidstack/react": "^1.15.6",
+    "@vidstack/react": "1.15.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dashjs": "4.7.4",

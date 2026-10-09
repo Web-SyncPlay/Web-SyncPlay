@@ -9,7 +9,7 @@ import type {
 } from "@vidstack/react"
 import type { RefObject } from "react"
 import { toast } from "sonner"
-import type { PlaylistItem, RoomState } from "@/zod/types"
+import type { LoopMode, PlaylistItem, RoomState } from "@/zod/types"
 import {
   formatMediaErrorDetail,
   mediaErrorCode,
@@ -24,12 +24,17 @@ import {
   type LocalSeekPhase,
 } from "../playback-control/use-playback-timeline-controller"
 
+/** Playlist nav fields read from a ref so ended logic avoids prop churn. */
+export type PlaylistNavSnapshot = {
+  currentIndex: number
+  playlistLoop: LoopMode
+}
+
 export type SyncedMediaPlayerHandlerDeps = {
   playerRef: RefObject<MediaPlayerInstance | null>
   current: PlaylistItem | undefined
   playerSrc: PlayerSrcInput
   activePlaybackSrc: string
-  roomState: RoomState
   send: TypedRoomEventSender
   canControlPlayback: boolean
   isMuted: boolean
@@ -37,6 +42,7 @@ export type SyncedMediaPlayerHandlerDeps = {
   unmute: () => number
   handleVolumeChange: (detail: { volume: number; muted: boolean }) => void
   playbackRef: RefObject<RoomState["playback"]>
+  playlistNavRef: RefObject<PlaylistNavSnapshot>
   isMediaReadyRef: RefObject<boolean>
   bufferingSinceRef: RefObject<number | null>
   participantStatusErrorRef: RefObject<string | null>
@@ -75,7 +81,6 @@ export function useSyncedMediaPlayerHandlers(deps: SyncedMediaPlayerHandlerDeps)
     current,
     playerSrc,
     activePlaybackSrc,
-    roomState,
     send,
     canControlPlayback,
     isMuted,
@@ -83,6 +88,7 @@ export function useSyncedMediaPlayerHandlers(deps: SyncedMediaPlayerHandlerDeps)
     unmute,
     handleVolumeChange,
     playbackRef,
+    playlistNavRef,
     isMediaReadyRef,
     bufferingSinceRef,
     participantStatusErrorRef,
@@ -398,7 +404,7 @@ export function useSyncedMediaPlayerHandlers(deps: SyncedMediaPlayerHandlerDeps)
       }
 
       const nextMode = detail ? "always" : "off"
-      if (nextMode === roomState.playback.videoLoop) {
+      if (nextMode === playbackRef.current.videoLoop) {
         return
       }
 
@@ -411,14 +417,15 @@ export function useSyncedMediaPlayerHandlers(deps: SyncedMediaPlayerHandlerDeps)
       }
 
       // HTML `loop` already restarts when videoLoop is on.
-      if (roomState.playback.videoLoop !== "off") {
+      if (playbackRef.current.videoLoop !== "off") {
         return
       }
 
+      const { currentIndex, playlistLoop } = playlistNavRef.current
       const nextIndex = getAdjacentPlaylistIndex({
-        currentIndex: roomState.currentIndex,
+        currentIndex,
         totalItems,
-        loopMode: roomState.playback.playlistLoop,
+        loopMode: playlistLoop,
         direction: "next",
       })
       if (nextIndex === null) {
