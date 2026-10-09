@@ -9,6 +9,7 @@ import {
 const USER_ID_KEY = "web-syncplay:user-id"
 const USER_SECRET_KEY = "web-syncplay:user-secret"
 const USERNAME_KEY = "web-syncplay:username"
+const CONTROL_TOKEN_KEY_PREFIX = "web-syncplay:control-token:"
 
 function randomHex(bytes: number): string {
   const buffer = new Uint8Array(bytes)
@@ -172,4 +173,49 @@ export function persistUsername(username: string): void {
     return
   }
   window.localStorage.setItem(USERNAME_KEY, username.trim())
+}
+
+function controlTokenStorageKey(roomId: string): string {
+  return `${CONTROL_TOKEN_KEY_PREFIX}${roomId}`
+}
+
+/** Persist a minted control token for refresh of `/control` (session-scoped). */
+export function persistControlToken(roomId: string, token: string): void {
+  if (typeof window === "undefined") {
+    return
+  }
+  if (!isValidIdentityValue(roomId) || !isValidIdentityValue(token)) {
+    return
+  }
+  try {
+    window.sessionStorage.setItem(controlTokenStorageKey(roomId), token)
+  } catch {
+    // ignore quota / private-mode failures
+  }
+}
+
+export function loadPersistedControlToken(roomId: string): string | undefined {
+  if (typeof window === "undefined") {
+    return undefined
+  }
+  if (!isValidIdentityValue(roomId)) {
+    return undefined
+  }
+  try {
+    const token = window.sessionStorage.getItem(controlTokenStorageKey(roomId))
+    return isValidIdentityValue(token) ? token : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function clearPersistedControlToken(roomId: string): void {
+  if (typeof window === "undefined") {
+    return
+  }
+  try {
+    window.sessionStorage.removeItem(controlTokenStorageKey(roomId))
+  } catch {
+    // ignore
+  }
 }

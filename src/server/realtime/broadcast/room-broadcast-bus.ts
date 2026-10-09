@@ -81,7 +81,6 @@ function structuralHash(state: RoomState): string {
       admissionVersion: state.roomSecurity.admissionVersion,
       defaultJoinRole: state.roomSecurity.defaultJoinRole,
     },
-    history: state.history,
     actionLog: state.actionLog,
     participants,
   })

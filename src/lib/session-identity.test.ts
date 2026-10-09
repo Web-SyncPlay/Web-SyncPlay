@@ -1,8 +1,11 @@
 import { expect, test } from "bun:test"
 import {
+  clearPersistedControlToken,
   consumeSessionIdentityFromHash,
   getOrCreateSessionIdentity,
   getPersistedUsername,
+  loadPersistedControlToken,
+  persistControlToken,
   persistUsername,
   stripIdentityHashFromUrl,
 } from "./session-identity"
@@ -34,8 +37,23 @@ function createMockWindow(hash: string) {
     },
   }
 
+  const sessionMap = new Map<string, string>()
+  const sessionStorage: MockStorage = {
+    getItem: (key) => sessionMap.get(key) ?? null,
+    setItem: (key, value) => {
+      sessionMap.set(key, value)
+    },
+    removeItem: (key) => {
+      sessionMap.delete(key)
+    },
+    clear: () => {
+      sessionMap.clear()
+    },
+  }
+
   ;(globalThis as { window?: unknown }).window = {
     localStorage,
+    sessionStorage,
     location: {
       hash,
       pathname: "/room/abc/player",
@@ -134,5 +152,15 @@ test("stripIdentityHashFromUrl removes identity-like malformed hash", () => {
 
   expect(stripped).toBe(true)
   expect(mock.getReplacedUrl()).toBe("/room/abc/player?embed=1")
+  cleanupWindow()
+})
+
+test("persistControlToken round-trips via sessionStorage", () => {
+  createMockWindow("")
+
+  persistControlToken("room-1", "tok-abc")
+  expect(loadPersistedControlToken("room-1")).toBe("tok-abc")
+  clearPersistedControlToken("room-1")
+  expect(loadPersistedControlToken("room-1")).toBeUndefined()
   cleanupWindow()
 })

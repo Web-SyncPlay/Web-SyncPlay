@@ -18,6 +18,8 @@ import {
   type JoinStatus,
   type SessionCapabilities,
 } from "@/lib/room-join-client"
+import { requestControlToken } from "@/lib/control-url"
+import { canMutateByRole } from "@/lib/permissions-utils"
 import { persistUsername } from "@/lib/session-identity"
 import type {
   PresenceBatchPayload,
@@ -64,8 +66,9 @@ export function useRoomSocket(
   const joinPasswordRef = useRef<string>("")
   const sendJoinRef = useRef<(() => void) | null>(null)
   const sfuProvideRef = useRef<((localMediaId: string) => void) | null>(null)
+  const controlRemintAttemptedRef = useRef(false)
   const { identity, controlTokenRef, usernameRef } =
-    useSessionIdentityBootstrap()
+    useSessionIdentityBootstrap({ roomId, sessionKind })
 
   const userId = identity?.userId ?? ""
   const userSecret = identity?.userSecret ?? ""
@@ -79,6 +82,7 @@ export function useRoomSocket(
     let reconnectTimer: number | undefined
     let detachSwBridge: (() => void) | null = null
     let disposePresenceCoalesce: (() => void) | null = null
+    controlRemintAttemptedRef.current = false
     const wsOrigin = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/api/ws`
 
     const connect = async (): Promise<void> => {
@@ -267,9 +271,42 @@ export function useRoomSocket(
 
         if (envelope.type === "session:capabilities") {
           const payload = envelope.payload as Partial<SessionCapabilities>
-          setSessionCapabilities(
-            normalizeSessionCapabilities(payload, sessionKind),
-          )
+          const caps = normalizeSessionCapabilities(payload, sessionKind)
+          setSessionCapabilities(caps)
+          // Token-only control auth: snapshot arrives before capabilities, so
+          // role is available even when controlAuthorized (and thus
+          // canControlPlayback) is still false. Mint once and reconnect.
+          const role =
+            roomStateRef.current?.participants[identity.userId]?.role
+          if (
+            sessionKind === "control" &&
+            !caps.controlAuthorized &&
+            canMutateByRole(role) &&
+            !controlRemintAttemptedRef.current
+          ) {
+            controlRemintAttemptedRef.current = true
+            void requestControlToken({
+              roomId,
+              userId: identity.userId,
+              userSecret: identity.userSecret,
+            }).then((minted) => {
+              if (cancelled) {
+                return
+              }
+              if (!minted) {
+                // Allow a later reconnect (e.g. after role settles) to retry.
+                controlRemintAttemptedRef.current = false
+                return
+              }
+              controlTokenRef.current = minted.token
+              try {
+                // Close the live socket, not a possibly-stale closed-over handle.
+                wsRef.current?.close()
+              } catch {
+                // reconnect via onclose
+              }
+            })
+          }
           return
         }
 

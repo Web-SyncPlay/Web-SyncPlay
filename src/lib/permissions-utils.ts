@@ -18,7 +18,7 @@ export function canControlPlaylist(role?: RoomRole): boolean {
 }
 
 /**
- * Control embeds need a minted token (or legacy identity match).
+ * Control embeds need a minted control token for mutations.
  * Non-control sessions are treated as authorized for local UI gating.
  */
 export function isClientControlAuthorized(caps: {

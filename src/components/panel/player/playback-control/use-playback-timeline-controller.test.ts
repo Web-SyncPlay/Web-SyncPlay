@@ -12,7 +12,6 @@ test("projectPlaybackMs advances time when playback is active", () => {
       serverNowMs: baseNow,
       videoLoop: "off",
       playlistLoop: "off",
-      shuffle: false,
     },
   } as RoomState
 
@@ -30,7 +29,6 @@ test("projectPlaybackMs keeps anchor when paused", () => {
       serverNowMs: baseNow,
       videoLoop: "off",
       playlistLoop: "off",
-      shuffle: false,
     },
   } as RoomState
 

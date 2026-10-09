@@ -36,7 +36,6 @@ describe("disconnect lifecycle", () => {
         serverNowMs: Date.now(),
         videoLoop: "off",
         playlistLoop: "off",
-        shuffle: false,
       },
     })
 

@@ -144,7 +144,7 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
     return
   }
 
-  const identityOk = await claimOrVerifyIdentitySecret({
+  await claimOrVerifyIdentitySecret({
     roomId,
     userId,
     userSecret,
@@ -155,7 +155,6 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
     controlToken,
     roomId,
     userId,
-    identityOk,
   })
 
   addSocket(ctx.ws, {

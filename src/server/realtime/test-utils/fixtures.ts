@@ -80,7 +80,6 @@ export function createRoomState(overrides: Partial<RoomState> = {}): RoomState {
       serverNowMs: now,
       videoLoop: "off",
       playlistLoop: "off",
-      shuffle: false,
     },
     playlist: [
       createPlaylistItem({ id: "item-a", name: "A" }),
@@ -104,7 +103,6 @@ export function createRoomState(overrides: Partial<RoomState> = {}): RoomState {
       guest,
       mod: moderator,
     },
-    history: [],
     actionLog: [],
     updatedAt: now,
     generation: 0,

@@ -115,7 +115,6 @@ export interface PlaybackState {
   serverNowMs: number
   videoLoop: LoopMode
   playlistLoop: LoopMode
-  shuffle: boolean
   seekPreview?: {
     userId: string
     targetMs: number
@@ -153,7 +152,6 @@ export interface RoomState {
   playlist: PlaylistItem[]
   currentIndex: number
   participants: Record<string, ParticipantState>
-  history: Array<{ mediaId: string; playedAt: number }>
   actionLog: ActionLogEntry[]
   updatedAt: number
   /** Bumps on every persisted room write (control or structural). */
@@ -211,7 +209,7 @@ export interface WsEnvelope<T extends string, P> {
 }
 
 export const roomStateTtlSeconds = 3600
-/** Ephemeral room action-log / play-history max age (matches room Redis TTL). */
+/** Ephemeral room action-log max age (matches room Redis TTL). */
 export const roomActionLogMaxAgeMs = roomStateTtlSeconds * 1000
 export const VIEWER_MEDIA_BY_ITEM_LIMIT = 32
 export const MEDIA_STREAM_CATALOG_LIMIT = 12

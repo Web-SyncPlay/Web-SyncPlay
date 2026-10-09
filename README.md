@@ -105,7 +105,6 @@ Set **both** on every `web` replica for sticky local-media HTTP affinity (miss p
 | `FALLBACK_DEFAULT_MEDIA_URL` | `https://youtu.be/uD4izuDMUQA` | Seed media when daily defaults cache is empty.                                      |
 | `ROOM_PARTICIPANTS_LIMIT`    | `100`                          | Max participants per room (1–100).                                                  |
 | `ROOM_PLAYLIST_LIMIT`        | `50`                           | Max playlist items per room (1–200).                                                |
-| `ROOM_HISTORY_LIMIT`         | `100`                          | Max chat/history entries retained (1–200).                                          |
 | `ROOM_ACTION_LOG_LIMIT`      | `500`                          | Max action-log entries retained (1–1000).                                           |
 | `CONTROL_TOKEN_TTL_SECONDS`  | `43200`                        | Control-embed token lifetime (60s–48h; default 12h). Remint from room View menu.    |
 | `WS_HEARTBEAT_INTERVAL_MS`   | `5000`                         | WebSocket ping interval (100–30000). Timeout is always 3× this.                     |

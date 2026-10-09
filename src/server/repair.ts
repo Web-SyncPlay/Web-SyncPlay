@@ -136,32 +136,23 @@ export function repairCleanupAndCheckRoomState(state: RoomState) {
     state.actionLog = pruned
   }
 
-  if (!Array.isArray(state.history)) {
-    state.history = []
-    findings.push("history-repaired")
-  } else {
-    const now = Date.now()
-    const cutoff = now - roomActionLogMaxAgeMs
-    const beforeLength = state.history.length
-    state.history = state.history.filter(
-      (entry) =>
-        entry &&
-        typeof entry === "object" &&
-        typeof entry.playedAt === "number" &&
-        entry.playedAt >= cutoff,
-    )
-    if (state.history.length !== beforeLength) {
-      findings.push("history-expired")
-    }
-    if (state.history.length > env.ROOM_HISTORY_LIMIT) {
-      state.history = state.history.slice(-env.ROOM_HISTORY_LIMIT)
-      findings.push("history-trimmed")
-    }
-  }
-
   const playbackRepairs = sanitizePlayback(state)
   for (let i = 0; i < playbackRepairs; i += 1)
     findings.push("playback-repaired")
+
+  // Strip legacy fields removed from the schema so Redis payloads converge.
+  const legacyState = state as RoomState & { history?: unknown }
+  if ("history" in legacyState) {
+    delete legacyState.history
+    findings.push("legacy-history-stripped")
+  }
+  const legacyPlayback = state.playback as typeof state.playback & {
+    shuffle?: unknown
+  }
+  if ("shuffle" in legacyPlayback) {
+    delete legacyPlayback.shuffle
+    findings.push("legacy-shuffle-stripped")
+  }
 
   if (state.updatedAt <= 0 || !Number.isFinite(state.updatedAt)) {
     state.updatedAt = Date.now()
@@ -330,6 +321,5 @@ export function sanitizePlayback(state: RoomState) {
     repairs += 1
   }
 
-  state.playback.shuffle = Boolean(state.playback.shuffle)
   return repairs
 }

@@ -3,15 +3,13 @@ import type { SessionKind } from "@/zod/types"
 
 /**
  * Resolves whether a joining socket is a control session and whether it is
- * authorized to mutate. Control embeds prefer a minted token; identity-secret
- * match remains a short migration fallback.
+ * authorized to mutate. Control embeds require a valid minted control token.
  */
 export async function authorizeControlSession(input: {
   sessionKind: SessionKind
   controlToken: string | undefined
   roomId: string
   userId: string
-  identityOk: boolean
 }): Promise<{ isControlSession: boolean; controlAuthorized: boolean }> {
   const isControlSession = input.sessionKind === "control"
   if (!isControlSession) {
@@ -25,10 +23,6 @@ export async function authorizeControlSession(input: {
       roomId: input.roomId,
       userId: input.userId,
     })
-  }
-  // Migration: legacy secret match still authorizes control embeds briefly.
-  if (!controlAuthorized && input.identityOk) {
-    controlAuthorized = true
   }
 
   return { isControlSession, controlAuthorized }

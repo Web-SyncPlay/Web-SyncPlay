@@ -42,6 +42,12 @@ function ControlClientReady(props: {
 
   const { railTab, setRailTab } = useRoomRail()
   const canControlBySession = isClientControlAuthorized(sessionCapabilities)
+  const myRole = roomState.participants[userId]?.role
+  const unauthorizedHint = !canControlBySession
+    ? "Control token missing or expired — open Control again from the room View menu, or refresh after rejoining as owner/moderator."
+    : myRole !== "owner" && myRole !== "moderator"
+      ? "View-only: owner or moderator role is required to control playback."
+      : "This session is view-only until authenticated."
   const {
     canControlByRole,
     canControl,
@@ -52,8 +58,7 @@ function ControlClientReady(props: {
     roomState,
     userId,
     canControlBySession,
-    unauthorizedHint:
-      "Secret verification failed: this session is view-only until authenticated.",
+    unauthorizedHint,
   })
   const current = resolveCurrentPlaylistItem(roomState)
   const timeline = usePlaybackTimelineController({

@@ -1,4 +1,4 @@
-import { buildIdentityHash } from "./session-identity"
+import { buildIdentityHash, persistControlToken } from "./session-identity"
 
 function roomPath(roomId: string, embed?: "control" | "player"): string {
   return embed ? `/room/${roomId}/${embed}` : `/room/${roomId}`
@@ -49,16 +49,14 @@ export function getPlayerEmbedUrl(
   return withIdentityHash(roomPath(roomId, "player"), userId, userSecret)
 }
 
-export async function mintControlEmbedUrl(input: {
+/** Mint a control token via HTTP. Returns null on failure (no silent tokenless auth). */
+export async function requestControlToken(input: {
   roomId: string
   userId: string
   userSecret: string
-}): Promise<string> {
-  const fallback = () =>
-    getControlEmbedUrl(input.roomId, input.userId, input.userSecret)
-
+}): Promise<{ token: string; expiresAt?: number } | null> {
   if (!input.roomId || !input.userId || !input.userSecret) {
-    return fallback()
+    return null
   }
   try {
     const response = await fetch("/api/control/token", {
@@ -71,16 +69,45 @@ export async function mintControlEmbedUrl(input: {
       }),
     })
     if (!response.ok) {
-      return fallback()
+      return null
     }
-    const payload = (await response.json()) as { token?: string }
-    return getControlEmbedUrl(
-      input.roomId,
-      input.userId,
-      input.userSecret,
-      payload.token,
-    )
+    const payload = (await response.json()) as {
+      token?: string
+      expiresAt?: number
+    }
+    if (typeof payload.token !== "string" || payload.token.length === 0) {
+      return null
+    }
+    persistControlToken(input.roomId, payload.token)
+    return {
+      token: payload.token,
+      ...(typeof payload.expiresAt === "number"
+        ? { expiresAt: payload.expiresAt }
+        : {}),
+    }
   } catch {
-    return fallback()
+    return null
   }
+}
+
+/**
+ * Builds a control embed URL with a minted `ct=` token.
+ * Returns null when minting fails — callers must not treat a tokenless URL
+ * as authorized for mutations.
+ */
+export async function mintControlEmbedUrl(input: {
+  roomId: string
+  userId: string
+  userSecret: string
+}): Promise<string | null> {
+  const minted = await requestControlToken(input)
+  if (!minted) {
+    return null
+  }
+  return getControlEmbedUrl(
+    input.roomId,
+    input.userId,
+    input.userSecret,
+    minted.token,
+  )
 }

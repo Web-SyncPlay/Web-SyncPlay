@@ -19,7 +19,6 @@ function createRoomState(): RoomState {
       serverNowMs: Date.now(),
       videoLoop: "off",
       playlistLoop: "off",
-      shuffle: false,
     },
     playlist: [
       {
@@ -45,7 +44,6 @@ function createRoomState(): RoomState {
     ],
     currentIndex: 0,
     participants: {},
-    history: [],
     actionLog: [],
     updatedAt: Date.now(),
     generation: 0,

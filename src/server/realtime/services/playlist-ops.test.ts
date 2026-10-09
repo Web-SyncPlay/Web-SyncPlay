@@ -26,7 +26,6 @@ describe("playlist-ops", () => {
         serverNowMs: 1_000,
         videoLoop: "off",
         playlistLoop: "off",
-        shuffle: false,
       },
     })
     expect(applyPlaylistSelect(state, -1)).toBe(false)

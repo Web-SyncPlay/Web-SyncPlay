@@ -55,7 +55,6 @@ export const env = createEnv({
       .min(1)
       .max(100)
       .default(100),
-    ROOM_HISTORY_LIMIT: z.coerce.number().int().min(1).max(200).default(100),
     ROOM_ACTION_LOG_LIMIT: z.coerce
       .number()
       .int()
@@ -140,7 +139,6 @@ export const env = createEnv({
     YTDLP_TIMEOUT_MS: process.env.YTDLP_TIMEOUT_MS,
     FALLBACK_DEFAULT_MEDIA_URL: process.env.FALLBACK_DEFAULT_MEDIA_URL,
     ROOM_PARTICIPANTS_LIMIT: process.env.ROOM_PARTICIPANTS_LIMIT,
-    ROOM_HISTORY_LIMIT: process.env.ROOM_HISTORY_LIMIT,
     ROOM_ACTION_LOG_LIMIT: process.env.ROOM_ACTION_LOG_LIMIT,
     ROOM_PLAYLIST_LIMIT: process.env.ROOM_PLAYLIST_LIMIT,
     WS_HEARTBEAT_INTERVAL_MS: process.env.WS_HEARTBEAT_INTERVAL_MS,

@@ -21,7 +21,6 @@ describe("authorizeControlSession", () => {
         controlToken: "good-token",
         roomId: "room-1",
         userId: "user-1",
-        identityOk: true,
       }),
     ).toEqual({ isControlSession: false, controlAuthorized: false })
 
@@ -31,7 +30,6 @@ describe("authorizeControlSession", () => {
         controlToken: undefined,
         roomId: "room-1",
         userId: "user-1",
-        identityOk: true,
       }),
     ).toEqual({ isControlSession: false, controlAuthorized: false })
   })
@@ -43,21 +41,19 @@ describe("authorizeControlSession", () => {
         controlToken: "good-token",
         roomId: "room-1",
         userId: "user-1",
-        identityOk: false,
       }),
     ).toEqual({ isControlSession: true, controlAuthorized: true })
   })
 
-  test("control session falls back to identity secret when token missing/invalid", async () => {
+  test("control session is unauthorized without a valid token", async () => {
     expect(
       await authorizeControlSession({
         sessionKind: "control",
         controlToken: "bad-token",
         roomId: "room-1",
         userId: "user-1",
-        identityOk: true,
       }),
-    ).toEqual({ isControlSession: true, controlAuthorized: true })
+    ).toEqual({ isControlSession: true, controlAuthorized: false })
 
     expect(
       await authorizeControlSession({
@@ -65,7 +61,6 @@ describe("authorizeControlSession", () => {
         controlToken: undefined,
         roomId: "room-1",
         userId: "user-1",
-        identityOk: false,
       }),
     ).toEqual({ isControlSession: true, controlAuthorized: false })
   })

@@ -7,7 +7,9 @@ import { useEffect, useState } from "react"
 
 /**
  * Builds the control embed URL for the current identity.
- * Owners/moderators mint a short-lived control token; others get a secret hash fallback.
+ * Owners/moderators mint a short-lived control token required for mutations.
+ * Guests/non-moderators still get an identity-hash URL to open a view-only
+ * control surface; without a minted token they cannot mutate.
  */
 export function useControlEmbedUrl(input: {
   roomId: string
@@ -36,7 +38,8 @@ export function useControlEmbedUrl(input: {
 
     let cancelled = false
     void mintControlEmbedUrl({ roomId, userId, userSecret }).then((url) => {
-      if (!cancelled) setControlEmbedUrl(url)
+      // Mint failure returns null — do not publish a tokenless mutator URL.
+      if (!cancelled && url) setControlEmbedUrl(url)
     })
     return () => {
       cancelled = true

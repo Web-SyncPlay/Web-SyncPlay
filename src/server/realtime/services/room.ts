@@ -80,7 +80,6 @@ export async function createInitialRoomState(
     currentIndex: 0,
     playlist,
     updatedAt: Date.now(),
-    history: [],
     actionLog: [],
     participants: {},
     generation: 0,
@@ -95,7 +94,6 @@ export async function createInitialRoomState(
       serverNowMs: Date.now(),
       videoLoop: "off",
       playlistLoop: "off",
-      shuffle: false,
     },
   } satisfies RoomState
 }

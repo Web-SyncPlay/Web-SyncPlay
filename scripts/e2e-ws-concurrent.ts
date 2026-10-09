@@ -388,13 +388,13 @@ async function main() {
       sessionKind: "control",
       controlToken: "definitely-invalid-token",
     })
-    // Migration window: invalid token still falls back to identity secret match
+    // Invalid/missing control token must not authorize mutations
     await controlBad.connect()
     await controlBad.waitFor((c) => c.capabilities)
     record(
-      "control join with bad token still migrates via identity secret",
-      controlBad.capabilities.controlAuthorized === true,
-      "legacy secret fallback active as designed",
+      "control join with bad token is unauthorized",
+      controlBad.capabilities.controlAuthorized === false,
+      "token required for control mutations",
     )
 
     // Playlist add + resolve
