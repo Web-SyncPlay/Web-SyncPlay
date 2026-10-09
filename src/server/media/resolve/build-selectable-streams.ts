@@ -38,13 +38,21 @@ function isCombinedStream(stream: {
   if (isAdaptiveProtocol(stream.protocol, stream.type, stream.src)) {
     return true
   }
-  const hasVideo = !isNoneCodec(stream.vcodec)
-  const hasAudio = !isNoneCodec(stream.acodec)
-  // Unknown codecs: treat as combined (safer for progressive defaults)
-  if (!stream.vcodec && !stream.acodec) {
-    return true
+  // Reject only when audio is explicitly absent (true video-only). yt-dlp often
+  // omits acodec on muxed progressive MP4s (e.g. ARD) — those stay playable.
+  if (stream.acodec !== undefined && isNoneCodec(stream.acodec)) {
+    return false
   }
-  return hasVideo && hasAudio
+  return true
+}
+
+function isAudioDescriptionStream(stream: {
+  src: string
+  label?: string
+  id?: string
+}): boolean {
+  const haystack = `${stream.id ?? ""} ${stream.label ?? ""} ${stream.src}`
+  return /audio[_\s-]?desc/i.test(haystack)
 }
 
 function nearestLadderHeight(height: number | undefined): number | null {
@@ -59,6 +67,25 @@ function nearestLadderHeight(height: number | undefined): number | null {
     }
   }
   return best
+}
+
+/** Prefer a true HLS/DASH master over per-rendition variant playlists. */
+function adaptivePreferenceScore(
+  stream: {
+    src: string
+    isDefault?: boolean
+    height?: number
+    label?: string
+  },
+  playableUrl: string | null,
+): number {
+  let score = 0
+  if (playableUrl && stream.src === playableUrl) score += 100
+  if (stream.isDefault) score += 50
+  // Masters usually omit a fixed height; variants are ladder rungs.
+  if (!stream.height) score += 30
+  if ((stream.label ?? "").trim().toLowerCase() === "auto") score += 20
+  return score
 }
 
 function toPlaylistStream(
@@ -98,10 +125,25 @@ export function buildSelectableStreams(input: {
   defaultTextTrackId?: string
   playableUrl: string
 } {
-  const adaptive: PlaylistMediaStream[] = []
+  // At most one adaptive entry — ABR rungs belong in the player Quality menu.
+  let bestAdaptive: PlaylistMediaStream | null = null
+  let bestAdaptiveScore = Number.NEGATIVE_INFINITY
   const combinedByHeight = new Map<number, PlaylistMediaStream>()
   const combinedOther: PlaylistMediaStream[] = []
+  let bestAudioDescription: PlaylistMediaStream | null = null
   const seenSrc = new Set<string>()
+
+  const preferLadderCandidate = (
+    existing: PlaylistMediaStream | undefined,
+    next: PlaylistMediaStream,
+  ): boolean => {
+    if (!existing) return true
+    const existingAd = isAudioDescriptionStream(existing)
+    const nextAd = isAudioDescriptionStream(next)
+    // Prefer normal audio over audio-description for the height ladder.
+    if (existingAd !== nextAd) return existingAd && !nextAd
+    return (next.height ?? 0) > (existing.height ?? 0)
+  }
 
   const consider = (stream: YtDlpStream) => {
     if (!stream.src || seenSrc.has(stream.src)) return
@@ -110,16 +152,20 @@ export function buildSelectableStreams(input: {
     seenSrc.add(stream.src)
 
     if (isAdaptiveProtocol(stream.protocol, stream.type, stream.src)) {
-      adaptive.push(
-        toPlaylistStream(
-          {
-            ...stream,
-            id: stream.id || "auto",
-            label: stream.label || "Auto",
-          },
-          "adaptive",
-        ),
+      const candidate = toPlaylistStream(
+        {
+          ...stream,
+          id: stream.id || "auto",
+          // Always present as Auto; height/bitrate ladders live in ABR Quality.
+          label: "Auto",
+        },
+        "adaptive",
       )
+      const score = adaptivePreferenceScore(candidate, input.playableUrl)
+      if (score > bestAdaptiveScore) {
+        bestAdaptive = candidate
+        bestAdaptiveScore = score
+      }
       return
     }
 
@@ -133,9 +179,26 @@ export function buildSelectableStreams(input: {
       },
       "combined",
     )
+
+    if (isAudioDescriptionStream(stream)) {
+      const adLabeled: PlaylistMediaStream = {
+        ...labeled,
+        id: labeled.id || "audio-description",
+        label: "Audio Description",
+      }
+      if (
+        !bestAudioDescription ||
+        (adLabeled.height ?? 0) > (bestAudioDescription.height ?? 0)
+      ) {
+        bestAudioDescription = adLabeled
+      }
+      // AD progressives are offered as a dedicated Source entry, not the height ladder.
+      return
+    }
+
     if (ladder !== null) {
       const existing = combinedByHeight.get(ladder)
-      if (!existing || (stream.height ?? 0) > (existing.height ?? 0)) {
+      if (preferLadderCandidate(existing, labeled)) {
         combinedByHeight.set(ladder, {
           ...labeled,
           label: labeled.label || `${ladder}p`,
@@ -172,10 +235,12 @@ export function buildSelectableStreams(input: {
     .sort(([a], [b]) => a - b)
     .map(([, stream]) => stream)
 
-  let mediaStreams = [...adaptive, ...ladderStreams, ...combinedOther].slice(
-    0,
-    MEDIA_STREAM_CATALOG_LIMIT,
-  )
+  let mediaStreams = [
+    ...(bestAdaptive ? [bestAdaptive] : []),
+    ...(bestAudioDescription ? [bestAudioDescription] : []),
+    ...ladderStreams,
+    ...combinedOther,
+  ].slice(0, MEDIA_STREAM_CATALOG_LIMIT)
 
   if (mediaStreams.length === 0 && input.playableUrl) {
     mediaStreams = [

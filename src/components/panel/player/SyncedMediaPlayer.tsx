@@ -32,6 +32,7 @@ import type { PlayerSrcInput } from "./player-src"
 import type { PendingSyncState } from "./hooks/use-buffering-watchdog"
 import { useSyncedMediaPlayerHandlers } from "./hooks/use-synced-media-player-handlers"
 import type { LocalSeekPhase } from "./playback-control/use-playback-timeline-controller"
+import { buildPlayerSettingsSlots } from "./player-settings-slots"
 
 export function SyncedMediaPlayer(props: {
   playerRef: RefObject<MediaPlayerInstance | null>
@@ -56,6 +57,9 @@ export function SyncedMediaPlayer(props: {
   handleVolumeChange: (detail: { volume: number; muted: boolean }) => void
   previousButtonSlot: ReactNode
   nextButtonSlot: ReactNode
+  audioDelayMs: number
+  onAudioDelayChange: (delayMs: number) => void
+  onSelectStreamId: (streamId: string) => void
   playbackRef: RefObject<RoomState["playback"]>
   isMediaReadyRef: RefObject<boolean>
   bufferingSinceRef: RefObject<number | null>
@@ -109,6 +113,9 @@ export function SyncedMediaPlayer(props: {
     handleVolumeChange,
     previousButtonSlot,
     nextButtonSlot,
+    audioDelayMs,
+    onAudioDelayChange,
+    onSelectStreamId,
     playbackRef,
     isMediaReadyRef,
     bufferingSinceRef,
@@ -138,6 +145,17 @@ export function SyncedMediaPlayer(props: {
 
   const playerStreamType = resolvePlayerStreamType(current)
   const playerDurationSec = resolvePlayerDurationSec(current)
+  const layoutSlots = buildPlayerSettingsSlots({
+    previousButtonSlot,
+    nextButtonSlot,
+    streams: current?.mediaStreams ?? [],
+    selectedStreamId:
+      activeStream?.id ?? current?.defaultStreamId ?? "",
+    onSelectStreamId,
+    audioDelayMs,
+    onAudioDelayChange,
+    canControlPlayback,
+  })
 
   // Same-origin UMD builds (scripts/vendor-player-libs.ts) — never jsDelivr.
   const onProviderChange = (provider: MediaProviderAdapter | null) => {
@@ -252,20 +270,12 @@ export function SyncedMediaPlayer(props: {
       <DefaultAudioLayout
         icons={defaultLayoutIcons}
         {...(!canControlPlayback ? { playbackRates: [] as number[] } : {})}
-        slots={{
-          beforePlayButton: previousButtonSlot,
-          afterPlayButton: nextButtonSlot,
-          ...(!canControlPlayback ? { playbackMenuLoop: null } : {}),
-        }}
+        slots={layoutSlots}
       />
       <DefaultVideoLayout
         icons={defaultLayoutIcons}
         {...(!canControlPlayback ? { playbackRates: [] as number[] } : {})}
-        slots={{
-          beforePlayButton: previousButtonSlot,
-          afterPlayButton: nextButtonSlot,
-          ...(!canControlPlayback ? { playbackMenuLoop: null } : {}),
-        }}
+        slots={layoutSlots}
       />
     </MediaPlayer>
   )

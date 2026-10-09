@@ -28,11 +28,11 @@ import { usePlaybackTimelineController } from "./playback-control/use-playback-t
 import { formatMediaErrorDetail } from "./player-src"
 import { PlayerEmptyState } from "./PlayerEmptyState"
 import { PlayerErrorRecoveryOverlay } from "./PlayerErrorRecoveryOverlay"
-import { PlayerMediaPreferencesBar } from "./PlayerMediaPreferencesBar"
 import { PlayerPanelGlobalStyles } from "./PlayerPanelGlobalStyles"
 import { RemoteSeekOverlay } from "./RemoteSeekOverlay"
 import { SyncedMediaPlayer } from "./SyncedMediaPlayer"
 import { TapToUnmuteButton } from "./TapToUnmuteButton"
+import { usePlayerCaptionPreferences } from "./hooks/use-player-caption-preferences"
 
 export function PlayerPanel({
   roomState,
@@ -129,20 +129,23 @@ export function PlayerPanel({
   } = usePlayerMediaSource({ current, viewerPrefs, userId })
 
   const localTracksAttachKey = `${current?.id ?? "none"}:${activeStream?.id ?? "auto"}:${playerRemountNonce}`
-  const {
-    audioTracks,
-    videoQualities,
-    selectAudioTrack,
-    selectVideoQuality,
-  } = usePlayerLocalTracks({
+  usePlayerLocalTracks({
     playerRef,
     itemId: current?.id,
     syncKey: localTracksAttachKey,
     enabled: Boolean(activePlaybackSrc),
   })
-  const { delayMs, setDelayMs, nudgeDelayMs } = usePlayerAudioDelay({
+  const { delayMs, setDelayMs } = usePlayerAudioDelay({
     playerRef,
     attachKey: localTracksAttachKey,
+    enabled: Boolean(activePlaybackSrc),
+  })
+  usePlayerCaptionPreferences({
+    playerRef,
+    current,
+    viewerPrefs,
+    send,
+    syncKey: localTracksAttachKey,
     enabled: Boolean(activePlaybackSrc),
   })
 
@@ -223,30 +226,12 @@ export function PlayerPanel({
     >
       {!canControlPlayback && (
         <div className="guest-view-hint pointer-events-none absolute left-3 top-3 z-20 rounded-md bg-black/70 px-2 py-1 text-xs text-white/90">
-          Guest view — local tracks, captions, quality & audio delay
+          Guest view — use player settings for tracks, captions, quality &
+          audio delay
         </div>
       )}
       {isMuted && Boolean(activePlaybackSrc) && (
         <TapToUnmuteButton playerRef={playerRef} unmute={unmute} />
-      )}
-      {current && (
-        <PlayerMediaPreferencesBar
-          current={current}
-          activeStream={activeStream}
-          viewerPrefs={viewerPrefs}
-          send={send}
-          onStreamChange={() =>
-            setPlayerRemountNonce((value) => value + 1)
-          }
-          audioTracks={audioTracks}
-          videoQualities={videoQualities}
-          onSelectAudioTrack={selectAudioTrack}
-          onSelectVideoQuality={selectVideoQuality}
-          audioDelayMs={delayMs}
-          onAudioDelayChange={setDelayMs}
-          onAudioDelayNudge={nudgeDelayMs}
-          showAudioDelay={Boolean(activePlaybackSrc)}
-        />
       )}
       {activePlaybackSrc ? (
         <SyncedMediaPlayer
@@ -272,6 +257,18 @@ export function PlayerPanel({
           handleVolumeChange={handleVolumeChange}
           previousButtonSlot={previousButtonSlot}
           nextButtonSlot={nextButtonSlot}
+          audioDelayMs={delayMs}
+          onAudioDelayChange={setDelayMs}
+          onSelectStreamId={(streamId) => {
+            if (!current) {
+              return
+            }
+            send("viewer:media:preferences", {
+              itemId: current.id,
+              streamId,
+            })
+            setPlayerRemountNonce((value) => value + 1)
+          }}
           playbackRef={playbackRef}
           isMediaReadyRef={isMediaReadyRef}
           bufferingSinceRef={bufferingSinceRef}

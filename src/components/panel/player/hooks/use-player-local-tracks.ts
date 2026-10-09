@@ -57,9 +57,46 @@ function restoreVideoQuality(player: MediaPlayerInstance, itemId?: string) {
   }
 }
 
+function persistSelectedAudioTrack(
+  player: MediaPlayerInstance,
+  itemId?: string,
+) {
+  const tracks = [...player.audioTracks]
+  const index = tracks.findIndex((track) => track.selected)
+  if (index < 0) {
+    return
+  }
+  const track = tracks[index]!
+  writeStoredValue(
+    trackStorageKey(itemId, "audio"),
+    audioTrackStorageValue(track, index),
+  )
+}
+
+function persistSelectedVideoQuality(
+  player: MediaPlayerInstance,
+  itemId?: string,
+) {
+  if (player.qualities.auto) {
+    writeStoredValue(trackStorageKey(itemId, "video"), "auto")
+    return
+  }
+  const qualities = [...player.qualities]
+  const index = qualities.findIndex((quality) => quality.selected)
+  if (index < 0) {
+    return
+  }
+  const quality = qualities[index]!
+  writeStoredValue(
+    trackStorageKey(itemId, "video"),
+    videoQualityStorageValue(quality, false),
+  )
+}
+
 /**
  * Local-only audio track + in-manifest video quality selection.
  * Preferences stay in this browser tab/device (localStorage), never room sync.
+ * Restores on catalog changes; persists whenever Vidstack (or callers) change selection.
  */
 export function usePlayerLocalTracks(options: {
   playerRef: RefObject<MediaPlayerInstance | null>
@@ -109,15 +146,24 @@ export function usePlayerLocalTracks(options: {
       publish()
     }
 
+    const persistFromPlayer = () => {
+      if (cancelled || !player) {
+        return
+      }
+      persistSelectedAudioTrack(player, itemId)
+      persistSelectedVideoQuality(player, itemId)
+      publish()
+    }
+
     const bind = (instance: MediaPlayerInstance) => {
       player = instance
       instance.audioTracks.addEventListener("add", restoreFromStorage)
       instance.audioTracks.addEventListener("remove", publish)
-      instance.audioTracks.addEventListener("change", publish)
+      instance.audioTracks.addEventListener("change", persistFromPlayer)
       instance.qualities.addEventListener("add", restoreFromStorage)
       instance.qualities.addEventListener("remove", publish)
-      instance.qualities.addEventListener("change", publish)
-      instance.qualities.addEventListener("auto-change", publish)
+      instance.qualities.addEventListener("change", persistFromPlayer)
+      instance.qualities.addEventListener("auto-change", persistFromPlayer)
       // Tracks often appear after canplay; restore once now and on later `add`.
       syncTimer = setTimeout(restoreFromStorage, 0)
     }
@@ -128,11 +174,11 @@ export function usePlayerLocalTracks(options: {
       }
       player.audioTracks.removeEventListener("add", restoreFromStorage)
       player.audioTracks.removeEventListener("remove", publish)
-      player.audioTracks.removeEventListener("change", publish)
+      player.audioTracks.removeEventListener("change", persistFromPlayer)
       player.qualities.removeEventListener("add", restoreFromStorage)
       player.qualities.removeEventListener("remove", publish)
-      player.qualities.removeEventListener("change", publish)
-      player.qualities.removeEventListener("auto-change", publish)
+      player.qualities.removeEventListener("change", persistFromPlayer)
+      player.qualities.removeEventListener("auto-change", persistFromPlayer)
       player = null
     }
 
@@ -165,49 +211,8 @@ export function usePlayerLocalTracks(options: {
     }
   }, [enabled, itemId, playerRef, syncKey])
 
-  const selectAudioTrack = (index: number) => {
-    const player = playerRef.current
-    if (!player) {
-      return
-    }
-    const track = player.audioTracks[index]
-    if (!track) {
-      return
-    }
-    // Persist before selecting so a synchronous `change` → publish path cannot
-    // restore a stale preference over the user's choice.
-    writeStoredValue(
-      trackStorageKey(itemId, "audio"),
-      audioTrackStorageValue(track, index),
-    )
-    track.selected = true
-  }
-
-  const selectVideoQuality = (index: number) => {
-    const player = playerRef.current
-    if (!player) {
-      return
-    }
-    if (index < 0) {
-      writeStoredValue(trackStorageKey(itemId, "video"), "auto")
-      player.qualities.autoSelect()
-      return
-    }
-    const quality = player.qualities[index]
-    if (!quality) {
-      return
-    }
-    writeStoredValue(
-      trackStorageKey(itemId, "video"),
-      videoQualityStorageValue(quality, false),
-    )
-    quality.selected = true
-  }
-
   return {
     audioTracks: enabled ? audioTracks : [],
     videoQualities: enabled ? videoQualities : [],
-    selectAudioTrack,
-    selectVideoQuality,
   }
 }
