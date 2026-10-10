@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import {
   applyResolvedMediaToItem,
 } from "@/server/realtime/services/playlist-resolve"
-import type { ResolvedMedia } from "@/server/media/resolve"
+import type { ResolvedMedia } from "@/server/media/media-resolve-port"
 import { createPlaylistItem } from "@/server/realtime/test-utils/fixtures"
 
 function sampleResolved(

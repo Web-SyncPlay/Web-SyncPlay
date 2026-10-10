@@ -83,6 +83,10 @@ function clearRuntimeMaps(runtime: Runtime) {
 /**
  * Boot mediasoup Worker + single-port WebRtcServer in this process.
  * Always attempted; returns null if the native worker cannot start (e.g. Bun).
+ *
+ * Locality: multi-replica SFU is unsupported (no clustering). Sticky `/api/ws`
+ * and UDP {@link MEDIASOUP_RTC_UDP_PORT} must hit this same process; routers /
+ * transports / producers are in-memory only.
  */
 export async function ensureMediasoupRuntime(): Promise<Runtime | null> {
   if (g.__webSyncPlayMediasoup) return g.__webSyncPlayMediasoup

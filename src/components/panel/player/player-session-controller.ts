@@ -5,10 +5,10 @@ import type {
 } from "@vidstack/react"
 import type { MutableRefObject, ReactNode, RefObject } from "react"
 import type {
+  ClientRoomState,
   LoopMode,
   PlaylistItem,
   PlaylistMediaStream,
-  RoomState,
   ViewerMediaItemPreference,
 } from "@/contracts/types"
 import type { PlayerSrcInput } from "./player-src"
@@ -56,7 +56,7 @@ export type PlayerSessionActions = {
  */
 export type PlayerSessionController = {
   playerRef: RefObject<MediaPlayerInstance | null>
-  playbackRef: RefObject<RoomState["playback"]>
+  playbackRef: RefObject<ClientRoomState["playback"]>
   playlistNavRef: RefObject<PlaylistNavSnapshot>
   isMediaReadyRef: RefObject<boolean>
   bufferingSinceRef: RefObject<number | null>
@@ -143,7 +143,7 @@ export function createPlayerSessionActionsRef(): MutableRefObject<PlayerSessionA
 export function createPlayerSessionController(
   refs: {
     playerRef: RefObject<MediaPlayerInstance | null>
-    playbackRef: RefObject<RoomState["playback"]>
+    playbackRef: RefObject<ClientRoomState["playback"]>
     playlistNavRef: RefObject<PlaylistNavSnapshot>
     isMediaReadyRef: RefObject<boolean>
     bufferingSinceRef: RefObject<number | null>

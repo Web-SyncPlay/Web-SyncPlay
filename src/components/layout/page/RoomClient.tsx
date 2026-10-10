@@ -8,15 +8,10 @@ import { UsersPanel } from "@/components/panel/user/UsersPanel"
 import { useRoomRail } from "@/hooks/use-room-rail"
 import { useRoomSession } from "@/hooks/use-room-session"
 import { getRoomUrl } from "@/client/realtime/control-url"
-import {
-  canControlPlayback,
-  canMutateFromClientSession,
-} from "@/shared/permissions-utils"
-import { resolveCurrentPlaylistItem } from "@/shared/playlist-current"
 import { cn } from "@/components/lib/utils"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import type { RoomPanelProps } from "./types"
+import { useRoomPanelModel } from "./use-room-panel-model"
 
 export function RoomClient({
   roomId,
@@ -25,90 +20,45 @@ export function RoomClient({
   roomId: string
   initialMediaUrl?: string
 }) {
-  const router = useRouter()
   const [seedMediaUrl] = useState(initialMediaUrl)
-  const {
-    roomState,
-    sessionCapabilities,
-    send,
-    userId,
-    userSecret,
-    status,
-    joinError,
-    submitJoinPassword,
-    copied,
-    shareUrl,
-    handleCopyShareUrl,
-    playerEmbedUrl,
-    controlEmbedUrl,
-  } = useRoomSession(roomId, {
+  const session = useRoomSession(roomId, {
     sessionKind: "room",
     initialMediaUrl: seedMediaUrl,
   })
+  const model = useRoomPanelModel({
+    roomId,
+    session,
+    seedMediaUrl,
+  })
 
-  useEffect(() => {
-    if (!roomState || !seedMediaUrl) return
-    if (typeof window === "undefined") return
-    const url = new URL(window.location.href)
-    if (!url.searchParams.has("media")) return
-    url.searchParams.delete("media")
-    const next = `${url.pathname}${url.search}${url.hash}`
-    router.replace(next)
-  }, [roomState, seedMediaUrl, router])
-
-  if (!roomState) {
+  if (!model.ready) {
     return (
       <RoomConnectingView
         roomId={roomId}
-        status={status}
-        joinError={joinError}
-        onSubmitJoinPassword={submitJoinPassword}
+        status={model.status}
+        joinError={model.joinError}
+        onSubmitJoinPassword={model.submitJoinPassword}
         mediaUrl={seedMediaUrl}
       />
     )
   }
 
-  const myRole = roomState.participants[userId]?.role
-  const canControlByRole = canControlPlayback(myRole)
-  const canMutateFromThisSession = canMutateFromClientSession({
-    role: myRole,
-    isControlSession: sessionCapabilities.isControlSession,
-    controlAuthorized: sessionCapabilities.controlAuthorized,
-    sessionKind: sessionCapabilities.sessionKind,
-  })
-  const panelProps: RoomPanelProps = {
-    roomId,
-    roomState,
-    send,
-    userId,
-    userSecret,
-    capabilities: {
-      ...sessionCapabilities,
-      canControlPlayback: canMutateFromThisSession,
-      canManagePlaylist: canMutateFromThisSession,
-    },
-  }
-  const current = resolveCurrentPlaylistItem(roomState)
-
   return (
     <RoomClientReady
       roomId={roomId}
-      panelProps={panelProps}
-      currentName={current?.name}
-      paused={roomState.playback.paused}
-      canControlByRole={canControlByRole}
+      panelProps={model.panelProps}
+      currentName={model.current?.name}
+      paused={model.roomState.playback.paused}
+      canControlByRole={model.canControlByRole}
       roomUrl={getRoomUrl(roomId)}
-      playerEmbedUrl={playerEmbedUrl}
-      controlEmbedUrl={controlEmbedUrl}
-      shareUrl={shareUrl}
-      copied={copied}
-      handleCopyShareUrl={handleCopyShareUrl}
-      roomSecurity={roomState.roomSecurity}
-      canManageRoomSecurity={
-        roomState.ownerId === userId &&
-        sessionCapabilities.canManageRoomSecurity
-      }
-      send={send}
+      playerEmbedUrl={session.playerEmbedUrl}
+      controlEmbedUrl={session.controlEmbedUrl}
+      shareUrl={session.shareUrl}
+      copied={session.copied}
+      handleCopyShareUrl={session.handleCopyShareUrl}
+      roomSecurity={model.roomState.roomSecurity}
+      canManageRoomSecurity={model.canManageRoomSecurity}
+      send={model.send}
     />
   )
 }

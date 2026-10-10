@@ -1,4 +1,4 @@
-import type { RoomState } from "@/contracts/types"
+import type { ClientRoomState } from "@/contracts/types"
 import { getAbrVariantMeta } from "@/client/local-media/local-media-abr"
 
 /** Extract local media UUID from `/api/media/local/{id}` (optional /hls suffix ignored). */
@@ -14,7 +14,7 @@ export function localMediaIdFromSrc(src: string | undefined): string | null {
 }
 
 export function findLocalPlaylistItemForMediaId(
-  roomState: RoomState | null | undefined,
+  roomState: ClientRoomState | null | undefined,
   localMediaId: string,
 ) {
   if (!roomState) return null
@@ -35,7 +35,7 @@ export function findLocalPlaylistItemForMediaId(
 }
 
 export function resolveLocalMediaProviderUserId(
-  roomState: RoomState | null | undefined,
+  roomState: ClientRoomState | null | undefined,
   localMediaId: string,
 ): string | null {
   const item = findLocalPlaylistItemForMediaId(roomState, localMediaId)
@@ -43,7 +43,7 @@ export function resolveLocalMediaProviderUserId(
 }
 
 export function resolveLocalMediaMeta(
-  roomState: RoomState | null | undefined,
+  roomState: ClientRoomState | null | undefined,
   localMediaId: string,
 ): { mimeType: string; sizeBytes: number } | null {
   const remembered = getAbrVariantMeta(localMediaId)

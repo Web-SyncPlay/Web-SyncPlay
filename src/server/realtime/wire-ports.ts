@@ -1,8 +1,10 @@
 import { createLocalMediaSfuPort } from "@/server/media/local-media-sfu-port"
+import { createMediaResolvePort } from "@/server/media/media-resolve-port"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
   setLocalMediaSfuPort,
   setMediaMaintenancePort,
+  setMediaResolvePort,
   setRoomPublishPort,
 } from "@/server/ports"
 import { cleanupInactiveRooms } from "@/server/realtime/services/cleanup"
@@ -21,4 +23,5 @@ export function wireRealtimePorts() {
     processDuePrunes,
   })
   setLocalMediaSfuPort(createLocalMediaSfuPort())
+  setMediaResolvePort(createMediaResolvePort())
 }

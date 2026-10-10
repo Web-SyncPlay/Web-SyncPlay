@@ -1,6 +1,5 @@
 "use client"
 
-import type { SfuSendRequest } from "@/client/local-media/local-media-sfu"
 import { createLocalMediaRuntime } from "@/client/local-media/local-media-runtime"
 import type {
   ClientRoomState,
@@ -15,19 +14,37 @@ import { createLocalMediaReadHandler } from "./room-socket-local-media-read"
 import { createSendEnvelope } from "./room-socket-local-media-send"
 import { createLocalMediaSfuSession } from "./room-socket-local-media-sfu"
 
+/**
+ * Local-media socket lifecycle facade.
+ *
+ * Collapses `room-socket-local-media-*` behind three phases. Wire protocol
+ * (envelope types / payloads) is unchanged — this is structure only.
+ *
+ * | Phase     | Public entry                         | Internals |
+ * |-----------|--------------------------------------|-----------|
+ * | **boot**  | construct + {@link RoomSocketLocalMediaSession.bootstrapAfterFirstSnapshot} | send, SFU session, runtime, bootstrap (caps / SW / restore / ABR / P2P invite) |
+ * | **active**| {@link RoomSocketLocalMediaSession.handleEnvelope}, {@link RoomSocketLocalMediaSession.provideViaSfu} | handlers, read, P2P signal, SFU producer announce |
+ * | **teardown** | {@link RoomSocketLocalMediaSession.onSocketClose} | abort boot, detach SW, flush SFU, close runtime |
+ *
+ * Reconnect / dispose stay in {@link createRoomSocketConnection}; this facade
+ * owns local-media resources for one WebSocket instance only.
+ */
 export type RoomSocketLocalMediaSession = {
-  sendSfuRequest: SfuSendRequest
-  provideViaSfu: (localMediaId: string) => void
-  /** Returns true when the envelope was handled as a local-media message. */
+  /** active: consume local-media / SFU / P2P envelopes; true if handled. */
   handleEnvelope: (envelope: WsEnvelope<string, unknown>) => boolean
+  /** boot: first-snapshot SFU caps, SW bridge, handle restore, ABR, P2P invite. */
   bootstrapAfterFirstSnapshot: (payload: RoomSnapshotPayload) => void
+  /** active: publish owned local media on the SFU (queues until caps ready). */
+  provideViaSfu: (localMediaId: string) => void
+  /** teardown: abort in-flight boot and release runtime / SFU / SW bridge. */
   onSocketClose: () => void
 }
 
 /**
- * Owns SFU request correlation, local-media wire handlers, the
- * {@link createLocalMediaRuntime} instance, and first-snapshot bootstrap.
- * Keeps reconnect semantics in the caller — this tears down runtime + SFU state.
+ * Construct a local-media lifecycle session for one open WebSocket.
+ * Call {@link RoomSocketLocalMediaSession.bootstrapAfterFirstSnapshot} after the
+ * first room snapshot; call {@link RoomSocketLocalMediaSession.onSocketClose} from
+ * the socket `onclose` path (before reconnect).
  */
 export function createRoomSocketLocalMediaSession(input: {
   ws: WebSocket
@@ -39,6 +56,7 @@ export function createRoomSocketLocalMediaSession(input: {
 }): RoomSocketLocalMediaSession {
   const { ws, roomId, userId, roomStateRef } = input
 
+  // --- boot (construction): wire send / SFU / runtime / handlers ---
   const sendEnvelope = createSendEnvelope(ws)
   const sfu = createLocalMediaSfuSession({ ws, userId })
   const runtime = createLocalMediaRuntime({
@@ -66,6 +84,7 @@ export function createRoomSocketLocalMediaSession(input: {
       runtime,
     })
 
+  // --- active: envelope routing + SFU provide ---
   const handleEnvelope = createLocalMediaEnvelopeHandler({
     sfu,
     handleLocalMediaRead,
@@ -73,12 +92,14 @@ export function createRoomSocketLocalMediaSession(input: {
     handleReannounce: () => handleReannounce(bootstrapAbort?.signal),
   })
 
+  // --- boot (first snapshot): cancel prior boot, then run bootstrap ---
   const bootstrapAfterFirstSnapshot = (payload: RoomSnapshotPayload) => {
     bootstrapAbort?.abort()
     bootstrapAbort = new AbortController()
     runBootstrap(payload, bootstrapAbort.signal)
   }
 
+  // --- teardown ---
   const onSocketClose = () => {
     bootstrapAbort?.abort()
     bootstrapAbort = null
@@ -90,10 +111,9 @@ export function createRoomSocketLocalMediaSession(input: {
   }
 
   return {
-    sendSfuRequest: sfu.sendSfuRequest,
-    provideViaSfu: sfu.provideViaSfu,
     handleEnvelope,
     bootstrapAfterFirstSnapshot,
+    provideViaSfu: sfu.provideViaSfu,
     onSocketClose,
   }
 }

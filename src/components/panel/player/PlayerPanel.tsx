@@ -38,7 +38,6 @@ export function PlayerPanel({
   roomId,
   send,
   userId,
-  userSecret: _userSecret,
   capabilities,
   className,
 }: RoomPanelProps & { className?: string }) {

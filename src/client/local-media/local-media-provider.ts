@@ -8,7 +8,7 @@
 
 import { resolvePlayableMimeType } from "@/shared/media-mime"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
-import type { RoomState } from "@/contracts/types"
+import type { ClientRoomState } from "@/contracts/types"
 
 type LocalMediaRecord = {
   file: File
@@ -86,7 +86,7 @@ export function unregisterLocalMediaFile(localMediaId: string) {
  */
 export function announceLocalMediaProviderReady(
   send: TypedRoomEventSender,
-  roomState: RoomState | null,
+  roomState: ClientRoomState | null,
   userId: string,
 ) {
   const held = new Set(listLocalMediaIds())

@@ -15,7 +15,7 @@ import {
 } from "react"
 import { toast } from "sonner"
 import { useLatestRef } from "@/hooks/use-latest-ref"
-import type { PlaylistItem, RoomState } from "@/contracts/types"
+import type { ClientRoomState, PlaylistItem } from "@/contracts/types"
 import {
   pendingSyncFromPlayback,
   type PendingSyncState,
@@ -40,7 +40,7 @@ export function usePlayerPlaybackSync(config: {
   participantStatusErrorRef: RefObject<string | null>
   pendingSyncRef: RefObject<PendingSyncState | null>
   lastAppliedTimelineAnchorMsRef: RefObject<number | null>
-  playbackRef: RefObject<RoomState["playback"]>
+  playbackRef: RefObject<ClientRoomState["playback"]>
   playbackPausedRef: RefObject<boolean>
   reportedItemErrorRef: RefObject<string | null>
   proxyRenewAttemptedRef: RefObject<string | null>
@@ -49,7 +49,7 @@ export function usePlayerPlaybackSync(config: {
   viewType: "audio" | "video"
   playerSrc: unknown
   /** Playback slice — not the full room (presence stays off this hook). */
-  playback: RoomState["playback"]
+  playback: ClientRoomState["playback"]
   currentIndex: number
   /** Preselected boolean — avoids depending on the participants map. */
   ownerConnected: boolean

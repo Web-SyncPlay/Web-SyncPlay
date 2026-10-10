@@ -1,31 +1,31 @@
 import { resolveCurrentPlaylistItem } from "@/shared/playlist-current"
 import type {
+  ClientRoomState,
   PlaybackState,
   PlaylistItem,
   RoomRole,
-  RoomState,
   ViewerMediaItemPreference,
 } from "@/contracts/types"
 
 /** Playback slice — referentially stable across presence-only merges. */
-export function selectPlayback(roomState: RoomState): PlaybackState {
+export function selectPlayback(roomState: ClientRoomState): PlaybackState {
   return roomState.playback
 }
 
 export function selectCurrentItem(
-  roomState: Pick<RoomState, "playlist" | "currentIndex" | "playback">,
+  roomState: Pick<ClientRoomState, "playlist" | "currentIndex" | "playback">,
 ): PlaylistItem | undefined {
   return resolveCurrentPlaylistItem(roomState)
 }
 
 export function selectSeekPreview(
-  roomState: RoomState,
+  roomState: ClientRoomState,
 ): PlaybackState["seekPreview"] {
   return roomState.playback.seekPreview
 }
 
 export function selectParticipantRole(
-  roomState: RoomState,
+  roomState: ClientRoomState,
   userId: string,
 ): RoomRole {
   return roomState.participants[userId]?.role ?? "guest"
@@ -36,7 +36,7 @@ export function selectParticipantRole(
  * not invalidate owner-offline effects.
  */
 export function selectOwnerConnected(
-  roomState: RoomState,
+  roomState: ClientRoomState,
   current: PlaylistItem | undefined,
 ): boolean {
   if (!current || current.sourceKind !== "local_file") {
@@ -51,7 +51,7 @@ export function selectOwnerConnected(
 
 /** Display name for the active remote seeker; defaults when unknown. */
 export function selectRemoteSeekerName(
-  roomState: RoomState,
+  roomState: ClientRoomState,
   seekPreview: PlaybackState["seekPreview"],
 ): string {
   const seekerId = seekPreview?.userId
@@ -62,7 +62,7 @@ export function selectRemoteSeekerName(
 }
 
 export function selectViewerItemPrefs(
-  roomState: RoomState,
+  roomState: ClientRoomState,
   userId: string,
   itemId: string | undefined,
 ): ViewerMediaItemPreference | undefined {
@@ -90,7 +90,7 @@ export type PlayerShellSlice = {
 }
 
 export function selectPlayerShellSlice(
-  roomState: RoomState,
+  roomState: ClientRoomState,
   userId: string,
 ): PlayerShellSlice {
   const currentItem = selectCurrentItem(roomState)

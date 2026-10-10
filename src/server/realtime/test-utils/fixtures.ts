@@ -28,8 +28,9 @@ export class InMemoryRoomStateStore implements RoomStateStorePort {
    */
   presence = new Map<string, Map<string, PresenceNodeCounts>>()
   /**
-   * Nodes treated as alive for {@link getWsPresenceUserIds}.
-   * Defaults to this process; tests can inject remote/dead nodes.
+   * Nodes treated as alive for {@link readWsPresenceUserIds} /
+   * {@link getWsPresenceUserIds}. Defaults to this process; tests can inject
+   * remote/dead nodes.
    */
   aliveNodeIds = new Set<string>([getAppNodeId()])
   /** When false, mirrors fail-closed alive-list fetch (no dead-node filtering). */
@@ -154,7 +155,7 @@ export class InMemoryRoomStateStore implements RoomStateStorePort {
     // Presence TTL is a no-op for the in-memory test store.
   }
 
-  async getWsPresenceUserIds(roomId: string) {
+  async readWsPresenceUserIds(roomId: string) {
     const refs = this.presence.get(roomId)
     const online = new Set<string>()
     if (!refs) return online
@@ -173,6 +174,40 @@ export class InMemoryRoomStateStore implements RoomStateStorePort {
       }
     }
     return online
+  }
+
+  async reconcilePresenceRefs(roomId: string) {
+    if (!this.aliveListReliable) return
+    const refs = this.presence.get(roomId)
+    if (!refs) return
+
+    const alive = new Set(this.aliveNodeIds)
+    alive.add(getAppNodeId())
+
+    for (const [uid, counts] of [...refs.entries()]) {
+      if (Object.keys(counts).length === 0) {
+        refs.delete(uid)
+        continue
+      }
+      const liveOnly: PresenceNodeCounts = {}
+      for (const [nodeId, n] of Object.entries(counts)) {
+        if (n > 0 && alive.has(nodeId)) liveOnly[nodeId] = n
+      }
+      if (Object.keys(liveOnly).length === 0) {
+        refs.delete(uid)
+      } else if (
+        Object.keys(liveOnly).length !== Object.keys(counts).length ||
+        Object.keys(liveOnly).some((id) => liveOnly[id] !== counts[id])
+      ) {
+        refs.set(uid, liveOnly)
+      }
+    }
+  }
+
+  /** Compatibility: reconcile then return the online set. */
+  async getWsPresenceUserIds(roomId: string) {
+    await this.reconcilePresenceRefs(roomId)
+    return this.readWsPresenceUserIds(roomId)
   }
 
   async seedDailyDefaultsIfEmpty() {

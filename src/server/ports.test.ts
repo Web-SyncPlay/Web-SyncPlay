@@ -2,11 +2,14 @@ import { describe, expect, test } from "bun:test"
 import {
   getLocalMediaSfuPort,
   getMediaMaintenancePort,
+  getMediaResolvePort,
   getRoomPublishPort,
   setLocalMediaSfuPort,
   setMediaMaintenancePort,
+  setMediaResolvePort,
   setRoomPublishPort,
   type MediaMaintenancePort,
+  type MediaResolvePort,
   type RoomPublishPort,
   type RoomStateStorePort,
 } from "@/server/ports"
@@ -36,11 +39,18 @@ describe("RoomStateStorePort interface", () => {
     expect((await store.get("room-1"))?.currentIndex).toBe(2)
 
     await store.addWsConnectionRef("room-1", "extra")
+    expect((await store.readWsPresenceUserIds("room-1")).has("extra")).toBe(
+      true,
+    )
     expect((await store.getWsPresenceUserIds("room-1")).has("extra")).toBe(true)
     await store.removeWsConnectionRef("room-1", "extra")
+    expect((await store.readWsPresenceUserIds("room-1")).has("extra")).toBe(
+      false,
+    )
     expect((await store.getWsPresenceUserIds("room-1")).has("extra")).toBe(
       false,
     )
+    await store.reconcilePresenceRefs("room-1")
 
     await store.setDailyDefaults([
       { title: "t", url: "https://example.com/t" },
@@ -100,11 +110,12 @@ describe("RoomStateStorePort interface", () => {
   })
 })
 
-describe("RoomPublishPort / MediaMaintenancePort wiring", () => {
+describe("RoomPublishPort / MediaMaintenancePort / MediaResolvePort wiring", () => {
   test("setters round-trip on globalThis slot", () => {
     const prevPublish = getRoomPublishPort()
     const prevMaintenance = getMediaMaintenancePort()
     const prevSfu = getLocalMediaSfuPort()
+    const prevResolve = getMediaResolvePort()
 
     const publish: RoomPublishPort = {
       attachStore() {},
@@ -123,11 +134,30 @@ describe("RoomPublishPort / MediaMaintenancePort wiring", () => {
         return 0
       },
     }
+    const resolve: MediaResolvePort = {
+      async resolveMediaSource() {
+        return {
+          playableUrl: "https://example.com/a",
+          sourceUrl: "https://example.com/a",
+          title: "a",
+          durationSeconds: null,
+          playbackMode: "direct",
+          mediaStreams: [],
+          textTracks: [],
+        }
+      },
+      async beginResolveLease() {
+        return null
+      },
+      async invalidateYtDlpExtractCache() {},
+    }
 
     setRoomPublishPort(publish)
     setMediaMaintenancePort(maintenance)
+    setMediaResolvePort(resolve)
     expect(getRoomPublishPort()).toBe(publish)
     expect(getMediaMaintenancePort()).toBe(maintenance)
+    expect(getMediaResolvePort()).toBe(resolve)
     expect(typeof getLocalMediaSfuPort().assertProviderNodeAffinity).toBe(
       "function",
     )
@@ -135,5 +165,6 @@ describe("RoomPublishPort / MediaMaintenancePort wiring", () => {
     setRoomPublishPort(prevPublish)
     setMediaMaintenancePort(prevMaintenance)
     setLocalMediaSfuPort(prevSfu)
+    setMediaResolvePort(prevResolve)
   })
 })

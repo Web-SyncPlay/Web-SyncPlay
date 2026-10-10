@@ -108,9 +108,19 @@ function pruneStaleTokenBuckets(nowMs: number) {
   }
 }
 
+/** Prepaid local allows after a Redis batch charge (process-local coalesce). */
+type HotWsCoalesceEntry = {
+  remainingLocal: number
+  deniedUntilMs: number
+}
+
+const hotWsCoalesce = new Map<string, HotWsCoalesceEntry>()
+const HOT_WS_COALESCE_DENY_BACKOFF_MS = 100
+
 /** Test-only: clear in-memory token buckets between cases. */
 export function resetTokenBucketsForTests() {
   tokenBuckets.clear()
+  hotWsCoalesce.clear()
 }
 
 /**
@@ -168,6 +178,16 @@ export const HOT_WS_EVENT_LIMITS = {
 
 export type HotWsEventType = keyof typeof HOT_WS_EVENT_LIMITS
 
+/**
+ * High-frequency hot WS types: charge Redis `batch` tokens once, then allow
+ * `batch - 1` more events locally without EVAL. Cluster budget stays accurate;
+ * near-empty buckets fall back to cost=1. Fail-closed on Redis errors.
+ */
+const HOT_WS_COALESCE_BATCH: Partial<Record<HotWsEventType, number>> = {
+  "seek:preview": 4,
+  "local-media:webrtc:signal": 4,
+}
+
 export function isHotWsEventType(type: string): type is HotWsEventType {
   return Object.hasOwn(HOT_WS_EVENT_LIMITS, type)
 }
@@ -182,7 +202,8 @@ export function hotWsEventRateKey(
 
 /**
  * Consume one token for a hot WS event via Valkey; unknown types are always
- * allowed (no Redis round-trip). Fail-closed on Redis errors.
+ * allowed (no Redis round-trip). High-frequency types may coalesce into a
+ * prepaid local batch after one EVAL. Fail-closed on Redis errors.
  */
 export async function consumeHotWsEventLimit(params: {
   type: string
@@ -194,12 +215,60 @@ export async function consumeHotWsEventLimit(params: {
     return { allowed: true, remaining: Number.POSITIVE_INFINITY }
   }
   const limit = HOT_WS_EVENT_LIMITS[params.type]
-  return consumeRedisTokenBucket({
-    key: hotWsEventRateKey(params.type, params.roomId, params.userId),
+  const key = hotWsEventRateKey(params.type, params.roomId, params.userId)
+  const nowMs = params.nowMs ?? Date.now()
+  const batch = HOT_WS_COALESCE_BATCH[params.type] ?? 1
+
+  if (batch <= 1) {
+    return consumeRedisTokenBucket({
+      key,
+      capacity: limit.capacity,
+      refillPerSecond: limit.refillPerSecond,
+      nowMs,
+    })
+  }
+
+  const entry = hotWsCoalesce.get(key)
+  if (entry && entry.deniedUntilMs > nowMs) {
+    return { allowed: false, remaining: 0 }
+  }
+  if (entry && entry.remainingLocal > 0) {
+    entry.remainingLocal -= 1
+    return { allowed: true, remaining: entry.remainingLocal }
+  }
+
+  let result = await consumeRedisTokenBucket({
+    key,
     capacity: limit.capacity,
     refillPerSecond: limit.refillPerSecond,
-    nowMs: params.nowMs,
+    cost: batch,
+    nowMs,
   })
+
+  if (!result.allowed) {
+    result = await consumeRedisTokenBucket({
+      key,
+      capacity: limit.capacity,
+      refillPerSecond: limit.refillPerSecond,
+      cost: 1,
+      nowMs,
+    })
+    if (!result.allowed) {
+      hotWsCoalesce.set(key, {
+        remainingLocal: 0,
+        deniedUntilMs: nowMs + HOT_WS_COALESCE_DENY_BACKOFF_MS,
+      })
+      return result
+    }
+    hotWsCoalesce.set(key, { remainingLocal: 0, deniedUntilMs: 0 })
+    return result
+  }
+
+  hotWsCoalesce.set(key, {
+    remainingLocal: batch - 1,
+    deniedUntilMs: 0,
+  })
+  return { allowed: true, remaining: result.remaining + (batch - 1) }
 }
 
 function normalizeHeaderValue(

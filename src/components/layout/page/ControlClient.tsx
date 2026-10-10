@@ -5,21 +5,20 @@ import { useRoomRail } from "@/hooks/use-room-rail"
 import { useRoomSession } from "@/hooks/use-room-session"
 import { getRoomUrl } from "@/client/realtime/control-url"
 import { isClientControlAuthorized } from "@/shared/permissions-utils"
-import { resolveCurrentPlaylistItem } from "@/shared/playlist-current"
 import { resolveCatalogDurationMs } from "@/shared/playlist-duration"
 import { ControlPanel } from "../../panel/control/ControlPanel"
 import { getPlaybackPermissionsState } from "../../panel/player/playback-control/use-playback-permissions-state"
 import { usePlaybackTimelineController } from "../../panel/player/playback-control/use-playback-timeline-controller"
 import { SidePanel } from "../SidePanel"
 import { SiteNavbar } from "../SiteNavbar"
+import type { RoomPanelProps } from "./types"
+import {
+  useRoomPanelModel,
+  type RoomPanelModelReady,
+} from "./use-room-panel-model"
 
 function ControlClientReady(props: {
-  roomId: string
-  roomState: NonNullable<ReturnType<typeof useRoomSession>["roomState"]>
-  sessionCapabilities: ReturnType<typeof useRoomSession>["sessionCapabilities"]
-  send: ReturnType<typeof useRoomSession>["send"]
-  userId: string
-  userSecret: string
+  model: RoomPanelModelReady
   copied: boolean
   shareUrl: string
   handleCopyShareUrl: () => void
@@ -27,18 +26,23 @@ function ControlClientReady(props: {
   controlEmbedUrl: string
 }) {
   const {
-    roomId,
-    roomState,
-    sessionCapabilities,
-    send,
-    userId,
-    userSecret,
+    model,
     copied,
     shareUrl,
     handleCopyShareUrl,
     playerEmbedUrl,
     controlEmbedUrl,
   } = props
+  const {
+    roomId,
+    roomState,
+    sessionCapabilities,
+    send,
+    userId,
+    current,
+    canManageRoomSecurity,
+    panelProps: basePanelProps,
+  } = model
 
   const { railTab, setRailTab } = useRoomRail()
   const canControlBySession = isClientControlAuthorized(sessionCapabilities)
@@ -60,19 +64,14 @@ function ControlClientReady(props: {
     canControlBySession,
     unauthorizedHint,
   })
-  const current = resolveCurrentPlaylistItem(roomState)
   const timeline = usePlaybackTimelineController({
     roomState,
     send,
     controlsDisabled,
   })
   const totalDurationMs = resolveCatalogDurationMs(current)
-  const panelProps = {
-    roomId,
-    roomState,
-    send,
-    userId,
-    userSecret,
+  const panelProps: RoomPanelProps = {
+    ...basePanelProps,
     capabilities: {
       ...sessionCapabilities,
       canControlPlayback: canControl,
@@ -94,10 +93,7 @@ function ControlClientReady(props: {
         copied={copied}
         onCopyShareUrl={handleCopyShareUrl}
         roomSecurity={roomState.roomSecurity}
-        canManageRoomSecurity={
-          roomState.ownerId === userId &&
-          sessionCapabilities.canManageRoomSecurity
-        }
+        canManageRoomSecurity={canManageRoomSecurity}
         send={send}
         showEmbedsMenu={canControlByRole}
         showRailControls
@@ -146,46 +142,28 @@ function ControlClientReady(props: {
 
 export function ControlClient(props: { roomId: string }) {
   const { roomId } = props
-  const {
-    roomState,
-    sessionCapabilities,
-    send,
-    userId,
-    userSecret,
-    status,
-    joinError,
-    submitJoinPassword,
-    copied,
-    shareUrl,
-    handleCopyShareUrl,
-    playerEmbedUrl,
-    controlEmbedUrl,
-  } = useRoomSession(roomId, { sessionKind: "control" })
+  const session = useRoomSession(roomId, { sessionKind: "control" })
+  const model = useRoomPanelModel({ roomId, session })
 
-  if (!roomState) {
+  if (!model.ready) {
     return (
       <RoomConnectingView
         roomId={roomId}
-        status={status}
-        joinError={joinError}
-        onSubmitJoinPassword={submitJoinPassword}
+        status={model.status}
+        joinError={model.joinError}
+        onSubmitJoinPassword={model.submitJoinPassword}
       />
     )
   }
 
   return (
     <ControlClientReady
-      roomId={roomId}
-      roomState={roomState}
-      sessionCapabilities={sessionCapabilities}
-      send={send}
-      userId={userId}
-      userSecret={userSecret}
-      copied={copied}
-      shareUrl={shareUrl}
-      handleCopyShareUrl={handleCopyShareUrl}
-      playerEmbedUrl={playerEmbedUrl}
-      controlEmbedUrl={controlEmbedUrl}
+      model={model}
+      copied={session.copied}
+      shareUrl={session.shareUrl}
+      handleCopyShareUrl={session.handleCopyShareUrl}
+      playerEmbedUrl={session.playerEmbedUrl}
+      controlEmbedUrl={session.controlEmbedUrl}
     />
   )
 }

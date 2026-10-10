@@ -5,7 +5,6 @@ export interface RoomPanelProps {
   roomState: ClientRoomState
   roomId: string
   userId: string
-  userSecret: string
   send: TypedRoomEventSender
   capabilities: {
     canControlPlayback: boolean

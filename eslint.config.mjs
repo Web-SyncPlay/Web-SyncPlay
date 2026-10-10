@@ -26,6 +26,7 @@ export default defineConfig([
     "next-env.d.ts",
   ]),
   // Client UI / hooks / client packages must not import server internals.
+  // Prefer ClientRoomState (sanitized snapshot) over server RoomState.
   {
     files: ["src/components/**/*.{ts,tsx}", "src/hooks/**/*.{ts,tsx}", "src/client/**/*.{ts,tsx}"],
     ignores: ["**/*.{test,spec}.{ts,tsx}", "**/*.property.test.ts"],
@@ -33,6 +34,14 @@ export default defineConfig([
       "no-restricted-imports": [
         "error",
         {
+          paths: [
+            {
+              name: "@/contracts/types",
+              importNames: ["RoomState"],
+              message:
+                "Use ClientRoomState (or a narrower Pick) in client/UI code; RoomState is server-persisted.",
+            },
+          ],
           patterns: [
             {
               group: ["@/server", "@/server/*"],

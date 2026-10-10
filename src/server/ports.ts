@@ -1,5 +1,7 @@
 import type { LocalMediaSfuPort } from "@/server/media/local-media-sfu-port"
 import { createLocalMediaSfuPort } from "@/server/media/local-media-sfu-port"
+import type { MediaResolvePort } from "@/server/media/media-resolve-port"
+import { createMediaResolvePort } from "@/server/media/media-resolve-port"
 import type { PresencePatch, RoomState } from "@/contracts/types"
 
 /** Playlist / landing default media entry persisted under `defaults:daily-top-10`. */
@@ -39,6 +41,21 @@ export interface RoomStateStorePort {
     userId: string,
     options?: { force?: boolean },
   ): Promise<void>
+  /**
+   * Read-only online user set from presence refs (no HASH writes).
+   * Prefer this inside / adjacent to WATCH mutate paths.
+   */
+  readWsPresenceUserIds(roomId: string): Promise<Set<string>>
+  /**
+   * Drop stale presence fields / dead-node refcounts (HASH writes).
+   * Call outside WATCH — never from an `updateRoom` mutate closure.
+   */
+  reconcilePresenceRefs(roomId: string): Promise<void>
+  /**
+   * Compatibility: read online users and reconcile stale refs in one pass.
+   * Prefer {@link readWsPresenceUserIds} + {@link reconcilePresenceRefs} when
+   * separating I/O from room-state WATCH.
+   */
   getWsPresenceUserIds(roomId: string): Promise<Set<string>>
 
   // --- Presence data HASH (localPlayback clocks, etc.) ---
@@ -94,24 +111,25 @@ export interface MediaMaintenancePort {
   processDuePrunes(store: RoomStateStorePort): Promise<number>
 }
 
-export type { LocalMediaSfuPort }
+export type { LocalMediaSfuPort, MediaResolvePort }
 
 type PortSlot = {
   roomPublish: RoomPublishPort | null
   mediaMaintenance: MediaMaintenancePort | null
   localMediaSfu: LocalMediaSfuPort | null
+  mediaResolve: MediaResolvePort | null
 }
 
 function getPortSlot(): PortSlot {
   const g = globalThis as typeof globalThis & {
-    __webSyncPlayRealtimePorts?: PortSlot
+    __webSyncPlayRealtimePorts?: Partial<PortSlot>
   }
-  g.__webSyncPlayRealtimePorts ??= {
-    roomPublish: null,
-    mediaMaintenance: null,
-    localMediaSfu: null,
-  }
-  return g.__webSyncPlayRealtimePorts
+  const slot = (g.__webSyncPlayRealtimePorts ??= {})
+  slot.roomPublish ??= null
+  slot.mediaMaintenance ??= null
+  slot.localMediaSfu ??= null
+  slot.mediaResolve ??= null
+  return slot as PortSlot
 }
 
 /** Composition-root wiring (realtime-server / maintenance / tests). */
@@ -143,4 +161,17 @@ export function getLocalMediaSfuPort(): LocalMediaSfuPort {
   // still get a working process-local adapter.
   slot.localMediaSfu ??= createLocalMediaSfuPort()
   return slot.localMediaSfu
+}
+
+/** Composition-root wiring (realtime-server / tests). */
+export function setMediaResolvePort(port: MediaResolvePort | null) {
+  getPortSlot().mediaResolve = port
+}
+
+export function getMediaResolvePort(): MediaResolvePort {
+  const slot = getPortSlot()
+  // Lazy default so unit tests that import playlist-resolve without
+  // wireRealtimePorts still get a working production adapter.
+  slot.mediaResolve ??= createMediaResolvePort()
+  return slot.mediaResolve
 }

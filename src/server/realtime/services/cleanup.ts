@@ -35,6 +35,10 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
     let reconnectingUserIds: string[] = []
     let pastGraceUserIds: string[] = []
 
+    // Presence I/O outside WATCH: read snapshot, then reconcile side effects.
+    const activeConnections = await store.readWsPresenceUserIds(roomId)
+    await store.reconcilePresenceRefs(roomId)
+
     const written = await store.updateRoom(roomId, async (current) => {
       pendingDestroy = false
       disconnectingUserIds = []
@@ -53,7 +57,6 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
         })
       }
 
-      const activeConnections = await store.getWsPresenceUserIds(roomId)
       const recon = reconcileParticipantsConnectivity(
         current,
         activeConnections,

@@ -102,30 +102,65 @@ function mockRedisPruneIndex(options?: {
   return { pending, grace }
 }
 
-test("cleanup reassigns owner when owner loses presence (grace keeps participant)", async () => {
-  mockRedisPruneIndex()
-  const { cleanupInactiveRooms: cleanup } = await import("./cleanup")
-  const state = createState()
-
-  const fakeStore = {
+function createCleanupStore(options: {
+  state: RoomState
+  presence: Set<string>
+  get?: () => Promise<RoomState | null>
+  onDelete?: () => void
+  trackPresenceDuringMutate?: {
+    readCalls: number[]
+    reconcileCalls: number[]
+    duringMutate: boolean
+  }
+}) {
+  const track = options.trackPresenceDuringMutate
+  return {
     listRoomIds: async () => ["room-1"],
-    delete: async () => undefined,
-    getWsPresenceUserIds: async () => new Set<string>(["mod"]),
+    get: options.get ?? (async () => options.state),
+    delete: async () => {
+      options.onDelete?.()
+    },
+    readWsPresenceUserIds: async () => {
+      track?.readCalls.push(1)
+      if (track?.duringMutate) {
+        throw new Error("readWsPresenceUserIds called inside updateRoom mutate")
+      }
+      return options.presence
+    },
+    reconcilePresenceRefs: async () => {
+      track?.reconcileCalls.push(1)
+      if (track?.duringMutate) {
+        throw new Error("reconcilePresenceRefs called inside updateRoom mutate")
+      }
+    },
     updateRoom: async (
       roomId: string,
       mutate: (
         current: RoomState | null,
       ) => Promise<RoomState | null> | RoomState | null,
     ) => {
-      const next = await mutate(roomId === "room-1" ? state : null)
+      if (track) track.duringMutate = true
+      const next = await mutate(roomId === "room-1" ? options.state : null)
+      if (track) track.duringMutate = false
       if (next) {
-        Object.assign(state, next)
+        Object.assign(options.state, next)
       }
       return next
     },
   }
+}
 
-  await cleanup(fakeStore as never)
+test("cleanup reassigns owner when owner loses presence (grace keeps participant)", async () => {
+  mockRedisPruneIndex()
+  const { cleanupInactiveRooms: cleanup } = await import("./cleanup")
+  const state = createState()
+
+  await cleanup(
+    createCleanupStore({
+      state,
+      presence: new Set(["mod"]),
+    }) as never,
+  )
 
   expect(state.ownerId).toBe("mod")
   expect(state.participants.mod?.role).toBe("owner")
@@ -143,25 +178,12 @@ test("cleanup removes participants past prune grace via Redis prune path", async
     owner.disconnectedAt = Date.now() - 120_000
   }
 
-  const fakeStore = {
-    listRoomIds: async () => ["room-1"],
-    delete: async () => undefined,
-    getWsPresenceUserIds: async () => new Set<string>(["mod"]),
-    updateRoom: async (
-      roomId: string,
-      mutate: (
-        current: RoomState | null,
-      ) => Promise<RoomState | null> | RoomState | null,
-    ) => {
-      const next = await mutate(roomId === "room-1" ? state : null)
-      if (next) {
-        Object.assign(state, next)
-      }
-      return next
-    },
-  }
-
-  const result = await cleanup(fakeStore as never)
+  const result = await cleanup(
+    createCleanupStore({
+      state,
+      presence: new Set(["mod"]),
+    }) as never,
+  )
 
   expect(result.removedParticipants).toBe(1)
   expect(state.participants.owner).toBeUndefined()
@@ -174,27 +196,21 @@ test("cleanup marks everyone offline when WS presence is empty (crash ghosts)", 
   const state = createState()
   let deleted = false
   let deletedDuringMutate = false
+  const track = { readCalls: [] as number[], reconcileCalls: [] as number[], duringMutate: false }
 
-  const fakeStore = {
-    listRoomIds: async () => ["room-1"],
-    get: async () => state,
-    delete: async () => {
+  const fakeStore = createCleanupStore({
+    state,
+    presence: new Set(),
+    onDelete: () => {
       deleted = true
     },
-    getWsPresenceUserIds: async () => new Set<string>(),
-    updateRoom: async (
-      roomId: string,
-      mutate: (
-        current: RoomState | null,
-      ) => Promise<RoomState | null> | RoomState | null,
-    ) => {
-      const next = await mutate(roomId === "room-1" ? state : null)
-      if (deleted) deletedDuringMutate = true
-      if (next) {
-        Object.assign(state, next)
-      }
-      return next
-    },
+    trackPresenceDuringMutate: track,
+  })
+  const originalUpdate = fakeStore.updateRoom
+  fakeStore.updateRoom = async (roomId, mutate) => {
+    const next = await originalUpdate(roomId, mutate)
+    if (deleted) deletedDuringMutate = true
+    return next
   }
 
   await cleanup(fakeStore as never)
@@ -213,23 +229,22 @@ test("cleanup destroys empty rooms after WATCH mutate returns", async () => {
   let deleted = false
   let deletedDuringMutate = false
 
-  const fakeStore = {
-    listRoomIds: async () => ["room-1"],
+  const fakeStore = createCleanupStore({
+    state,
+    presence: new Set(),
     get: async () => null,
-    delete: async () => {
+    onDelete: () => {
       deleted = true
     },
-    getWsPresenceUserIds: async () => new Set<string>(),
-    updateRoom: async (
-      roomId: string,
-      mutate: (
-        current: RoomState | null,
-      ) => Promise<RoomState | null> | RoomState | null,
-    ) => {
-      const next = await mutate(roomId === "room-1" ? state : null)
+  })
+  const originalUpdate = fakeStore.updateRoom
+  fakeStore.updateRoom = async (roomId, mutate) => {
+    const next = await originalUpdate(roomId, async (current) => {
+      const result = await mutate(current)
       if (deleted) deletedDuringMutate = true
-      return next
-    },
+      return result
+    })
+    return next
   }
 
   const result = await cleanup(fakeStore as never)
@@ -249,28 +264,54 @@ test("cleanup migrates legacy room fields without waiting for join", async () =>
     state.playback as typeof state.playback & { shuffle?: unknown }
   ).shuffle = true
 
-  const fakeStore = {
-    listRoomIds: async () => ["room-1"],
-    delete: async () => undefined,
-    getWsPresenceUserIds: async () => new Set<string>(["owner", "mod"]),
-    updateRoom: async (
-      _roomId: string,
-      mutate: (
-        current: RoomState | null,
-      ) => Promise<RoomState | null> | RoomState | null,
-    ) => {
-      const next = await mutate(state)
-      if (next) {
-        Object.assign(state, next)
-      }
-      return next
-    },
-  }
-
-  await cleanup(fakeStore as never)
+  await cleanup(
+    createCleanupStore({
+      state,
+      presence: new Set(["owner", "mod"]),
+    }) as never,
+  )
 
   expect(legacy.history).toBeUndefined()
   expect(
     (state.playback as { shuffle?: unknown }).shuffle,
   ).toBeUndefined()
+})
+
+test("cleanup fetches and reconciles presence before updateRoom, not inside mutate", async () => {
+  mockRedisPruneIndex()
+  const { cleanupInactiveRooms: cleanup } = await import("./cleanup")
+  const state = createState()
+  const callOrder: string[] = []
+  const track = {
+    readCalls: [] as number[],
+    reconcileCalls: [] as number[],
+    duringMutate: false,
+  }
+
+  const fakeStore = createCleanupStore({
+    state,
+    presence: new Set(["owner", "mod"]),
+    trackPresenceDuringMutate: track,
+  })
+  const read = fakeStore.readWsPresenceUserIds
+  const reconcile = fakeStore.reconcilePresenceRefs
+  const update = fakeStore.updateRoom
+  fakeStore.readWsPresenceUserIds = async () => {
+    callOrder.push("read")
+    return read()
+  }
+  fakeStore.reconcilePresenceRefs = async () => {
+    callOrder.push("reconcile")
+    return reconcile()
+  }
+  fakeStore.updateRoom = async (roomId, mutate) => {
+    callOrder.push("updateRoom")
+    return update(roomId, mutate)
+  }
+
+  await cleanup(fakeStore as never)
+
+  expect(callOrder).toEqual(["read", "reconcile", "updateRoom"])
+  expect(track.readCalls.length).toBe(1)
+  expect(track.reconcileCalls.length).toBe(1)
 })

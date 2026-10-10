@@ -4,7 +4,7 @@ import type {
   MediaPlayerInstance,
 } from "@vidstack/react"
 import type { RefObject } from "react"
-import type { LoopMode, PlaylistItem, RoomState } from "@/contracts/types"
+import type { ClientRoomState, LoopMode, PlaylistItem } from "@/contracts/types"
 import type { PlayerSrcInput } from "../player-src"
 import type { PendingSyncState } from "./use-buffering-watchdog"
 import type { LocalSeekPhase } from "../playback-control/use-playback-timeline-controller"
@@ -26,7 +26,7 @@ export type SyncedMediaPlayerHandlerDeps = {
   preferredVolume: number
   unmute: () => number
   handleVolumeChange: (detail: { volume: number; muted: boolean }) => void
-  playbackRef: RefObject<RoomState["playback"]>
+  playbackRef: RefObject<ClientRoomState["playback"]>
   playlistNavRef: RefObject<PlaylistNavSnapshot>
   isMediaReadyRef: RefObject<boolean>
   bufferingSinceRef: RefObject<number | null>

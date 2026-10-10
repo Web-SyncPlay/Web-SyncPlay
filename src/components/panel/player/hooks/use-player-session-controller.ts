@@ -3,7 +3,7 @@
 import type { MediaPlayerInstance } from "@vidstack/react"
 import { useRef, type MutableRefObject } from "react"
 import { useLatestRef } from "@/hooks/use-latest-ref"
-import type { RoomState } from "@/contracts/types"
+import type { ClientRoomState } from "@/contracts/types"
 import type { PendingSyncState } from "./use-buffering-watchdog"
 import type { PlaylistNavSnapshot } from "./use-synced-media-player-handlers"
 import {
@@ -24,7 +24,7 @@ export type PlayerSessionControllerHandle = {
  * Action method identities are also stable (wrappers over actionsRef).
  */
 export function usePlayerSessionController(config: {
-  playback: RoomState["playback"]
+  playback: ClientRoomState["playback"]
   playlistNav: PlaylistNavSnapshot
 }): PlayerSessionControllerHandle {
   const { playback, playlistNav } = config

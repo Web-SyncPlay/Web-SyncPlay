@@ -1,4 +1,4 @@
-import type { ParticipantState, RoomState } from "@/contracts/types"
+import type { ClientRoomState, ParticipantState } from "@/contracts/types"
 
 /**
  * Users panel intentionally tracks presence (connected / lastSeen) for online
@@ -10,6 +10,8 @@ export type UsersPanelSlice = {
   participants: Record<string, ParticipantState>
 }
 
-export function selectUsersPanelSlice(roomState: RoomState): UsersPanelSlice {
+export function selectUsersPanelSlice(
+  roomState: ClientRoomState,
+): UsersPanelSlice {
   return { participants: roomState.participants }
 }

@@ -30,11 +30,13 @@ import { parseOrWarn } from "@/shared/parse-or-warn"
 import { observeServerNowMs } from "@/shared/server-clock"
 import { persistUsername } from "@/client/realtime/session-identity"
 import type { Dispatch, MutableRefObject, SetStateAction } from "react"
+import type { RoomSocketLocalMediaSession } from "./room-socket-local-media"
 
-export type RoomSocketLocalMediaHandlers = {
-  handleEnvelope: (envelope: WsEnvelope<string, unknown>) => boolean
-  bootstrapAfterFirstSnapshot: (payload: RoomSnapshotPayload) => void
-}
+/** Dispatcher only needs boot + active envelope routing from the lifecycle facade. */
+export type RoomSocketLocalMediaHandlers = Pick<
+  RoomSocketLocalMediaSession,
+  "handleEnvelope" | "bootstrapAfterFirstSnapshot"
+>
 
 export type RoomSocketDispatcherOptions = {
   roomId: string

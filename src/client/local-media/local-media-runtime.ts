@@ -19,11 +19,11 @@ import {
   type LocalMediaSwBridgeDeps,
 } from "@/client/local-media/local-media-sw"
 import { resolveCurrentPlaylistItem } from "@/shared/playlist-current"
-import type { ClientRoomState, RoomState } from "@/contracts/types"
+import type { ClientRoomState } from "@/contracts/types"
 
 /** Pure invite-target selection for bootstrap / first-range policy. */
 export function selectLazyWebrtcInviteMediaId(input: {
-  roomState: Pick<RoomState, "playlist" | "currentIndex" | "playback">
+  roomState: Pick<ClientRoomState, "playlist" | "currentIndex" | "playback">
   heldLocalMediaIds: ReadonlySet<string> | Iterable<string>
 }): string | null {
   const held =
@@ -37,7 +37,7 @@ export function selectLazyWebrtcInviteMediaId(input: {
 }
 
 export function selectConnectedViewerUserIds(input: {
-  participants: RoomState["participants"] | null | undefined
+  participants: ClientRoomState["participants"] | null | undefined
   selfUserId: string
 }): string[] {
   if (!input.participants) return []
@@ -74,7 +74,7 @@ export type LocalMediaRuntime = {
    */
   inviteWebrtcForCurrentItem: (
     roomState: Pick<
-      RoomState,
+      ClientRoomState,
       "playlist" | "currentIndex" | "playback" | "participants"
     >,
   ) => void
@@ -122,7 +122,7 @@ export function createLocalMediaRuntime(input: {
   }
 
   const connectedViewerIds = (
-    roomState: Pick<RoomState, "participants"> | null | undefined,
+    roomState: Pick<ClientRoomState, "participants"> | null | undefined,
   ): string[] =>
     selectConnectedViewerUserIds({
       participants: roomState?.participants,

@@ -205,3 +205,66 @@ describe("RoomStateStore.mergePresenceData", () => {
     })
   })
 })
+
+describe("RoomStateStore presence read vs reconcile", () => {
+  test("readWsPresenceUserIds does not hSet/hDel; reconcilePresenceRefs cleans stale", async () => {
+    const { getAppNodeId } = await import("@/server/node-id")
+    const nodeId = getAppNodeId()
+    const deadNode = "dead-node"
+    const hash = new Map<string, string>([
+      ["live", JSON.stringify({ [nodeId]: 1 })],
+      ["stale", JSON.stringify({ [deadNode]: 1 })],
+      ["legacy", "2"],
+      [
+        "mixed",
+        JSON.stringify({ [nodeId]: 1, [deadNode]: 2 }),
+      ],
+    ])
+    let hSetCalls = 0
+    let hDelCalls = 0
+
+    mock.module("@/server/node-heartbeat", () => ({
+      listAliveAppNodeIds: async () => ({
+        ids: new Set([nodeId]),
+        reliable: true,
+      }),
+    }))
+    mock.module("@/server/redis/client", () => ({
+      getCommandClient: async () => ({
+        hGetAll: async () => Object.fromEntries(hash),
+        hSet: async (
+          _key: string,
+          fields: Record<string, string>,
+        ) => {
+          hSetCalls += 1
+          for (const [uid, encoded] of Object.entries(fields)) {
+            hash.set(uid, encoded)
+          }
+          return 1
+        },
+        hDel: async (_key: string, fields: string[]) => {
+          hDelCalls += 1
+          for (const uid of fields) hash.delete(uid)
+          return fields.length
+        },
+      }),
+    }))
+
+    const { RoomStateStore } = await import("./state-store")
+    const store = new RoomStateStore()
+
+    const online = await store.readWsPresenceUserIds("room-presence")
+    expect([...online].sort()).toEqual(["live", "mixed"])
+    expect(hSetCalls).toBe(0)
+    expect(hDelCalls).toBe(0)
+    expect(hash.has("stale")).toBe(true)
+    expect(hash.has("legacy")).toBe(true)
+
+    await store.reconcilePresenceRefs("room-presence")
+    expect(hDelCalls).toBe(1)
+    expect(hSetCalls).toBe(1)
+    expect(hash.has("stale")).toBe(false)
+    expect(hash.has("legacy")).toBe(false)
+    expect(hash.get("mixed")).toBe(JSON.stringify({ [nodeId]: 1 }))
+  })
+})

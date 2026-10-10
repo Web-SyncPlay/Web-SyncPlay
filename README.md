@@ -82,7 +82,7 @@ ICE is STUN-only (Google + Cloudflare). No TURN — UDP-blocked clients use HTTP
 
 Room cleanup, ownership repair, and playlist-resolve reclaim run on a background tick. Daily defaults reseed from `FALLBACK_DEFAULT_MEDIA_URL` when the cache is empty or expired.
 
-Hot WebSocket control paths (seek preview/seek, participant presence updates, local-media WebRTC/SFU signaling) rate-limit via Valkey token buckets (`rate:ws:*`), not in-process maps — every replica shares the same budget per `(roomId, userId)`. Expect one EVAL per limited frame; keep Valkey latency low on the WS nodes.
+Hot WebSocket control paths (seek preview/seek, participant presence updates, local-media WebRTC/SFU signaling) rate-limit via Valkey token buckets (`rate:ws:*`), not in-process maps — every replica shares the same budget per `(roomId, userId)`. High-frequency types (`seek:preview`, `local-media:webrtc:signal`) prepaid-batch a few tokens per EVAL then allow locally so floods do not hit Valkey every frame; other hot types still cost one EVAL per frame. Fail-closed on Redis errors. Keep Valkey latency low on the WS nodes.
 
 ### Multi-replica operations (SFU)
 

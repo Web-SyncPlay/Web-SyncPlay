@@ -1,4 +1,4 @@
-import type { ActionLogEntry, RoomState } from "@/contracts/types"
+import type { ActionLogEntry, ClientRoomState } from "@/contracts/types"
 
 /**
  * Narrow log-panel inputs. Presence lastSeen/connected churn does not change
@@ -11,7 +11,7 @@ export type LogShellSlice = {
 }
 
 export function selectParticipantUsernames(
-  roomState: RoomState,
+  roomState: ClientRoomState,
 ): Record<string, string> {
   const names: Record<string, string> = {}
   for (const [userId, participant] of Object.entries(roomState.participants)) {
@@ -20,7 +20,7 @@ export function selectParticipantUsernames(
   return names
 }
 
-export function selectLogShellSlice(roomState: RoomState): LogShellSlice {
+export function selectLogShellSlice(roomState: ClientRoomState): LogShellSlice {
   return {
     actionLog: roomState.actionLog,
     participantUsernames: selectParticipantUsernames(roomState),

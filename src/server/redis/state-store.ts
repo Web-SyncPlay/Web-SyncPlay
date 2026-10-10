@@ -396,11 +396,16 @@ export class RoomStateStore implements RoomStateStorePort {
   }
 
   /**
-   * User IDs with at least one live WS connection on an alive app node.
-   * Orphaned legacy integer refs and dead-node maps are ignored when the alive
-   * list is reliable. On unreliable alive fetch, skip hDel / dead-node rewrite.
+   * Scan presence HASH: online user set + optional stale-field / dead-node
+   * rewrite plan. Shared by read-only and reconcile paths.
    */
-  async getWsPresenceUserIds(roomId: string) {
+  private async scanWsPresence(roomId: string): Promise<{
+    online: Set<string>
+    reliable: boolean
+    hkey: string
+    staleFields: string[]
+    rewrites: Array<{ uid: string; encoded: string }>
+  }> {
     const client = await getCommandClient()
     const entries = await client.hGetAll(keys.roomPresenceRef(roomId))
     const { ids: alive, reliable } = await listAliveAppNodeIds()
@@ -409,6 +414,7 @@ export class RoomStateStore implements RoomStateStorePort {
 
     const online = new Set<string>()
     const staleFields: string[] = []
+    const rewrites: Array<{ uid: string; encoded: string }> = []
     const hkey = keys.roomPresenceRef(roomId)
 
     for (const [uid, raw] of Object.entries(entries)) {
@@ -439,15 +445,54 @@ export class RoomStateStore implements RoomStateStorePort {
       // Drop dead-node refcounts left behind by crashed replicas.
       const encoded = encodePresenceNodeCounts(liveOnly)
       if (encoded && encoded !== raw) {
-        await client.hSet(hkey, { [uid]: encoded })
+        rewrites.push({ uid, encoded })
       }
     }
 
-    if (reliable && staleFields.length > 0) {
-      await client.hDel(hkey, staleFields)
-    }
+    return { online, reliable, hkey, staleFields, rewrites }
+  }
 
-    return online
+  private async applyPresenceReconcileWrites(scan: {
+    reliable: boolean
+    hkey: string
+    staleFields: string[]
+    rewrites: Array<{ uid: string; encoded: string }>
+  }) {
+    if (!scan.reliable) return
+    const client = await getCommandClient()
+    for (const { uid, encoded } of scan.rewrites) {
+      await client.hSet(scan.hkey, { [uid]: encoded })
+    }
+    if (scan.staleFields.length > 0) {
+      await client.hDel(scan.hkey, scan.staleFields)
+    }
+  }
+
+  /**
+   * Read-only online user set. Orphaned legacy integer refs and dead-node maps
+   * are ignored when the alive list is reliable (same filter as reconcile).
+   */
+  async readWsPresenceUserIds(roomId: string) {
+    const scan = await this.scanWsPresence(roomId)
+    return scan.online
+  }
+
+  /**
+   * Drop stale presence fields / rewrite dead-node refcounts. No-op when the
+   * alive-node list is unreliable (fail closed — same as legacy get path).
+   */
+  async reconcilePresenceRefs(roomId: string) {
+    const scan = await this.scanWsPresence(roomId)
+    await this.applyPresenceReconcileWrites(scan)
+  }
+
+  /**
+   * Compatibility wrapper: online set + stale-ref cleanup in one scan/write pass.
+   */
+  async getWsPresenceUserIds(roomId: string) {
+    const scan = await this.scanWsPresence(roomId)
+    await this.applyPresenceReconcileWrites(scan)
+    return scan.online
   }
 
   async seedDailyDefaultsIfEmpty() {

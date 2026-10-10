@@ -58,7 +58,6 @@ export function PlaylistPanel({
   roomId,
   send,
   userId,
-  userSecret: _userSecret,
   capabilities,
   hideTitle = false,
 }: RoomPanelProps & { hideTitle?: boolean }) {

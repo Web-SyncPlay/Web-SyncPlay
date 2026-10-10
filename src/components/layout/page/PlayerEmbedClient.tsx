@@ -2,54 +2,29 @@
 
 import { RoomConnectingView } from "@/components/layout/RoomConnectingView"
 import { useRoomSession } from "@/hooks/use-room-session"
-import { canMutateFromClientSession } from "@/shared/permissions-utils"
 import { PlayerPanel } from "../../panel/player/PlayerPanel"
+import { useRoomPanelModel } from "./use-room-panel-model"
 
 export function PlayerEmbedClient({ roomId }: { roomId: string }) {
-  const {
-    roomState,
-    sessionCapabilities,
-    send,
-    userId,
-    userSecret,
-    status,
-    joinError,
-    submitJoinPassword,
-  } = useRoomSession(roomId, { sessionKind: "player" })
+  const session = useRoomSession(roomId, { sessionKind: "player" })
+  const model = useRoomPanelModel({ roomId, session })
 
-  if (!roomState) {
+  if (!model.ready) {
     return (
       <RoomConnectingView
         roomId={roomId}
-        status={status}
-        joinError={joinError}
-        onSubmitJoinPassword={submitJoinPassword}
+        status={model.status}
+        joinError={model.joinError}
+        onSubmitJoinPassword={model.submitJoinPassword}
         showNavbar={false}
       />
     )
   }
 
-  const myRole = roomState.participants[userId]?.role
-  const canMutateFromThisSession = canMutateFromClientSession({
-    role: myRole,
-    isControlSession: sessionCapabilities.isControlSession,
-    controlAuthorized: sessionCapabilities.controlAuthorized,
-    sessionKind: sessionCapabilities.sessionKind,
-  })
-
   return (
     <section className="min-h-0 flex-1 w-full overflow-hidden">
       <PlayerPanel
-        roomState={roomState}
-        roomId={roomId}
-        userId={userId}
-        userSecret={userSecret}
-        send={send}
-        capabilities={{
-          ...sessionCapabilities,
-          canControlPlayback: canMutateFromThisSession,
-          canManagePlaylist: canMutateFromThisSession,
-        }}
+        {...model.panelProps}
         className="aspect-auto size-full rounded-none"
       />
     </section>

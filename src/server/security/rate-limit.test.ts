@@ -413,6 +413,30 @@ describe("consumeHotWsEventLimit", () => {
     )
   })
 
+  test("coalesces seek:preview into fewer Redis EVAL calls", async () => {
+    const client = mockRedisTokenBucketClient()
+    let evalCount = 0
+    const originalEval = client.eval.bind(client)
+    client.eval = async (...args: Parameters<typeof client.eval>) => {
+      evalCount += 1
+      return originalEval(...args)
+    }
+
+    const { consumeHotWsEventLimit } = await import("./rate-limit")
+    const events = 16
+    for (let i = 0; i < events; i++) {
+      const result = await consumeHotWsEventLimit({
+        type: "seek:preview",
+        roomId: "room-coalesce",
+        userId: "user-coalesce",
+        nowMs: 2_000,
+      })
+      expect(result.allowed).toBe(true)
+    }
+    // Prepaid batch of 4 → one EVAL per 4 events (no near-empty fallback).
+    expect(evalCount).toBe(events / 4)
+  })
+
   test("isolates keys by event type and room/user", async () => {
     mockRedisTokenBucketClient()
 

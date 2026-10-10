@@ -1,9 +1,9 @@
 import { resolveCurrentPlaylistItemId } from "@/shared/playlist-current"
 import type {
+  ClientRoomState,
   LoopMode,
   PlaylistItem,
   RoomRole,
-  RoomState,
 } from "@/contracts/types"
 
 /**
@@ -19,7 +19,7 @@ export type PlaylistShellSlice = {
 }
 
 export function selectPlaylistShellSlice(
-  roomState: RoomState,
+  roomState: ClientRoomState,
   userId: string,
 ): PlaylistShellSlice {
   return {

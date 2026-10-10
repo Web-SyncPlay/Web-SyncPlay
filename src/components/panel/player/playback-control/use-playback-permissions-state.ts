@@ -1,10 +1,10 @@
 "use client"
 
 import { canControlPlayback } from "@/shared/permissions-utils"
-import type { RoomState } from "@/contracts/types"
+import type { ClientRoomState } from "@/contracts/types"
 
 export function getPlaybackPermissionsState(config: {
-  roomState: RoomState
+  roomState: ClientRoomState
   userId: string
   canControlBySession: boolean
   unauthorizedHint?: string

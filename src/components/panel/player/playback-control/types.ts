@@ -1,9 +1,9 @@
 import type { TypedRoomEventSender } from "@/contracts/room-events"
-import type { RoomState } from "@/contracts/types"
+import type { ClientRoomState } from "@/contracts/types"
 
 /** Playlist + playback only — presence must stay off control actions. */
 export type PlayerNavRoomState = Pick<
-  RoomState,
+  ClientRoomState,
   "playback" | "currentIndex" | "playlist"
 >
 

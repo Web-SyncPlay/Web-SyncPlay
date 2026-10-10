@@ -1,11 +1,9 @@
-import { invalidateYtDlpExtractCache } from "@/server/media/yt-dlp"
-import { beginResolveLease } from "@/server/media/yt-dlp/resolve-lease"
-import {
-  resolveMediaSource,
-  type ResolvedMedia,
-} from "@/server/media/resolve"
+import type { ResolvedMedia } from "@/server/media/media-resolve-port"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
-import type { RoomStateStorePort } from "@/server/ports"
+import {
+  getMediaResolvePort,
+  type RoomStateStorePort,
+} from "@/server/ports"
 import { bumpRoomRevisions } from "@/server/realtime/services/timeline"
 import { sanitizeMediaTitle } from "@/shared/sanitize-display"
 import type { PlaylistItem, RoomState } from "@/contracts/types"
@@ -122,7 +120,8 @@ export async function resolvePlaylistItem(params: {
   if (inflightPlaylistResolves.has(key)) return
   inflightPlaylistResolves.add(key)
 
-  const lease = await beginResolveLease({
+  const media = getMediaResolvePort()
+  const lease = await media.beginResolveLease({
     roomId,
     itemId,
     sourceUrl,
@@ -130,7 +129,7 @@ export async function resolvePlaylistItem(params: {
   })
 
   try {
-    const resolved = await resolveMediaSource({
+    const resolved = await media.resolveMediaSource({
       url: sourceUrl,
       name: title,
       roomId,
@@ -230,7 +229,7 @@ export async function reresolveRemotePlaylistItem(params: {
 
   if (!sourceUrl) return false
 
-  await invalidateYtDlpExtractCache(sourceUrl)
+  await getMediaResolvePort().invalidateYtDlpExtractCache(sourceUrl)
 
   if (written) {
     publishRoomSnapshot(store, roomId)

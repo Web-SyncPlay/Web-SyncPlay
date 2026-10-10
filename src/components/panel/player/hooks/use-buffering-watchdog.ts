@@ -10,6 +10,7 @@ import {
   pendingSyncFromPlayback,
   type PendingSyncState,
 } from "@/client/player/pending-sync"
+import { useLatestRef } from "@/hooks/use-latest-ref"
 
 export type { PendingSyncState }
 
@@ -46,14 +47,22 @@ export function useBufferingWatchdog(config: {
     setPlayerRemountNonce,
   } = config
 
+  // Clock fields tick under live sync; read them from a ref so the watchdog
+  // timer is keyed only by buffering identity (not roomPlayback ticks).
+  const roomPlaybackRef = useLatestRef(roomPlayback)
+  const currentItemRef = useLatestRef(currentItem)
+  const currentItemId = currentItem?.id ?? null
+
   useEffect(() => {
-    if (!currentItem) {
+    if (!currentItemId) {
       return
     }
     if (!isBuffering) {
       return
     }
 
+    // Read epoch inside the effect (not during render) so react-hooks/refs is
+    // happy; isBuffering false→true re-arms with the latest startedAt.
     const startedAt = bufferingSinceRef.current
     if (!startedAt) {
       return
@@ -71,22 +80,25 @@ export function useBufferingWatchdog(config: {
         if (!isBuffering) return
         if (bufferingSinceRef.current !== startedAt) return
 
+        const playback = roomPlaybackRef.current
+        const item = currentItemRef.current
+
         participantStatusErrorRef.current = "Playback stalled: recovering…"
         console.error("[player] buffering watchdog triggered", {
-          itemId: currentItem.id,
-          itemName: currentItem.name,
+          itemId: currentItemId,
+          itemName: item?.name,
           src: activePlaybackSrc,
           viewType,
           isMediaReady: isMediaReadyRef.current,
           pendingSync: pendingSyncRef.current,
-          roomPaused: roomPlayback.paused,
-          roomRate: roomPlayback.playbackRate,
-          roomAnchorMs: roomPlayback.timelineAnchorMs,
-          roomServerNowMs: roomPlayback.serverNowMs,
+          roomPaused: playback.paused,
+          roomRate: playback.playbackRate,
+          roomAnchorMs: playback.timelineAnchorMs,
+          roomServerNowMs: playback.serverNowMs,
         })
 
         // Keep a sync state ready to apply after recovery/remount.
-        pendingSyncRef.current = pendingSyncFromPlayback(roomPlayback)
+        pendingSyncRef.current = pendingSyncFromPlayback(playback)
 
         isMediaReadyRef.current = false
         setIsBuffering(true)
@@ -99,16 +111,13 @@ export function useBufferingWatchdog(config: {
   }, [
     activePlaybackSrc,
     bufferingSinceRef,
-    currentItem,
+    currentItemId,
+    currentItemRef,
     isBuffering,
     isMediaReadyRef,
     participantStatusErrorRef,
     pendingSyncRef,
-    roomPlayback.paused,
-    roomPlayback.playbackRate,
-    roomPlayback.serverNowMs,
-    roomPlayback.timelineAnchorMs,
-    roomPlayback.videoLoop,
+    roomPlaybackRef,
     setIsBuffering,
     setPlayerRemountNonce,
     viewType,
