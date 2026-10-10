@@ -5,7 +5,12 @@ import {
   nextSfuSessionGeneration,
   planSfuProvideAttempt,
 } from "@/client/local-media/local-media-sfu-transitions"
+import {
+  localMediaSfuProducerPayloadSchema,
+  localMediaSfuResultPayloadSchema,
+} from "@/contracts/s2c"
 import type { WsEnvelope } from "@/contracts/types"
+import { parseOrWarn } from "@/shared/parse-or-warn"
 
 /**
  * SFU request correlation, provide queue, and producer/result wire handlers.
@@ -63,18 +68,26 @@ export function createLocalMediaSfuSession(input: {
     sfuPending.delete(requestId)
     // Validate own Map entry is a function before invoke (CodeQL js/unvalidated-dynamic-method-call).
     if (typeof resolve !== "function") return
-    resolve(envelope.payload as SfuResult)
+    const payload = parseOrWarn(
+      localMediaSfuResultPayloadSchema,
+      envelope.payload,
+      "local-media:sfu:result",
+    )
+    if (!payload) {
+      resolve({ ok: false, error: "invalid_payload" })
+      return
+    }
+    resolve(payload as SfuResult)
   }
 
   const handleSfuProducer = (envelope: WsEnvelope<string, unknown>) => {
-    const payload = envelope.payload as {
-      localMediaId?: string
-      dataProducerId?: string
-      ownerUserId?: string
-      kind?: "provider" | "requests"
-    }
+    const payload = parseOrWarn(
+      localMediaSfuProducerPayloadSchema,
+      envelope.payload,
+      "local-media:sfu:producer",
+    )
+    if (!payload) return
     const { localMediaId, dataProducerId, ownerUserId } = payload
-    if (!localMediaId || !dataProducerId || !ownerUserId) return
     const isSelfOwner = ownerUserId === userId
     const workGeneration = sessionGeneration
 

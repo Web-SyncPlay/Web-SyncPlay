@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { createDurationChangeHandler } from "./create-duration-change-handler"
 import { createEndedHandler } from "./create-ended-handler"
 import { createPlaybackErrorHandler } from "./create-playback-error-handler"
@@ -13,16 +14,24 @@ export type {
   SyncedMediaPlayerHandlerDeps,
 } from "./synced-media-player-handler-types"
 
-/** MediaPlayer event handlers for SyncedMediaPlayer (plain object; React Compiler). */
+/**
+ * MediaPlayer event handlers for SyncedMediaPlayer.
+ * Memoized so Vidstack does not re-subscribe every render.
+ */
 export function useSyncedMediaPlayerHandlers(deps: SyncedMediaPlayerHandlerDeps) {
-  return {
-    ...createTransportRequestHandlers(deps),
-    ...createPlaybackLifecycleHandlers(deps),
-    ...createPlaybackErrorHandler(deps),
-    ...createVolumeChangeHandler(deps),
-    ...createEndedHandler(deps),
-    ...createDurationChangeHandler(deps),
-  }
+  return useMemo(
+    () => ({
+      ...createTransportRequestHandlers(deps),
+      ...createPlaybackLifecycleHandlers(deps),
+      ...createPlaybackErrorHandler(deps),
+      ...createVolumeChangeHandler(deps),
+      ...createEndedHandler(deps),
+      ...createDurationChangeHandler(deps),
+    }),
+    // Handler factories close over the latest deps object; identity is owned by
+    // the session controller / view-model layer (stable across renders).
+    [deps],
+  )
 }
 
 export type SyncedMediaPlayerHandlers = ReturnType<

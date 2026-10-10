@@ -1,32 +1,28 @@
+import { localMediaWebrtcSignalS2cPayloadSchema } from "@/contracts/s2c"
 import type { WsEnvelope } from "@/contracts/types"
+import { parseOrWarn } from "@/shared/parse-or-warn"
 
 /**
  * P2P WebRTC signaling handler for local-media DataChannels.
  */
 export function createLocalMediaWebrtcSignalHandler() {
   return (envelope: WsEnvelope<string, unknown>) => {
-    const payload = envelope.payload as {
-      localMediaId?: string
-      fromUserId?: string
-      signal?: {
-        type: "offer" | "answer" | "ice" | "hangup"
-        sdp?: string
-        candidate?: string
-        sdpMid?: string
-        sdpMLineIndex?: number
-      }
-    }
-    if (!payload.localMediaId || !payload.fromUserId || !payload.signal) {
-      return
-    }
+    const payload = parseOrWarn(
+      localMediaWebrtcSignalS2cPayloadSchema,
+      envelope.payload,
+      "local-media:webrtc:signal",
+    )
+    if (!payload) return
     void import("@/client/local-media/local-media-webrtc").then(
       async ({ handleLocalMediaWebrtcSignalFromPeer }) => {
-        const { getLocalMediaFile } = await import("@/client/local-media/local-media-provider")
+        const { getLocalMediaFile } = await import(
+          "@/client/local-media/local-media-provider"
+        )
         await handleLocalMediaWebrtcSignalFromPeer({
-          localMediaId: payload.localMediaId!,
-          fromUserId: payload.fromUserId!,
-          signal: payload.signal!,
-          isProvider: Boolean(getLocalMediaFile(payload.localMediaId!)),
+          localMediaId: payload.localMediaId,
+          fromUserId: payload.fromUserId,
+          signal: payload.signal,
+          isProvider: Boolean(getLocalMediaFile(payload.localMediaId)),
         })
       },
     )

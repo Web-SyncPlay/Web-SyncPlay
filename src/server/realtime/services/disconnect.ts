@@ -6,6 +6,7 @@ import {
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type { RoomStateStorePort } from "@/server/ports"
 import { clearConnectionLocalPlaybackReport } from "@/server/realtime/services/local-playback-report-lifecycle"
+import { publishUserOfflinePresence } from "@/server/realtime/services/offline-presence"
 import type { RoomState } from "@/contracts/types"
 import { transferOwnershipIfNeeded } from "./ownership"
 import {
@@ -58,6 +59,12 @@ export async function destroyRoom(
     await deleteLocalMediaForRoomOwners(state, roomId)
   } catch (error) {
     console.warn("[disconnect] local media cleanup before destroy failed", error)
+  }
+  try {
+    const { getLocalMediaSfuPort } = await import("@/server/ports")
+    getLocalMediaSfuPort().closeRoom(roomId)
+  } catch (error) {
+    console.warn("[disconnect] SFU room teardown failed", error)
   }
   await store.delete(roomId)
 }
@@ -145,6 +152,7 @@ export function applyUserWentOffline(
 
 /**
  * Full socket-disconnect lifecycle: presence ref, room delete or offline effects.
+ * Presence / local-media / prune Redis I/O runs outside WATCH.
  */
 export async function handleSocketDisconnect(
   store: RoomStateStorePort,
@@ -156,39 +164,35 @@ export async function handleSocketDisconnect(
 
   const before = await store.get(meta.roomId)
   const pausedBefore = before?.playback.paused
+
+  // Presence I/O outside WATCH (same pattern as cleanupInactiveRooms).
+  const activeUsers = await store.readWsPresenceUserIds(meta.roomId)
+  await store.reconcilePresenceRefs(meta.roomId)
+
   let userStillConnected = false
   /** Destroy after WATCH commit — never DEL room keys inside mutate. */
   let pendingDestroy = false
+  let pendingOffline = false
 
   const next = await store.updateRoom(meta.roomId, async (state) => {
     if (!state) {
       return null
     }
 
-    const activeUsers = await store.getWsPresenceUserIds(meta.roomId)
     if (activeUsers.size === 0) {
-      await deleteLocalMediaForRoomOwners(state, meta.roomId, [meta.userId])
       pendingDestroy = true
       // Abort write; destroyRoom runs after WATCH is released.
       return null
     }
 
-    // Any providing socket closed: File may be gone until a tab re-announces.
-    await clearLocalMediaProviderReadyForOwner(meta.roomId, meta.userId)
-
     if (activeUsers.has(meta.userId)) {
       // Remaining tabs (any node) should re-declare which Files they still hold.
-      const { publishLocalMediaReannounce } = await import(
-        "@/server/media/local-media-reannounce"
-      )
-      await publishLocalMediaReannounce(meta.roomId, meta.userId)
       userStillConnected = true
       return null
     }
 
     applyUserWentOffline(state, meta.roomId, meta.userId)
-    await deleteLocalMediaEntriesForOwner(meta.roomId, meta.userId)
-    await schedulePrune(meta.roomId, meta.userId)
+    pendingOffline = true
     bumpRoomRevisions(state)
     return state
   })
@@ -199,6 +203,16 @@ export async function handleSocketDisconnect(
   }
 
   if (userStillConnected) {
+    // Any providing socket closed: File may be gone until a tab re-announces.
+    await clearLocalMediaProviderReadyForOwner(meta.roomId, meta.userId)
+    try {
+      const { publishLocalMediaReannounce } = await import(
+        "@/server/media/local-media-reannounce"
+      )
+      await publishLocalMediaReannounce(meta.roomId, meta.userId)
+    } catch (error) {
+      console.warn("[disconnect] local-media reannounce failed", error)
+    }
     await clearConnectionLocalPlaybackReport(
       store,
       meta.roomId,
@@ -221,22 +235,17 @@ export async function handleSocketDisconnect(
     console.warn("[disconnect] viewer capability invalidate failed", error)
   }
 
-  if (!next) {
+  if (!next || !pendingOffline) {
     return
   }
 
-  const bus = getRoomBroadcastBus()
-  bus.attachStore(store)
-  const now = Date.now()
-  const offlinePresence = {
-    connected: false as const,
-    lastSeenAt: now,
-    disconnectedAt: now,
-    localPlayback: next.participants[meta.userId]?.localPlayback,
-  }
-  await store.mergePresenceData(meta.roomId, meta.userId, offlinePresence)
-  bus.markPresenceDirty(meta.roomId, meta.userId, offlinePresence)
+  await clearLocalMediaProviderReadyForOwner(meta.roomId, meta.userId)
+  await deleteLocalMediaEntriesForOwner(meta.roomId, meta.userId)
+  await schedulePrune(meta.roomId, meta.userId)
 
+  await publishUserOfflinePresence(store, meta.roomId, meta.userId, next)
+
+  const bus = getRoomBroadcastBus()
   const playbackChanged = pausedBefore !== next.playback.paused
   if (playbackChanged) {
     await bus.publishControl(meta.roomId, bus.controlPayloadFromState(next))

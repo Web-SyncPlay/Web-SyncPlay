@@ -8,6 +8,7 @@ import { cn } from "@/components/lib/utils"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { RoomPanelProps } from "../../layout/page/types"
 import { usePlayerSession } from "./hooks/use-player-session"
+import { bindSeekPreview } from "./playback-control/bind-seek-preview"
 import { PlayerEmptyState } from "./PlayerEmptyState"
 import { PlayerErrorRecoveryOverlay } from "./PlayerErrorRecoveryOverlay"
 import { PlayerPanelGlobalStyles } from "./PlayerPanelGlobalStyles"
@@ -146,17 +147,7 @@ const PlayerPanelShell = memo(
             onPause={timeline.pause}
             onSelectAdjacent={handlePlaylistStep}
             onStepBy={timeline.stepBy}
-            onSeekPreview={(targetMs, active) => {
-              if (!active) {
-                // End scrub via onSeekCommit → playback:seek.
-                return
-              }
-              if (timeline.seekPhase === "idle") {
-                timeline.beginSeek(targetMs)
-                return
-              }
-              timeline.updateSeek(targetMs)
-            }}
+            onSeekPreview={bindSeekPreview(timeline)}
             onSeekCommit={timeline.commitSeek}
           />
         )}

@@ -7,6 +7,7 @@ import { getRoomUrl } from "@/client/realtime/control-url"
 import { isClientControlAuthorized } from "@/shared/permissions-utils"
 import { resolveCatalogDurationMs } from "@/shared/playlist-duration"
 import { ControlPanel } from "../../panel/control/ControlPanel"
+import { bindSeekPreview } from "../../panel/player/playback-control/bind-seek-preview"
 import { getPlaybackPermissionsState } from "../../panel/player/playback-control/use-playback-permissions-state"
 import { usePlaybackTimelineController } from "../../panel/player/playback-control/use-playback-timeline-controller"
 import { SidePanel } from "../SidePanel"
@@ -122,17 +123,7 @@ function ControlClientReady(props: {
           onPause={timeline.pause}
           onSelectAdjacent={timeline.selectAdjacent}
           onStepBy={timeline.stepBy}
-          onSeekPreview={(targetMs, active) => {
-            if (!active) {
-              // End scrub via onSeekCommit → playback:seek.
-              return
-            }
-            if (timeline.seekPhase === "idle") {
-              timeline.beginSeek(targetMs)
-              return
-            }
-            timeline.updateSeek(targetMs)
-          }}
+          onSeekPreview={bindSeekPreview(timeline)}
           onSeekCommit={timeline.commitSeek}
         />
       </section>

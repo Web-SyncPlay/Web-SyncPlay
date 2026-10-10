@@ -7,6 +7,7 @@ import {
   getMediasoupTransportAppData,
   listLocalMediaSfuProducers,
   listLocalMediaSfuRequestProducers,
+  mediasoupCloseRoom,
   mediasoupCloseTransport,
   mediasoupConnectTransport,
   mediasoupConsumeData,
@@ -80,6 +81,8 @@ export interface LocalMediaSfuPort {
   listProviderProducers(): Array<LocalMediaSfuProducer & { localMediaId: string }>
   listRequestProducers(localMediaId: string): LocalMediaSfuProducer[]
   closeDataProducer(producerId: string): void
+  /** Drop process-local SFU state for a destroyed room. */
+  closeRoom(roomId: string): void
   /**
    * Refuse SFU use when the file provider is on another replica.
    * @throws Error with message `sfu_wrong_node` when affinity mismatches.
@@ -105,6 +108,7 @@ export function createLocalMediaSfuPort(): LocalMediaSfuPort {
     listProviderProducers: listLocalMediaSfuProducers,
     listRequestProducers: listLocalMediaSfuRequestProducers,
     closeDataProducer: closeLocalMediaSfuDataProducer,
+    closeRoom: mediasoupCloseRoom,
     assertProviderNodeAffinity(providerNodeId) {
       // Sticky WS alone is insufficient: UDP MEDIASOUP_RTC_UDP_PORT must also
       // reach this process. Wrong-node signaling is an affinity failure.

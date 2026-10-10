@@ -15,6 +15,11 @@ export type SocketMeta = {
   controlAuthorized: boolean
   isControlSession: boolean
   sessionKind: SessionKind
+  /**
+   * Cached from session capabilities at join / role change so hot paths
+   * (seek-preview) can skip a full room GET for authorization.
+   */
+  canControlPlayback: boolean
   /** Client IP captured at upgrade time (for join rate limits). */
   clientIp?: string
 }
@@ -62,6 +67,7 @@ function patchSocketMeta(
       | "controlAuthorized"
       | "clientIp"
       | "joinCommitted"
+      | "canControlPlayback"
     >
   >,
 ) {
@@ -93,11 +99,16 @@ export function addSocket(
   ws: WebSocket,
   meta: Omit<
     SocketMeta,
-    "presenceTracked" | "connectionId" | "clientIp" | "joinCommitted"
+    | "presenceTracked"
+    | "connectionId"
+    | "clientIp"
+    | "joinCommitted"
+    | "canControlPlayback"
   > & {
     clientIp?: string
     /** Defaults to false; set true only after join commit (R2/R3). */
     joinCommitted?: boolean
+    canControlPlayback?: boolean
   },
 ) {
   const { rooms, sockets, earlyClientIps } = getRegistrySlot()
@@ -118,6 +129,8 @@ export function addSocket(
     controlAuthorized: meta.controlAuthorized,
     isControlSession: meta.isControlSession,
     sessionKind: meta.sessionKind,
+    canControlPlayback:
+      meta.canControlPlayback ?? previousMeta?.canControlPlayback ?? false,
     clientIp:
       meta.clientIp ??
       previousMeta?.clientIp ??
@@ -141,6 +154,24 @@ export function setSocketControlAuthorized(
   controlAuthorized: boolean,
 ) {
   patchSocketMeta(ws, { controlAuthorized })
+}
+
+export function setSocketCanControlPlayback(
+  ws: WebSocket,
+  canControlPlayback: boolean,
+) {
+  patchSocketMeta(ws, { canControlPlayback })
+}
+
+/** Update canControlPlayback for every live socket of a user in a room. */
+export function setUserCanControlPlayback(
+  roomId: string,
+  userId: string,
+  canControlPlayback: boolean,
+) {
+  for (const ws of getSocketsForUser(roomId, userId)) {
+    setSocketCanControlPlayback(ws, canControlPlayback)
+  }
 }
 
 export function removeSocket(ws: WebSocket) {

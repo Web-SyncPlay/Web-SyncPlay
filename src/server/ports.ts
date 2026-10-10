@@ -52,9 +52,9 @@ export interface RoomStateStorePort {
    */
   reconcilePresenceRefs(roomId: string): Promise<void>
   /**
-   * Compatibility: read online users and reconcile stale refs in one pass.
-   * Prefer {@link readWsPresenceUserIds} + {@link reconcilePresenceRefs} when
-   * separating I/O from room-state WATCH.
+   * Compatibility: read online users and reconcile stale refs in one pass
+   * (includes HASH writes). Prefer {@link readWsPresenceUserIds} +
+   * {@link reconcilePresenceRefs} outside WATCH mutate closures.
    */
   getWsPresenceUserIds(roomId: string): Promise<Set<string>>
 
@@ -65,6 +65,11 @@ export interface RoomStateStorePort {
     userId: string,
     patch: PresencePatch,
   ): Promise<void>
+  /** Single-user presence read (HGET) — prefer over {@link getPresenceDataAll} on hot paths. */
+  getPresenceData(
+    roomId: string,
+    userId: string,
+  ): Promise<PresencePatch | null>
   getPresenceDataAll(roomId: string): Promise<Record<string, PresencePatch>>
   clearPresenceData(roomId: string): Promise<void>
 }

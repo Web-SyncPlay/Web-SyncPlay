@@ -1,10 +1,12 @@
 import {
   defaultJoinRoleSchema,
+  localMediaIdSchema,
   loopModeSchema,
   roomErrorCodeSchema,
   roomJoinRejectedReasonSchema,
   roomRoleSchema,
   sessionCapabilitiesSchema,
+  userIdSchema,
 } from "@/contracts/schemas"
 import { z } from "zod"
 
@@ -69,8 +71,8 @@ export const playlistItemSchema = z.object({
   defaultTextTrackId: z.string().optional(),
   /** From yt-dlp when resolve succeeds (live broadcast vs VOD). */
   isLive: z.boolean().optional(),
-  localMediaId: z.string().optional(),
-  localOriginUserId: z.string().optional(),
+  localMediaId: localMediaIdSchema.optional(),
+  localOriginUserId: userIdSchema.optional(),
   localMimeType: z.string().optional(),
   localSizeBytes: z.number().optional(),
   createdBy: z.string(),
@@ -214,6 +216,46 @@ export const roomErrorPayloadSchema = z.object({
   message: z.string().max(300).optional(),
 })
 
+/** SFU request correlation reply (ok + optional fields / error). */
+export const localMediaSfuResultPayloadSchema = z
+  .object({
+    ok: z.boolean(),
+    error: z.string().max(300).optional(),
+  })
+  .passthrough()
+
+export const localMediaSfuProducerPayloadSchema = z.object({
+  localMediaId: localMediaIdSchema,
+  dataProducerId: z.string().min(1).max(128),
+  ownerUserId: userIdSchema,
+  kind: z.enum(["provider", "requests"]).optional(),
+})
+
+export const localMediaSfuUnavailablePayloadSchema = z.object({
+  error: z.string().max(300).optional(),
+})
+
+/** Peer-facing WebRTC signal (fromUserId set by server relay). */
+export const localMediaWebrtcSignalS2cPayloadSchema = z.object({
+  localMediaId: localMediaIdSchema,
+  fromUserId: userIdSchema,
+  signal: z.object({
+    type: z.enum(["offer", "answer", "ice", "hangup"]),
+    sdp: z.string().max(256_000).optional(),
+    candidate: z.string().max(8_000).optional(),
+    sdpMid: z.string().max(64).optional(),
+    sdpMLineIndex: z.number().int().min(0).max(64).optional(),
+  }),
+})
+
+/** HTTP-relay range read request delivered to a provider tab. */
+export const localMediaReadPayloadSchema = z.object({
+  requestId: z.string().min(1).max(128),
+  localMediaId: localMediaIdSchema,
+  start: z.number().int().min(0),
+  end: z.number().int().min(0),
+})
+
 /**
  * Payload schema for every critical server→client room message.
  * Source of truth for inbound wire shapes — {@link ServerEventPayloadMap} is derived.
@@ -228,6 +270,11 @@ export const serverEventSchemas = {
   "session:capabilities": sessionCapabilitiesPayloadSchema,
   "room:join:rejected": roomJoinRejectedPayloadSchema,
   "room:error": roomErrorPayloadSchema,
+  "local-media:sfu:result": localMediaSfuResultPayloadSchema,
+  "local-media:sfu:producer": localMediaSfuProducerPayloadSchema,
+  "local-media:sfu:unavailable": localMediaSfuUnavailablePayloadSchema,
+  "local-media:webrtc:signal": localMediaWebrtcSignalS2cPayloadSchema,
+  "local-media:read": localMediaReadPayloadSchema,
 } as const
 
 export type ServerEventSchemaMap = typeof serverEventSchemas

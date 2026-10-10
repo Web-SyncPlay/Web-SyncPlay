@@ -6,11 +6,17 @@ import {
   clientPresencePatch,
   upsertLocalPlaybackReport,
 } from "@/server/realtime/services/local-playback-presence"
+import { computeSessionCapabilities } from "@/server/realtime/services/permissions"
 import {
   participantRoleUpdateSchema,
   participantUpdateSchema,
 } from "@/contracts/schemas"
 import type { PresencePatch, ParticipantState } from "@/contracts/types"
+import {
+  getSocketMeta,
+  getSocketsForUser,
+  setSocketCanControlPlayback,
+} from "@/server/ws/registry"
 import type { z } from "zod"
 import { mutateOwnerRoomMessage } from "./mutate-controlled"
 import { mutateRoomMessage } from "./mutate-room"
@@ -121,9 +127,11 @@ export const handleParticipantUpdate: RoomMessageHandler = async (
   }
 
   const connectionId = ctx.connectionId
-  const presenceAll = await ctx.store.getPresenceDataAll(ctx.roomId)
-  const existingReports =
-    presenceAll[ctx.userId]?.localPlaybackReports ?? {}
+  const existingPresence = await ctx.store.getPresenceData(
+    ctx.roomId,
+    ctx.userId,
+  )
+  const existingReports = existingPresence?.localPlaybackReports ?? {}
   const previousReport = existingReports[connectionId]
   const previousForConnection: ParticipantState["localPlayback"] =
     previousReport
@@ -235,7 +243,7 @@ export const handleParticipantRoleUpdate: RoomMessageHandler = async (
   )
   if (!roleUpdate) return
 
-  await mutateOwnerRoomMessage(
+  const next = await mutateOwnerRoomMessage(
     ctx,
     data,
     (state, participant) => {
@@ -265,4 +273,19 @@ export const handleParticipantRoleUpdate: RoomMessageHandler = async (
     },
     { kind: "snapshot" },
   )
+
+  const target = next?.participants[roleUpdate.targetUserId]
+  if (!target) return
+
+  for (const ws of getSocketsForUser(ctx.roomId, target.userId)) {
+    const meta = getSocketMeta(ws)
+    if (!meta) continue
+    const caps = computeSessionCapabilities({
+      role: target.role,
+      sessionKind: meta.sessionKind,
+      isControlSession: meta.isControlSession,
+      controlAuthorized: meta.controlAuthorized,
+    })
+    setSocketCanControlPlayback(ws, caps.canControlPlayback)
+  }
 }

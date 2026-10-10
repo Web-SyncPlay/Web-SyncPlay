@@ -1,7 +1,6 @@
 import { DEFAULT_AVATAR_STYLE, resolveStyle } from "@/shared/avatar"
 import { appendActionLog } from "@/server/log"
 import {
-  clearPrune,
   reconcileParticipantsConnectivity,
 } from "@/server/realtime/services/participants"
 import { transferOwnershipIfNeeded } from "@/server/realtime/services/ownership"
@@ -53,6 +52,7 @@ export type CommitMembershipResult = {
 
 /**
  * WATCH commit: re-admit, upsert participant, heal ownership, bump revisions.
+ * Presence / prune Redis I/O runs outside WATCH (same pattern as cleanup).
  */
 export async function commitJoinMembership(
   input: CommitMembershipInput,
@@ -66,6 +66,13 @@ export async function commitJoinMembership(
     String(input.avatarStyle || DEFAULT_AVATAR_STYLE),
   )
   const username = String(input.username || "guest")
+
+  // Presence + overlay reads outside WATCH — never HASH-write from mutate.
+  const activeConnections = await input.store.readWsPresenceUserIds(
+    input.roomId,
+  )
+  await input.store.reconcilePresenceRefs(input.roomId)
+  const presenceOverlay = await input.store.getPresenceDataAll(input.roomId)
 
   const committed = await input.store.updateRoom(input.roomId, async (existing) => {
     const state =
@@ -91,12 +98,10 @@ export async function commitJoinMembership(
       findings: applyRoomStateRepair(state),
     })
 
-    const active = await input.store.getWsPresenceUserIds(input.roomId)
-    const recon = reconcileParticipantsConnectivity(state, active)
+    const recon = reconcileParticipantsConnectivity(state, activeConnections)
     reconnectingUserIds = recon.reconnecting
     disconnectingUserIds = recon.disconnecting
 
-    await clearPrune(input.roomId, input.userId)
     const existingParticipant = state.participants[input.userId]
     const security = ensureRoomSecurity(state)
     const role: ParticipantState["role"] =
@@ -107,7 +112,6 @@ export async function commitJoinMembership(
       existingParticipant,
       { username, avatarStyle },
     )
-    const presenceOverlay = await input.store.getPresenceDataAll(input.roomId)
     const overlayPlayback = presenceOverlay[input.userId]?.localPlayback
     state.participants[input.userId] = {
       userId: input.userId,

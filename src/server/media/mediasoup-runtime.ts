@@ -34,12 +34,16 @@ export type MediasoupDataProducerAppData = {
   role?: "provider" | "requests"
 }
 
+type DataConsumer = MsTypes.DataConsumer
+
 type Runtime = {
   worker: Worker
   webRtcServer: WebRtcServer
   routers: Map<string, Router>
   transports: Map<string, WebRtcTransport>
   dataProducers: Map<string, DataProducer>
+  /** Tracked so room teardown can close consumers that outlive a producer. */
+  dataConsumers: Map<string, DataConsumer>
   /** Provider block channel per local media id (latest producer wins). */
   localMediaProducers: Map<string, LocalMediaSfuProducer>
   /** Viewer request channels per local media id, keyed by dataProducerId. */
@@ -75,6 +79,14 @@ function notifyWorkerDied() {
 function clearRuntimeMaps(runtime: Runtime) {
   runtime.localMediaProducers.clear()
   runtime.localMediaRequestProducers.clear()
+  for (const consumer of runtime.dataConsumers.values()) {
+    try {
+      consumer.close()
+    } catch {
+      // already closed
+    }
+  }
+  runtime.dataConsumers.clear()
   runtime.dataProducers.clear()
   runtime.transports.clear()
   runtime.routers.clear()
@@ -126,6 +138,7 @@ export async function ensureMediasoupRuntime(): Promise<Runtime | null> {
         routers: new Map(),
         transports: new Map(),
         dataProducers: new Map(),
+        dataConsumers: new Map(),
         localMediaProducers: new Map(),
         localMediaRequestProducers: new Map(),
       }
@@ -384,6 +397,10 @@ export async function mediasoupConsumeData(input: {
   const dataConsumer = await transport.consumeData({
     dataProducerId: dataProducer.id,
   })
+  runtime.dataConsumers.set(dataConsumer.id, dataConsumer)
+  dataConsumer.observer.once("close", () => {
+    runtime.dataConsumers.delete(dataConsumer.id)
+  })
   return {
     id: dataConsumer.id,
     dataProducerId: dataProducer.id,
@@ -391,4 +408,54 @@ export async function mediasoupConsumeData(input: {
     label: dataConsumer.label,
     protocol: dataConsumer.protocol,
   }
+}
+
+/**
+ * Tear down process-local SFU state for one room: transports, consumers,
+ * producers tied to the room, and the router. Call from room destroy paths.
+ */
+export function mediasoupCloseRoom(roomKey: string) {
+  const runtime = g.__webSyncPlayMediasoup
+  if (!runtime) return
+
+  for (const [mediaId, entry] of [...runtime.localMediaProducers]) {
+    if (entry.roomId === roomKey) {
+      clearLocalMediaSfuProducer(mediaId)
+    }
+  }
+  for (const [mediaId, byProducer] of [
+    ...runtime.localMediaRequestProducers,
+  ]) {
+    for (const [producerId, entry] of [...byProducer]) {
+      if (entry.roomId === roomKey) {
+        byProducer.delete(producerId)
+        runtime.dataProducers.get(producerId)?.close()
+      }
+    }
+    if (byProducer.size === 0) {
+      runtime.localMediaRequestProducers.delete(mediaId)
+    }
+  }
+
+  for (const transport of [...runtime.transports.values()]) {
+    const appData = transport.appData as MediasoupTransportAppData
+    if (appData.roomKey === roomKey) {
+      transport.close()
+    }
+  }
+
+  const router = runtime.routers.get(roomKey)
+  if (router) {
+    try {
+      router.close()
+    } catch {
+      // already closed
+    }
+    runtime.routers.delete(roomKey)
+  }
+}
+
+/** Test/diagnostics: number of live routers in this process. */
+export function countMediasoupRoutersForTests(): number {
+  return g.__webSyncPlayMediasoup?.routers.size ?? 0
 }

@@ -95,6 +95,10 @@ export class InMemoryRoomStateStore implements RoomStateStorePort {
     this.presenceData.set(roomId, map)
   }
 
+  async getPresenceData(roomId: string, userId: string) {
+    return this.presenceData.get(roomId)?.get(userId) ?? null
+  }
+
   async getPresenceDataAll(roomId: string) {
     const map = this.presenceData.get(roomId)
     if (!map) return {}

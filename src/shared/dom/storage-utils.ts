@@ -1,4 +1,4 @@
-import { clampNumber } from "@/shared/storage-utils"
+import { clampNumber } from "@/shared/number-utils"
 
 /** Read a clamped number from `localStorage` (SSR-safe fallback). */
 export function readClampedNumberFromStorage(

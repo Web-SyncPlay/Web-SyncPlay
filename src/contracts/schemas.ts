@@ -6,9 +6,9 @@ import {
 import { z } from "zod"
 
 /** Shared id / size primitives (keep bounds consistent across client events). */
-const userIdSchema = z.string().min(1).max(128)
+export const userIdSchema = z.string().min(1).max(128)
 const itemIdSchema = z.string().min(1).max(128)
-const localMediaIdSchema = z.string().uuid()
+export const localMediaIdSchema = z.string().uuid()
 const sizeBytesSchema = z
   .number()
   .int()

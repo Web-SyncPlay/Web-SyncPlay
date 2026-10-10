@@ -17,6 +17,9 @@ import type { WebSocket } from "ws"
 import type { RoomStateStorePort } from "@/server/ports"
 import { handleSocketMessage } from "./socket-dispatch"
 
+/** Cap pending async handlers per socket so floods cannot grow unbounded. */
+export const MAX_SOCKET_MESSAGE_QUEUE_DEPTH = 64
+
 export async function createRealtimeServer(server: HttpServer) {
   wireRealtimePorts()
   const store = await getRoomStateStore()
@@ -40,6 +43,7 @@ function setupWebSocketConnection(ws: WebSocket, store: RoomStateStorePort) {
   // Serialize async message handlers per socket so join commit / presence
   // cannot race later room:* handlers on the same connection (R3).
   let messageQueue: Promise<void> = Promise.resolve()
+  let queuedDepth = 0
 
   ws.on("close", async (code, reason) => {
     console.log(
@@ -57,16 +61,23 @@ function setupWebSocketConnection(ws: WebSocket, store: RoomStateStorePort) {
   })
 
   ws.on("message", (message, isBinary) => {
-    messageQueue = messageQueue
-      .then(async () => {
-        try {
-          await handleSocketMessage(ws, store, message, isBinary)
-        } catch (error) {
-          console.error("[realtime] message handling failed", error)
-        }
-      })
-      .catch((error) => {
-        console.error("[realtime] message queue failed", error)
-      })
+    if (queuedDepth >= MAX_SOCKET_MESSAGE_QUEUE_DEPTH) {
+      console.warn(
+        `[realtime] socket message queue full (depth=${queuedDepth}); dropping`,
+      )
+      return
+    }
+    queuedDepth += 1
+    const run = async () => {
+      try {
+        await handleSocketMessage(ws, store, message, isBinary)
+      } catch (error) {
+        console.error("[realtime] message handling failed", error)
+      } finally {
+        queuedDepth -= 1
+      }
+    }
+    // Keep the chain alive after handler failures so later messages still run.
+    messageQueue = messageQueue.then(run, run)
   })
 }

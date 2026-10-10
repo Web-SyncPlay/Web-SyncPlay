@@ -102,4 +102,51 @@ describe("mutateRoomMessage presence prune scheduling", () => {
     expect(pruneSetCalls).toBe(1)
     expect(store.peek("room-1")?.participants.guest?.connected).toBe(false)
   })
+
+  test("does not call presence Redis I/O inside updateRoom mutate", async () => {
+    const { mutateRoomMessage } = await import("./mutate-room")
+    const store = roomWithOfflineGuest()
+    createTestBroadcastBus(store)
+
+    let duringMutate = false
+    const originalUpdate = store.updateRoom.bind(store)
+    const originalRead = store.readWsPresenceUserIds.bind(store)
+    const originalReconcile = store.reconcilePresenceRefs.bind(store)
+    const originalGet = store.getWsPresenceUserIds.bind(store)
+
+    store.readWsPresenceUserIds = async (roomId) => {
+      if (duringMutate) {
+        throw new Error("readWsPresenceUserIds called inside updateRoom mutate")
+      }
+      return originalRead(roomId)
+    }
+    store.reconcilePresenceRefs = async (roomId) => {
+      if (duringMutate) {
+        throw new Error("reconcilePresenceRefs called inside updateRoom mutate")
+      }
+      return originalReconcile(roomId)
+    }
+    store.getWsPresenceUserIds = async (roomId) => {
+      if (duringMutate) {
+        throw new Error("getWsPresenceUserIds called inside updateRoom mutate")
+      }
+      return originalGet(roomId)
+    }
+    store.updateRoom = async (roomId, mutate) => {
+      duringMutate = true
+      try {
+        return await originalUpdate(roomId, mutate)
+      } finally {
+        duringMutate = false
+      }
+    }
+
+    const result = await mutateRoomMessage(
+      store,
+      "room-1",
+      "owner",
+      () => true,
+    )
+    expect(result).not.toBeNull()
+  })
 })

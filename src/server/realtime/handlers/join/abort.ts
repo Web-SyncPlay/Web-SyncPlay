@@ -1,5 +1,6 @@
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { applyUserWentOffline } from "@/server/realtime/services/disconnect"
+import { publishUserOfflinePresence } from "@/server/realtime/services/offline-presence"
 import { schedulePrune } from "@/server/realtime/services/participants"
 import { bumpRoomRevisions } from "@/server/realtime/services/timeline"
 import type { RoomStateStorePort } from "@/server/ports"
@@ -23,38 +24,37 @@ export async function abortJoinAfterCommit(options: {
   removeSocket(options.ws)
 
   // H2: room commit already wrote connected:true; compensate if no live presence remains.
-  const activeUsers = await options.store.getWsPresenceUserIds(options.roomId)
+  // Presence I/O outside WATCH (same pattern as cleanupInactiveRooms).
+  const activeUsers = await options.store.readWsPresenceUserIds(options.roomId)
+  await options.store.reconcilePresenceRefs(options.roomId)
   if (!activeUsers.has(options.userId)) {
-    const next = await options.store.updateRoom(options.roomId, async (state) => {
-      if (!state) return null
-      const stillActive = await options.store.getWsPresenceUserIds(
+    // Fresh read immediately before WATCH to shrink the race window without
+    // HASH writes inside the mutate closure.
+    const stillActive = await options.store.readWsPresenceUserIds(
+      options.roomId,
+    )
+    if (!stillActive.has(options.userId)) {
+      const next = await options.store.updateRoom(
         options.roomId,
+        async (state) => {
+          if (!state) return null
+          if (!applyUserWentOffline(state, options.roomId, options.userId)) {
+            return null
+          }
+          bumpRoomRevisions(state)
+          return state
+        },
       )
-      if (stillActive.has(options.userId)) return null
-      if (!applyUserWentOffline(state, options.roomId, options.userId)) {
-        return null
+      if (next) {
+        await schedulePrune(options.roomId, options.userId)
+        await publishUserOfflinePresence(
+          options.store,
+          options.roomId,
+          options.userId,
+          next,
+        )
+        getRoomBroadcastBus().markSnapshotDirty(options.roomId)
       }
-      await schedulePrune(options.roomId, options.userId)
-      bumpRoomRevisions(state)
-      return state
-    })
-    if (next) {
-      const bus = getRoomBroadcastBus()
-      bus.attachStore(options.store)
-      const now = Date.now()
-      const offlinePresence = {
-        connected: false as const,
-        lastSeenAt: now,
-        disconnectedAt: now,
-        localPlayback: next.participants[options.userId]?.localPlayback,
-      }
-      await options.store.mergePresenceData(
-        options.roomId,
-        options.userId,
-        offlinePresence,
-      )
-      bus.markPresenceDirty(options.roomId, options.userId, offlinePresence)
-      bus.markSnapshotDirty(options.roomId)
     }
   }
 

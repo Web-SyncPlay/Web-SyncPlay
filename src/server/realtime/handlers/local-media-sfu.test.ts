@@ -78,6 +78,7 @@ function createTestSfuPort(): LocalMediaSfuPort {
     closeDataProducer(producerId) {
       closedProducerIds.push(producerId)
     },
+    closeRoom() {},
     assertProviderNodeAffinity(providerNodeId) {
       if (
         typeof providerNodeId === "string" &&

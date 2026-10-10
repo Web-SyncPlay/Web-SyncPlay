@@ -4,7 +4,7 @@
 
 - **Product / ops docs:** [README.md](./README.md) — requirements, env vars, architecture, multi-replica SFU (sticky `/api/ws`).
 - **Env schema:** [`src/env.ts`](./src/env.ts) (copy [`.env.example`](./.env.example)).
-- **Layout:** `src/contracts` (schemas/types), `src/shared` (framework-agnostic helpers + `@/shared/test-utils` fixtures), `src/client/{realtime,local-media,player}`, `src/server/{realtime,redis,ws,security,media}`. Prefer these over legacy `src/lib` / `src/zod` (removed).
+- **Layout:** `src/app` (App Router pages + HTTP APIs), `src/pages/api/ws.ts` (WebSocket upgrade), `src/proxy.ts` (Edge CSP/CORS), `src/contracts` (schemas/types), `src/shared` (framework-agnostic helpers + `shared/dom` + `@/shared/test-utils` fixtures), `src/client/{realtime,local-media,player}`, `src/server/{realtime,redis,ws,security,media}`, `src/hooks` (compose `client/*`), `src/components` (UI), `src/sw` (local-media service worker). Prefer these over legacy `src/lib` / `src/zod` (removed). See README Architecture table for the same map.
 - **Tests:** `bun run test:unit`, `test:integration`, `test:a11y`, `test:e2e`, `test:e2e:ws` (`test:integration` needs Valkey/`VALKEY_URL`; latter three need a healthy app; see CI). Client/UI tests should use `@/shared/test-utils` fixtures, not `@/server` fixtures, where practical.
 - **Optional deep run:** `bun run test:fuzz` — property/fuzz suite against Valkey; not part of CI (slow; run locally when changing presence/state-store invariants).
 - **Typecheck (dual TypeScript — IDE TS6 vs CI TS7):**

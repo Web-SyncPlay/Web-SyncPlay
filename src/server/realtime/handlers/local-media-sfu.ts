@@ -172,6 +172,16 @@ export const handleLocalMediaSfuCreateTransport: RoomMessageHandler = async (
   }
   const sfu = getLocalMediaSfuPort()
   try {
+    // Refuse wrong-node affinity before allocating a transport.
+    if (parsed.localMediaId) {
+      const entry = await getLocalMediaEntry(parsed.localMediaId)
+      if (!entry || entry.roomId !== ctx.roomId) {
+        reply(ctx, data, { ok: false, error: "media_not_found" })
+        return
+      }
+      sfu.assertProviderNodeAffinity(entry.providerNodeId)
+    }
+
     let owned = socketTransports.get(ctx.ws)
     if (!owned) {
       owned = new Set()

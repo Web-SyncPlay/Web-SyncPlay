@@ -11,6 +11,8 @@ import {
 } from "@/server/lifecycle"
 
 let reclaimTimer: ReturnType<typeof setInterval> | null = null
+/** Prevent overlapping ticks when a sweep outlasts the interval. */
+let tickInFlight = false
 
 function timeoutMs(): number {
   const raw = env.YTDLP_TIMEOUT_MS
@@ -25,59 +27,67 @@ function timeoutMs(): number {
  *
  * Realtime service callbacks come from {@link getMediaMaintenancePort}
  * (wired at composition root).
+ *
+ * Prunes run once via {@link cleanupInactiveRooms} (which calls processDuePrunes);
+ * do not invoke processDuePrunes separately on this tick.
  */
 export function startResolveReclaimLoop(store: RoomStateStorePort) {
   if (reclaimTimer) return
 
   const intervalMs = derivedResolveReclaimIntervalMs(timeoutMs())
   const tick = () => {
+    if (tickInFlight) {
+      console.warn("[maintenance] previous tick still running; skipping")
+      return
+    }
+    tickInFlight = true
+
     const maintenance = getMediaMaintenancePort()
     if (!maintenance) {
       console.warn(
         "[yt-dlp] MediaMaintenancePort not configured; reclaim tick skipped",
       )
+      tickInFlight = false
       return
     }
 
-    void reclaimAbandonedResolves({
-      reresolve: (job) =>
-        maintenance.reresolveRemotePlaylistItem({
-          store,
-          roomId: job.roomId,
-          itemId: job.itemId,
-        }),
-    }).then((n) => {
-      if (n > 0) {
-        console.info("[yt-dlp] reclaimed abandoned playlist resolves", {
-          count: n,
+    void (async () => {
+      try {
+        const reclaimed = await reclaimAbandonedResolves({
+          reresolve: (job) =>
+            maintenance.reresolveRemotePlaylistItem({
+              store,
+              roomId: job.roomId,
+              itemId: job.itemId,
+            }),
         })
-      }
-    })
-
-    void maintenance.processDuePrunes(store).then((n) => {
-      if (n > 0) {
-        console.info("[participants] pruned disconnected users", { count: n })
-      }
-    })
-
-    void maintenance.cleanupInactiveRooms(store).then((result) => {
-      if (result.removedRooms > 0 || result.removedParticipants > 0) {
-        console.info("[rooms] inactive cleanup sweep", result)
-      }
-    })
-
-    const hydrate = (
-      store as RoomStateStorePort & {
-        hydrateDailyDefaultTitlesIfNeeded?: () => Promise<number>
-      }
-    ).hydrateDailyDefaultTitlesIfNeeded
-    if (typeof hydrate === "function") {
-      void hydrate.call(store).then((count) => {
-        if (count > 0) {
-          console.info("[defaults] hydrated daily default titles", { count })
+        if (reclaimed > 0) {
+          console.info("[yt-dlp] reclaimed abandoned playlist resolves", {
+            count: reclaimed,
+          })
         }
-      })
-    }
+
+        // cleanupInactiveRooms already runs processDuePrunes once at the end.
+        const result = await maintenance.cleanupInactiveRooms(store)
+        if (result.removedRooms > 0 || result.removedParticipants > 0) {
+          console.info("[rooms] inactive cleanup sweep", result)
+        }
+
+        const hydrate = (
+          store as RoomStateStorePort & {
+            hydrateDailyDefaultTitlesIfNeeded?: () => Promise<number>
+          }
+        ).hydrateDailyDefaultTitlesIfNeeded
+        if (typeof hydrate === "function") {
+          const count = await hydrate.call(store)
+          if (count > 0) {
+            console.info("[defaults] hydrated daily default titles", { count })
+          }
+        }
+      } finally {
+        tickInFlight = false
+      }
+    })()
   }
 
   reclaimTimer = setInterval(tick, intervalMs)
@@ -96,4 +106,5 @@ export function stopResolveReclaimLoop() {
     clearInterval(reclaimTimer)
     reclaimTimer = null
   }
+  tickInFlight = false
 }

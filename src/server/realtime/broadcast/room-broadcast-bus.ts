@@ -74,8 +74,16 @@ function getBusSlot(): BusSlot {
  * Publishers: control (`control-publisher`), presence (`presence-publisher`),
  * snapshot (`snapshot-publisher`). Fan-out helpers live in `bus-fanout`.
  */
+/** Authoritative control fields cached for seek-preview (no Redis GET). */
+export type CachedControlProjection = {
+  generation: number
+  currentIndex: number
+  playback: RoomControlPayload["playback"]
+}
+
 export class RoomBroadcastBus {
   private rooms = new Map<string, RoomDirty>()
+  private controlProjection = new Map<string, CachedControlProjection>()
   private store: RoomStateStorePort | null = null
   /** When set, Redis publish is skipped (unit tests). */
   private captureOnly = false
@@ -94,7 +102,23 @@ export class RoomBroadcastBus {
     if (!dirty) return
     this.clearTimers(dirty)
     this.rooms.delete(roomId)
+    this.controlProjection.delete(roomId)
     clearPresenceSeqFallback(roomId)
+  }
+
+  /** Last published control base for a room (seek-preview hot path). */
+  getCachedControlProjection(roomId: string): CachedControlProjection | null {
+    return this.controlProjection.get(roomId) ?? null
+  }
+
+  rememberControlProjection(roomId: string, payload: RoomControlPayload) {
+    const playback = { ...payload.playback }
+    delete playback.seekPreview
+    this.controlProjection.set(roomId, {
+      generation: payload.generation ?? 0,
+      currentIndex: payload.currentIndex,
+      playback,
+    })
   }
 
   clearAllRooms() {
@@ -151,6 +175,7 @@ export class RoomBroadcastBus {
   }
 
   async publishControl(roomId: string, payload: RoomControlPayload) {
+    this.rememberControlProjection(roomId, payload)
     await publishControlEnvelope({
       roomId,
       payload,

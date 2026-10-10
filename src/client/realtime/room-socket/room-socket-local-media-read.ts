@@ -1,5 +1,7 @@
 import type { WsEnvelope } from "@/contracts/types"
 import type { LocalMediaRuntime } from "@/client/local-media/local-media-runtime"
+import { localMediaReadPayloadSchema } from "@/contracts/s2c"
+import { parseOrWarn } from "@/shared/parse-or-warn"
 
 /**
  * HTTP-relay client path: answer peer range reads from this tab's File.
@@ -9,24 +11,13 @@ export function createLocalMediaReadHandler(
   runtime?: LocalMediaRuntime,
 ) {
   return (envelope: WsEnvelope<string, unknown>) => {
-    const payload = envelope.payload as {
-      requestId?: string
-      localMediaId?: string
-      start?: number
-      end?: number
-    }
-    const requestId = payload.requestId
-    const localMediaId = payload.localMediaId
-    const start = payload.start
-    const end = payload.end
-    if (
-      !requestId ||
-      !localMediaId ||
-      typeof start !== "number" ||
-      typeof end !== "number"
-    ) {
-      return
-    }
+    const payload = parseOrWarn(
+      localMediaReadPayloadSchema,
+      envelope.payload,
+      "local-media:read",
+    )
+    if (!payload) return
+    const { requestId, localMediaId, start, end } = payload
 
     void (async () => {
       const { getLocalMediaFile } = await import(

@@ -116,6 +116,23 @@ type HotWsCoalesceEntry = {
 
 const hotWsCoalesce = new Map<string, HotWsCoalesceEntry>()
 const HOT_WS_COALESCE_DENY_BACKOFF_MS = 100
+const HOT_WS_COALESCE_STALE_MS = 5 * 60_000
+const HOT_WS_COALESCE_PRUNE_AT = 10_000
+
+function pruneStaleHotWsCoalesce(nowMs: number) {
+  for (const [key, entry] of hotWsCoalesce) {
+    const idle =
+      entry.remainingLocal <= 0 &&
+      entry.deniedUntilMs > 0 &&
+      nowMs - entry.deniedUntilMs >= HOT_WS_COALESCE_STALE_MS
+    const spent =
+      entry.remainingLocal <= 0 &&
+      entry.deniedUntilMs === 0
+    if (idle || spent) {
+      hotWsCoalesce.delete(key)
+    }
+  }
+}
 
 /** Test-only: clear in-memory token buckets between cases. */
 export function resetTokenBucketsForTests() {
@@ -226,6 +243,10 @@ export async function consumeHotWsEventLimit(params: {
       refillPerSecond: limit.refillPerSecond,
       nowMs,
     })
+  }
+
+  if (hotWsCoalesce.size >= HOT_WS_COALESCE_PRUNE_AT) {
+    pruneStaleHotWsCoalesce(nowMs)
   }
 
   const entry = hotWsCoalesce.get(key)

@@ -102,4 +102,23 @@ describe("mediasoup-runtime", () => {
     runtimeModule.clearLocalMediaSfuProducer(mediaId)
     runtimeModule.mediasoupCloseTransport(transport.id)
   })
+
+  sfuTest("mediasoupCloseRoom removes the router for that room", async () => {
+    const roomKey = `test-room-${crypto.randomUUID()}`
+    await runtimeModule.mediasoupCreateRouter(roomKey)
+    const before = runtimeModule.countMediasoupRoutersForTests()
+    expect(before).toBeGreaterThan(0)
+
+    const transport = await runtimeModule.mediasoupCreateTransport(roomKey, {
+      direction: "send",
+    })
+    expect(
+      runtimeModule.getMediasoupTransportAppData(transport.id),
+    ).not.toBeNull()
+
+    runtimeModule.mediasoupCloseRoom(roomKey)
+
+    expect(runtimeModule.getMediasoupTransportAppData(transport.id)).toBeNull()
+    expect(runtimeModule.countMediasoupRoutersForTests()).toBe(before - 1)
+  })
 })

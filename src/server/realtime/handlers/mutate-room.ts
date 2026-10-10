@@ -18,19 +18,6 @@ function bumpsStructuralRevision(hint: RoomPublishHint): boolean {
   )
 }
 
-/**
- * In-memory presence reconcile only. Prune Redis side effects must wait until
- * after a successful room write (see mutateRoomMessage post-commit path).
- */
-async function reconcilePresenceForMutation(
-  store: RoomStateStorePort,
-  state: RoomState,
-  roomId: string,
-): Promise<{ disconnecting: string[]; reconnecting: string[] }> {
-  const active = await store.getWsPresenceUserIds(roomId)
-  return reconcileParticipantsConnectivity(state, active)
-}
-
 async function publishAfterMutation(
   roomId: string,
   userId: string,
@@ -68,6 +55,7 @@ async function publishAfterMutation(
 
 /**
  * WATCH/GET/mutate/SET for one user message: reconcile presence, run body, bump activity.
+ * Presence Redis I/O runs outside WATCH (same pattern as cleanupInactiveRooms).
  * Body returns false to abort (no write). Publish via RoomBroadcastBus per hint.
  */
 export async function mutateRoomMessage(
@@ -80,12 +68,16 @@ export async function mutateRoomMessage(
   ) => boolean | Promise<boolean>,
   hint: RoomPublishHint = { kind: "snapshot" },
 ): Promise<RoomState | null> {
+  // Presence I/O outside WATCH — never HASH-write from an updateRoom closure.
+  const activeConnections = await store.readWsPresenceUserIds(roomId)
+  await store.reconcilePresenceRefs(roomId)
+
   let disconnectingUserIds: string[] = []
   let reconnectingUserIds: string[] = []
 
   const next = await store.updateRoom(roomId, async (state) => {
     if (!state) return null
-    const recon = await reconcilePresenceForMutation(store, state, roomId)
+    const recon = reconcileParticipantsConnectivity(state, activeConnections)
     disconnectingUserIds = recon.disconnecting
     reconnectingUserIds = recon.reconnecting
 

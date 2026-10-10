@@ -10,6 +10,7 @@ import {
   addSocket,
   getSocketClientIp,
   getSocketMeta,
+  setSocketCanControlPlayback,
   setSocketControlAuthorized,
   setSocketJoinCommitted,
   setSocketPresenceTracked,
@@ -109,9 +110,15 @@ export async function postCommitJoinSideEffects(
   }
 
   setSocketJoinCommitted(input.ws, true)
+  setSocketCanControlPlayback(
+    input.ws,
+    input.sessionCapabilities?.canControlPlayback ?? false,
+  )
 
   // Force lifecycle TTL refresh on join (bypasses post-message throttle).
   await input.store.touchWsPresence(input.roomId, input.userId, { force: true })
+  // Joiner prune clear moved out of WATCH (was inside commitJoinMembership).
+  await clearPrune(input.roomId, input.userId)
 
   scheduleResolvingPlaylistItems(
     input.store,

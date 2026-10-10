@@ -169,6 +169,74 @@ describe("abortJoinAfterCommit", () => {
     expect(store.peek("room-1")?.participants.guest?.connected).toBe(false)
   })
 
+  test("does not call presence Redis I/O inside updateRoom mutate", async () => {
+    const store = new InMemoryRoomStateStore(
+      createRoomState({
+        participants: {
+          owner: createParticipant({
+            userId: "owner",
+            role: "owner",
+            connected: true,
+          }),
+          guest: createParticipant({
+            userId: "guest",
+            role: "guest",
+            connected: true,
+          }),
+        },
+      }),
+    )
+    store.presence.set(
+      "room-1",
+      new Map([["owner", { [getAppNodeId()]: 1 }]]),
+    )
+    createTestBroadcastBus(store)
+    const { ws } = createFakeWs()
+
+    let duringMutate = false
+    const originalUpdate = store.updateRoom.bind(store)
+    const originalRead = store.readWsPresenceUserIds.bind(store)
+    const originalReconcile = store.reconcilePresenceRefs.bind(store)
+    const originalGet = store.getWsPresenceUserIds.bind(store)
+
+    store.readWsPresenceUserIds = async (roomId) => {
+      if (duringMutate) {
+        throw new Error("readWsPresenceUserIds called inside updateRoom mutate")
+      }
+      return originalRead(roomId)
+    }
+    store.reconcilePresenceRefs = async (roomId) => {
+      if (duringMutate) {
+        throw new Error("reconcilePresenceRefs called inside updateRoom mutate")
+      }
+      return originalReconcile(roomId)
+    }
+    store.getWsPresenceUserIds = async (roomId) => {
+      if (duringMutate) {
+        throw new Error("getWsPresenceUserIds called inside updateRoom mutate")
+      }
+      return originalGet(roomId)
+    }
+    store.updateRoom = async (roomId, mutate) => {
+      duringMutate = true
+      try {
+        return await originalUpdate(roomId, mutate)
+      } finally {
+        duringMutate = false
+      }
+    }
+
+    await abortJoinAfterCommit({
+      ws,
+      store,
+      roomId: "room-1",
+      userId: "guest",
+      didAddPresence: false,
+    })
+
+    expect(store.peek("room-1")?.participants.guest?.connected).toBe(false)
+  })
+
   test("H1: keeps other tab/node refs and does not mark offline", async () => {
     const otherNodeId = "other-node"
     const store = new InMemoryRoomStateStore(

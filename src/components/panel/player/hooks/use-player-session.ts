@@ -1,7 +1,8 @@
 "use client"
 
 import type { MediaErrorDetail } from "@vidstack/react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useLatestRef } from "@/hooks/use-latest-ref"
 import {
   resolveCatalogDurationMs,
   resolveEffectiveDurationMs,
@@ -12,7 +13,7 @@ import { usePlayerChromeUi } from "./use-player-chrome-ui"
 import { usePlayerMediaPipeline } from "./use-player-media-pipeline"
 import { usePlayerPermissions } from "./use-player-permissions"
 import { usePlayerSessionController } from "./use-player-session-controller"
-import { usePlayerSyncPipeline } from "./use-player-sync-pipeline"
+import { usePlayerPlaybackSync } from "./use-player-playback-sync"
 import { usePlaylistNavigation } from "./use-playlist-navigation"
 import { usePlaybackTimelineController } from "../playback-control/use-playback-timeline-controller"
 import { formatMediaErrorDetail } from "../player-src"
@@ -162,14 +163,17 @@ export function usePlayerSession({
     controlsDisabled,
   })
 
-  const sync = usePlayerSyncPipeline({
+  const lastAppliedTimelineAnchorMsRef = useRef<number | null>(null)
+  const playbackPausedRef = useLatestRef(playback.paused)
+  const sync = usePlayerPlaybackSync({
     playerRef: controller.playerRef,
     isMediaReadyRef: controller.isMediaReadyRef,
     bufferingSinceRef: controller.bufferingSinceRef,
     participantStatusErrorRef: controller.participantStatusErrorRef,
     pendingSyncRef: controller.pendingSyncRef,
+    lastAppliedTimelineAnchorMsRef,
     playbackRef: controller.playbackRef,
-    playbackPaused: playback.paused,
+    playbackPausedRef,
     reportedItemErrorRef: controller.reportedItemErrorRef,
     proxyRenewAttemptedRef: controller.proxyRenewAttemptedRef,
     current,
