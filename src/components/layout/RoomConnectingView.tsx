@@ -2,7 +2,7 @@
 
 import { RoomJoinPasswordPrompt } from "@/components/dialog/RoomJoinPasswordPrompt"
 import { MediaUrlUnsupportedView } from "@/components/layout/page/MediaUrlUnsupportedView"
-import type { JoinStatus } from "@/lib/room-join-client"
+import type { JoinStatus } from "@/client/realtime/room-join-client"
 import { SiteNavbar } from "./SiteNavbar"
 import { SocketStatus } from "./SocketStatus"
 

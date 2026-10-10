@@ -1,27 +1,27 @@
 "use client"
 
-import type { ClientEventPayloadMap, TypedRoomEventSender } from "@/lib/room-events"
+import type { ClientEventPayloadMap, TypedRoomEventSender } from "@/contracts/room-events"
 import {
   createDefaultSessionCapabilities,
   type JoinStatus,
   type SessionCapabilities,
-} from "@/lib/room-join-client"
-import { createControlTokenReminter } from "@/lib/control-token-client"
-import type { RoomState, SessionKind } from "@/zod/types"
+} from "@/client/realtime/room-join-client"
+import { createControlTokenReminter } from "@/client/realtime/control-token-client"
+import type { ClientRoomState, SessionKind } from "@/contracts/types"
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
   createRoomSocketConnection,
-} from "./room-socket-connection"
+} from "@/client/realtime/room-socket/room-socket-connection"
 import { useLatestRef } from "./use-latest-ref"
 import { useSessionIdentityBootstrap } from "./use-session-identity-bootstrap"
 
-export type { JoinStatus, SessionCapabilities } from "@/lib/room-join-client"
+export type { JoinStatus, SessionCapabilities } from "@/client/realtime/room-join-client"
 
 export function useRoomSocket(
   roomId: string,
   options?: { sessionKind?: SessionKind; initialMediaUrl?: string },
 ): {
-  roomState: RoomState | null
+  roomState: ClientRoomState | null
   sessionCapabilities: SessionCapabilities
   send: TypedRoomEventSender
   userId: string
@@ -32,7 +32,7 @@ export function useRoomSocket(
 } {
   const sessionKind = options?.sessionKind ?? "room"
   const initialMediaUrlRef = useLatestRef(options?.initialMediaUrl)
-  const [roomState, setRoomState] = useState<RoomState | null>(null)
+  const [roomState, setRoomState] = useState<ClientRoomState | null>(null)
   const [status, setStatus] = useState<JoinStatus>("connecting")
   const [joinError, setJoinError] = useState<string | null>(null)
   const [sessionCapabilities, setSessionCapabilities] =
@@ -43,7 +43,7 @@ export function useRoomSocket(
   const wsRef = useRef<WebSocket | null>(null)
   const stateTimeoutRef = useRef<number | undefined>(undefined)
   const hasReceivedStateRef = useRef(false)
-  const roomStateRef = useRef<RoomState | null>(null)
+  const roomStateRef = useRef<ClientRoomState | null>(null)
   const joinPasswordRef = useRef<string>("")
   const sendJoinRef = useRef<(() => void) | null>(null)
   const sfuProvideRef = useRef<((localMediaId: string) => void) | null>(null)

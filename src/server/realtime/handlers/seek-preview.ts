@@ -1,46 +1,26 @@
-import { appendActionLog } from "@/server/log"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { canControlFromConnectionContext } from "@/server/realtime/services/permissions"
-import { commitPlaybackSeek } from "@/server/realtime/services/timeline"
-import { seekPreviewSchema } from "@/zod/schemas"
-import {
-  connectionAuthFromContext,
-  mutateControlledRoomMessage,
-} from "./mutate-controlled"
+import { seekPreviewSchema } from "@/contracts/schemas"
+import { connectionAuthFromContext } from "./mutate-controlled"
+import { parseOrWarn } from "./parse-or-warn"
 import type { RoomMessageHandler } from "./types"
 
 /**
- * Seek scrubbing fan-out.
- * - `active: true` — ephemeral preview on room:control (no Redis write).
- * - `active: false` — persist the target timeline so peers sync even when the
- *   client never emits a follow-up `playback:seek` (common after MediaError /
- *   providers that skip the final seek-request).
+ * Seek scrubbing fan-out (ephemeral only).
+ * - `active: true` — preview on room:control (no Redis write).
+ * - `active: false` — ignored; end scrub via authoritative `playback:seek`.
  */
 export const handleSeekPreview: RoomMessageHandler = async (ctx, data) => {
-  const previewResult = seekPreviewSchema.safeParse(data.payload)
-  if (!previewResult.success) return
+  const preview = parseOrWarn(seekPreviewSchema, data.payload, data.type)
+  if (!preview) return
 
-  const active = Boolean(previewResult.data.active ?? true)
-  const targetMs = Math.max(0, Number(previewResult.data.targetMs ?? 0))
-
+  const active = Boolean(preview.active ?? true)
   if (!active) {
-    await mutateControlledRoomMessage(
-      ctx,
-      (state, participant) => {
-        const { fromMs, toMs } = commitPlaybackSeek(state, targetMs)
-        appendActionLog(state, {
-          roomId: ctx.roomId,
-          actorUserId: ctx.userId,
-          actorUsername: participant.username,
-          action: "playback:seek",
-          payload: { fromMs, toMs },
-        })
-        return true
-      },
-      { kind: "control" },
-    )
+    // Do not commit timeline here — that duplicates `playback:seek`.
     return
   }
+
+  const targetMs = Math.max(0, Number(preview.targetMs ?? 0))
 
   const state = await ctx.store.get(ctx.roomId)
   if (!state) return

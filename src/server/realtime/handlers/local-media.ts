@@ -11,33 +11,35 @@ import {
 } from "@/server/media/local-media-store"
 import { mutateRoomMessage } from "@/server/realtime/handlers/mutate-room"
 import type { RoomMessageHandler } from "@/server/realtime/handlers/types"
-import type { PlaylistMediaStream } from "@/zod/types"
+import type { PlaylistMediaStream } from "@/contracts/types"
 import {
   localMediaAbrPublishSchema,
   localMediaChunkSchema,
   localMediaReadySchema,
   localMediaWebrtcSignalSchema,
-} from "@/zod/schemas"
+} from "@/contracts/schemas"
 import { randomUUID } from "node:crypto"
+import { parseOrNack } from "./parse-or-nack"
+import { parseOrWarn } from "./parse-or-warn"
 
 export const handleLocalMediaChunk: RoomMessageHandler = async (_ctx, data) => {
-  const parsed = localMediaChunkSchema.safeParse(data.payload)
-  if (!parsed.success) return
+  const parsed = parseOrWarn(localMediaChunkSchema, data.payload, data.type)
+  if (!parsed) return
 
   const payload: LocalMediaChunkPayload = {
-    requestId: parsed.data.requestId,
-    ok: parsed.data.ok,
-    dataBase64: parsed.data.dataBase64,
-    error: parsed.data.error,
+    requestId: parsed.requestId,
+    ok: parsed.ok,
+    dataBase64: parsed.dataBase64,
+    error: parsed.error,
   }
   resolveLocalMediaChunk(payload)
 }
 
 export const handleLocalMediaReady: RoomMessageHandler = async (ctx, data) => {
-  const parsed = localMediaReadySchema.safeParse(data.payload)
-  if (!parsed.success) return
+  const parsed = parseOrNack(localMediaReadySchema, ctx.ws, data)
+  if (!parsed) return
 
-  await setLocalMediaProviderReady(parsed.data.localMediaId, parsed.data.ready, {
+  await setLocalMediaProviderReady(parsed.localMediaId, parsed.ready, {
     ownerUserId: ctx.userId,
   })
 }
@@ -50,16 +52,16 @@ export const handleLocalMediaAbrPublish: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  const parsed = localMediaAbrPublishSchema.safeParse(data.payload)
-  if (!parsed.success) return
+  const parsed = parseOrNack(localMediaAbrPublishSchema, ctx.ws, data)
+  if (!parsed) return
 
-  const parent = await getLocalMediaEntry(parsed.data.parentLocalMediaId)
+  const parent = await getLocalMediaEntry(parsed.parentLocalMediaId)
   if (!parent || parent.ownerUserId !== ctx.userId) return
   if (parent.roomId !== ctx.roomId) return
   if (parent.abrParentId) return
 
   const parentId = parent.id
-  const hasParentVariant = parsed.data.variants.some(
+  const hasParentVariant = parsed.variants.some(
     (v) => v.localMediaId === parentId,
   )
   if (!hasParentVariant) return
@@ -72,7 +74,7 @@ export const handleLocalMediaAbrPublish: RoomMessageHandler = async (
     }
   }
 
-  for (const variant of parsed.data.variants) {
+  for (const variant of parsed.variants) {
     if (variant.localMediaId === parentId) continue
     try {
       await createLocalMediaEntry({
@@ -91,7 +93,7 @@ export const handleLocalMediaAbrPublish: RoomMessageHandler = async (
     }
   }
 
-  const abrVariants = parsed.data.variants.map((v) => ({
+  const abrVariants = parsed.variants.map((v) => ({
     localMediaId: v.localMediaId,
     height: v.height,
     bandwidth: v.bandwidth,
@@ -102,7 +104,7 @@ export const handleLocalMediaAbrPublish: RoomMessageHandler = async (
     parentId,
     {
       status: "ready",
-      durationSec: parsed.data.durationSec,
+      durationSec: parsed.durationSec,
       variants: abrVariants,
     },
     { ownerUserId: ctx.userId },
@@ -120,7 +122,7 @@ export const handleLocalMediaAbrPublish: RoomMessageHandler = async (
       label: "Auto",
       kind: "adaptive",
     },
-    ...parsed.data.variants
+    ...parsed.variants
       .slice()
       .sort((a, b) => b.height - a.height)
       .map((v) => ({
@@ -144,7 +146,7 @@ export const handleLocalMediaAbrPublish: RoomMessageHandler = async (
       if (!item || item.localOriginUserId !== ctx.userId) return false
       item.playableUrl = hlsUrl
       item.sourceUrl = hlsUrl
-      item.durationSeconds = parsed.data.durationSec
+      item.durationSeconds = parsed.durationSec
       item.mediaStreams = mediaStreams
       item.defaultStreamId = "local-auto"
       item.ingestStatus = "ready"
@@ -162,23 +164,27 @@ export const handleLocalMediaWebrtcSignal: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  const parsed = localMediaWebrtcSignalSchema.safeParse(data.payload)
-  if (!parsed.success) return
-  if (parsed.data.targetUserId === ctx.userId) return
+  const parsed = parseOrWarn(
+    localMediaWebrtcSignalSchema,
+    data.payload,
+    data.type,
+  )
+  if (!parsed) return
+  if (parsed.targetUserId === ctx.userId) return
 
   const { getRoomBroadcastBus } = await import(
     "@/server/realtime/broadcast/room-broadcast-bus"
   )
   await getRoomBroadcastBus().publishUserEphemeral(
     ctx.roomId,
-    parsed.data.targetUserId,
+    parsed.targetUserId,
     {
       type: "local-media:webrtc:signal",
       requestId: randomUUID(),
       payload: {
-        localMediaId: parsed.data.localMediaId,
+        localMediaId: parsed.localMediaId,
         fromUserId: ctx.userId,
-        signal: parsed.data.signal,
+        signal: parsed.signal,
       },
     },
   )

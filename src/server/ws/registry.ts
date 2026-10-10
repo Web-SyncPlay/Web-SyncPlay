@@ -1,4 +1,4 @@
-import type { SessionKind } from "@/zod/types"
+import type { SessionKind } from "@/contracts/types"
 import type { WebSocket } from "ws"
 
 export type SocketMeta = {

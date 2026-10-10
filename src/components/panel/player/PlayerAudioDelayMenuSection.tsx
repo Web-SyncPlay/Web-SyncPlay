@@ -4,7 +4,7 @@ import {
   AUDIO_DELAY_MAX_MS,
   AUDIO_DELAY_MIN_MS,
   formatAudioDelayLabel,
-} from "@/lib/audio-delay"
+} from "@/shared/audio-delay"
 import { Slider } from "@vidstack/react"
 import {
   DefaultMenuSection,

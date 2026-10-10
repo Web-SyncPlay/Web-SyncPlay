@@ -1,5 +1,5 @@
 import { RoomClient } from "@/components/layout/page/RoomClient"
-import { readMediaQueryParam } from "@/lib/initial-media-url"
+import { readMediaQueryParam } from "@/shared/initial-media-url"
 
 export default async function RoomPage({
   params,

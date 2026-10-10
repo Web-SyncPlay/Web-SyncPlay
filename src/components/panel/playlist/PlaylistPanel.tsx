@@ -7,9 +7,9 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ItemGroup } from "@/components/ui/item"
-import { canControlPlaylist } from "@/lib/permissions-utils"
-import { resolveCurrentPlaylistItemId } from "@/lib/playlist-current"
-import { formatDurationSeconds } from "@/lib/time-format"
+import { canControlPlaylist } from "@/shared/permissions-utils"
+import { resolveCurrentPlaylistItemId } from "@/shared/playlist-current"
+import { formatDurationSeconds } from "@/shared/time-format"
 import { RestrictToVerticalAxis } from "@dnd-kit/abstract/modifiers"
 import { DragDropProvider } from "@dnd-kit/react"
 import { isSortable } from "@dnd-kit/react/sortable"

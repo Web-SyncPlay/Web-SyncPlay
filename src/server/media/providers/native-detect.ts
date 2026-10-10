@@ -1,4 +1,4 @@
-import { canPlayNatively, isNativeProviderUrl } from "@/lib/player-utils"
+import { canPlayNatively, isNativeProviderUrl } from "@/shared/player-utils"
 
 export function detectNativeSupport(url: string) {
   return {

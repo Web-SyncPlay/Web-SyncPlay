@@ -1,4 +1,4 @@
-import type { RoomState } from "@/zod/types"
+import type { RoomState } from "@/contracts/types"
 import { expect, test } from "bun:test"
 import {
   clearJoinPassword,
@@ -47,32 +47,32 @@ function createState(): RoomState {
   }
 }
 
-test("allows join when room has no password", () => {
+test("allows join when room has no password", async () => {
   const state = createState()
 
-  expect(evaluateJoinAdmission(state)).toEqual({ allowed: true })
+  expect(await evaluateJoinAdmission(state)).toEqual({ allowed: true })
 })
 
-test("requires a password for protected rooms and rejects wrong passwords", () => {
+test("requires a password for protected rooms and rejects wrong passwords", async () => {
   const state = createState()
-  setJoinPassword(state, "secret-pass")
+  await setJoinPassword(state, "secret-pass")
 
-  expect(evaluateJoinAdmission(state)).toEqual({
+  expect(await evaluateJoinAdmission(state)).toEqual({
     allowed: false,
     reason: "password_required",
   })
-  expect(evaluateJoinAdmission(state, "wrong-pass")).toEqual({
+  expect(await evaluateJoinAdmission(state, "wrong-pass")).toEqual({
     allowed: false,
     reason: "invalid_password",
   })
-  expect(evaluateJoinAdmission(state, "secret-pass")).toEqual({
+  expect(await evaluateJoinAdmission(state, "secret-pass")).toEqual({
     allowed: true,
   })
 })
 
-test("sanitizes hashed password fields before broadcasting room state", () => {
+test("sanitizes hashed password fields before broadcasting room state", async () => {
   const state = createState()
-  setJoinPassword(state, "secret-pass")
+  await setJoinPassword(state, "secret-pass")
 
   const sanitized = sanitizeRoomStateForClient(state)
 
@@ -92,18 +92,18 @@ test("default join role defaults to guest and can be set to moderator", () => {
   expect(setDefaultJoinRole(state, "moderator")).toBe(false)
 })
 
-test("clearing the password disables future admission checks", () => {
+test("clearing the password disables future admission checks", async () => {
   const state = createState()
-  setJoinPassword(state, "secret-pass")
+  await setJoinPassword(state, "secret-pass")
 
   const changed = clearJoinPassword(state)
 
   expect(changed).toBe(true)
   expect(state.roomSecurity.joinPasswordEnabled).toBe(false)
-  expect(evaluateJoinAdmission(state)).toEqual({ allowed: true })
+  expect(await evaluateJoinAdmission(state)).toEqual({ allowed: true })
 })
 
-test("ensureRoomSecurity disables protection when hash/salt are missing", () => {
+test("ensureRoomSecurity disables protection when hash/salt are missing", async () => {
   const state = createState()
   state.roomSecurity = {
     ...createDefaultRoomSecurity(),
@@ -113,5 +113,5 @@ test("ensureRoomSecurity disables protection when hash/salt are missing", () => 
   const security = ensureRoomSecurity(state)
 
   expect(security.joinPasswordEnabled).toBe(false)
-  expect(evaluateJoinAdmission(state)).toEqual({ allowed: true })
+  expect(await evaluateJoinAdmission(state)).toEqual({ allowed: true })
 })

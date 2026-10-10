@@ -11,11 +11,11 @@ import {
   httpStatusForLocalMediaError,
   localMediaErrorMessage,
   type LocalMediaErrorCode,
-} from "@/lib/local-media-errors"
+} from "@/shared/local-media/local-media-errors"
 import {
   parseLocalMediaRangeHeader,
   type ResolvedBytesRange,
-} from "@/lib/local-media-range"
+} from "@/shared/local-media/local-media-range"
 
 export type ParsedLocalMediaRange = ResolvedBytesRange
 

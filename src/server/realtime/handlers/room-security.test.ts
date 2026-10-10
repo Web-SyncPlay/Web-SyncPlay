@@ -7,7 +7,7 @@ import {
   handleRoomDefaultRoleSet,
   handleRoomPasswordClear,
   handleRoomPasswordSet,
-} from "@/server/realtime/handlers/room-password"
+} from "@/server/realtime/handlers/room-security"
 import {
   createFakeWs,
   createHandlerContext,

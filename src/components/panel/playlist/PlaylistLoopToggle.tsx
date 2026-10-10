@@ -6,8 +6,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
-import type { LoopMode } from "@/zod/types"
+import { cn } from "@/shared/utils"
+import type { LoopMode } from "@/contracts/types"
 import { Repeat, Repeat1, RepeatOff } from "lucide-react"
 
 const LOOP_CYCLE: LoopMode[] = ["off", "once", "always"]

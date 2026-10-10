@@ -1,5 +1,5 @@
 import { repairCleanupAndCheckRoomState } from "@/server/repair"
-import type { RoomState } from "@/zod/types"
+import type { RoomState } from "@/contracts/types"
 
 /** In-memory repair/migration; safe inside an `updateRoom` mutate callback. */
 export function applyRoomStateRepair(state: RoomState): string[] {

@@ -1,38 +1,45 @@
-import { getCommandClient } from "@/server/redis/client"
-import { keys } from "@/server/redis/keys"
-import type { RoomStateStorePort } from "@/server/realtime/ports"
-import { sanitizeRoomStateForClient } from "@/server/realtime/services/room-security"
-import { getAppNodeId } from "@/server/node-id"
 import {
-  getSocketMeta,
-  getSocketsForRoom,
-  getSocketsForUser,
-} from "@/server/ws/registry"
+  setRoomPublishPort,
+  type RoomStateStorePort,
+} from "@/server/realtime/ports"
 import type {
   AdmissionChangedPayload,
-  PresenceBatchPayload,
   PresencePatch,
   RoomControlPayload,
   RoomSnapshotPayload,
   RoomState,
-} from "@/zod/types"
+} from "@/contracts/types"
 import type { WebSocket } from "ws"
-import type {
-  AdmissionChangedEnvelope,
-  ControlEnvelope,
-  PresenceEnvelope,
-  RoomBroadcastEnvelope,
-  SnapshotEnvelope,
-} from "./channels"
+import type { RoomBroadcastEnvelope } from "./channels"
+import {
+  fanOutFromPubSub as fanOutFromPubSubImpl,
+  fanOutUserEphemeral as fanOutUserEphemeralImpl,
+  sendToSocket as sendToSocketImpl,
+} from "./bus-fanout"
+import {
+  publishAdmissionChangedEnvelope,
+  publishControlEnvelope,
+  publishUserEphemeralEnvelope,
+  type PublishCapture,
+} from "./control-publisher"
+import { BROADCAST_NODE_ID } from "./node-id"
+import {
+  clearPresenceSeqFallback,
+  resetPresenceSeqFallbackForTests,
+} from "./presence-seq"
+import {
+  flushPresenceBatch,
+  mergePresenceDirty,
+} from "./presence-publisher"
+import { buildSanitizedSnapshot } from "./snapshot-build"
+import { flushSnapshotPublish } from "./snapshot-publisher"
 
-/** Identifies this process so Redis pub/sub echoes are not double-delivered. */
-export const BROADCAST_NODE_ID = getAppNodeId()
+export { BROADCAST_NODE_ID }
+export { resetPresenceSeqFallbackForTests }
 
 const PRESENCE_BATCH_INTERVAL_MS = 250
 const SNAPSHOT_COALESCE_MS = 100
 const ACTION_LOG_SNAPSHOT_MAX_MS = 2000
-
-type WiredEnvelope = RoomBroadcastEnvelope & { originNodeId?: string }
 
 type DirtyTimerKey = "presenceTimer" | "snapshotTimer" | "actionLogTimer"
 
@@ -44,13 +51,9 @@ type RoomDirty = {
   snapshotTimer?: ReturnType<typeof setTimeout>
   actionLogTimer?: ReturnType<typeof setTimeout>
   lastStructuralHash?: string
-  presenceRevision: number
 }
 
-export type BusPublishCapture = {
-  roomId: string
-  envelope: RoomBroadcastEnvelope
-}
+export type BusPublishCapture = PublishCapture
 
 type BusSlot = {
   bus: RoomBroadcastBus | null
@@ -64,99 +67,12 @@ function getBusSlot(): BusSlot {
   return g.__webSyncPlayBroadcastBus
 }
 
-function structuralHash(state: RoomState): string {
-  const participants = Object.fromEntries(
-    Object.entries(state.participants).map(([id, p]) => [
-      id,
-      {
-        username: p.username,
-        avatarStyle: p.avatarStyle,
-        role: p.role,
-        connected: p.connected,
-        viewerMedia: p.viewerMedia,
-      },
-    ]),
-  )
-  return JSON.stringify({
-    structuralRevision: state.structuralRevision,
-    ownerId: state.ownerId,
-    playlist: state.playlist,
-    currentIndex: state.currentIndex,
-    roomSecurity: {
-      joinPasswordEnabled: state.roomSecurity.joinPasswordEnabled,
-      admissionVersion: state.roomSecurity.admissionVersion,
-      defaultJoinRole: state.roomSecurity.defaultJoinRole,
-    },
-    actionLog: state.actionLog,
-    participants,
-  })
-}
-
-function applyPresenceOverlay(
-  state: RoomState,
-  overlay: Record<string, PresencePatch>,
-) {
-  for (const [userId, patch] of Object.entries(overlay)) {
-    const participant = state.participants[userId]
-    if (!participant) continue
-    if (patch.localPlayback) participant.localPlayback = patch.localPlayback
-    if (typeof patch.connected === "boolean") {
-      participant.connected = patch.connected
-    }
-    if (typeof patch.lastSeenAt === "number") {
-      participant.lastSeenAt = patch.lastSeenAt
-    }
-    if (typeof patch.disconnectedAt === "number") {
-      participant.disconnectedAt = patch.disconnectedAt
-    }
-    if (typeof patch.username === "string") {
-      participant.username = patch.username
-    }
-    if (typeof patch.avatarStyle === "string") {
-      participant.avatarStyle = patch.avatarStyle
-    }
-  }
-}
-
-function sendRawToRoom(roomId: string, raw: string) {
-  for (const client of getSocketsForRoom(roomId)) {
-    if (client.readyState === client.OPEN) {
-      client.send(raw)
-    }
-  }
-}
-
-/**
- * Notify then close every non-owner socket in this process's registry.
- * Owners stay connected. Copy the set first — close handlers mutate it.
- */
-function forceRejoinNonOwners(
-  roomId: string,
-  ownerId: string,
-  envelope: AdmissionChangedEnvelope,
-) {
-  const raw = JSON.stringify(envelope)
-  for (const client of [...getSocketsForRoom(roomId)]) {
-    const meta = getSocketMeta(client)
-    if (!meta || meta.userId === ownerId) continue
-    if (client.readyState === client.OPEN) {
-      try {
-        client.send(raw)
-      } catch {
-        // Best-effort notify before close.
-      }
-    }
-    try {
-      client.close()
-    } catch {
-      // Already closing / closed.
-    }
-  }
-}
-
 /**
  * Coalesces presence/snapshot on the mutating node, then local fan-out + Redis PUBLISH.
  * Subscribers on other nodes fan out immediately; same-node Redis echo is ignored.
+ *
+ * Publishers: control (`control-publisher`), presence (`presence-publisher`),
+ * snapshot (`snapshot-publisher`). Fan-out helpers live in `bus-fanout`.
  */
 export class RoomBroadcastBus {
   private rooms = new Map<string, RoomDirty>()
@@ -178,6 +94,7 @@ export class RoomBroadcastBus {
     if (!dirty) return
     this.clearTimers(dirty)
     this.rooms.delete(roomId)
+    clearPresenceSeqFallback(roomId)
   }
 
   clearAllRooms() {
@@ -202,7 +119,6 @@ export class RoomBroadcastBus {
         presence: new Map(),
         snapshot: false,
         actionLog: false,
-        presenceRevision: 0,
       }
       this.rooms.set(roomId, dirty)
     }
@@ -223,57 +139,24 @@ export class RoomBroadcastBus {
   }
 
   /** Fan-out from Redis subscriber (skip if we originated the message). */
-  fanOutFromPubSub(roomId: string, wired: WiredEnvelope) {
-    if (wired.originNodeId && wired.originNodeId === BROADCAST_NODE_ID) {
-      return
-    }
-    const { originNodeId: _origin, ...envelope } = wired
-    if (envelope.type === "room:admission:changed") {
-      forceRejoinNonOwners(
-        roomId,
-        envelope.payload.ownerId,
-        envelope as AdmissionChangedEnvelope,
-      )
-      return
-    }
-    sendRawToRoom(roomId, JSON.stringify(envelope as RoomBroadcastEnvelope))
+  fanOutFromPubSub(
+    roomId: string,
+    wired: RoomBroadcastEnvelope & { originNodeId?: string },
+  ) {
+    fanOutFromPubSubImpl(roomId, wired)
   }
 
   sendToSocket(ws: WebSocket, envelope: RoomBroadcastEnvelope) {
-    if (ws.readyState === ws.OPEN) {
-      ws.send(JSON.stringify(envelope))
-    }
-  }
-
-  private async publishTyped(
-    roomId: string,
-    channel: string,
-    envelope: RoomBroadcastEnvelope,
-  ) {
-    this.captured.push({ roomId, envelope })
-    const rawLocal = JSON.stringify(envelope)
-    sendRawToRoom(roomId, rawLocal)
-
-    if (this.captureOnly) {
-      return
-    }
-
-    try {
-      const wired: WiredEnvelope = {
-        ...envelope,
-        originNodeId: BROADCAST_NODE_ID,
-      }
-      const client = await getCommandClient()
-      await client.publish(channel, JSON.stringify(wired))
-    } catch (error) {
-      // Unit tests / Redis blips: local fan-out already happened.
-      console.warn("[broadcast] redis publish failed", error)
-    }
+    sendToSocketImpl(ws, envelope)
   }
 
   async publishControl(roomId: string, payload: RoomControlPayload) {
-    const envelope: ControlEnvelope = { type: "room:control", payload }
-    await this.publishTyped(roomId, keys.roomControlChannel(roomId), envelope)
+    await publishControlEnvelope({
+      roomId,
+      payload,
+      captureOnly: this.captureOnly,
+      captured: this.captured,
+    })
   }
 
   /** Same wire path as publishControl; named for seek-preview / non-persisted control. */
@@ -293,25 +176,13 @@ export class RoomBroadcastBus {
     targetUserId: string,
     envelope: { type: string; requestId?: string; payload: unknown },
   ) {
-    this.fanOutUserEphemeral(roomId, targetUserId, envelope)
-
-    if (this.captureOnly) {
-      return
-    }
-
-    try {
-      const wired = {
-        ...envelope,
-        originNodeId: BROADCAST_NODE_ID,
-      }
-      const client = await getCommandClient()
-      await client.publish(
-        keys.roomUserEphemeralChannel(roomId, targetUserId),
-        JSON.stringify(wired),
-      )
-    } catch (error) {
-      console.warn("[broadcast] user-ephemeral redis publish failed", error)
-    }
+    await publishUserEphemeralEnvelope({
+      roomId,
+      targetUserId,
+      envelope,
+      captureOnly: this.captureOnly,
+      fanOutLocal: fanOutUserEphemeralImpl,
+    })
   }
 
   /** Local delivery for user-targeted ephemerals (also used by Redis subscriber). */
@@ -320,15 +191,7 @@ export class RoomBroadcastBus {
     targetUserId: string,
     envelope: { type: string; requestId?: string; payload: unknown },
   ) {
-    const raw = JSON.stringify(envelope)
-    for (const socket of getSocketsForUser(roomId, targetUserId)) {
-      // Prefer OPEN (1); tolerate test fakes that omit the OPEN constant.
-      const open =
-        typeof socket.OPEN === "number" ? socket.OPEN : 1
-      if (socket.readyState === open) {
-        socket.send(raw)
-      }
-    }
+    fanOutUserEphemeralImpl(roomId, targetUserId, envelope)
   }
 
   /**
@@ -339,43 +202,17 @@ export class RoomBroadcastBus {
     roomId: string,
     payload: AdmissionChangedPayload,
   ) {
-    const envelope: AdmissionChangedEnvelope = {
-      type: "room:admission:changed",
+    await publishAdmissionChangedEnvelope({
+      roomId,
       payload,
-    }
-    this.captured.push({ roomId, envelope })
-    forceRejoinNonOwners(roomId, payload.ownerId, envelope)
-
-    if (this.captureOnly) {
-      return
-    }
-
-    try {
-      const wired: WiredEnvelope = {
-        ...envelope,
-        originNodeId: BROADCAST_NODE_ID,
-      }
-      const client = await getCommandClient()
-      await client.publish(
-        keys.roomControlChannel(roomId),
-        JSON.stringify(wired),
-      )
-    } catch (error) {
-      console.warn("[broadcast] admission-changed redis publish failed", error)
-    }
+      captureOnly: this.captureOnly,
+      captured: this.captured,
+    })
   }
 
   markPresenceDirty(roomId: string, userId: string, patch: PresencePatch) {
     const dirty = this.ensure(roomId)
-    const prev = dirty.presence.get(userId) ?? {}
-    // Never fan out per-connection report maps — clients only see the aggregate.
-    const { localPlaybackReports: _incoming, ...clientPatch } = patch
-    const { localPlaybackReports: _prev, ...prevClient } = prev
-    dirty.presence.set(userId, {
-      ...prevClient,
-      ...clientPatch,
-      localPlayback: clientPatch.localPlayback ?? prevClient.localPlayback,
-    })
+    mergePresenceDirty(dirty.presence, userId, patch)
     this.scheduleOnce(dirty, "presenceTimer", PRESENCE_BATCH_INTERVAL_MS, () => {
       void this.flushPresence(roomId)
     })
@@ -414,15 +251,13 @@ export class RoomBroadcastBus {
       participants[userId] = patch
     }
     dirty.presence.clear()
-    dirty.presenceRevision += 1
 
-    const payload: PresenceBatchPayload = {
-      presenceRevision: dirty.presenceRevision,
+    await flushPresenceBatch({
+      roomId,
       participants,
-      serverNowMs: Date.now(),
-    }
-    const envelope: PresenceEnvelope = { type: "presence:batch", payload }
-    await this.publishTyped(roomId, keys.roomPresenceChannel(roomId), envelope)
+      captureOnly: this.captureOnly,
+      captured: this.captured,
+    })
   }
 
   async flushSnapshot(roomId: string) {
@@ -434,34 +269,19 @@ export class RoomBroadcastBus {
       dirty.actionLogTimer = undefined
     }
 
-    const payload = await this.buildSanitizedSnapshot(roomId)
-    if (!payload) return
-
-    const hash = structuralHash(payload)
-    if (dirty.lastStructuralHash === hash) {
-      return
-    }
-    dirty.lastStructuralHash = hash
-
-    const envelope: SnapshotEnvelope = { type: "room:snapshot", payload }
-    await this.publishTyped(roomId, keys.roomSnapshotChannel(roomId), envelope)
+    dirty.lastStructuralHash = await flushSnapshotPublish({
+      roomId,
+      store: this.store,
+      lastStructuralHash: dirty.lastStructuralHash,
+      captureOnly: this.captureOnly,
+      captured: this.captured,
+    })
   }
 
   async buildSanitizedSnapshot(
     roomId: string,
   ): Promise<RoomSnapshotPayload | null> {
-    const store = this.store
-    if (!store || typeof store.get !== "function") return null
-    const state = await store.get(roomId)
-    if (!state) return null
-
-    const overlay = await store.getPresenceDataAll(roomId)
-    applyPresenceOverlay(state, overlay)
-
-    return sanitizeRoomStateForClient({
-      ...state,
-      playback: { ...state.playback, seekPreview: undefined },
-    })
+    return buildSanitizedSnapshot(this.store, roomId)
   }
 
   controlPayloadFromState(state: RoomState): RoomControlPayload {
@@ -487,6 +307,7 @@ export function setRoomBroadcastBusForTests(bus: RoomBroadcastBus | null) {
   const slot = getBusSlot()
   slot.bus?.clearAllRooms()
   slot.bus = bus
+  setRoomPublishPort(bus)
 }
 
 export function createTestBroadcastBus(store: RoomStateStorePort) {

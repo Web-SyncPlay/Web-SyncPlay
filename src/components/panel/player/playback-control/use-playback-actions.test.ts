@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import type { RoomState } from "@/zod/types"
+import type { RoomState } from "@/contracts/types"
 import { createPlaybackActions } from "./use-playback-actions"
 
 function createRoomState(): RoomState {
@@ -51,7 +51,7 @@ function createRoomState(): RoomState {
   }
 }
 
-test("commitSeek commits target without duplicate preview-end", () => {
+test("commitSeek ends scrub via playback:seek only", () => {
   const sent: Array<{ type: string; payload: unknown }> = []
   const actions = createPlaybackActions({
     roomState: createRoomState(),
@@ -62,12 +62,37 @@ test("commitSeek commits target without duplicate preview-end", () => {
     }) as never,
   })
 
+  actions.beginSeek(40_000)
   actions.commitSeek(45_000)
 
-  expect(sent).toEqual([
+  expect(sent.filter((e) => e.type === "playback:seek")).toEqual([
     {
       type: "playback:seek",
       payload: { targetMs: 45_000 },
+    },
+  ])
+  expect(sent.some((e) => e.type === "seek:preview" && (e.payload as { active?: boolean }).active === false)).toBe(
+    false,
+  )
+})
+
+test("endSeekPreview sends ephemeral inactive preview only", () => {
+  const sent: Array<{ type: string; payload: unknown }> = []
+  const actions = createPlaybackActions({
+    roomState: createRoomState(),
+    controlsDisabled: false,
+    elapsedMs: 30_000,
+    send: ((type: string, payload: unknown) => {
+      sent.push({ type, payload })
+    }) as never,
+  })
+
+  actions.endSeekPreview(45_000)
+
+  expect(sent).toEqual([
+    {
+      type: "seek:preview",
+      payload: { targetMs: 45_000, active: false },
     },
   ])
 })

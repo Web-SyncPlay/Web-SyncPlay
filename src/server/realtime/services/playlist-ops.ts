@@ -1,5 +1,5 @@
 import { resetPlaybackTimeline } from "@/server/realtime/services/timeline"
-import type { PlaylistItem, RoomState } from "@/zod/types"
+import type { PlaylistItem, RoomState } from "@/contracts/types"
 
 /** True when a remote URL item may be explicitly re-resolved. */
 export function canRetryRemotePlaylistItem(

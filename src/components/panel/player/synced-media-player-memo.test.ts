@@ -20,11 +20,19 @@ import { createRoot } from "react-dom/client"
 import {
   applyPresenceBatches,
   createPresenceBatchCoalescer,
-} from "@/lib/room-state-merge"
-import { createRoomState } from "@/server/realtime/test-utils/fixtures"
-import type { PresenceBatchPayload, RoomState } from "@/zod/types"
+} from "@/client/realtime/room-state-merge"
+import { createRoomState } from "@/shared/test-utils/room-fixtures"
+import type { PresenceBatchPayload, RoomState } from "@/contracts/types"
 import { SyncedMediaPlayer, type SyncedMediaPlayerProps } from "./SyncedMediaPlayer"
 import type { PlaylistNavSnapshot } from "./hooks/use-synced-media-player-handlers"
+import {
+  playerShellSlicesEqual,
+  selectPlayerShellSlice,
+} from "./player-room-selectors"
+import type {
+  PlayerSessionController,
+  SyncedMediaPlayerViewModel,
+} from "./player-session-controller"
 
 type ForbiddenPlayerProp = "roomState" | "participants" | "presenceRevision"
 type AssertNever<T extends never> = T
@@ -34,6 +42,21 @@ type NoPresenceOnPlayerProps = AssertNever<
 >
 const _presenceIsolated: NoPresenceOnPlayerProps = true as NoPresenceOnPlayerProps
 void _presenceIsolated
+
+type ForbiddenViewModelProp = "roomState" | "participants" | "presenceRevision"
+type NoPresenceOnViewModel = AssertNever<
+  keyof SyncedMediaPlayerViewModel & ForbiddenViewModelProp
+>
+const _viewModelIsolated: NoPresenceOnViewModel = true as NoPresenceOnViewModel
+void _viewModelIsolated
+
+type ForbiddenControllerProp = "roomState" | "participants" | "presenceRevision"
+type NoPresenceOnController = AssertNever<
+  keyof PlayerSessionController & ForbiddenControllerProp
+>
+const _controllerIsolated: NoPresenceOnController =
+  true as NoPresenceOnController
+void _controllerIsolated
 
 function installMinimalDom() {
   class HTMLElement {}
@@ -154,26 +177,24 @@ function installMinimalDom() {
   return document
 }
 
-test("SyncedMediaPlayer is React.memo and exposes PlaylistNavSnapshot isolation", () => {
+test("SyncedMediaPlayer is React.memo and exposes controller+viewModel isolation", () => {
   expect(SyncedMediaPlayer.$$typeof).toBe(Symbol.for("react.memo"))
 
-  // Playlist nav is read via ref (not roomState props) so presence churn
-  // cannot invalidate the memoized player through currentIndex/playlistLoop.
+  // Playlist nav is read via controller ref (not roomState props) so presence
+  // churn cannot invalidate the memoized player through currentIndex/playlistLoop.
   const snap: PlaylistNavSnapshot = {
     currentIndex: 0,
     playlistLoop: "off",
   }
   expect(snap).toEqual({ currentIndex: 0, playlistLoop: "off" })
 
-  // Runtime mirror of the type-level _NoPresenceOnPlayerProps check above:
-  // these keys must never appear on the exported prop surface.
+  // Runtime mirror of the type-level presence gates above:
+  // the leaf only accepts controller + viewModel.
   const sampleKeys = [
-    "playerRef",
-    "roomPaused",
-    "roomPlaybackRate",
-    "playlistNavRef",
-    "playbackRef",
+    "controller",
+    "viewModel",
   ] as const satisfies ReadonlyArray<keyof SyncedMediaPlayerProps>
+  expect(sampleKeys).toHaveLength(2)
   expect(sampleKeys).not.toContain("roomState" as never)
   expect(sampleKeys).not.toContain("participants" as never)
 })
@@ -255,4 +276,19 @@ test("presence coalescer flush under startTransition still applies batches", () 
   // Playback / playlist identity untouched by presence merge.
   expect(roomState.playback).toBe(prev.playback)
   expect(roomState.playlist).toBe(prev.playlist)
+})
+
+test("player shell selectors isolate presence from playback/playlist identity", () => {
+  const prev = createRoomState()
+  const before = selectPlayerShellSlice(prev, "guest")
+  const next =
+    applyPresenceBatches(prev, [
+      {
+        presenceRevision: (prev.presenceRevision ?? 0) + 1,
+        serverNowMs: 10,
+        participants: { guest: { lastSeenAt: 42 } },
+      },
+    ]) ?? prev
+  const after = selectPlayerShellSlice(next, "guest")
+  expect(playerShellSlicesEqual(before, after)).toBe(true)
 })

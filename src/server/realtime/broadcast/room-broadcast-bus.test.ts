@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, mock, test } from "bun:test"
 import {
   createTestBroadcastBus,
+  resetPresenceSeqFallbackForTests,
   setRoomBroadcastBusForTests,
 } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
@@ -9,10 +10,13 @@ import {
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
 import { addSocket, removeSocket } from "@/server/ws/registry"
+import { keys } from "@/server/redis/keys"
 
 describe("RoomBroadcastBus", () => {
   afterEach(() => {
     setRoomBroadcastBusForTests(null)
+    resetPresenceSeqFallbackForTests()
+    mock.restore()
   })
 
   test("coalesces N presence dirties into one flush", async () => {
@@ -52,8 +56,72 @@ describe("RoomBroadcastBus", () => {
     expect(presencePubs.length).toBe(1)
     const payload = presencePubs[0]!.envelope.payload as {
       participants: Record<string, unknown>
+      presenceRevision: number
     }
     expect(Object.keys(payload.participants).sort()).toEqual(["guest", "owner"])
+    expect(payload.presenceRevision).toBe(1)
+  })
+
+  test("shared Redis presenceSeq is monotonic across two logical nodes", async () => {
+    const seq = new Map<string, number>()
+    const expires = new Map<string, number>()
+    mock.module("@/server/redis/client", () => ({
+      getCommandClient: async () => ({
+        incr: async (key: string) => {
+          const next = (seq.get(key) ?? 0) + 1
+          seq.set(key, next)
+          return next
+        },
+        expire: async (key: string, ttl: number) => {
+          expires.set(key, ttl)
+          return true
+        },
+        publish: async () => 0,
+      }),
+    }))
+
+    const { RoomBroadcastBus } = await import(
+      "@/server/realtime/broadcast/room-broadcast-bus"
+    )
+    const store = new InMemoryRoomStateStore(createRoomState())
+    // Two buses = two origins; neither uses captureOnly so both hit Redis INCR.
+    const nodeA = new RoomBroadcastBus()
+    const nodeB = new RoomBroadcastBus()
+    nodeA.attachStore(store)
+    nodeB.attachStore(store)
+
+    const patch = {
+      localPlayback: {
+        paused: false,
+        currentTimeMs: 1,
+        loading: false,
+        updatedAt: Date.now(),
+      },
+    }
+    nodeA.markPresenceDirty("room-1", "guest", patch)
+    await nodeA.flushPresence("room-1")
+    nodeB.markPresenceDirty("room-1", "owner", patch)
+    await nodeB.flushPresence("room-1")
+    nodeA.markPresenceDirty("room-1", "guest", {
+      ...patch,
+      localPlayback: { ...patch.localPlayback, currentTimeMs: 2 },
+    })
+    await nodeA.flushPresence("room-1")
+
+    const seqKey = keys.roomPresenceSeq("room-1")
+    expect(seq.get(seqKey)).toBe(3)
+    expect(expires.has(seqKey)).toBe(true)
+
+    const revsA = nodeA.captured
+      .filter((c) => c.envelope.type === "presence:batch")
+      .map((c) => (c.envelope.payload as { presenceRevision: number }).presenceRevision)
+    const revsB = nodeB.captured
+      .filter((c) => c.envelope.type === "presence:batch")
+      .map((c) => (c.envelope.payload as { presenceRevision: number }).presenceRevision)
+    expect(revsA).toEqual([1, 3])
+    expect(revsB).toEqual([2])
+    // Independent local counters would collide at 1; shared seq stays strictly increasing.
+    expect([...revsA, ...revsB].sort((a, b) => a - b)).toEqual([1, 2, 3])
   })
 
   test("publishControl is immediate and does not require snapshot", async () => {

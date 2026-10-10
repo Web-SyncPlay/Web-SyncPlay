@@ -3,7 +3,7 @@ import type {
   ParticipantState,
   PresencePatch,
   SessionKind,
-} from "@/zod/types"
+} from "@/contracts/types"
 
 export type LocalPlaybackSnapshot = ParticipantState["localPlayback"]
 

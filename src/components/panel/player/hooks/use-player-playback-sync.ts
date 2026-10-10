@@ -1,12 +1,12 @@
 "use client"
 
-import { localMediaErrorMessage } from "@/lib/local-media-errors"
-import type { TypedRoomEventSender } from "@/lib/room-events"
+import { localMediaErrorMessage } from "@/shared/local-media/local-media-errors"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
 import {
   queryPlayerMediaElement,
   readMediaSeekableEndSec,
   resolveLiveEdgeSec,
-} from "@/lib/player-utils"
+} from "@/shared/player-utils"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import {
   useCallback,
@@ -15,13 +15,14 @@ import {
 } from "react"
 import { toast } from "sonner"
 import { useLatestRef } from "@/hooks/use-latest-ref"
-import type { PlaylistItem, RoomState } from "@/zod/types"
+import type { PlaylistItem, RoomState } from "@/contracts/types"
 import {
   pendingSyncFromPlayback,
   type PendingSyncState,
 } from "./use-buffering-watchdog"
 import { useApplyRoomClock } from "./use-apply-room-clock"
 import { usePlaybackDriftCorrection } from "./use-playback-drift-correction"
+import { usePlaybackSyncEngine } from "./use-playback-sync-engine"
 import { SEEK_ACK_MATCH_THRESHOLD_MS } from "../playback-control/use-playback-timeline-controller"
 
 /**
@@ -42,7 +43,11 @@ export function usePlayerPlaybackSync(config: {
   activePlaybackSrc: string
   viewType: "audio" | "video"
   playerSrc: unknown
-  roomState: RoomState
+  /** Playback slice — not the full room (presence stays off this hook). */
+  playback: RoomState["playback"]
+  currentIndex: number
+  /** Preselected boolean — avoids depending on the participants map. */
+  ownerConnected: boolean
   send: TypedRoomEventSender
   canControlPlayback: boolean
   isBuffering: boolean
@@ -67,7 +72,9 @@ export function usePlayerPlaybackSync(config: {
     activePlaybackSrc,
     viewType,
     playerSrc,
-    roomState,
+    playback,
+    currentIndex,
+    ownerConnected,
     send,
     canControlPlayback,
     isBuffering,
@@ -85,11 +92,13 @@ export function usePlayerPlaybackSync(config: {
     viewType,
   })
 
-  const { applyRoomClock, clearTransportNudge } = useApplyRoomClock({
+  const syncEngine = usePlaybackSyncEngine({
+    playerRef,
     isMediaReadyRef,
     playbackPausedRef,
     pendingSyncRef,
     lastAppliedTimelineAnchorMsRef,
+    playbackRef,
     onApplyFailed: (syncState) => {
       console.warn("[player] applyRoomClock failed", {
         ...applyFailContextRef.current,
@@ -98,12 +107,14 @@ export function usePlayerPlaybackSync(config: {
     },
   })
 
+  const { applyRoomClock, clearTransportNudge } = useApplyRoomClock({
+    engine: syncEngine,
+  })
+
   useEffect(() => {
     if (!current) return
     if (current.sourceKind !== "local_file" || !current.localOriginUserId)
       return
-    const ownerConnected =
-      roomState.participants[current.localOriginUserId]?.connected ?? false
     if (ownerConnected) return
 
     const player = playerRef.current
@@ -116,7 +127,7 @@ export function usePlayerPlaybackSync(config: {
     if (reportedItemErrorRef.current === current.id) return
     reportedItemErrorRef.current = current.id
     toast.error(localMediaErrorMessage("owner_offline"))
-  }, [current, playerRef, reportedItemErrorRef, roomState.participants])
+  }, [current, ownerConnected, playerRef, reportedItemErrorRef])
 
   useEffect(() => {
     isMediaReadyRef.current = false
@@ -125,6 +136,7 @@ export function usePlayerPlaybackSync(config: {
     bufferingSinceRef.current = Date.now()
     participantStatusErrorRef.current = null
     proxyRenewAttemptedRef.current = null
+    syncEngine.reset()
     clearTransportNudge()
   }, [
     bufferingSinceRef,
@@ -136,6 +148,7 @@ export function usePlayerPlaybackSync(config: {
     pendingSyncRef,
     playerSrc,
     proxyRenewAttemptedRef,
+    syncEngine,
   ])
 
   const getCurrentTimeMs = useCallback(() => {
@@ -153,14 +166,10 @@ export function usePlayerPlaybackSync(config: {
   }, [playerRef])
 
   usePlaybackDriftCorrection({
-    playerRef,
-    isMediaReadyRef,
-    playbackRef,
-    pendingSyncRef,
+    engine: syncEngine,
     holdLocalSeek:
       awaitingSeekTargetMs !== null || seekPhase === "previewing",
     timelineAnchorMs,
-    applyRoomClock,
   })
 
   useEffect(() => {
@@ -169,7 +178,7 @@ export function usePlayerPlaybackSync(config: {
       return
     }
 
-    const syncState = pendingSyncFromPlayback(roomState.playback)
+    const syncState = pendingSyncFromPlayback(playback)
     const shouldHoldForLocalSeek =
       awaitingSeekTargetMs !== null &&
       Math.abs(syncState.timelineAnchorMs - awaitingSeekTargetMs) >=
@@ -195,12 +204,12 @@ export function usePlayerPlaybackSync(config: {
     isMediaReadyRef,
     lastAppliedTimelineAnchorMsRef,
     pendingSyncRef,
+    playback.paused,
+    playback.playbackRate,
+    playback.serverNowMs,
+    playback.timelineAnchorMs,
+    playback.videoLoop,
     playerRef,
-    roomState.playback.paused,
-    roomState.playback.playbackRate,
-    roomState.playback.serverNowMs,
-    roomState.playback.timelineAnchorMs,
-    roomState.playback.videoLoop,
   ])
 
   useEffect(() => {
@@ -257,7 +266,7 @@ export function usePlayerPlaybackSync(config: {
     participantStatusErrorRef,
     playbackErrorLabel,
     playerRef,
-    roomState.currentIndex,
+    currentIndex,
     send,
   ])
 

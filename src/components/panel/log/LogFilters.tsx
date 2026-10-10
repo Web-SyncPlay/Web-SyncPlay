@@ -5,7 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { actionLabelByType, visibleActionTypes } from "@/lib/log-format"
+import { actionLabelByType, visibleActionTypes } from "@/shared/log-format"
 
 export function LogFilters(props: {
   actionFilter: string

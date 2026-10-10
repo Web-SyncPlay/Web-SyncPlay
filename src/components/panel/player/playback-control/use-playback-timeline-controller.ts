@@ -1,12 +1,12 @@
 "use client"
 
-import { computeExpectedPlaybackTimeSec } from "@/lib/playback-sync"
-import { serverNowEstimateMs } from "@/lib/server-clock"
-import type { TypedRoomEventSender } from "@/lib/room-events"
-import type { RoomState } from "@/zod/types"
+import { computeExpectedPlaybackTimeSec } from "@/client/player/playback-sync"
+import { serverNowEstimateMs } from "@/shared/server-clock"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLatestRef } from "@/hooks/use-latest-ref"
 import { createPlaybackActions } from "./use-playback-actions"
+import type { PlayerNavRoomState } from "./types"
 
 /** Local seek ack: room timeline must land within this of the requested target. */
 export const SEEK_ACK_MATCH_THRESHOLD_MS = 450
@@ -18,14 +18,14 @@ const SEEK_PREVIEW_IDLE_COMMIT_MS = 750
 export type LocalSeekPhase = "idle" | "previewing" | "awaitingAck"
 
 export function projectPlaybackMs(
-  roomState: RoomState,
+  roomState: PlayerNavRoomState,
   nowMs = serverNowEstimateMs(),
 ) {
   return Math.floor(computeExpectedPlaybackTimeSec(roomState.playback, nowMs) * 1000)
 }
 
 export function usePlaybackTimelineController(config: {
-  roomState: RoomState
+  roomState: PlayerNavRoomState
   send: TypedRoomEventSender
   controlsDisabled: boolean
 }) {

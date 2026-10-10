@@ -1,5 +1,5 @@
-import { LOCAL_MEDIA_MAX_BLOCK_BYTES } from "@/lib/local-media-block-protocol"
-import type { LocalMediaErrorCode } from "@/lib/local-media-errors"
+import { LOCAL_MEDIA_MAX_BLOCK_BYTES } from "@/shared/local-media/local-media-block-protocol"
+import type { LocalMediaErrorCode } from "@/shared/local-media/local-media-errors"
 
 /** Aligned provider blocks; must match client DataChannel max block size. */
 export const LOCAL_MEDIA_RELAY_CHUNK_BYTES = LOCAL_MEDIA_MAX_BLOCK_BYTES

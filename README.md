@@ -218,18 +218,25 @@ Reusing a room ID with a new `media` query does **not** replace the playlist. Ch
 
 ## Architecture (developers)
 
-| Path                  | Role                                                              |
-| --------------------- | ----------------------------------------------------------------- |
-| `src/app`             | App Router pages + HTTP APIs                                      |
-| `src/pages/api/ws.ts` | WebSocket upgrade                                                 |
-| `src/proxy.ts`        | Edge proxy (CSP / CORS)                                           |
-| `src/server/realtime` | Join, playlist, playback, permissions                             |
-| `src/server/media`    | Resolve, media proxy, HLS rewrite, yt-dlp, local media, SFU       |
-| `src/hooks`           | Client room socket, session, and UI hooks                         |
-| `src/lib`             | Shared client/server helpers (playback sync, local media, etc.)   |
-| `src/sw`              | Service worker (local-media fetch/cache)                          |
-| `src/zod`             | Shared types / schemas                                            |
-| `src/components`      | UI                                                                |
+| Path                         | Role                                                                 |
+| ---------------------------- | -------------------------------------------------------------------- |
+| `src/app`                    | App Router pages + HTTP APIs                                         |
+| `src/pages/api/ws.ts`        | WebSocket upgrade                                                    |
+| `src/proxy.ts`               | Edge proxy (CSP / CORS)                                              |
+| `src/contracts`              | Shared Zod schemas + wire types (C2S/S2C envelopes)                  |
+| `src/shared`                 | Framework-agnostic helpers (playlist, local-media binary, fixtures)  |
+| `src/client/realtime`        | Room socket connection, join, control token, S2C dispatch            |
+| `src/client/local-media`     | Local file provider, SW bridge, P2P/SFU client adapters              |
+| `src/client/player`          | Playback sync engine + apply helpers                                 |
+| `src/server/realtime`        | Join, playlist, playback, permissions, socket dispatch               |
+| `src/server/redis`           | Valkey client, keys, pub/sub fan-in, room state store                |
+| `src/server/ws`              | WebSocket registry, transport (upgrade/heartbeat), request dedupe    |
+| `src/server/security`        | Rate limits, URL safety                                              |
+| `src/server/media`           | Resolve, media proxy, HLS rewrite, yt-dlp, local media, SFU          |
+| `src/hooks`                  | React hooks that compose `src/client/*`                              |
+| `src/components`             | UI                                                                   |
+
+`src/lib` and `src/zod` were removed; use `src/client/*`, `src/shared`, and `src/contracts` instead.
 
 **Realtime outbound:** `room:control` (instant play/pause/seek), `presence:batch` (~250ms clocks), `room:snapshot` (~100ms structure). Presence ticks do not rewrite full Redis room state.
 

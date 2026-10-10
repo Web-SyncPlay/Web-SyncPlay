@@ -1,7 +1,7 @@
 "use client"
 
-import { canControlPlayback } from "@/lib/permissions-utils"
-import type { RoomState } from "@/zod/types"
+import { canControlPlayback } from "@/shared/permissions-utils"
+import type { RoomState } from "@/contracts/types"
 
 export function getPlaybackPermissionsState(config: {
   roomState: RoomState

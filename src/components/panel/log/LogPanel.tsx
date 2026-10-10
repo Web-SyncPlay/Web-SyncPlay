@@ -1,7 +1,7 @@
 "use client"
 
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { getFilteredLogs, getLogUsers } from "@/lib/log-format"
+import { getFilteredLogs, getLogUsers } from "@/shared/log-format"
 import { useMemo, useState } from "react"
 import type { RoomPanelProps } from "../../layout/page/types"
 import { LogFilters } from "./LogFilters"

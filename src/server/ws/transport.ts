@@ -3,10 +3,15 @@ import {
   installShutdownOnce,
   registerShutdownHandler,
 } from "@/server/lifecycle"
+import { clientIpFromUpgradeRequest } from "@/server/security/rate-limit"
 import { setSocketClientIp } from "@/server/ws/registry"
 import type { Server as HttpServer, IncomingMessage } from "node:http"
 import type { Socket } from "node:net"
 import { WebSocketServer, type WebSocket } from "ws"
+import {
+  isWsApiUpgradeUrl,
+  shouldTerminateForMissedHeartbeat,
+} from "./transport-helpers"
 
 type UpgradeListener = (
   req: IncomingMessage,
@@ -63,20 +68,6 @@ function registerWsShutdown(slot: WsTransportSlot) {
   })
 }
 
-/** Best-effort client IP from the HTTP upgrade request. */
-export function clientIpFromUpgradeRequest(req: IncomingMessage): string {
-  const forwarded = req.headers["x-forwarded-for"]
-  const forwardedValue = Array.isArray(forwarded) ? forwarded[0] : forwarded
-  if (forwardedValue) {
-    const first = forwardedValue.split(",")[0]?.trim()
-    if (first) return first
-  }
-  const realIp = req.headers["x-real-ip"]
-  const realIpValue = Array.isArray(realIp) ? realIp[0] : realIp
-  if (realIpValue?.trim()) return realIpValue.trim()
-  return req.socket?.remoteAddress?.trim() || "unknown"
-}
-
 /**
  * Idempotent: first call installs upgrade routing + WSS + heartbeat; later calls only refresh onConnection.
  */
@@ -108,7 +99,7 @@ export function attachWebSocketTransport(
 
     // Resolve WSS from the slot so a post-shutdown recreate still works.
     server.on("upgrade", (req: IncomingMessage, socket, head) => {
-      if (req.url?.startsWith("/api/ws")) {
+      if (isWsApiUpgradeUrl(req.url)) {
         const current = getTransportSlot().wss
         if (!current) {
           socket.destroy()
@@ -129,10 +120,16 @@ export function attachWebSocketTransport(
 
   const heartbeatTimeoutMs = env.WS_HEARTBEAT_INTERVAL_MS * 3
   slot.heartbeat = setInterval(() => {
+    const nowMs = Date.now()
     for (const ws of wss.clients) {
       if (ws.readyState !== ws.OPEN) continue
-      const lastSeen = slot.lastPongAt.get(ws) ?? Date.now()
-      if (Date.now() - lastSeen > heartbeatTimeoutMs) {
+      if (
+        shouldTerminateForMissedHeartbeat({
+          nowMs,
+          lastPongAtMs: slot.lastPongAt.get(ws),
+          heartbeatTimeoutMs,
+        })
+      ) {
         ws.terminate()
         continue
       }

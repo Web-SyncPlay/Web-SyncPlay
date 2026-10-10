@@ -1,6 +1,6 @@
 import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
 import { createHash } from "node:crypto"
-import type { ParticipantState } from "@/zod/types"
+import type { ParticipantState } from "@/contracts/types"
 import {
   createTestBroadcastBus,
   setRoomBroadcastBusForTests,
@@ -321,6 +321,117 @@ describe("handleRoomJoin", () => {
     })
     expect(getSocketMeta(ws)).toBeUndefined()
     expect(store.presence.get("room-1")?.has("guest")).toBe(false)
+    expect(store.peek("room-1")?.participants.guest?.connected).toBe(false)
+    expect(
+      sent.some((m) => (m as { type?: string }).type === "room:snapshot"),
+    ).toBe(false)
+  })
+
+  test("abort after commit does not leave connected ghost (H2)", async () => {
+    const store = new InMemoryRoomStateStore(
+      createRoomState({
+        participants: {
+          owner: createParticipant({
+            userId: "owner",
+            role: "owner",
+            connected: true,
+          }),
+          guest: createParticipant({
+            userId: "guest",
+            role: "guest",
+            connected: false,
+          }),
+        },
+      }),
+    )
+    store.presence.set(
+      "room-1",
+      new Map([["owner", { [getAppNodeId()]: 1 }]]),
+    )
+    createTestBroadcastBus(store)
+    const { ws, sent } = createFakeWs()
+    setSocketClientIp(ws, "192.0.2.56")
+
+    const originalUpdate = store.updateRoom.bind(store)
+    store.updateRoom = async (roomId, mutate) => {
+      const next = await originalUpdate(roomId, mutate)
+      // Commit wrote connected:true; socket dies before membership/presence.
+      if (next?.participants.guest?.connected === true) {
+        ws.close()
+        removeSocket(ws)
+      }
+      return next
+    }
+
+    await handleRoomJoin({ ws, store }, joinEnvelope())
+
+    expect(sent).toContainEqual({
+      type: "room:join:rejected",
+      requestId: "req-join-1",
+      payload: { reason: "connection_closed" },
+    })
+    expect(getSocketMeta(ws)).toBeUndefined()
+    expect(store.presence.get("room-1")?.has("guest")).toBe(false)
+    expect(store.peek("room-1")?.participants.guest?.connected).toBe(false)
+    expect(store.peek("room-1")?.participants.guest?.disconnectedAt).toBeDefined()
+    expect(
+      store.peek("room-1")?.actionLog.some(
+        (e) => e.action === "participant:disconnected",
+      ),
+    ).toBe(true)
+  })
+
+  test("abort after adding presence keeps other tab/node refs (H1)", async () => {
+    const otherNodeId = "other-node"
+    const store = new InMemoryRoomStateStore(
+      createRoomState({
+        participants: {
+          owner: createParticipant({
+            userId: "owner",
+            role: "owner",
+            connected: true,
+          }),
+          guest: createParticipant({
+            userId: "guest",
+            role: "guest",
+            connected: true,
+          }),
+        },
+      }),
+    )
+    // Same user already present on another tab/node.
+    store.presence.set(
+      "room-1",
+      new Map([["guest", { [otherNodeId]: 1 }]]),
+    )
+    store.aliveNodeIds = new Set([getAppNodeId(), otherNodeId])
+    createTestBroadcastBus(store)
+    const { ws, sent } = createFakeWs()
+    setSocketClientIp(ws, "192.0.2.77")
+
+    const originalAdd = store.addWsConnectionRef.bind(store)
+    store.addWsConnectionRef = async (roomId, userId) => {
+      await originalAdd(roomId, userId)
+      // Race: disconnect after this join added a ref (D3 / post-presence R1).
+      ws.close()
+      removeSocket(ws)
+    }
+
+    await handleRoomJoin({ ws, store }, joinEnvelope())
+
+    expect(sent).toContainEqual({
+      type: "room:join:rejected",
+      requestId: "req-join-1",
+      payload: { reason: "connection_closed" },
+    })
+    expect(getSocketMeta(ws)).toBeUndefined()
+    const guestRefs = store.presence.get("room-1")?.get("guest") ?? {}
+    expect(guestRefs[otherNodeId]).toBe(1)
+    expect(guestRefs[getAppNodeId()]).toBeUndefined()
+    expect(totalPresenceRefs(guestRefs)).toBe(1)
+    expect((await store.getWsPresenceUserIds("room-1")).has("guest")).toBe(true)
+    // Remaining tab/node presence: do not mark offline (H2 must not over-compensate).
+    expect(store.peek("room-1")?.participants.guest?.connected).toBe(true)
     expect(
       sent.some((m) => (m as { type?: string }).type === "room:snapshot"),
     ).toBe(false)

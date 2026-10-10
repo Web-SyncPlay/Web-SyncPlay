@@ -3,15 +3,20 @@ import { destroyRoom } from "@/server/realtime/services/disconnect"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
 import { transferOwnershipIfNeeded } from "./ownership"
 import {
-  pruneOfflineParticipants,
+  clearPrune,
+  listParticipantsPastPruneGrace,
+  processDuePrunes,
   reconcileParticipantsConnectivity,
+  schedulePrune,
+  schedulePruneDue,
 } from "./participants"
 import { applyRoomStateRepair } from "./room-state-repair"
 import { bumpRoomRevisions } from "./timeline"
 
 /**
- * Background sweep: sync presence, prune offline participants past grace,
- * transfer ownership, delete empty rooms.
+ * Background sweep: sync presence, enqueue Redis prunes for offline users,
+ * transfer ownership, delete empty rooms. Actual participant removal goes
+ * through {@link processDuePrunes} (Redis authoritative path).
  */
 export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
   scannedRooms: number
@@ -20,18 +25,21 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
 }> {
   const roomIds = await store.listRoomIds()
   let removedRooms = 0
-  let removedParticipants = 0
   const bus = getRoomBroadcastBus()
   bus.attachStore(store)
 
   for (const roomId of roomIds) {
-    let lastPruned = 0
     /** Destroy after WATCH commit — never DEL room keys inside mutate. */
     let pendingDestroy = false
+    let disconnectingUserIds: string[] = []
+    let reconnectingUserIds: string[] = []
+    let pastGraceUserIds: string[] = []
 
     const written = await store.updateRoom(roomId, async (current) => {
-      lastPruned = 0
       pendingDestroy = false
+      disconnectingUserIds = []
+      reconnectingUserIds = []
+      pastGraceUserIds = []
       if (!current) {
         return null
       }
@@ -50,16 +58,15 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
         current,
         activeConnections,
       )
+      disconnectingUserIds = recon.disconnecting
+      reconnectingUserIds = recon.reconnecting
       didMutate =
         didMutate ||
         recon.disconnecting.length > 0 ||
         recon.reconnecting.length > 0
 
-      const prunedUserIds = pruneOfflineParticipants(current, Date.now())
-      lastPruned = prunedUserIds.length
-      if (prunedUserIds.length > 0) {
-        didMutate = true
-      }
+      // Enqueue on Redis post-commit; do not prune inline (bypasses index).
+      pastGraceUserIds = listParticipantsPastPruneGrace(current, Date.now())
 
       if (transferOwnershipIfNeeded(current, "cleanup")) {
         didMutate = true
@@ -82,6 +89,20 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
       return current
     })
 
+    // Post-commit Redis prune index (same H3 pattern as mutate-room).
+    for (const uid of reconnectingUserIds) {
+      await clearPrune(roomId, uid)
+    }
+    for (const uid of disconnectingUserIds) {
+      await schedulePrune(roomId, uid)
+    }
+    for (const uid of pastGraceUserIds) {
+      // Already past grace — index as immediately due (no new grace window).
+      if (!disconnectingUserIds.includes(uid)) {
+        await schedulePruneDue(roomId, uid)
+      }
+    }
+
     if (pendingDestroy) {
       await destroyRoom(store, roomId)
       removedRooms += 1
@@ -90,9 +111,9 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
     if (written) {
       bus.markSnapshotDirty(roomId)
     }
-
-    removedParticipants += lastPruned
   }
+
+  const removedParticipants = await processDuePrunes(store)
 
   return {
     scannedRooms: roomIds.length,

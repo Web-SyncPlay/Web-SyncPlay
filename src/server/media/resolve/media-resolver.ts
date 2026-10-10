@@ -12,7 +12,7 @@ import { buildStreamPlan } from "@/server/media/stream/stream-plan"
 import { extractMetadata } from "@/server/media/yt-dlp"
 import { emptyYtDlpCatalog } from "@/server/media/yt-dlp/types"
 import { assertPublicHttpUrlResolved } from "@/server/security/url-safety"
-import type { PlaylistMediaStream, PlaylistTextTrack } from "@/zod/types"
+import type { PlaylistMediaStream, PlaylistTextTrack } from "@/contracts/types"
 
 export type ResolveFailureReason =
   | "metadata_failed"

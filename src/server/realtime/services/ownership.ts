@@ -1,5 +1,5 @@
 import { appendActionLog } from "@/server/log"
-import type { ParticipantState, RoomState } from "@/zod/types"
+import type { ParticipantState, RoomState } from "@/contracts/types"
 
 type TransferReason = "disconnect" | "cleanup" | "join" | "prune"
 

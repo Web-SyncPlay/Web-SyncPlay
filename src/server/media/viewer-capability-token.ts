@@ -4,19 +4,13 @@
  * Valkey: `room:{roomId}:viewer:{userId}` → `{ tokenHash, boundIp }`
  * TTL aligns with room state (`roomStateTtlSeconds`).
  *
- * TODO(join wiring — Wave 2 owns join.ts / disconnect):
- * - On successful `room:join`, call `mintViewerCapabilityToken` with
- *   `getSocketClientIp(ws)` and deliver the plaintext token via
- *   `session:capabilities` (e.g. `viewerToken`) — never room state.
- * - Remint on every reconnect join (overwrite key).
- * - Best-effort `invalidateViewerCapabilityToken` when the last socket for
- *   that user leaves the room (disconnect path when presence ref hits zero).
+ * Minted on join / remint on reconnect; invalidated on disconnect when presence hits zero.
  */
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
-import { roomStateTtlSeconds } from "@/zod/types"
+import { roomStateTtlSeconds } from "@/contracts/types"
 import { z } from "zod"
 
 export type ViewerCapabilityRecord = {

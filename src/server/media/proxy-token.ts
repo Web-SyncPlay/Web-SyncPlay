@@ -4,7 +4,7 @@ import { sha256HexUrl } from "@/server/media/url-hash"
 import { assertPublicHttpUrlResolved } from "@/server/security/url-safety"
 import { getCommandClient } from "../redis/client"
 import { keys } from "../redis/keys"
-import { roomStateTtlSeconds } from "@/zod/types"
+import { roomStateTtlSeconds } from "@/contracts/types"
 
 /**
  * Tokens map UUID → upstream URL + fetch metadata.

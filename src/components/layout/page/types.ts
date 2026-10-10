@@ -1,8 +1,8 @@
-import type { TypedRoomEventSender } from "@/lib/room-events"
-import type { RoomState, SessionKind } from "@/zod/types"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
+import type { ClientRoomState, SessionKind } from "@/contracts/types"
 
 export interface RoomPanelProps {
-  roomState: RoomState
+  roomState: ClientRoomState
   roomId: string
   userId: string
   userSecret: string

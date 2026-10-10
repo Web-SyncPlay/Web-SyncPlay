@@ -7,10 +7,10 @@ import {
   isAvatarStyleId,
   resolveStyle,
   type AvatarStyleId,
-} from "@/lib/avatar"
-import type { TypedRoomEventSender } from "@/lib/room-events"
-import { cn } from "@/lib/utils"
-import type { ParticipantState } from "@/zod/types"
+} from "@/shared/avatar"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
+import { cn } from "@/shared/utils"
+import type { ParticipantState } from "@/contracts/types"
 import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar"
 import {

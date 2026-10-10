@@ -5,7 +5,7 @@ import {
   mediaErrorCode,
   normalizeHlsMime,
 } from "./player-src"
-import type { PlaylistItem, PlaylistMediaStream } from "@/zod/types"
+import type { PlaylistItem, PlaylistMediaStream } from "@/contracts/types"
 
 describe("normalizeHlsMime", () => {
   test("normalizes apple and generic mpegurl types", () => {

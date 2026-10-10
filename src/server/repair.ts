@@ -8,7 +8,7 @@ import {
   type PlaybackState,
   type PlaylistItem,
   type RoomState,
-} from "@/zod/types"
+} from "@/contracts/types"
 import { randomUUID } from "node:crypto"
 import { pruneActionLog, trackedActionTypes } from "./log"
 

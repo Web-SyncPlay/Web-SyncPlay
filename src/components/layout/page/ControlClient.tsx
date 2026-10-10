@@ -3,10 +3,10 @@
 import { RoomConnectingView } from "@/components/layout/RoomConnectingView"
 import { useRoomRail } from "@/hooks/use-room-rail"
 import { useRoomSession } from "@/hooks/use-room-session"
-import { getRoomUrl } from "@/lib/control-url"
-import { isClientControlAuthorized } from "@/lib/permissions-utils"
-import { resolveCurrentPlaylistItem } from "@/lib/playlist-current"
-import { resolveCatalogDurationMs } from "@/lib/playlist-duration"
+import { getRoomUrl } from "@/client/realtime/control-url"
+import { isClientControlAuthorized } from "@/shared/permissions-utils"
+import { resolveCurrentPlaylistItem } from "@/shared/playlist-current"
+import { resolveCatalogDurationMs } from "@/shared/playlist-duration"
 import { ControlPanel } from "../../panel/control/ControlPanel"
 import { getPlaybackPermissionsState } from "../../panel/player/playback-control/use-playback-permissions-state"
 import { usePlaybackTimelineController } from "../../panel/player/playback-control/use-playback-timeline-controller"
@@ -128,6 +128,7 @@ function ControlClientReady(props: {
           onStepBy={timeline.stepBy}
           onSeekPreview={(targetMs, active) => {
             if (!active) {
+              // End scrub via onSeekCommit → playback:seek.
               return
             }
             if (timeline.seekPhase === "idle") {

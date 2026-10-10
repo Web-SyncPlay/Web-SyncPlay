@@ -10,7 +10,7 @@ import {
   videoQualityStorageValue,
   type LocalAudioTrackOption,
   type LocalVideoQualityOption,
-} from "@/lib/player-local-tracks"
+} from "@/client/player/player-local-tracks"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import { useEffect, useState, type RefObject } from "react"
 

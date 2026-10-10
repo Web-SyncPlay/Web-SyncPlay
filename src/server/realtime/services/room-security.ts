@@ -4,11 +4,13 @@ import type {
   RoomSecurityState,
   RoomSnapshotPayload,
   RoomState,
-} from "@/zod/types"
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto"
+} from "@/contracts/types"
+import { randomBytes, scrypt, timingSafeEqual } from "node:crypto"
+import { promisify } from "node:util"
 
 const JOIN_PASSWORD_KEY_LENGTH = 64
 const JOIN_PASSWORD_SALT_BYTES = 16
+const scryptAsync = promisify(scrypt)
 
 export type JoinAdmissionResult =
   | { allowed: true }
@@ -102,12 +104,15 @@ export function setDefaultJoinRole(
   return true
 }
 
-export function setJoinPassword(state: RoomState, password: string): void {
+export async function setJoinPassword(
+  state: RoomState,
+  password: string,
+): Promise<void> {
   const security = ensureRoomSecurity(state)
   const salt = randomBytes(JOIN_PASSWORD_SALT_BYTES).toString("hex")
   security.joinPasswordEnabled = true
   security.joinPasswordSalt = salt
-  security.joinPasswordHash = hashJoinPassword(password.trim(), salt)
+  security.joinPasswordHash = await hashJoinPassword(password.trim(), salt)
   security.joinPasswordUpdatedAt = Date.now()
   security.admissionVersion += 1
 }
@@ -126,10 +131,10 @@ export function clearJoinPassword(state: RoomState): boolean {
   return changed
 }
 
-export function evaluateJoinAdmission(
+export async function evaluateJoinAdmission(
   state: RoomState | null,
   suppliedPassword?: string,
-): JoinAdmissionResult {
+): Promise<JoinAdmissionResult> {
   if (!state) {
     return { allowed: true }
   }
@@ -143,17 +148,17 @@ export function evaluateJoinAdmission(
     return { allowed: false, reason: "password_required" }
   }
 
-  if (!verifyJoinPassword(state, suppliedPassword)) {
+  if (!(await verifyJoinPassword(state, suppliedPassword))) {
     return { allowed: false, reason: "invalid_password" }
   }
 
   return { allowed: true }
 }
 
-export function verifyJoinPassword(
+export async function verifyJoinPassword(
   state: RoomState,
   suppliedPassword: string,
-): boolean {
+): Promise<boolean> {
   const security = ensureRoomSecurity(state)
   if (
     !security.joinPasswordEnabled ||
@@ -165,7 +170,7 @@ export function verifyJoinPassword(
 
   const expected = Buffer.from(security.joinPasswordHash, "hex")
   const actual = Buffer.from(
-    hashJoinPassword(suppliedPassword.trim(), security.joinPasswordSalt),
+    await hashJoinPassword(suppliedPassword.trim(), security.joinPasswordSalt),
     "hex",
   )
 
@@ -176,6 +181,14 @@ export function verifyJoinPassword(
   return timingSafeEqual(expected, actual)
 }
 
-function hashJoinPassword(password: string, salt: string): string {
-  return scryptSync(password, salt, JOIN_PASSWORD_KEY_LENGTH).toString("hex")
+async function hashJoinPassword(
+  password: string,
+  salt: string,
+): Promise<string> {
+  const derived = (await scryptAsync(
+    password,
+    salt,
+    JOIN_PASSWORD_KEY_LENGTH,
+  )) as Buffer
+  return derived.toString("hex")
 }

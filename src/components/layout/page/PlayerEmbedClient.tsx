@@ -2,7 +2,7 @@
 
 import { RoomConnectingView } from "@/components/layout/RoomConnectingView"
 import { useRoomSession } from "@/hooks/use-room-session"
-import { canMutateFromClientSession } from "@/lib/permissions-utils"
+import { canMutateFromClientSession } from "@/shared/permissions-utils"
 import { PlayerPanel } from "../../panel/player/PlayerPanel"
 
 export function PlayerEmbedClient({ roomId }: { roomId: string }) {

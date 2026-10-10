@@ -6,7 +6,7 @@ import {
   repairPlaylistState,
 } from "@/server/repair"
 import { createRoomState } from "@/server/realtime/test-utils/fixtures"
-import type { RoomState } from "@/zod/types"
+import type { RoomState } from "@/contracts/types"
 
 function minimalRoomState(
   playlist: RoomState["playlist"],
@@ -44,13 +44,21 @@ test("repairPlaylistState migrates selected stream ids to defaults and strips le
       playableUrl: "https://cdn.example/a.mp4",
       createdBy: "owner-1",
       createdAt: 1,
-      selectedStreamId: "stream-old",
-      selectedTextTrackId: "track-old",
     },
   ])
+  // Legacy Redis payloads may still carry pre-default* aliases.
+  const legacyItem = state.playlist[0]! as typeof state.playlist[0] & {
+    selectedStreamId?: string
+    selectedTextTrackId?: string
+  }
+  legacyItem.selectedStreamId = "stream-old"
+  legacyItem.selectedTextTrackId = "track-old"
 
   const findings = repairPlaylistState(state)
-  const item = state.playlist[0]!
+  const item = state.playlist[0]! as typeof state.playlist[0] & {
+    selectedStreamId?: string
+    selectedTextTrackId?: string
+  }
 
   expect(findings).toContain("playlist-item-default-stream-migrated")
   expect(findings).toContain("playlist-item-default-text-track-migrated")

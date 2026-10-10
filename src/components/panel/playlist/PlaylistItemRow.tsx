@@ -12,8 +12,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
-import type { PlaylistItem } from "@/zod/types"
+import { cn } from "@/shared/utils"
+import type { PlaylistItem } from "@/contracts/types"
 import { useSortable } from "@dnd-kit/react/sortable"
 import { Copy, GripVertical, Loader2, Play, Trash2 } from "lucide-react"
 import { useLayoutEffect, useState } from "react"

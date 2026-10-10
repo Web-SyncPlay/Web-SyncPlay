@@ -2,7 +2,7 @@ import { env } from "@/env"
 import {
   getPublicHostname,
   MEDIASOUP_RTC_UDP_PORT,
-} from "@/lib/public-domain"
+} from "@/shared/public-domain"
 import type { types as MsTypes } from "mediasoup"
 
 type Worker = MsTypes.Worker

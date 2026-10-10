@@ -1,6 +1,6 @@
 "use client"
 
-import type { PlaylistMediaStream } from "@/zod/types"
+import type { PlaylistMediaStream } from "@/contracts/types"
 import { useMediaState } from "@vidstack/react"
 import {
   useDefaultLayoutContext,

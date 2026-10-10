@@ -1,6 +1,6 @@
 "use client"
 
-import type { TypedRoomEventSender } from "@/lib/room-events"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import { useEffect, type RefObject } from "react"
 import { useLatestRef } from "@/hooks/use-latest-ref"
@@ -8,7 +8,7 @@ import type {
   PlaylistItem,
   PlaylistTextTrack,
   ViewerMediaItemPreference,
-} from "@/zod/types"
+} from "@/contracts/types"
 
 type TrackLike = {
   id?: string

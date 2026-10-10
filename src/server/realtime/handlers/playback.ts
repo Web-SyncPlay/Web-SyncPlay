@@ -10,24 +10,21 @@ import {
   playbackRateSchema,
   playbackSeekSchema,
   playbackSetPausedSchema,
-} from "@/zod/schemas"
-import type { LoopMode } from "@/zod/types"
+} from "@/contracts/schemas"
+import type { LoopMode } from "@/contracts/types"
 import { mutateControlledRoomMessage } from "./mutate-controlled"
+import { parseOrNack } from "./parse-or-nack"
 import type { RoomMessageHandler } from "./types"
 
 export const handlePlaybackSeek: RoomMessageHandler = async (ctx, data) => {
-  const seekResult = playbackSeekSchema.safeParse(data.payload)
-  if (!seekResult.success) {
-    return
-  }
+  const seek = parseOrNack(playbackSeekSchema, ctx.ws, data)
+  if (!seek) return
 
   await mutateControlledRoomMessage(
     ctx,
+    data,
     (state, participant) => {
-      const { fromMs, toMs } = commitPlaybackSeek(
-        state,
-        seekResult.data.targetMs,
-      )
+      const { fromMs, toMs } = commitPlaybackSeek(state, seek.targetMs)
       appendActionLog(state, {
         roomId: ctx.roomId,
         actorUserId: ctx.userId,
@@ -46,19 +43,16 @@ async function setPlaybackPausedState(
   data: Parameters<RoomMessageHandler>[1],
   paused: boolean,
 ) {
-  const payloadResult = playbackSetPausedSchema.safeParse(data.payload)
-  if (!payloadResult.success) {
-    return
-  }
+  const payload = parseOrNack(playbackSetPausedSchema, ctx.ws, data)
+  if (!payload) return
 
   await mutateControlledRoomMessage(
     ctx,
+    data,
     (state, participant) => {
       const nowMs = Date.now()
       const projectedMs = resolveCurrentTimelineMs(state, nowMs)
-      const nextAnchorMs = Number(
-        payloadResult.data.currentTimeMs ?? projectedMs,
-      )
+      const nextAnchorMs = Number(payload.currentTimeMs ?? projectedMs)
       // Keep ephemeral seekPreview — only authoritative seeks clear it.
       state.playback.timelineAnchorMs = Math.max(0, nextAnchorMs)
       state.playback.paused = paused
@@ -88,22 +82,21 @@ export const handlePlaybackPause: RoomMessageHandler = async (ctx, data) => {
 }
 
 export const handlePlaybackRate: RoomMessageHandler = async (ctx, data) => {
-  const rateResult = playbackRateSchema.safeParse(data.payload)
-  if (!rateResult.success) {
-    return
-  }
+  const rate = parseOrNack(playbackRateSchema, ctx.ws, data)
+  if (!rate) return
 
   await mutateControlledRoomMessage(
     ctx,
+    data,
     (state, participant) => {
       reanchorPlaybackAtNow(state)
-      state.playback.playbackRate = rateResult.data.playbackRate
+      state.playback.playbackRate = rate.playbackRate
       appendActionLog(state, {
         roomId: ctx.roomId,
         actorUserId: ctx.userId,
         actorUsername: participant.username,
         action: "playback:rate",
-        payload: { playbackRate: rateResult.data.playbackRate },
+        payload: { playbackRate: rate.playbackRate },
       })
       return true
     },
@@ -118,17 +111,16 @@ async function setPlaybackLoopMode(
   data: Parameters<RoomMessageHandler>[1],
   scope: LoopScope,
 ) {
-  const modeResult = playbackLoopModeSchema.safeParse(data.payload)
-  if (!modeResult.success) {
-    return
-  }
+  const mode = parseOrNack(playbackLoopModeSchema, ctx.ws, data)
+  if (!mode) return
 
   await mutateControlledRoomMessage(
     ctx,
+    data,
     (state, participant) => {
       const field = scope === "video" ? "videoLoop" : "playlistLoop"
       const previousMode = state.playback[field]
-      state.playback[field] = modeResult.data.mode as LoopMode
+      state.playback[field] = mode.mode as LoopMode
       if (previousMode !== state.playback[field]) {
         appendActionLog(state, {
           roomId: ctx.roomId,

@@ -4,7 +4,7 @@ import type {
   RoomControlPayload,
   RoomSnapshotPayload,
   WsEnvelope,
-} from "@/zod/types"
+} from "@/contracts/types"
 
 /** Hint for mutateRoomMessage post-write publish path. */
 export type RoomPublishHint =

@@ -1,15 +1,15 @@
 "use client"
 
-import { resolveBootstrapControlToken } from "@/lib/control-token-client"
+import { resolveBootstrapControlToken } from "@/client/realtime/control-token-client"
 import {
   consumeSessionIdentityFromHash,
   getOrCreateSessionIdentity,
   getPersistedUsername,
   persistUsername,
   stripIdentityHashFromUrl,
-} from "@/lib/session-identity"
-import { getRandomName } from "@/lib/room-utils"
-import type { SessionKind } from "@/zod/types"
+} from "@/client/realtime/session-identity"
+import { getRandomName } from "@/shared/room-utils"
+import type { SessionKind } from "@/contracts/types"
 import { useEffect, useRef, useState, type MutableRefObject } from "react"
 
 export type SessionIdentity = {

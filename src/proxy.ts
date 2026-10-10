@@ -1,7 +1,7 @@
 import {
   buildContentSecurityPolicy,
   isOriginAllowed,
-} from "@/lib/public-domain"
+} from "@/shared/public-domain"
 import { NextResponse, type NextRequest } from "next/server"
 
 const CORS_ALLOW_METHODS = "GET,HEAD,POST,OPTIONS"

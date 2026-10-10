@@ -3,10 +3,10 @@
 import {
   createControlTokenRefreshScheduler,
   mintRoomControlTokenWithRetry,
-} from "@/lib/control-token-client"
-import { getControlEmbedUrl } from "@/lib/control-url"
-import { canMutateByRole } from "@/lib/permissions-utils"
-import type { RoomRole } from "@/zod/types"
+} from "@/client/realtime/control-token-client"
+import { getControlEmbedUrl } from "@/client/realtime/control-url"
+import { canMutateByRole } from "@/shared/permissions-utils"
+import type { RoomRole } from "@/contracts/types"
 import { useEffect, useMemo, useState } from "react"
 
 /**

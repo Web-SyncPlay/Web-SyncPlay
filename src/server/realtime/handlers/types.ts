@@ -1,5 +1,5 @@
 import type { RoomStateStorePort } from "@/server/realtime/ports"
-import type { SessionKind, WsEnvelope } from "@/zod/types"
+import type { SessionKind, WsEnvelope } from "@/contracts/types"
 import type { WebSocket } from "ws"
 
 export type RoomMessageContext = {

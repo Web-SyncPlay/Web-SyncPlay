@@ -1,78 +1,11 @@
-import type { ClientEventType } from "@/lib/room-events"
-import {
-  localMediaAbrPublishSchema,
-  localMediaChunkSchema,
-  localMediaReadySchema,
-  localMediaSfuCapabilitiesSchema,
-  localMediaSfuConnectTransportSchema,
-  localMediaSfuConsumeDataSchema,
-  localMediaSfuCreateTransportSchema,
-  localMediaSfuProduceDataSchema,
-  localMediaWebrtcSignalSchema,
-  participantRoleUpdateSchema,
-  participantUpdateSchema,
-  playbackLoopModeSchema,
-  playbackRateSchema,
-  playbackSeekSchema,
-  playbackSetPausedSchema,
-  playlistAddLocalSchema,
-  playlistAddUrlSchema,
-  playlistItemDurationSchema,
-  playlistItemErrorSchema,
-  playlistRemoveSchema,
-  playlistRenameSchema,
-  playlistReorderSchema,
-  playlistRetrySchema,
-  playlistSelectSchema,
-  roomJoinSchema,
-  roomPasswordClearSchema,
-  roomPasswordSetSchema,
-  roomDefaultRoleSetSchema,
-  seekPreviewSchema,
-  viewerMediaPreferencesSchema,
-  wsEnvelopeSchema,
-} from "@/zod/schemas"
-import type { z } from "zod"
+import { roomMessageSchemas } from "@/contracts/room-events"
+import { roomJoinSchema, wsEnvelopeSchema } from "@/contracts/schemas"
+import type { ClientEventType } from "@/contracts/room-events"
 
-/**
- * Payload schema for every client→server room message (excluding join).
- * Keep this map and {@link ClientEventPayloadMap} / handler registry in lockstep.
- */
-export const roomMessageSchemas = {
-  "participant:update": participantUpdateSchema,
-  "participant:role:update": participantRoleUpdateSchema,
-  "playback:play": playbackSetPausedSchema,
-  "playback:pause": playbackSetPausedSchema,
-  "playback:seek": playbackSeekSchema,
-  "playback:rate": playbackRateSchema,
-  "playback:loop:video": playbackLoopModeSchema,
-  "playback:loop:playlist": playbackLoopModeSchema,
-  "playlist:add:url": playlistAddUrlSchema,
-  "playlist:add:local": playlistAddLocalSchema,
-  "playlist:retry": playlistRetrySchema,
-  "playlist:item:error": playlistItemErrorSchema,
-  "playlist:item:duration": playlistItemDurationSchema,
-  "local-media:chunk": localMediaChunkSchema,
-  "local-media:ready": localMediaReadySchema,
-  "local-media:abr:publish": localMediaAbrPublishSchema,
-  "local-media:webrtc:signal": localMediaWebrtcSignalSchema,
-  "local-media:sfu:capabilities": localMediaSfuCapabilitiesSchema,
-  "local-media:sfu:create-transport": localMediaSfuCreateTransportSchema,
-  "local-media:sfu:connect-transport": localMediaSfuConnectTransportSchema,
-  "local-media:sfu:produce-data": localMediaSfuProduceDataSchema,
-  "local-media:sfu:consume-data": localMediaSfuConsumeDataSchema,
-  "viewer:media:preferences": viewerMediaPreferencesSchema,
-  "playlist:rename": playlistRenameSchema,
-  "playlist:remove": playlistRemoveSchema,
-  "playlist:reorder": playlistReorderSchema,
-  "playlist:select": playlistSelectSchema,
-  "seek:preview": seekPreviewSchema,
-  "room:password:set": roomPasswordSetSchema,
-  "room:password:clear": roomPasswordClearSchema,
-  "room:default-role:set": roomDefaultRoleSetSchema,
-} as const satisfies Record<ClientEventType, z.ZodType>
-
-export type RoomMessageSchemaMap = typeof roomMessageSchemas
+export {
+  roomMessageSchemas,
+  type RoomMessageSchemaMap,
+} from "@/contracts/room-events"
 
 /** Join is handled before the room-message registry. */
 export const joinMessageSchema = roomJoinSchema

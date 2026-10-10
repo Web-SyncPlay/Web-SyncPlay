@@ -1,4 +1,4 @@
-import type { JoinStatus } from "@/lib/room-join-client"
+import type { JoinStatus } from "@/client/realtime/room-join-client"
 import { CircleAlert } from "lucide-react"
 import {
   Empty,

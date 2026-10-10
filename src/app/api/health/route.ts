@@ -1,5 +1,6 @@
 import { env } from "@/env"
 import { ensureBackgroundMaintenance } from "@/server/maintenance"
+import { getLocalMediaAffinityHealth } from "@/server/media/local-media-node-registry"
 import { getYtDlpMetrics } from "@/server/media/yt-dlp/metrics"
 import {
   derivedExtractFailoverWaitMs,
@@ -24,11 +25,14 @@ export async function GET() {
   const valkeyOk = await pingValkey()
   const cacheTtl = env.YTDLP_CACHE_TTL_SECONDS
   const timeoutMs = env.YTDLP_TIMEOUT_MS
+  // Warn-only: unset affinity must not flip liveness (existing single-node deploys).
+  const localMediaHttpAffinity = getLocalMediaAffinityHealth()
 
   return NextResponse.json(
     {
       ok: valkeyOk,
       valkey: valkeyOk,
+      localMediaHttpAffinity,
       ytdlpBin: env.YTDLP_BIN,
       ytdlp: {
         maxConcurrent: env.YTDLP_MAX_CONCURRENT,

@@ -1,9 +1,9 @@
 import { reclaimAbandonedResolves } from "@/server/media/yt-dlp/resolve-lease"
 import { derivedResolveReclaimIntervalMs } from "@/server/media/yt-dlp/policy"
-import { reresolveRemotePlaylistItem } from "@/server/realtime/services/playlist-resolve"
-import { cleanupInactiveRooms } from "@/server/realtime/services/cleanup"
-import { processDuePrunes } from "@/server/realtime/services/participants"
-import type { RoomStateStorePort } from "@/server/realtime/ports"
+import {
+  getMediaMaintenancePort,
+  type RoomStateStorePort,
+} from "@/server/realtime/ports"
 import { env } from "@/env"
 import {
   installShutdownOnce,
@@ -22,15 +22,26 @@ function timeoutMs(): number {
  * participant prunes, and sweep inactive rooms (presence reconcile, ownership
  * transfer, empty-room delete). Safe across instances — claim keys / WATCH
  * serialize work.
+ *
+ * Realtime service callbacks come from {@link getMediaMaintenancePort}
+ * (wired at composition root).
  */
 export function startResolveReclaimLoop(store: RoomStateStorePort) {
   if (reclaimTimer) return
 
   const intervalMs = derivedResolveReclaimIntervalMs(timeoutMs())
   const tick = () => {
+    const maintenance = getMediaMaintenancePort()
+    if (!maintenance) {
+      console.warn(
+        "[yt-dlp] MediaMaintenancePort not configured; reclaim tick skipped",
+      )
+      return
+    }
+
     void reclaimAbandonedResolves({
       reresolve: (job) =>
-        reresolveRemotePlaylistItem({
+        maintenance.reresolveRemotePlaylistItem({
           store,
           roomId: job.roomId,
           itemId: job.itemId,
@@ -43,13 +54,13 @@ export function startResolveReclaimLoop(store: RoomStateStorePort) {
       }
     })
 
-    void processDuePrunes(store).then((n) => {
+    void maintenance.processDuePrunes(store).then((n) => {
       if (n > 0) {
         console.info("[participants] pruned disconnected users", { count: n })
       }
     })
 
-    void cleanupInactiveRooms(store).then((result) => {
+    void maintenance.cleanupInactiveRooms(store).then((result) => {
       if (result.removedRooms > 0 || result.removedParticipants > 0) {
         console.info("[rooms] inactive cleanup sweep", result)
       }

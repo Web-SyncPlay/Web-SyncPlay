@@ -6,10 +6,10 @@ import {
   canUseFileSystemAccess,
   persistLocalMediaHandle,
   pickLocalMediaFileWithFsa,
-} from "@/lib/local-media-handles"
-import { resolvePlayableMimeType } from "@/lib/media-mime"
-import { registerLocalMediaFile } from "@/lib/local-media-provider"
-import type { TypedRoomEventSender } from "@/lib/room-events"
+} from "@/client/local-media/local-media-handles"
+import { resolvePlayableMimeType } from "@/shared/media-mime"
+import { registerLocalMediaFile } from "@/client/local-media/local-media-provider"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
 import { useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 
@@ -77,7 +77,7 @@ export function PlaylistAddMediaControls(props: {
         })
       }
       const { probeLocalMediaDurationSec, runLocalMediaAbrPublish } =
-        await import("@/lib/local-media-abr")
+        await import("@/client/local-media/local-media-abr")
       const durationSeconds = await probeLocalMediaDurationSec(file)
       send("playlist:add:local", {
         localMediaId,

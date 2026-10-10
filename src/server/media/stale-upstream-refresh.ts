@@ -1,6 +1,6 @@
 import type { ProxyTokenPayload } from "@/server/media/proxy-token"
 import { recordYtDlpMetric } from "@/server/media/yt-dlp/metrics"
-import { reresolveRemotePlaylistItem } from "@/server/realtime/services/playlist-resolve"
+import { getMediaMaintenancePort } from "@/server/realtime/ports"
 import { getRoomStateStore } from "@/server/redis/state-store"
 import { consumeRateLimit } from "@/server/security/rate-limit"
 
@@ -12,6 +12,8 @@ export function isStaleUpstreamStatus(status: number): boolean {
 /**
  * Best-effort: invalidate yt-dlp extract cache and re-resolve the playlist item
  * so clients receive fresh playable/proxy URLs. Rate-limited per room item.
+ *
+ * Re-resolve is provided by {@link getMediaMaintenancePort} (composition root).
  */
 export async function scheduleStaleUpstreamRefresh(
   payload: ProxyTokenPayload,
@@ -33,9 +35,18 @@ export async function scheduleStaleUpstreamRefresh(
     mediaId,
   })
 
+  const maintenance = getMediaMaintenancePort()
+  if (!maintenance) {
+    console.warn(
+      "[media-proxy] MediaMaintenancePort not configured; stale refresh skipped",
+      { roomId, mediaId },
+    )
+    return false
+  }
+
   try {
     const store = await getRoomStateStore()
-    return await reresolveRemotePlaylistItem({
+    return await maintenance.reresolveRemotePlaylistItem({
       store,
       roomId,
       itemId: mediaId,

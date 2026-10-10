@@ -1,9 +1,9 @@
 (() => {
-  // src/lib/local-media-block-protocol.ts
+  // src/shared/local-media/local-media-block-protocol.ts
   var LOCAL_MEDIA_MAX_BLOCK_BYTES = 256 * 1024;
   var LOCAL_MEDIA_MAX_FRAME_PAYLOAD = 60 * 1024;
 
-  // src/lib/local-media-range.ts
+  // src/shared/local-media/local-media-range.ts
   function parseRawBytesRangeHeader(rangeHeader) {
     if (!rangeHeader) {
       return null;
@@ -19,6 +19,10 @@
     }
     return { start, end };
   }
+
+  // src/shared/local-media/local-media-viewer-token.ts
+  var LOCAL_MEDIA_VIEWER_TOKEN_PARAM = "vt";
+  var LOCAL_MEDIA_VIEWER_USER_PARAM = "uid";
 
   // src/sw/local-media-sw.ts
   var sw = self;
@@ -46,11 +50,11 @@
         return request;
       if (url.pathname.includes("/internal/"))
         return request;
-      if (url.searchParams.has("vt") && url.searchParams.has("uid")) {
+      if (url.searchParams.has(LOCAL_MEDIA_VIEWER_TOKEN_PARAM) && url.searchParams.has(LOCAL_MEDIA_VIEWER_USER_PARAM)) {
         return request;
       }
-      url.searchParams.set("vt", viewerCapability.token);
-      url.searchParams.set("uid", viewerCapability.userId);
+      url.searchParams.set(LOCAL_MEDIA_VIEWER_TOKEN_PARAM, viewerCapability.token);
+      url.searchParams.set(LOCAL_MEDIA_VIEWER_USER_PARAM, viewerCapability.userId);
       return new Request(url.toString(), request);
     } catch {
       return request;

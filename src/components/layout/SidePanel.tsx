@@ -5,7 +5,7 @@ import { PlaylistPanel } from "@/components/panel/playlist/PlaylistPanel"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import type { RoomRailTab } from "@/hooks/use-room-rail"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/utils"
 import { useState } from "react"
 import type { RoomPanelProps } from "./page/types"
 

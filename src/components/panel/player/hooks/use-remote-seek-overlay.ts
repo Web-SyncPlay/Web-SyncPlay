@@ -1,50 +1,45 @@
 "use client"
 
-import { formatClockMs } from "@/lib/time-format"
-import type { RoomState } from "@/zod/types"
+import { formatClockMs } from "@/shared/time-format"
+import type { PlaybackState } from "@/contracts/types"
 import { useMemo, useState, useEffect } from "react"
 
 /** Drop stuck remote seek overlays when the final seek never arrives. */
 const REMOTE_SEEK_STALE_MS = 2_500
 
 export function useRemoteSeekOverlay(config: {
-  roomState: RoomState
+  seekPreview: PlaybackState["seekPreview"]
+  /** Preselected display name — avoids depending on the participants map. */
+  remoteSeekerName: string
   userId: string
   mediaDurationMs: number
 }) {
-  const { roomState, userId, mediaDurationMs } = config
-  const remoteSeekPreview = roomState.playback.seekPreview
+  const { seekPreview, remoteSeekerName, userId, mediaDurationMs } = config
   const [nowMs, setNowMs] = useState(() => Date.now())
 
   useEffect(() => {
-    if (remoteSeekPreview?.active !== true) {
+    if (seekPreview?.active !== true) {
       return
     }
     const timer = window.setInterval(() => {
       setNowMs(Date.now())
     }, 500)
     return () => window.clearInterval(timer)
-  }, [remoteSeekPreview?.active])
+  }, [seekPreview?.active])
 
   return useMemo(() => {
-    const updatedAt = Number(remoteSeekPreview?.updatedAt ?? 0)
+    const updatedAt = Number(seekPreview?.updatedAt ?? 0)
     const isFresh =
       !Number.isFinite(updatedAt) ||
       updatedAt <= 0 ||
       nowMs - updatedAt <= REMOTE_SEEK_STALE_MS
     const isOtherUserSeeking =
-      remoteSeekPreview?.active === true &&
-      remoteSeekPreview.userId !== userId &&
+      seekPreview?.active === true &&
+      seekPreview.userId !== userId &&
       isFresh
-    const remoteSeekerName =
-      remoteSeekPreview?.userId &&
-      roomState.participants[remoteSeekPreview.userId]
-        ? (roomState.participants[remoteSeekPreview.userId]?.username ??
-          "Another user")
-        : "Another user"
     const remoteSeekTargetMs = Math.max(
       0,
-      Number(remoteSeekPreview?.targetMs ?? 0),
+      Number(seekPreview?.targetMs ?? 0),
     )
     const seekProgressPercent =
       mediaDurationMs > 0
@@ -60,11 +55,5 @@ export function useRemoteSeekOverlay(config: {
       seekProgressPercent,
       totalTimeLabel,
     }
-  }, [
-    mediaDurationMs,
-    nowMs,
-    remoteSeekPreview,
-    roomState.participants,
-    userId,
-  ])
+  }, [mediaDurationMs, nowMs, remoteSeekerName, seekPreview, userId])
 }

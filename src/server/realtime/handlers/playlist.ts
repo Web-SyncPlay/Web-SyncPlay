@@ -1,5 +1,5 @@
 import { env } from "@/env"
-import { isProgressiveMediaMime } from "@/lib/media-mime"
+import { isProgressiveMediaMime } from "@/shared/media-mime"
 import { appendActionLog } from "@/server/log"
 import { createLocalMediaEntry } from "@/server/media/local-media-store"
 import {
@@ -30,13 +30,15 @@ import {
   playlistReorderSchema,
   playlistRetrySchema,
   playlistSelectSchema,
-} from "@/zod/schemas"
+} from "@/contracts/schemas"
 import { randomUUID } from "node:crypto"
 import {
   connectionAuthFromContext,
   mutateControlledRoomMessage,
 } from "./mutate-controlled"
 import { mutateRoomMessage } from "./mutate-room"
+import { parseOrNack } from "./parse-or-nack"
+import { sendMutationNack } from "./mutation-nack"
 import type { RoomMessageContext, RoomMessageHandler } from "./types"
 
 const RESOLVE_RATE_LIMIT = { limit: 10, windowMs: 60_000 } as const
@@ -52,13 +54,14 @@ async function consumePlaylistResolveLimit(
 }
 
 export const handlePlaylistSelect: RoomMessageHandler = async (ctx, data) => {
-  const selectResult = playlistSelectSchema.safeParse(data.payload)
-  if (!selectResult.success) return
+  const select = parseOrNack(playlistSelectSchema, ctx.ws, data)
+  if (!select) return
 
   await mutateControlledRoomMessage(
     ctx,
+    data,
     (state, participant) => {
-      const nextIndex = selectResult.data.index
+      const nextIndex = select.index
       if (!applyPlaylistSelect(state, nextIndex)) return false
       // Keep play/pause intent across item changes. Forcing pause here used to
       // rely on a client-only autoPlayAfterLoad flag that was cleared when the
@@ -81,17 +84,21 @@ export const handlePlaylistSelect: RoomMessageHandler = async (ctx, data) => {
 }
 
 export const handlePlaylistAddUrl: RoomMessageHandler = async (ctx, data) => {
-  const addUrlResult = playlistAddUrlSchema.safeParse(data.payload)
-  if (!addUrlResult.success) return
+  const addUrl = parseOrNack(playlistAddUrlSchema, ctx.ws, data)
+  if (!addUrl) return
 
-  if (!(await consumePlaylistResolveLimit(ctx))) return
+  if (!(await consumePlaylistResolveLimit(ctx))) {
+    sendMutationNack(ctx.ws, data, "rate_limited")
+    return
+  }
 
   const queuedItemId = randomUUID()
-  const sourceUrl = addUrlResult.data.url
+  const sourceUrl = addUrl.url
   let shouldResolve = false
 
   await mutateControlledRoomMessage(
     ctx,
+    data,
     (state, participant) => {
       if (isPlaylistAtLimit(state, env.ROOM_PLAYLIST_LIMIT)) return false
       shouldResolve = true
@@ -130,19 +137,19 @@ export const handlePlaylistAddUrl: RoomMessageHandler = async (ctx, data) => {
 }
 
 export const handlePlaylistAddLocal: RoomMessageHandler = async (ctx, data) => {
-  const parsed = playlistAddLocalSchema.safeParse(data.payload)
-  if (!parsed.success) return
+  const parsed = parseOrNack(playlistAddLocalSchema, ctx.ws, data)
+  if (!parsed) return
 
-  if (!isProgressiveMediaMime(parsed.data.mimeType)) return
+  if (!isProgressiveMediaMime(parsed.mimeType)) return
 
   try {
     await createLocalMediaEntry({
-      id: parsed.data.localMediaId,
+      id: parsed.localMediaId,
       roomId: ctx.roomId,
       ownerUserId: ctx.userId,
-      filename: parsed.data.name,
-      mimeType: parsed.data.mimeType,
-      sizeBytes: parsed.data.sizeBytes,
+      filename: parsed.name,
+      mimeType: parsed.mimeType,
+      sizeBytes: parsed.sizeBytes,
       // Client registers the File before sending playlist:add:local.
       providerReady: true,
     })
@@ -154,17 +161,18 @@ export const handlePlaylistAddLocal: RoomMessageHandler = async (ctx, data) => {
   const itemId = randomUUID()
   await mutateControlledRoomMessage(
     ctx,
+    data,
     (state, participant) => {
       if (isPlaylistAtLimit(state, env.ROOM_PLAYLIST_LIMIT)) return false
       state.playlist.push(
         buildLocalFilePlaylistItem({
           id: itemId,
-          name: parsed.data.name,
-          localMediaId: parsed.data.localMediaId,
-          mimeType: parsed.data.mimeType,
-          sizeBytes: parsed.data.sizeBytes,
+          name: parsed.name,
+          localMediaId: parsed.localMediaId,
+          mimeType: parsed.mimeType,
+          sizeBytes: parsed.sizeBytes,
           createdBy: ctx.userId,
-          durationSeconds: parsed.data.durationSeconds,
+          durationSeconds: parsed.durationSeconds,
         }),
       )
       appendActionLog(state, {
@@ -174,7 +182,7 @@ export const handlePlaylistAddLocal: RoomMessageHandler = async (ctx, data) => {
         action: "playlist:add",
         payload: {
           itemId,
-          itemName: parsed.data.name,
+          itemName: parsed.name,
           index: state.playlist.length - 1,
           sourceKind: "local_file",
         },
@@ -186,10 +194,13 @@ export const handlePlaylistAddLocal: RoomMessageHandler = async (ctx, data) => {
 }
 
 export const handlePlaylistRetry: RoomMessageHandler = async (ctx, data) => {
-  const parsed = playlistRetrySchema.safeParse(data.payload)
-  if (!parsed.success) return
+  const parsed = parseOrNack(playlistRetrySchema, ctx.ws, data)
+  if (!parsed) return
 
-  if (!(await consumePlaylistResolveLimit(ctx))) return
+  if (!(await consumePlaylistResolveLimit(ctx))) {
+    sendMutationNack(ctx.ws, data, "rate_limited")
+    return
+  }
 
   const state = await ctx.store.get(ctx.roomId)
   if (!state) return
@@ -200,16 +211,17 @@ export const handlePlaylistRetry: RoomMessageHandler = async (ctx, data) => {
       connectionAuthFromContext(ctx),
     )
   ) {
+    sendMutationNack(ctx.ws, data, "unauthorized")
     return
   }
 
-  const item = state.playlist.find((entry) => entry.id === parsed.data.itemId)
+  const item = state.playlist.find((entry) => entry.id === parsed.itemId)
   if (!canRetryRemotePlaylistItem(item)) return
 
   await reresolveRemotePlaylistItem({
     store: ctx.store,
     roomId: ctx.roomId,
-    itemId: parsed.data.itemId,
+    itemId: parsed.itemId,
   })
 }
 
@@ -217,16 +229,17 @@ export const handlePlaylistItemError: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  const parsed = playlistItemErrorSchema.safeParse(data.payload)
-  if (!parsed.success) return
+  const parsed = parseOrNack(playlistItemErrorSchema, ctx.ws, data)
+  if (!parsed) return
 
   await mutateControlledRoomMessage(
     ctx,
+    data,
     (state, participant) => {
       const result = applyPlaylistItemError(
         state,
-        parsed.data.itemId,
-        parsed.data.error,
+        parsed.itemId,
+        parsed.error,
       )
       if (!result) return false
       if (result.cleared) return true
@@ -240,7 +253,7 @@ export const handlePlaylistItemError: RoomMessageHandler = async (
           itemId: result.item.id,
           mediaName: result.item.name,
         },
-        error: parsed.data.error ?? undefined,
+        error: parsed.error ?? undefined,
       })
       return true
     },
@@ -256,8 +269,8 @@ export const handlePlaylistItemDuration: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  const parsed = playlistItemDurationSchema.safeParse(data.payload)
-  if (!parsed.success) return
+  const parsed = parseOrNack(playlistItemDurationSchema, ctx.ws, data)
+  if (!parsed) return
 
   await mutateRoomMessage(
     ctx.store,
@@ -266,8 +279,8 @@ export const handlePlaylistItemDuration: RoomMessageHandler = async (
     (state) => {
       const item = applyPlaylistItemDuration(
         state,
-        parsed.data.itemId,
-        parsed.data.durationSeconds,
+        parsed.itemId,
+        parsed.durationSeconds,
       )
       return Boolean(item)
     },
@@ -276,13 +289,14 @@ export const handlePlaylistItemDuration: RoomMessageHandler = async (
 }
 
 export const handlePlaylistReorder: RoomMessageHandler = async (ctx, data) => {
-  const reorderResult = playlistReorderSchema.safeParse(data.payload)
-  if (!reorderResult.success) return
+  const reorder = parseOrNack(playlistReorderSchema, ctx.ws, data)
+  if (!reorder) return
 
   await mutateControlledRoomMessage(
     ctx,
+    data,
     (state, participant) => {
-      const { from, to } = reorderResult.data
+      const { from, to } = reorder
       const entry = applyPlaylistReorder(state, from, to)
       if (!entry) return false
       appendActionLog(state, {
@@ -304,17 +318,14 @@ export const handlePlaylistReorder: RoomMessageHandler = async (ctx, data) => {
 }
 
 export const handlePlaylistRename: RoomMessageHandler = async (ctx, data) => {
-  const renameResult = playlistRenameSchema.safeParse(data.payload)
-  if (!renameResult.success) return
+  const rename = parseOrNack(playlistRenameSchema, ctx.ws, data)
+  if (!rename) return
 
   await mutateControlledRoomMessage(
     ctx,
+    data,
     (state, participant) => {
-      const result = applyPlaylistRename(
-        state,
-        renameResult.data.itemId,
-        renameResult.data.name,
-      )
+      const result = applyPlaylistRename(state, rename.itemId, rename.name)
       if (!result) return false
       appendActionLog(state, {
         roomId: ctx.roomId,
@@ -334,13 +345,14 @@ export const handlePlaylistRename: RoomMessageHandler = async (ctx, data) => {
 }
 
 export const handlePlaylistRemove: RoomMessageHandler = async (ctx, data) => {
-  const removeResult = playlistRemoveSchema.safeParse(data.payload)
-  if (!removeResult.success) return
+  const remove = parseOrNack(playlistRemoveSchema, ctx.ws, data)
+  if (!remove) return
 
   await mutateControlledRoomMessage(
     ctx,
+    data,
     (state, participant) => {
-      const result = applyPlaylistRemove(state, removeResult.data.itemId)
+      const result = applyPlaylistRemove(state, remove.itemId)
       if (!result) return false
       appendActionLog(state, {
         roomId: ctx.roomId,

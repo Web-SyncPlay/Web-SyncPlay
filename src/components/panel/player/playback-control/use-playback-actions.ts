@@ -1,4 +1,4 @@
-import { getAdjacentPlaylistIndex } from "@/lib/playback-sync"
+import { getAdjacentPlaylistIndex } from "@/client/player/playback-sync"
 import type { PlaybackControlContext } from "./types"
 
 export function createPlaybackActions(config: PlaybackControlContext) {
@@ -96,9 +96,8 @@ export function createPlaybackActions(config: PlaybackControlContext) {
         seekPreviewTimer = null
       }
       pendingSeekPreviewMs = null
-      // `playback:seek` clears any ephemeral seek preview on the server.
-      // Ending scrub via `seek:preview` active:false also persists — avoid
-      // sending both from this path so the action log is not duplicated.
+      // Authoritative end-scrub. `seek:preview` is ephemeral-only; the server
+      // clears preview state when this seek commits.
       send("playback:seek", { targetMs: Math.max(0, targetMs) })
     },
     selectAdjacent: (direction: "previous" | "next") => {

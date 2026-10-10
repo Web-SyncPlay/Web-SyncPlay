@@ -6,10 +6,9 @@ import {
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
 import { clearConnectionLocalPlaybackReport } from "@/server/realtime/services/local-playback-report-lifecycle"
-import type { RoomState } from "@/zod/types"
+import type { RoomState } from "@/contracts/types"
 import { transferOwnershipIfNeeded } from "./ownership"
 import {
-  applyOfflinePruning,
   clearAllRoomPrunes,
   schedulePrune,
 } from "./participants"
@@ -123,7 +122,6 @@ export function applyUserWentOffline(
     didMutate = true
   }
 
-  applyOfflinePruning(state)
   if (transferOwnershipIfNeeded(state, "disconnect")) {
     didMutate = true
   }

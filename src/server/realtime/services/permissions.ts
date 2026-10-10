@@ -1,25 +1,20 @@
-import { canMutateByRole, isOwner } from "@/lib/permissions-utils"
-import { normalizeRole } from "@/lib/room-utils"
+import { canMutateByRole, isOwner } from "@/shared/permissions-utils"
+import { normalizeRole } from "@/shared/room-utils"
 import type {
   ParticipantState,
   RoomRole,
   RoomState,
+  SessionCapabilities,
   SessionKind,
-} from "@/zod/types"
+} from "@/contracts/types"
+
+/** Re-export from contracts — single type home is `@/contracts/types`. */
+export type { SessionCapabilities }
 
 export type ConnectionAuthContext = {
   isControlSession: boolean
   controlAuthorized: boolean
   sessionKind?: SessionKind
-}
-
-export type SessionCapabilities = {
-  canControlPlayback: boolean
-  canManagePlaylist: boolean
-  canManageRoomSecurity: boolean
-  isControlSession: boolean
-  controlAuthorized: boolean
-  sessionKind: SessionKind
 }
 
 export function hasPlaybackAndPlaylistControl(

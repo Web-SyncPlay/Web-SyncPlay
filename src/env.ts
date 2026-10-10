@@ -127,7 +127,7 @@ export const env = createEnv({
       .default(1800),
     /**
      * This replica's reachable base URL for internal local-media range fetch
-     * (e.g. http://web:3000). Must be set together with LOCAL_MEDIA_INTERNAL_SECRET
+     * (e.g. http://web-1:3000). Must be set together with LOCAL_MEDIA_INTERNAL_SECRET
      * (both unset disables cross-node HTTP affinity; Redis pub/sub remains the path).
      */
     INTERNAL_NODE_BASE_URL: z.url().optional(),

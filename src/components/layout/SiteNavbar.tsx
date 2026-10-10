@@ -20,9 +20,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import type { RoomRailTab } from "@/hooks/use-room-rail"
-import type { TypedRoomEventSender } from "@/lib/room-events"
-import { cn } from "@/lib/utils"
-import type { PublicRoomSecurityState } from "@/zod/types"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
+import { cn } from "@/shared/utils"
+import type { PublicRoomSecurityState } from "@/contracts/types"
 import {
   Check,
   Copy,

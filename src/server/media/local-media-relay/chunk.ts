@@ -4,7 +4,7 @@ import {
 } from "@/server/media/local-media-relay/types"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
-import { localMediaErrorFromMessage } from "@/lib/local-media-errors"
+import { localMediaErrorFromMessage } from "@/shared/local-media/local-media-errors"
 
 /** JSON-safe payload for Redis (Uint8Array → dataBase64). */
 export function serializeRelayReplyPayload(payload: LocalMediaChunkPayload) {

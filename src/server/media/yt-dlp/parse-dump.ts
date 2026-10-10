@@ -1,7 +1,7 @@
 import {
   isHttpOrHttpsUrl,
   sanitizeMediaTitle,
-} from "@/lib/sanitize-display"
+} from "@/shared/sanitize-display"
 import type {
   YtDlpExtractSuccess,
   YtDlpNormalizedVariant,

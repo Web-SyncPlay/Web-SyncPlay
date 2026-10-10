@@ -4,12 +4,12 @@ import {
   clampAudioDelayMs,
   persistAudioDelayMs,
   readAudioDelayMsFromStorage,
-} from "@/lib/audio-delay"
+} from "@/shared/audio-delay"
 import {
   attachLocalAudioDelayGraph,
   type LocalAudioDelayGraph,
-} from "@/lib/local-audio-delay-graph"
-import { queryPlayerMediaElement } from "@/lib/player-utils"
+} from "@/client/player/local-audio-delay-graph"
+import { queryPlayerMediaElement } from "@/shared/player-utils"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import { useEffect, useRef, useState, type RefObject } from "react"
 

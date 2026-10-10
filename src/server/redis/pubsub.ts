@@ -1,15 +1,16 @@
-import {
-  BROADCAST_NODE_ID,
-  getRoomBroadcastBus,
-} from "@/server/realtime/broadcast/room-broadcast-bus"
+import { getAppNodeId } from "@/server/node-id"
+import { getRoomPublishPort } from "@/server/realtime/ports"
 import { getSubscriberClient } from "./client"
 import { keys } from "./keys"
+import {
+  deliverRoomPubSubMessage,
+  deliverUserEphemeralPubSubMessage,
+  type RoomPubSubKind,
+} from "./pubsub-handlers"
 
 const g = globalThis as typeof globalThis & {
   __webSyncPlayPubsubInstalled?: boolean
 }
-
-type RoomPubSubKind = "control" | "presence" | "snapshot"
 
 const ROOM_PUBSUB_SUBSCRIPTIONS: Array<{
   kind: RoomPubSubKind
@@ -41,61 +42,43 @@ export async function subscribeRoomUpdates() {
   if (g.__webSyncPlayPubsubInstalled) {
     return
   }
+
+  const publish = getRoomPublishPort()
+  if (!publish) {
+    console.error(
+      "[pubsub] RoomPublishPort not configured; room fan-out deferred",
+    )
+    return
+  }
+
   g.__webSyncPlayPubsubInstalled = true
 
   const sub = await getSubscriberClient()
-  const bus = getRoomBroadcastBus()
-
-  const handle = (
-    message: string,
-    channel: string,
-    kind: RoomPubSubKind,
-    suffix: ":control" | ":presence" | ":snapshot",
-  ) => {
-    const roomId = keys.parseRoomTypedChannel(String(channel), suffix)
-    if (!roomId) return
-    try {
-      const wired = JSON.parse(message) as {
-        type: string
-        payload: unknown
-        originNodeId?: string
-      }
-      bus.fanOutFromPubSub(roomId, wired as never)
-    } catch (e) {
-      console.error(`[pubsub] invalid ${kind} message`, e)
-    }
-  }
-
-  const handleUserEphemeral = (message: string, channel: string) => {
-    const parsed = keys.parseRoomUserEphemeralChannel(String(channel))
-    if (!parsed) return
-    try {
-      const wired = JSON.parse(message) as {
-        type: string
-        requestId?: string
-        payload: unknown
-        originNodeId?: string
-      }
-      if (wired.originNodeId && wired.originNodeId === BROADCAST_NODE_ID) {
-        return
-      }
-      const { originNodeId: _o, ...envelope } = wired
-      bus.fanOutUserEphemeral(parsed.roomId, parsed.userId, envelope)
-    } catch (e) {
-      console.error("[pubsub] invalid user-ephemeral message", e)
-    }
-  }
+  const localNodeId = getAppNodeId()
 
   await Promise.all([
     ...ROOM_PUBSUB_SUBSCRIPTIONS.map(({ kind, pattern, suffix }) =>
       sub.pSubscribe<false>(pattern(), (message, channel) => {
-        handle(String(message), String(channel), kind, suffix)
+        const port = getRoomPublishPort() ?? publish
+        deliverRoomPubSubMessage({
+          channel: String(channel),
+          message: String(message),
+          kind,
+          suffix,
+          publish: port,
+        })
       }),
     ),
     sub.pSubscribe<false>(
       keys.roomUserEphemeralChannelPattern(),
       (message, channel) => {
-        handleUserEphemeral(String(message), String(channel))
+        const port = getRoomPublishPort() ?? publish
+        deliverUserEphemeralPubSubMessage({
+          channel: String(channel),
+          message: String(message),
+          localNodeId,
+          publish: port,
+        })
       },
     ),
   ])

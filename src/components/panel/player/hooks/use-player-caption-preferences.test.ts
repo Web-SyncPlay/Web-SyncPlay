@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { PlaylistTextTrack } from "@/zod/types"
+import type { PlaylistTextTrack } from "@/contracts/types"
 import {
   applyCaptionPreferenceToTracks,
   matchCatalogTextTrackId,

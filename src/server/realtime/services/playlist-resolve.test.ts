@@ -26,13 +26,11 @@ function sampleResolved(
 }
 
 describe("playlist resolve helpers", () => {
-  test("applyResolvedMediaToItem fills catalog fields and clears deprecated aliases", () => {
+  test("applyResolvedMediaToItem fills catalog fields", () => {
     const item = createPlaylistItem({
       id: "item-1",
       name: "https://example.com/a",
       sourceUrl: "https://example.com/a",
-      selectedStreamId: "old",
-      selectedTextTrackId: "old-track",
       ingestStatus: "resolving",
     })
 
@@ -41,8 +39,7 @@ describe("playlist resolve helpers", () => {
     expect(item.ingestStatus).toBe("ready")
     expect(item.playableUrl).toBe("https://cdn.example/a.mp4")
     expect(item.defaultStreamId).toBe("s1")
-    expect(item.selectedStreamId).toBeUndefined()
-    expect(item.selectedTextTrackId).toBeUndefined()
+    expect(item.defaultTextTrackId).toBeUndefined()
     expect(item.name).toBe("Nice title")
   })
 

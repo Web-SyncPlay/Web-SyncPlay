@@ -3,10 +3,11 @@ import {
   type PlaylistItem,
   type ViewerMediaItemPreference,
   type ViewerMediaPreferences,
-} from "@/zod/types"
-import { viewerMediaPreferencesSchema } from "@/zod/schemas"
+} from "@/contracts/types"
+import { viewerMediaPreferencesSchema } from "@/contracts/schemas"
 import type { z } from "zod"
 import { mutateRoomMessage } from "./mutate-room"
+import { parseOrNack } from "./parse-or-nack"
 import type { RoomMessageHandler } from "./types"
 
 type ViewerMediaPreferencesInput = z.infer<typeof viewerMediaPreferencesSchema>
@@ -94,8 +95,12 @@ export const handleViewerMediaPreferences: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  const parsed = viewerMediaPreferencesSchema.safeParse(data.payload)
-  if (!parsed.success) return
+  const parsed = parseOrNack(
+    viewerMediaPreferencesSchema,
+    ctx.ws,
+    data,
+  )
+  if (!parsed) return
 
   await mutateRoomMessage(
     ctx.store,
@@ -105,10 +110,10 @@ export const handleViewerMediaPreferences: RoomMessageHandler = async (
       const participant = state.participants[ctx.userId]
       if (!participant) return false
 
-      const item = state.playlist.find((entry) => entry.id === parsed.data.itemId)
+      const item = state.playlist.find((entry) => entry.id === parsed.itemId)
       if (!item) return false
 
-      if (!applyViewerMediaPreferences(participant, item, parsed.data)) {
+      if (!applyViewerMediaPreferences(participant, item, parsed)) {
         return false
       }
 

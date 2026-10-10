@@ -1,5 +1,6 @@
 import { startResolveReclaimLoop } from "@/server/media/yt-dlp/resolve-reclaim"
 import { startAppNodeHeartbeat } from "@/server/node-heartbeat"
+import { wireRealtimePorts } from "@/server/realtime/wire-ports"
 import { getRoomStateStore } from "@/server/redis/state-store"
 
 const g = globalThis as typeof globalThis & {
@@ -14,6 +15,7 @@ const g = globalThis as typeof globalThis & {
 export function ensureBackgroundMaintenance(): Promise<void> {
   if (!g.__webSyncPlayMaintenanceBoot) {
     g.__webSyncPlayMaintenanceBoot = (async () => {
+      wireRealtimePorts()
       startAppNodeHeartbeat()
       const store = await getRoomStateStore()
       startResolveReclaimLoop(store)

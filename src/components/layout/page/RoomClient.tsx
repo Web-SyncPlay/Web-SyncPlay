@@ -7,13 +7,13 @@ import { PlayerPanel } from "@/components/panel/player/PlayerPanel"
 import { UsersPanel } from "@/components/panel/user/UsersPanel"
 import { useRoomRail } from "@/hooks/use-room-rail"
 import { useRoomSession } from "@/hooks/use-room-session"
-import { getRoomUrl } from "@/lib/control-url"
+import { getRoomUrl } from "@/client/realtime/control-url"
 import {
   canControlPlayback,
   canMutateFromClientSession,
-} from "@/lib/permissions-utils"
-import { resolveCurrentPlaylistItem } from "@/lib/playlist-current"
-import { cn } from "@/lib/utils"
+} from "@/shared/permissions-utils"
+import { resolveCurrentPlaylistItem } from "@/shared/playlist-current"
+import { cn } from "@/shared/utils"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import type { RoomPanelProps } from "./types"

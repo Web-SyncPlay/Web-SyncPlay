@@ -33,9 +33,9 @@ const {
   sanitizeErrorMessage,
   sanitizeMediaTitle,
   sanitizeUsername,
-} = await import("../src/lib/sanitize-display.ts")
+} = await import("../src/shared/sanitize-display.ts")
 const { roomJoinSchema, participantUpdateSchema } = await import(
-  "../src/zod/schemas.ts"
+  "../src/contracts/schemas.ts"
 )
 
 const privateIpv4 = fc

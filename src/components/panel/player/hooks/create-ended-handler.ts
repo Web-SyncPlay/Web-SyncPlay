@@ -1,4 +1,4 @@
-import { getAdjacentPlaylistIndex } from "@/lib/playback-sync"
+import { getAdjacentPlaylistIndex } from "@/client/player/playback-sync"
 import type { SyncedMediaPlayerHandlerDeps } from "./synced-media-player-handler-types"
 
 type EndedHandlerDeps = Pick<

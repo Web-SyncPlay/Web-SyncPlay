@@ -3,10 +3,10 @@ import * as localMediaSfu from "./local-media-sfu"
 import * as participant from "./participant"
 import * as playback from "./playback"
 import * as playlist from "./playlist"
-import * as roomPassword from "./room-password"
+import * as roomSecurity from "./room-security"
 import * as seekPreview from "./seek-preview"
 import * as viewerMedia from "./viewer-media"
-import type { ClientEventType } from "@/lib/room-events"
+import type { ClientEventType } from "@/contracts/room-events"
 import type { RoomMessageHandler } from "./types"
 
 /**
@@ -44,7 +44,7 @@ export const roomMessageHandlers = {
   "seek:preview": seekPreview.handleSeekPreview,
   "participant:update": participant.handleParticipantUpdate,
   "participant:role:update": participant.handleParticipantRoleUpdate,
-  "room:password:set": roomPassword.handleRoomPasswordSet,
-  "room:password:clear": roomPassword.handleRoomPasswordClear,
-  "room:default-role:set": roomPassword.handleRoomDefaultRoleSet,
+  "room:password:set": roomSecurity.handleRoomPasswordSet,
+  "room:password:clear": roomSecurity.handleRoomPasswordClear,
+  "room:default-role:set": roomSecurity.handleRoomDefaultRoleSet,
 } as const satisfies Record<ClientEventType, RoomMessageHandler>

@@ -2,7 +2,7 @@ import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-
 import type { RoomStateStorePort } from "@/server/realtime/ports"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
-import type { RoomState } from "@/zod/types"
+import type { RoomState } from "@/contracts/types"
 import { transferOwnershipIfNeeded } from "./ownership"
 import { bumpRoomRevisions } from "./timeline"
 
@@ -96,86 +96,178 @@ export async function schedulePrune(roomId: string, userId: string) {
 }
 
 /**
+ * Index a participant as already past grace (no grace SET). Cleanup uses this for
+ * disconnected users whose disconnectedAt already exceeds {@link PARTICIPANT_PRUNE_MS}
+ * so they enter the Redis authoritative path immediately.
+ */
+export async function schedulePruneDue(roomId: string, userId: string) {
+  try {
+    const client = await getCommandClient()
+    await client.del(keys.roomParticipantPrune(roomId, userId))
+    await client.sAdd(
+      keys.roomPendingPrunes(),
+      encodePruneMember(roomId, userId),
+    )
+    await refreshPendingPrunesTtl(client)
+  } catch (error) {
+    console.warn("[participants] schedulePruneDue redis failed", error)
+  }
+}
+
+/**
+ * Collect disconnected participants whose in-memory grace has elapsed.
+ * Used by cleanup to enqueue them on the Redis prune index.
+ */
+export function listParticipantsPastPruneGrace(
+  state: RoomState,
+  nowMs: number,
+): string[] {
+  const due: string[] = []
+  for (const [userId, participant] of Object.entries(state.participants)) {
+    if (participant.connected) continue
+    const disconnectedAt =
+      participant.disconnectedAt ?? participant.lastSeenAt ?? 0
+    if (!disconnectedAt) continue
+    if (nowMs - disconnectedAt < PARTICIPANT_PRUNE_MS) continue
+    due.push(userId)
+  }
+  return due
+}
+
+/**
+ * In-memory time-based prune. Used only as a fallback inside {@link processDuePrunes}
+ * when Redis is unavailable.
+ */
+export function pruneOfflineParticipants(state: RoomState, nowMs: number) {
+  const removedUserIds: string[] = []
+  for (const userId of listParticipantsPastPruneGrace(state, nowMs)) {
+    delete state.participants[userId]
+    removedUserIds.push(userId)
+  }
+  return removedUserIds
+}
+
+async function removeDisconnectedParticipant(
+  store: RoomStateStorePort,
+  roomId: string,
+  userId: string,
+): Promise<boolean> {
+  const next = await store.updateRoom(roomId, (state) => {
+    if (!state) return null
+    const participant = state.participants[userId]
+    // No-op: avoid spurious Redis SET / WATCH contention.
+    if (!participant || participant.connected) {
+      return null
+    }
+    delete state.participants[userId]
+    // R4: pruning the owner must transfer ownership and bump revisions.
+    transferOwnershipIfNeeded(state, "prune")
+    bumpRoomRevisions(state)
+    state.updatedAt = Date.now()
+    return state
+  })
+
+  if (next && !next.participants[userId]) {
+    getRoomBroadcastBus().markSnapshotDirty(roomId)
+    return true
+  }
+  return false
+}
+
+async function pruneFromRedisIndex(store: RoomStateStorePort): Promise<number> {
+  const client = await getCommandClient()
+  const members = await client.sMembers(keys.roomPendingPrunes())
+  let pruned = 0
+  let mutated = false
+
+  for (const member of members) {
+    const parsed = parsePruneMember(member)
+    if (!parsed) {
+      await client.sRem(keys.roomPendingPrunes(), member)
+      mutated = true
+      continue
+    }
+
+    const graceKey = keys.roomParticipantPrune(parsed.roomId, parsed.userId)
+    const stillGrace = await client.get(graceKey)
+    if (stillGrace) continue
+
+    const didPrune = await removeDisconnectedParticipant(
+      store,
+      parsed.roomId,
+      parsed.userId,
+    )
+    await client.sRem(keys.roomPendingPrunes(), member)
+    mutated = true
+    if (didPrune) {
+      pruned += 1
+    }
+  }
+
+  if (mutated || members.length > 0) {
+    await refreshPendingPrunesTtl(client)
+  }
+
+  return pruned
+}
+
+/**
+ * Fallback when Redis is down: scan rooms and prune by disconnectedAt only.
+ */
+async function pruneByDisconnectedAtFallback(
+  store: RoomStateStorePort,
+): Promise<number> {
+  const roomIds = await store.listRoomIds()
+  const nowMs = Date.now()
+  let pruned = 0
+
+  for (const roomId of roomIds) {
+    let removedCount = 0
+    const next = await store.updateRoom(roomId, (state) => {
+      if (!state) return null
+      const removed = pruneOfflineParticipants(state, nowMs)
+      if (removed.length === 0) return null
+      removedCount = removed.length
+      transferOwnershipIfNeeded(state, "prune")
+      bumpRoomRevisions(state)
+      state.updatedAt = nowMs
+      return state
+    })
+    if (next && removedCount > 0) {
+      pruned += removedCount
+      getRoomBroadcastBus().markSnapshotDirty(roomId)
+    }
+  }
+
+  return pruned
+}
+
+/**
  * Pending members whose grace key expired — remove disconnected participants.
+ * Redis pending-prunes is the sole cluster-authoritative path. In-memory
+ * disconnectedAt pruning runs only when Redis is unavailable.
  * Safe across instances; room update WATCH serializes mutations.
  */
 export async function processDuePrunes(
   store: RoomStateStorePort,
 ): Promise<number> {
   try {
-    const client = await getCommandClient()
-    const members = await client.sMembers(keys.roomPendingPrunes())
-    let pruned = 0
-    let mutated = false
-
-    for (const member of members) {
-      const parsed = parsePruneMember(member)
-      if (!parsed) {
-        await client.sRem(keys.roomPendingPrunes(), member)
-        mutated = true
-        continue
-      }
-
-      const graceKey = keys.roomParticipantPrune(parsed.roomId, parsed.userId)
-      const stillGrace = await client.get(graceKey)
-      if (stillGrace) continue
-
-      const next = await store.updateRoom(parsed.roomId, (state) => {
-        if (!state) return null
-        const participant = state.participants[parsed.userId]
-        // No-op: avoid spurious Redis SET / WATCH contention.
-        if (!participant || participant.connected) {
-          return null
-        }
-        delete state.participants[parsed.userId]
-        // R4: pruning the owner must transfer ownership and bump revisions.
-        transferOwnershipIfNeeded(state, "prune")
-        bumpRoomRevisions(state)
-        state.updatedAt = Date.now()
-        return state
-      })
-
-      await client.sRem(keys.roomPendingPrunes(), member)
-      mutated = true
-      if (next && !next.participants[parsed.userId]) {
-        pruned += 1
-        getRoomBroadcastBus().markSnapshotDirty(parsed.roomId)
-      }
-    }
-
-    if (mutated || members.length > 0) {
-      await refreshPendingPrunesTtl(client)
-    }
-
-    return pruned
+    return await pruneFromRedisIndex(store)
   } catch (error) {
-    console.warn("[participants] processDuePrunes redis failed", error)
-    return 0
+    console.warn(
+      "[participants] processDuePrunes redis failed; falling back to in-memory prune",
+      error,
+    )
+    try {
+      return await pruneByDisconnectedAtFallback(store)
+    } catch (fallbackError) {
+      console.warn(
+        "[participants] processDuePrunes in-memory fallback failed",
+        fallbackError,
+      )
+      return 0
+    }
   }
-}
-
-export function pruneOfflineParticipants(state: RoomState, nowMs: number) {
-  const removedUserIds: string[] = []
-  for (const [userId, participant] of Object.entries(state.participants)) {
-    if (participant.connected) {
-      continue
-    }
-
-    const disconnectedAt =
-      participant.disconnectedAt ?? participant.lastSeenAt ?? 0
-    if (!disconnectedAt) {
-      continue
-    }
-
-    if (nowMs - disconnectedAt < PARTICIPANT_PRUNE_MS) {
-      continue
-    }
-
-    delete state.participants[userId]
-    removedUserIds.push(userId)
-  }
-
-  return removedUserIds
 }
 
 export function reconcileParticipantsConnectivity(
@@ -204,17 +296,4 @@ export function reconcileParticipantsConnectivity(
     }
   }
   return { disconnecting, reconnecting }
-}
-
-export function applyOfflinePruning(state: RoomState) {
-  const nowMs = Date.now()
-  const prunedUserIds = pruneOfflineParticipants(state, nowMs)
-  if (prunedUserIds.length === 0) {
-    return
-  }
-
-  for (const userId of prunedUserIds) {
-    void clearPrune(state.roomId, userId)
-  }
-  state.updatedAt = nowMs
 }

@@ -1,4 +1,4 @@
-import { resolveStyle } from "@/lib/avatar"
+import { resolveStyle } from "@/shared/avatar"
 import { appendActionLog } from "@/server/log"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
@@ -9,11 +9,13 @@ import {
 import {
   participantRoleUpdateSchema,
   participantUpdateSchema,
-} from "@/zod/schemas"
-import type { PresencePatch, ParticipantState } from "@/zod/types"
+} from "@/contracts/schemas"
+import type { PresencePatch, ParticipantState } from "@/contracts/types"
 import type { z } from "zod"
 import { mutateOwnerRoomMessage } from "./mutate-controlled"
 import { mutateRoomMessage } from "./mutate-room"
+import { parseOrNack } from "./parse-or-nack"
+import { parseOrWarn } from "./parse-or-warn"
 import type { RoomMessageHandler } from "./types"
 
 type ParticipantUpdateInput = z.infer<typeof participantUpdateSchema>
@@ -105,10 +107,12 @@ export const handleParticipantUpdate: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  const participantResult = participantUpdateSchema.safeParse(data.payload)
-  if (!participantResult.success) {
-    return
-  }
+  const participantResult = parseOrWarn(
+    participantUpdateSchema,
+    data.payload,
+    data.type,
+  )
+  if (!participantResult) return
 
   const state = await ctx.store.get(ctx.roomId)
   const participant = state?.participants[ctx.userId]
@@ -136,7 +140,7 @@ export const handleParticipantUpdate: RoomMessageHandler = async (
 
   const update = resolveParticipantUpdate(
     { ...participant, localPlayback: previousForConnection },
-    participantResult.data,
+    participantResult,
   )
   // Unchanged playback payloads are still presence heartbeats: refresh
   // lastSeenAt + report updatedAt without rewriting room state.
@@ -199,8 +203,8 @@ export const handleParticipantUpdate: RoomMessageHandler = async (
         // Keep last-known aggregated localPlayback on room for repair/join seed.
         p.localPlayback = aggregatedPlayback
         if (
-          typeof participantResult.data.error === "string" &&
-          update.previousError !== participantResult.data.error
+          typeof participantResult.error === "string" &&
+          update.previousError !== participantResult.error
         ) {
           appendActionLog(room, {
             roomId: ctx.roomId,
@@ -210,7 +214,7 @@ export const handleParticipantUpdate: RoomMessageHandler = async (
             payload: {
               currentTimeMs: aggregatedPlayback.currentTimeMs,
             },
-            error: participantResult.data.error,
+            error: participantResult.error,
           })
         }
         return true
@@ -224,15 +228,18 @@ export const handleParticipantRoleUpdate: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  const roleUpdateResult = participantRoleUpdateSchema.safeParse(data.payload)
-  if (!roleUpdateResult.success) {
-    return
-  }
+  const roleUpdate = parseOrNack(
+    participantRoleUpdateSchema,
+    ctx.ws,
+    data,
+  )
+  if (!roleUpdate) return
 
   await mutateOwnerRoomMessage(
     ctx,
+    data,
     (state, participant) => {
-      const { targetUserId, role } = roleUpdateResult.data
+      const { targetUserId, role } = roleUpdate
       const target = state.participants[targetUserId]
       if (!target || target.userId === state.ownerId) {
         return false

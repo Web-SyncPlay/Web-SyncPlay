@@ -3,16 +3,13 @@
 import {
   resolvePlayerDurationSec,
   resolvePlayerStreamType,
-} from "@/lib/player-utils"
-import type { TypedRoomEventSender } from "@/lib/room-events"
+} from "@/shared/player-utils"
 import {
   MediaPlayer,
   MediaProvider,
   Track,
   isDASHProvider,
   isHLSProvider,
-  type MediaErrorDetail,
-  type MediaPlayerInstance,
   type MediaProviderAdapter,
   type PlayerSrc,
 } from "@vidstack/react"
@@ -21,88 +18,27 @@ import {
   DefaultVideoLayout,
   defaultLayoutIcons,
 } from "@vidstack/react/player/layouts/default"
-import { memo, useMemo, type ReactNode, type RefObject } from "react"
-import type {
-  LoopMode,
-  PlaylistItem,
-  PlaylistMediaStream,
-  RoomState,
-  ViewerMediaItemPreference,
-} from "@/zod/types"
-import type { PlayerSrcInput } from "./player-src"
-import type { PendingSyncState } from "./hooks/use-buffering-watchdog"
-import {
-  useSyncedMediaPlayerHandlers,
-  type PlaylistNavSnapshot,
-} from "./hooks/use-synced-media-player-handlers"
-import type { LocalSeekPhase } from "./playback-control/use-playback-timeline-controller"
+import { memo, useMemo } from "react"
+import type { PlaylistMediaStream } from "@/contracts/types"
+import { useSyncedMediaPlayerHandlers } from "./hooks/use-synced-media-player-handlers"
 import { buildPlayerSettingsSlots } from "./player-settings-slots"
+import type {
+  PlayerSessionController,
+  SyncedMediaPlayerViewModel,
+} from "./player-session-controller"
 
 const EMPTY_MEDIA_STREAMS: PlaylistMediaStream[] = []
 
 export type SyncedMediaPlayerProps = {
-  playerRef: RefObject<MediaPlayerInstance | null>
-  current: PlaylistItem | undefined
-  activeStream: PlaylistMediaStream | null
-  viewerPrefs: ViewerMediaItemPreference | undefined
-  playerSrc: PlayerSrcInput
-  activePlaybackSrc: string
-  viewType: "audio" | "video"
-  useCrossOriginAnonymous: boolean
-  playerRemountNonce: number
-  videoLoop: LoopMode
-  roomPaused: boolean
-  roomPlaybackRate: number
-  userId: string
-  send: TypedRoomEventSender
-  canControlPlayback: boolean
-  isOtherUserSeeking: boolean
-  isMuted: boolean
-  preferredVolume: number
-  unmute: () => number
-  handleVolumeChange: (detail: { volume: number; muted: boolean }) => void
-  previousButtonSlot: ReactNode
-  nextButtonSlot: ReactNode
-  audioDelayMs: number
-  onAudioDelayChange: (delayMs: number) => void
-  onSelectStreamId: (streamId: string) => void
-  playbackRef: RefObject<RoomState["playback"]>
-  playlistNavRef: RefObject<PlaylistNavSnapshot>
-  isMediaReadyRef: RefObject<boolean>
-  bufferingSinceRef: RefObject<number | null>
-  participantStatusErrorRef: RefObject<string | null>
-  pendingSyncRef: RefObject<PendingSyncState | null>
-  reportedItemErrorRef: RefObject<string | null>
-  reportedDurationItemIdRef: RefObject<string | null>
-  proxyRenewAttemptedRef: RefObject<string | null>
-  localBlobFallbackAttemptedRef: RefObject<string | null>
-  seekPhase: LocalSeekPhase
-  awaitingSeekTargetMs: number | null
-  totalItems: number
-  applyRoomClock: (
-    player: MediaPlayerInstance,
-    syncState: PendingSyncState,
-    driftThresholdSec?: number,
-  ) => void
-  enforceServerPlaybackState: () => void
-  getCurrentTimeMs: () => number
-  commitLiveEdgeSeek: () => void
-  selectPlaylistIndex: (index: number) => void
-  beginSeek: (targetMs: number) => void
-  updateSeek: (targetMs: number) => void
-  commitSeek: (targetMs: number) => void
-  setIsBuffering: (value: boolean) => void
-  setPlaybackError: (value: MediaErrorDetail | undefined) => void
-  setMediaDurationMs: (value: number) => void
-  setForceLocalRelaySrc: (value: boolean) => void
-  setPlayerRemountNonce: (updater: (n: number) => number) => void
+  controller: PlayerSessionController
+  viewModel: SyncedMediaPlayerViewModel
 }
 
-export const SyncedMediaPlayer = memo(function SyncedMediaPlayer(
-  props: SyncedMediaPlayerProps,
-) {
+export const SyncedMediaPlayer = memo(function SyncedMediaPlayer({
+  controller,
+  viewModel,
+}: SyncedMediaPlayerProps) {
   const {
-    playerRef,
     current,
     activeStream,
     viewerPrefs,
@@ -120,40 +56,15 @@ export const SyncedMediaPlayer = memo(function SyncedMediaPlayer(
     isOtherUserSeeking,
     isMuted,
     preferredVolume,
-    unmute,
-    handleVolumeChange,
     previousButtonSlot,
     nextButtonSlot,
     audioDelayMs,
     onAudioDelayChange,
     onSelectStreamId,
-    playbackRef,
-    playlistNavRef,
-    isMediaReadyRef,
-    bufferingSinceRef,
-    participantStatusErrorRef,
-    pendingSyncRef,
-    reportedItemErrorRef,
-    reportedDurationItemIdRef,
-    proxyRenewAttemptedRef,
-    localBlobFallbackAttemptedRef,
     seekPhase,
     awaitingSeekTargetMs,
     totalItems,
-    applyRoomClock,
-    enforceServerPlaybackState,
-    getCurrentTimeMs,
-    commitLiveEdgeSeek,
-    selectPlaylistIndex,
-    beginSeek,
-    updateSeek,
-    commitSeek,
-    setIsBuffering,
-    setPlaybackError,
-    setMediaDurationMs,
-    setForceLocalRelaySrc,
-    setPlayerRemountNonce,
-  } = props
+  } = viewModel
 
   const playerStreamType = resolvePlayerStreamType(current)
   const playerDurationSec = resolvePlayerDurationSec(current)
@@ -196,8 +107,10 @@ export const SyncedMediaPlayer = memo(function SyncedMediaPlayer(
     }
   }
 
+  // Indirection so handlers look up actions at call time — controller identity
+  // is stable while action slots are rebound each parent render.
   const handlers = useSyncedMediaPlayerHandlers({
-    playerRef,
+    playerRef: controller.playerRef,
     current,
     playerSrc,
     activePlaybackSrc,
@@ -205,41 +118,42 @@ export const SyncedMediaPlayer = memo(function SyncedMediaPlayer(
     canControlPlayback,
     isMuted,
     preferredVolume,
-    unmute,
-    handleVolumeChange,
-    playbackRef,
-    playlistNavRef,
-    isMediaReadyRef,
-    bufferingSinceRef,
-    participantStatusErrorRef,
-    pendingSyncRef,
-    reportedItemErrorRef,
-    reportedDurationItemIdRef,
-    proxyRenewAttemptedRef,
-    localBlobFallbackAttemptedRef,
+    unmute: () => controller.unmute(),
+    handleVolumeChange: (detail) => controller.handleVolumeChange(detail),
+    playbackRef: controller.playbackRef,
+    playlistNavRef: controller.playlistNavRef,
+    isMediaReadyRef: controller.isMediaReadyRef,
+    bufferingSinceRef: controller.bufferingSinceRef,
+    participantStatusErrorRef: controller.participantStatusErrorRef,
+    pendingSyncRef: controller.pendingSyncRef,
+    reportedItemErrorRef: controller.reportedItemErrorRef,
+    reportedDurationItemIdRef: controller.reportedDurationItemIdRef,
+    proxyRenewAttemptedRef: controller.proxyRenewAttemptedRef,
+    localBlobFallbackAttemptedRef: controller.localBlobFallbackAttemptedRef,
     seekPhase,
     awaitingSeekTargetMs,
     totalItems,
     userId,
-    applyRoomClock,
-    enforceServerPlaybackState,
-    getCurrentTimeMs,
-    commitLiveEdgeSeek,
-    selectPlaylistIndex,
-    beginSeek,
-    updateSeek,
-    commitSeek,
-    setIsBuffering,
-    setPlaybackError,
-    setMediaDurationMs,
-    setForceLocalRelaySrc,
-    setPlayerRemountNonce,
+    applyRoomClock: (player, syncState, driftThresholdSec) =>
+      controller.applyRoomClock(player, syncState, driftThresholdSec),
+    enforceServerPlaybackState: () => controller.enforceServerPlaybackState(),
+    getCurrentTimeMs: () => controller.getCurrentTimeMs(),
+    commitLiveEdgeSeek: () => controller.commitLiveEdgeSeek(),
+    selectPlaylistIndex: (index) => controller.selectPlaylistIndex(index),
+    beginSeek: (targetMs) => controller.beginSeek(targetMs),
+    updateSeek: (targetMs) => controller.updateSeek(targetMs),
+    commitSeek: (targetMs) => controller.commitSeek(targetMs),
+    setIsBuffering: (value) => controller.setIsBuffering(value),
+    setPlaybackError: (value) => controller.setPlaybackError(value),
+    setMediaDurationMs: (value) => controller.setMediaDurationMs(value),
+    setForceLocalRelaySrc: (value) => controller.setForceLocalRelaySrc(value),
+    setPlayerRemountNonce: (updater) => controller.setPlayerRemountNonce(updater),
   })
 
   return (
     <MediaPlayer
       key={`${current?.id ?? "no-media"}:${activeStream?.id ?? "auto"}:${playerRemountNonce}`}
-      ref={playerRef}
+      ref={controller.playerRef}
       src={playerSrc as PlayerSrc}
       title={current?.name ?? "Web-SyncPlay"}
       viewType={viewType}

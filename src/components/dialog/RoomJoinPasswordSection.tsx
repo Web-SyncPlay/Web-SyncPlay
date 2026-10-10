@@ -16,9 +16,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useInlineEdit } from "@/hooks/use-inline-edit"
-import type { TypedRoomEventSender } from "@/lib/room-events"
-import { cn } from "@/lib/utils"
-import type { PublicRoomSecurityState } from "@/zod/types"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
+import { cn } from "@/shared/utils"
+import type { PublicRoomSecurityState } from "@/contracts/types"
 import {
   Copy,
   Dices,

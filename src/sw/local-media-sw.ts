@@ -9,8 +9,12 @@
  * Viewer capability (`?vt=` / `uid=`): page posts the active token; network
  * fallback fetches are decorated when the request URL lacks them.
  */
-import { LOCAL_MEDIA_MAX_BLOCK_BYTES } from "../lib/local-media-block-protocol"
-import { parseRawBytesRangeHeader } from "../lib/local-media-range"
+import { LOCAL_MEDIA_MAX_BLOCK_BYTES } from "../shared/local-media/local-media-block-protocol"
+import { parseRawBytesRangeHeader } from "../shared/local-media/local-media-range"
+import {
+  LOCAL_MEDIA_VIEWER_TOKEN_PARAM,
+  LOCAL_MEDIA_VIEWER_USER_PARAM,
+} from "../shared/local-media/local-media-viewer-token"
 
 /* eslint-disable no-restricted-globals -- Service Worker global scope */
 const sw = self as unknown as {
@@ -74,11 +78,14 @@ function withViewerCapabilityOnRequest(request: Request): Request {
     const url = new URL(request.url)
     if (!url.pathname.startsWith("/api/media/local/")) return request
     if (url.pathname.includes("/internal/")) return request
-    if (url.searchParams.has("vt") && url.searchParams.has("uid")) {
+    if (
+      url.searchParams.has(LOCAL_MEDIA_VIEWER_TOKEN_PARAM) &&
+      url.searchParams.has(LOCAL_MEDIA_VIEWER_USER_PARAM)
+    ) {
       return request
     }
-    url.searchParams.set("vt", viewerCapability.token)
-    url.searchParams.set("uid", viewerCapability.userId)
+    url.searchParams.set(LOCAL_MEDIA_VIEWER_TOKEN_PARAM, viewerCapability.token)
+    url.searchParams.set(LOCAL_MEDIA_VIEWER_USER_PARAM, viewerCapability.userId)
     return new Request(url.toString(), request)
   } catch {
     return request

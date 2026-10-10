@@ -100,4 +100,78 @@ describe("processDuePrunes", () => {
       ),
     ).toBe(true)
   })
+
+  test("falls back to in-memory disconnectedAt prune when Redis fails", async () => {
+    mock.module("@/server/redis/client", () => ({
+      getCommandClient: async () => {
+        throw new Error("redis unavailable")
+      },
+    }))
+
+    const { processDuePrunes } = await import("./participants")
+    const state = createRoomState()
+    state.participants.guest!.connected = false
+    state.participants.guest!.disconnectedAt = Date.now() - 120_000
+    const store = new InMemoryRoomStateStore(state)
+    createTestBroadcastBus(store)
+
+    const pruned = await processDuePrunes(store)
+    expect(pruned).toBe(1)
+    expect(store.peek("room-1")?.participants.guest).toBeUndefined()
+  })
+
+  test("does not prune via fallback when disconnectedAt is still within grace", async () => {
+    mock.module("@/server/redis/client", () => ({
+      getCommandClient: async () => {
+        throw new Error("redis unavailable")
+      },
+    }))
+
+    const { processDuePrunes } = await import("./participants")
+    const state = createRoomState()
+    state.participants.guest!.connected = false
+    state.participants.guest!.disconnectedAt = Date.now() - 1_000
+    const store = new InMemoryRoomStateStore(state)
+
+    const pruned = await processDuePrunes(store)
+    expect(pruned).toBe(0)
+    expect(store.peek("room-1")?.participants.guest).toBeDefined()
+  })
+})
+
+describe("schedulePruneDue", () => {
+  test("indexes member without setting a grace key", async () => {
+    const pending = new Set<string>()
+    const grace = new Map<string, string>()
+    mock.module("@/server/redis/client", () => ({
+      getCommandClient: async () => ({
+        set: async (key: string) => {
+          grace.set(key, "1")
+          return "OK"
+        },
+        del: async (keys: string | string[]) => {
+          for (const key of Array.isArray(keys) ? keys : [keys]) {
+            grace.delete(key)
+          }
+          return 1
+        },
+        sAdd: async (_key: string, member: string) => {
+          pending.add(member)
+          return 1
+        },
+        expire: async () => 1,
+      }),
+    }))
+
+    const { schedulePrune, schedulePruneDue } = await import("./participants")
+    const { keys } = await import("@/server/redis/keys")
+
+    await schedulePrune("room-1", "guest")
+    expect(pending.has("room-1\tguest")).toBe(true)
+    expect(grace.has(keys.roomParticipantPrune("room-1", "guest"))).toBe(true)
+
+    await schedulePruneDue("room-1", "guest")
+    expect(pending.has("room-1\tguest")).toBe(true)
+    expect(grace.has(keys.roomParticipantPrune("room-1", "guest"))).toBe(false)
+  })
 })

@@ -3,8 +3,8 @@
 import {
   getPlayerEmbedUrl,
   getRoomUrl,
-} from "@/lib/control-url"
-import type { SessionKind } from "@/zod/types"
+} from "@/client/realtime/control-url"
+import type { SessionKind } from "@/contracts/types"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useControlEmbedUrl } from "./use-control-embed-url"
 import { useRoomSocket } from "./use-room-socket"

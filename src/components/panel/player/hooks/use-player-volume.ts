@@ -1,6 +1,6 @@
 "use client"
 
-import { clampNumber, readClampedNumberFromStorage } from "@/lib/storage-utils"
+import { clampNumber, readClampedNumberFromStorage } from "@/shared/storage-utils"
 import { useState } from "react"
 
 export const PLAYER_VOLUME_STORAGE_KEY = "web-syncplay:player-volume-v2"

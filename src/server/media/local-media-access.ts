@@ -3,6 +3,10 @@
  */
 
 import {
+  LOCAL_MEDIA_VIEWER_TOKEN_PARAM,
+  LOCAL_MEDIA_VIEWER_USER_PARAM,
+} from "@/shared/local-media/local-media-viewer-token"
+import {
   getLocalMediaEntry,
   type LocalMediaEntry,
 } from "@/server/media/local-media-store"
@@ -10,6 +14,11 @@ import { validateViewerCapabilityToken } from "@/server/media/viewer-capability-
 import { getRoomStateStore } from "@/server/redis/state-store"
 import { localMediaJsonError } from "@/server/media/local-media-http"
 import { clientIpFromRequest } from "@/server/security/rate-limit"
+
+export {
+  LOCAL_MEDIA_VIEWER_TOKEN_PARAM,
+  LOCAL_MEDIA_VIEWER_USER_PARAM,
+}
 
 export type LocalMediaAccessFailure = {
   ok: false
@@ -29,10 +38,6 @@ export type LocalMediaViewerAuth = {
   /** Current request client IP (must match mint-time boundIp). */
   clientIp: string
 }
-
-/** Query param names for public local-media viewer capability. */
-export const LOCAL_MEDIA_VIEWER_TOKEN_PARAM = "vt"
-export const LOCAL_MEDIA_VIEWER_USER_PARAM = "uid"
 
 /**
  * Extract viewer capability credentials from a public local-media request.

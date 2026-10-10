@@ -3,7 +3,6 @@ import {
   createTestBroadcastBus,
   setRoomBroadcastBusForTests,
 } from "@/server/realtime/broadcast/room-broadcast-bus"
-import { handleSeekPreview } from "@/server/realtime/handlers/seek-preview"
 import {
   applyViewerMediaPreferences,
   capViewerMediaByItemId,
@@ -17,61 +16,7 @@ import {
   envelope,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
-import { VIEWER_MEDIA_BY_ITEM_LIMIT, type PlaylistItem } from "@/zod/types"
-
-describe("seek preview handler interface", () => {
-  afterEach(() => {
-    setRoomBroadcastBusForTests(null)
-  })
-
-  test("controller publishes ephemeral control without room write", async () => {
-    const store = new InMemoryRoomStateStore(createRoomState())
-    const bus = createTestBroadcastBus(store)
-    const ctx = createHandlerContext({ store, userId: "owner" })
-
-    await handleSeekPreview(
-      ctx,
-      envelope("seek:preview", { targetMs: 4_000, active: true }),
-    )
-    expect(store.peek("room-1")?.playback.seekPreview).toBeUndefined()
-    const control = bus.captured.find((c) => c.envelope.type === "room:control")
-    expect(control).toBeDefined()
-    const payload = control!.envelope.payload as {
-      playback: { seekPreview?: { targetMs: number; active: boolean } }
-    }
-    expect(payload.playback.seekPreview).toMatchObject({
-      targetMs: 4_000,
-      active: true,
-    })
-  })
-
-  test("ending seek preview persists timeline for peers", async () => {
-    const store = new InMemoryRoomStateStore(createRoomState())
-    createTestBroadcastBus(store)
-    const ctx = createHandlerContext({ store, userId: "owner" })
-
-    await handleSeekPreview(
-      ctx,
-      envelope("seek:preview", { targetMs: 12_500, active: false }),
-    )
-
-    const next = store.peek("room-1")
-    expect(next?.playback.timelineAnchorMs).toBe(12_500)
-    expect(next?.playback.seekPreview).toBeUndefined()
-    expect(next?.actionLog.at(-1)?.action).toBe("playback:seek")
-  })
-
-  test("guest cannot publish seek preview", async () => {
-    const store = new InMemoryRoomStateStore(createRoomState())
-    const bus = createTestBroadcastBus(store)
-    await handleSeekPreview(
-      createHandlerContext({ store, userId: "guest" }),
-      envelope("seek:preview", { targetMs: 4_000, active: true }),
-    )
-    expect(store.peek("room-1")?.playback.seekPreview).toBeUndefined()
-    expect(bus.captured.length).toBe(0)
-  })
-})
+import { VIEWER_MEDIA_BY_ITEM_LIMIT, type PlaylistItem } from "@/contracts/types"
 
 describe("viewer media preference helpers", () => {
   const item = {

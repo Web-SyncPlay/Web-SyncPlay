@@ -4,8 +4,8 @@ import {
   roomDefaultRoleSetSchema,
   roomPasswordClearSchema,
   roomPasswordSetSchema,
-} from "@/zod/schemas"
-import type { RoomState } from "@/zod/types"
+} from "@/contracts/schemas"
+import type { RoomState, WsEnvelope } from "@/contracts/types"
 import type { z } from "zod"
 import {
   clearJoinPassword,
@@ -13,22 +13,23 @@ import {
   setJoinPassword,
 } from "../services/room-security"
 import { mutateOwnerRoomMessage } from "./mutate-controlled"
+import { parseOrNack } from "./parse-or-nack"
 import type { RoomMessageContext, RoomMessageHandler } from "./types"
 
 type OwnerMutateBody = (
   state: RoomState,
   participant: RoomState["participants"][string],
-) => boolean
+) => boolean | Promise<boolean>
 
 async function withOwnerSecurityMutation<T extends z.ZodType>(
   ctx: RoomMessageContext,
+  data: WsEnvelope<string, Record<string, unknown>>,
   schema: T,
-  payload: unknown,
   body: (parsed: z.infer<T>) => OwnerMutateBody,
 ): Promise<RoomState | null> {
-  const result = schema.safeParse(payload)
-  if (!result.success) return null
-  return await mutateOwnerRoomMessage(ctx, body(result.data))
+  const parsed = parseOrNack(schema, ctx.ws, data)
+  if (!parsed) return null
+  return await mutateOwnerRoomMessage(ctx, data, body(parsed))
 }
 
 function logSecurityAction(
@@ -62,10 +63,10 @@ async function publishAdmissionEviction(
 export const handleRoomPasswordSet: RoomMessageHandler = async (ctx, data) => {
   const next = await withOwnerSecurityMutation(
     ctx,
+    data,
     roomPasswordSetSchema,
-    data.payload,
-    (parsed) => (state, participant) => {
-      setJoinPassword(state, parsed.password)
+    (parsed) => async (state, participant) => {
+      await setJoinPassword(state, parsed.password)
       logSecurityAction(state, ctx, participant, "room:password:set", {
         joinPasswordEnabled: true,
       })
@@ -83,8 +84,8 @@ export const handleRoomPasswordClear: RoomMessageHandler = async (
 ) => {
   const next = await withOwnerSecurityMutation(
     ctx,
+    data,
     roomPasswordClearSchema,
-    data.payload,
     () => (state, participant) => {
       if (!clearJoinPassword(state)) return false
       logSecurityAction(state, ctx, participant, "room:password:cleared", {
@@ -104,8 +105,8 @@ export const handleRoomDefaultRoleSet: RoomMessageHandler = async (
 ) => {
   await withOwnerSecurityMutation(
     ctx,
+    data,
     roomDefaultRoleSetSchema,
-    data.payload,
     (parsed) => (state, participant) => {
       if (!setDefaultJoinRole(state, parsed.role)) return false
       logSecurityAction(state, ctx, participant, "room:default-role:set", {

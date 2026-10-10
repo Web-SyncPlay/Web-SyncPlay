@@ -30,6 +30,26 @@ export function isLocalMediaInternalConfigured(): boolean {
   )
 }
 
+/** Health probe for multi-replica local-media HTTP affinity (warn-only). */
+export type LocalMediaAffinityHealth = {
+  configured: boolean
+  /** `configured` when both env vars are set; `missing` when the pair is unset. */
+  status: "configured" | "missing"
+  /** Present when unset so operators see the silent pub/sub fallback. */
+  warn?: string
+}
+
+export function getLocalMediaAffinityHealth(): LocalMediaAffinityHealth {
+  if (isLocalMediaInternalConfigured()) {
+    return { configured: true, status: "configured" }
+  }
+  return {
+    configured: false,
+    status: "missing",
+    warn: "INTERNAL_NODE_BASE_URL and LOCAL_MEDIA_INTERNAL_SECRET unset; using Redis pub/sub fallback",
+  }
+}
+
 async function warnIfDuplicateBaseUrl(
   client: Awaited<ReturnType<typeof getCommandClient>>,
   selfNodeId: string,

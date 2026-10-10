@@ -1,5 +1,15 @@
 import { describe, expect, test } from "bun:test"
-import type { RoomStateStorePort } from "@/server/realtime/ports"
+import {
+  getLocalMediaSfuPort,
+  getMediaMaintenancePort,
+  getRoomPublishPort,
+  setLocalMediaSfuPort,
+  setMediaMaintenancePort,
+  setRoomPublishPort,
+  type MediaMaintenancePort,
+  type RoomPublishPort,
+  type RoomStateStorePort,
+} from "@/server/realtime/ports"
 import {
   createRoomState,
   InMemoryRoomStateStore,
@@ -87,5 +97,43 @@ describe("RoomStateStorePort interface", () => {
     expect(await store.getDailyDefaults()).toEqual([
       { title: "keep", url: "https://x.test/a" },
     ])
+  })
+})
+
+describe("RoomPublishPort / MediaMaintenancePort wiring", () => {
+  test("setters round-trip on globalThis slot", () => {
+    const prevPublish = getRoomPublishPort()
+    const prevMaintenance = getMediaMaintenancePort()
+    const prevSfu = getLocalMediaSfuPort()
+
+    const publish: RoomPublishPort = {
+      attachStore() {},
+      clearRoom() {},
+      fanOutFromPubSub() {},
+      fanOutUserEphemeral() {},
+    }
+    const maintenance: MediaMaintenancePort = {
+      async reresolveRemotePlaylistItem() {
+        return false
+      },
+      async cleanupInactiveRooms() {
+        return { scannedRooms: 0, removedRooms: 0, removedParticipants: 0 }
+      },
+      async processDuePrunes() {
+        return 0
+      },
+    }
+
+    setRoomPublishPort(publish)
+    setMediaMaintenancePort(maintenance)
+    expect(getRoomPublishPort()).toBe(publish)
+    expect(getMediaMaintenancePort()).toBe(maintenance)
+    expect(typeof getLocalMediaSfuPort().assertProviderNodeAffinity).toBe(
+      "function",
+    )
+
+    setRoomPublishPort(prevPublish)
+    setMediaMaintenancePort(prevMaintenance)
+    setLocalMediaSfuPort(prevSfu)
   })
 })

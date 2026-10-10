@@ -5,4 +5,4 @@ export {
   isUnsupportedMpegTsProgressiveUrl,
   looksLikeJellyfinEmbyPlaybackUrl,
   shapeJellyfinEmbyHlsUrl,
-} from "@/lib/jellyfin-emby-url"
+} from "@/shared/jellyfin-emby-url"

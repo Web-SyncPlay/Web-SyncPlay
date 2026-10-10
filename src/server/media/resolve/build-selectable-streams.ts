@@ -1,10 +1,10 @@
-import { isHttpOrHttpsUrl } from "@/lib/sanitize-display"
+import { isHttpOrHttpsUrl } from "@/shared/sanitize-display"
 import {
   MEDIA_STREAM_CATALOG_LIMIT,
   MEDIA_TEXT_TRACK_CATALOG_LIMIT,
   type PlaylistMediaStream,
   type PlaylistTextTrack,
-} from "@/zod/types"
+} from "@/contracts/types"
 import type { YtDlpNormalizedVariant, YtDlpStream, YtDlpTextTrack } from "@/server/media/yt-dlp"
 import { PLAYBACK_LADDER_HEIGHTS } from "@/server/media/yt-dlp/policy"
 

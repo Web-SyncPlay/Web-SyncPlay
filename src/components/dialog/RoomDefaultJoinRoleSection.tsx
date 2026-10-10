@@ -8,9 +8,9 @@ import {
   FieldGroup,
   FieldTitle,
 } from "@/components/ui/field"
-import type { TypedRoomEventSender } from "@/lib/room-events"
-import { cn } from "@/lib/utils"
-import type { DefaultJoinRole, PublicRoomSecurityState } from "@/zod/types"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
+import { cn } from "@/shared/utils"
+import type { DefaultJoinRole, PublicRoomSecurityState } from "@/contracts/types"
 import { Shield } from "lucide-react"
 
 const JOIN_ROLE_OPTIONS: ReadonlyArray<{

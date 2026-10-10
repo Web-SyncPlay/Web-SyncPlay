@@ -1,4 +1,4 @@
-import type { RoomState } from "@/zod/types"
+import type { RoomState } from "@/contracts/types"
 
 /** Ensure playback server clocks never move backwards under concurrent writes. */
 export function nextMonotonicMs(previous: number, next: number) {
@@ -19,8 +19,7 @@ export function resolveCurrentTimelineMs(state: RoomState, nowMs: number) {
 
 /**
  * Authoritative seek: snap the room timeline, clear ephemeral scrub state, and
- * advance the monotonic server clock. Shared by `playback:seek` and
- * `seek:preview` (active:false).
+ * advance the monotonic server clock. Used by `playback:seek`.
  */
 export function commitPlaybackSeek(
   state: RoomState,

@@ -3,7 +3,7 @@ import {
   canMutateByRole,
   canMutateFromClientSession,
   isClientControlAuthorized,
-} from "@/lib/permissions-utils"
+} from "@/shared/permissions-utils"
 import {
   canControlFromConnectionContext,
   canManageRoomSecurityFromConnectionContext,

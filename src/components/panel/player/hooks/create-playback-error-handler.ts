@@ -1,4 +1,4 @@
-import { localMediaErrorMessage } from "@/lib/local-media-errors"
+import { localMediaErrorMessage } from "@/shared/local-media/local-media-errors"
 import type { MediaErrorDetail } from "@vidstack/react"
 import { toast } from "sonner"
 import {

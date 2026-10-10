@@ -1,5 +1,5 @@
 import { EmbedClient } from "@/components/layout/page/EmbedClient"
-import { readMediaQueryParam } from "@/lib/initial-media-url"
+import { readMediaQueryParam } from "@/shared/initial-media-url"
 
 export default async function RoomEmbedPage({
   params,

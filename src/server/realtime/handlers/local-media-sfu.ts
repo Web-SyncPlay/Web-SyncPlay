@@ -1,21 +1,8 @@
 import { getLocalMediaEntry } from "@/server/media/local-media-store"
 import {
-  closeLocalMediaSfuDataProducer,
-  ensureMediasoupRuntime,
-  getLocalMediaSfuProducer,
-  getMediasoupDataProducerAppData,
-  getMediasoupTransportAppData,
-  listLocalMediaSfuRequestProducers,
-  listLocalMediaSfuProducers,
-  mediasoupCloseTransport,
-  mediasoupConnectTransport,
-  mediasoupConsumeData,
-  mediasoupCreateRouter,
-  mediasoupCreateTransport,
-  mediasoupProduceData,
-  onMediasoupTransportClosed,
   onMediasoupWorkerDied,
-} from "@/server/media/mediasoup-runtime"
+} from "@/server/media/local-media-sfu-port"
+import { getLocalMediaSfuPort } from "@/server/realtime/ports"
 import type {
   RoomMessageContext,
   RoomMessageHandler,
@@ -27,11 +14,12 @@ import {
   localMediaSfuConsumeDataSchema,
   localMediaSfuCreateTransportSchema,
   localMediaSfuProduceDataSchema,
-} from "@/zod/schemas"
-import type { WsEnvelope } from "@/zod/types"
+} from "@/contracts/schemas"
+import type { WsEnvelope } from "@/contracts/types"
 import type { types as MsTypes } from "mediasoup"
 import { randomUUID } from "node:crypto"
 import type { WebSocket } from "ws"
+import { parseOrWarn } from "./parse-or-warn"
 
 const MAX_TRANSPORTS_PER_SOCKET = 4
 
@@ -73,8 +61,9 @@ function ownsTransport(
   transportId: string,
   direction?: "send" | "recv",
 ) {
+  const sfu = getLocalMediaSfuPort()
   if (!socketTransports.get(ctx.ws)?.has(transportId)) return false
-  const appData = getMediasoupTransportAppData(transportId)
+  const appData = sfu.getTransportAppData(transportId)
   if (!appData || appData.roomKey !== ctx.roomId) return false
   if (direction && appData.direction !== direction) return false
   return true
@@ -131,18 +120,20 @@ export const handleLocalMediaSfuCapabilities: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  if (!localMediaSfuCapabilitiesSchema.safeParse(data.payload).success) {
+  if (!parseOrWarn(localMediaSfuCapabilitiesSchema, data.payload, data.type)) {
     reply(ctx, data, { ok: false, error: "invalid_payload" })
     return
   }
+  const sfu = getLocalMediaSfuPort()
   try {
-    const runtime = await ensureMediasoupRuntime()
-    if (!runtime) {
+    const ready = await sfu.ensureRuntime()
+    if (!ready) {
       reply(ctx, data, { ok: false, error: "sfu_unavailable" })
       return
     }
-    const router = await mediasoupCreateRouter(ctx.roomId)
-    const producers = listLocalMediaSfuProducers()
+    const router = await sfu.createRouter(ctx.roomId)
+    const producers = sfu
+      .listProviderProducers()
       .filter((entry) => entry.roomId === ctx.roomId)
       .map((entry) => ({
         localMediaId: entry.localMediaId,
@@ -163,18 +154,23 @@ export const handleLocalMediaSfuCreateTransport: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  const parsed = localMediaSfuCreateTransportSchema.safeParse(data.payload)
-  if (!parsed.success) {
+  const parsed = parseOrWarn(
+    localMediaSfuCreateTransportSchema,
+    data.payload,
+    data.type,
+  )
+  if (!parsed) {
     reply(ctx, data, { ok: false, error: "invalid_payload" })
     return
   }
+  const sfu = getLocalMediaSfuPort()
   try {
     let owned = socketTransports.get(ctx.ws)
     if (!owned) {
       owned = new Set()
       socketTransports.set(ctx.ws, owned)
       ctx.ws.once("close", () => {
-        for (const id of owned!) mediasoupCloseTransport(id)
+        for (const id of owned!) sfu.closeTransport(id)
         owned!.clear()
       })
     }
@@ -183,23 +179,23 @@ export const handleLocalMediaSfuCreateTransport: RoomMessageHandler = async (
       return
     }
 
-    const transport = await mediasoupCreateTransport(ctx.roomId, {
+    const transport = await sfu.createTransport(ctx.roomId, {
       userId: ctx.userId,
-      direction: parsed.data.direction,
-      ...(parsed.data.localMediaId
-        ? { localMediaId: parsed.data.localMediaId }
+      direction: parsed.direction,
+      ...(parsed.localMediaId
+        ? { localMediaId: parsed.localMediaId }
         : {}),
     })
     // Close raced the await — do not leak an owned transport after disconnect.
     if (ctx.ws.readyState !== ctx.ws.OPEN) {
-      mediasoupCloseTransport(transport.id)
+      sfu.closeTransport(transport.id)
       reply(ctx, data, { ok: false, error: "socket_closed" })
       return
     }
     const transportId = transport.id
     const ownedTransports = owned
     ownedTransports.add(transportId)
-    onMediasoupTransportClosed(transportId, () => {
+    sfu.onTransportClosed(transportId, () => {
       ownedTransports.delete(transportId)
     })
     reply(ctx, data, { ok: true, ...transport })
@@ -212,19 +208,24 @@ export const handleLocalMediaSfuConnectTransport: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  const parsed = localMediaSfuConnectTransportSchema.safeParse(data.payload)
-  if (!parsed.success) {
+  const parsed = parseOrWarn(
+    localMediaSfuConnectTransportSchema,
+    data.payload,
+    data.type,
+  )
+  if (!parsed) {
     reply(ctx, data, { ok: false, error: "invalid_payload" })
     return
   }
-  if (!ownsTransport(ctx, parsed.data.transportId)) {
+  if (!ownsTransport(ctx, parsed.transportId)) {
     reply(ctx, data, { ok: false, error: "transport_not_found" })
     return
   }
+  const sfu = getLocalMediaSfuPort()
   try {
-    await mediasoupConnectTransport({
-      transportId: parsed.data.transportId,
-      dtlsParameters: parsed.data.dtlsParameters as MsTypes.DtlsParameters,
+    await sfu.connectTransport({
+      transportId: parsed.transportId,
+      dtlsParameters: parsed.dtlsParameters as MsTypes.DtlsParameters,
     })
     reply(ctx, data, { ok: true })
   } catch (error) {
@@ -236,13 +237,18 @@ export const handleLocalMediaSfuProduceData: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  const parsed = localMediaSfuProduceDataSchema.safeParse(data.payload)
-  if (!parsed.success) {
+  const parsed = parseOrWarn(
+    localMediaSfuProduceDataSchema,
+    data.payload,
+    data.type,
+  )
+  if (!parsed) {
     reply(ctx, data, { ok: false, error: "invalid_payload" })
     return
   }
-  const { transportId, localMediaId, sctpStreamParameters } = parsed.data
-  const role = parsed.data.role ?? "provider"
+  const { transportId, localMediaId, sctpStreamParameters } = parsed
+  const role = parsed.role ?? "provider"
+  const sfu = getLocalMediaSfuPort()
 
   if (!ownsTransport(ctx, transportId, "send")) {
     reply(ctx, data, { ok: false, error: "transport_not_found" })
@@ -261,12 +267,15 @@ export const handleLocalMediaSfuProduceData: RoomMessageHandler = async (
       return
     }
 
-    const produced = await mediasoupProduceData({
+    // Provider file bytes live on the browser attached to providerNodeId's WS.
+    sfu.assertProviderNodeAffinity(entry.providerNodeId)
+
+    const produced = await sfu.produceData({
       transportId,
       sctpStreamParameters:
         sctpStreamParameters as MsTypes.SctpStreamParameters,
-      label: parsed.data.label,
-      protocol: parsed.data.protocol,
+      label: parsed.label,
+      protocol: parsed.protocol,
       appData: {
         localMediaId,
         roomId: ctx.roomId,
@@ -289,7 +298,8 @@ export const handleLocalMediaSfuProduceData: RoomMessageHandler = async (
       id: produced.id,
       ...(role === "provider"
         ? {
-            requestProducers: listLocalMediaSfuRequestProducers(localMediaId)
+            requestProducers: sfu
+              .listRequestProducers(localMediaId)
               .filter((p) => p.roomId === ctx.roomId)
               .map((p) => ({ dataProducerId: p.dataProducerId })),
           }
@@ -298,7 +308,7 @@ export const handleLocalMediaSfuProduceData: RoomMessageHandler = async (
   } catch (error) {
     // Only tear down the failed producer — keep sibling request channels.
     if (producerId) {
-      closeLocalMediaSfuDataProducer(producerId)
+      sfu.closeDataProducer(producerId)
     }
     fail(ctx, data, error)
   }
@@ -308,12 +318,17 @@ export const handleLocalMediaSfuConsumeData: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  const parsed = localMediaSfuConsumeDataSchema.safeParse(data.payload)
-  if (!parsed.success) {
+  const parsed = parseOrWarn(
+    localMediaSfuConsumeDataSchema,
+    data.payload,
+    data.type,
+  )
+  if (!parsed) {
     reply(ctx, data, { ok: false, error: "invalid_payload" })
     return
   }
-  const { transportId, localMediaId } = parsed.data
+  const { transportId, localMediaId } = parsed
+  const sfu = getLocalMediaSfuPort()
 
   if (!ownsTransport(ctx, transportId, "recv")) {
     reply(ctx, data, { ok: false, error: "transport_not_found" })
@@ -321,10 +336,17 @@ export const handleLocalMediaSfuConsumeData: RoomMessageHandler = async (
   }
 
   try {
+    const entry = await getLocalMediaEntry(localMediaId)
+    if (!entry || entry.roomId !== ctx.roomId) {
+      reply(ctx, data, { ok: false, error: "media_not_found" })
+      return
+    }
+    sfu.assertProviderNodeAffinity(entry.providerNodeId)
+
     let dataProducerId: string
-    if (parsed.data.dataProducerId) {
+    if (parsed.dataProducerId) {
       // Request channels are only consumable by the media owner.
-      const appData = getMediasoupDataProducerAppData(parsed.data.dataProducerId)
+      const appData = sfu.getDataProducerAppData(parsed.dataProducerId)
       if (
         !appData ||
         appData.role !== "requests" ||
@@ -335,9 +357,9 @@ export const handleLocalMediaSfuConsumeData: RoomMessageHandler = async (
         reply(ctx, data, { ok: false, error: "producer_not_found" })
         return
       }
-      dataProducerId = parsed.data.dataProducerId
+      dataProducerId = parsed.dataProducerId
     } else {
-      const producer = getLocalMediaSfuProducer(localMediaId)
+      const producer = sfu.getProviderProducer(localMediaId)
       if (!producer || producer.roomId !== ctx.roomId) {
         reply(ctx, data, { ok: false, error: "no_producer" })
         return
@@ -345,7 +367,7 @@ export const handleLocalMediaSfuConsumeData: RoomMessageHandler = async (
       dataProducerId = producer.dataProducerId
     }
 
-    const consumed = await mediasoupConsumeData({ transportId, dataProducerId })
+    const consumed = await sfu.consumeData({ transportId, dataProducerId })
     reply(ctx, data, { ok: true, ...consumed })
   } catch (error) {
     fail(ctx, data, error)

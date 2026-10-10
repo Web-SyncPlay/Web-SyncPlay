@@ -1,13 +1,13 @@
 "use client"
 
-import { getAdjacentPlaylistIndex } from "@/lib/playback-sync"
-import type { TypedRoomEventSender } from "@/lib/room-events"
+import { getAdjacentPlaylistIndex } from "@/client/player/playback-sync"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
 import { SkipBack, SkipForward } from "lucide-react"
 import { useCallback, useMemo } from "react"
-import type { RoomState } from "@/zod/types"
+import type { PlayerNavRoomState } from "../playback-control/types"
 
 export function usePlaylistNavigation(config: {
-  roomState: RoomState
+  roomState: PlayerNavRoomState
   send: TypedRoomEventSender
   canControlPlayback: boolean
   enforceServerPlaybackState: () => void

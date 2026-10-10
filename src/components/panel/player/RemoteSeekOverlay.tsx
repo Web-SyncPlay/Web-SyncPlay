@@ -1,4 +1,4 @@
-import { formatClockMs } from "@/lib/time-format"
+import { formatClockMs } from "@/shared/time-format"
 
 export function RemoteSeekOverlay(props: {
   remoteSeekerName: string

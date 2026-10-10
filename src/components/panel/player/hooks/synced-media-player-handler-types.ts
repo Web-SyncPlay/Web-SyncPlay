@@ -1,10 +1,10 @@
-import type { TypedRoomEventSender } from "@/lib/room-events"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type {
   MediaErrorDetail,
   MediaPlayerInstance,
 } from "@vidstack/react"
 import type { RefObject } from "react"
-import type { LoopMode, PlaylistItem, RoomState } from "@/zod/types"
+import type { LoopMode, PlaylistItem, RoomState } from "@/contracts/types"
 import type { PlayerSrcInput } from "../player-src"
 import type { PendingSyncState } from "./use-buffering-watchdog"
 import type { LocalSeekPhase } from "../playback-control/use-playback-timeline-controller"

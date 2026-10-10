@@ -2,9 +2,9 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { randomRoomId } from "@/lib/room-utils"
-import { formatDurationSeconds } from "@/lib/time-format"
-import { cn } from "@/lib/utils"
+import { randomRoomId } from "@/shared/room-utils"
+import { formatDurationSeconds } from "@/shared/time-format"
+import { cn } from "@/shared/utils"
 import { CheckCircle2, Loader2, Play, Search, XCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, type FormEvent } from "react"

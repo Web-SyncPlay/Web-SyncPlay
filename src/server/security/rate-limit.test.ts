@@ -1,4 +1,37 @@
 import { afterEach, describe, expect, mock, test } from "bun:test"
+import type { IncomingMessage } from "node:http"
+
+function upgradeRequest(opts: {
+  headers?: Record<string, string | string[] | undefined>
+  remoteAddress?: string
+}): IncomingMessage {
+  return {
+    headers: opts.headers ?? {},
+    socket: { remoteAddress: opts.remoteAddress },
+  } as IncomingMessage
+}
+
+describe("clientIpFromForwardingHeaders", () => {
+  test("uses first X-Forwarded-For hop over X-Real-IP", async () => {
+    const { clientIpFromForwardingHeaders } = await import("./rate-limit")
+    expect(
+      clientIpFromForwardingHeaders({
+        forwardedFor: "203.0.113.10, 10.0.0.1",
+        realIp: "10.0.0.2",
+      }),
+    ).toBe("203.0.113.10")
+  })
+
+  test("accepts array header values like IncomingMessage", async () => {
+    const { clientIpFromForwardingHeaders } = await import("./rate-limit")
+    expect(
+      clientIpFromForwardingHeaders({
+        forwardedFor: ["203.0.113.20, 10.0.0.1"],
+        realIp: ["198.51.100.1"],
+      }),
+    ).toBe("203.0.113.20")
+  })
+})
 
 describe("clientIpFromRequest", () => {
   test("uses first X-Forwarded-For hop", async () => {
@@ -27,6 +60,76 @@ describe("clientIpFromRequest", () => {
   })
 })
 
+describe("clientIpFromUpgradeRequest", () => {
+  test("uses first X-Forwarded-For hop over socket", async () => {
+    const { clientIpFromUpgradeRequest } = await import("./rate-limit")
+    expect(
+      clientIpFromUpgradeRequest(
+        upgradeRequest({
+          headers: {
+            "x-forwarded-for": "203.0.113.10, 10.0.0.1",
+            "x-real-ip": "10.0.0.2",
+          },
+          remoteAddress: "127.0.0.1",
+        }),
+      ),
+    ).toBe("203.0.113.10")
+  })
+
+  test("falls back to X-Real-IP then socket.remoteAddress", async () => {
+    const { clientIpFromUpgradeRequest } = await import("./rate-limit")
+    expect(
+      clientIpFromUpgradeRequest(
+        upgradeRequest({
+          headers: { "x-real-ip": "198.51.100.1" },
+          remoteAddress: "127.0.0.1",
+        }),
+      ),
+    ).toBe("198.51.100.1")
+    expect(
+      clientIpFromUpgradeRequest(
+        upgradeRequest({ remoteAddress: "192.0.2.55" }),
+      ),
+    ).toBe("192.0.2.55")
+    expect(clientIpFromUpgradeRequest(upgradeRequest({}))).toBe("unknown")
+  })
+})
+
+describe("client IP path parity", () => {
+  test("Request and upgrade agree when X-Forwarded-For is present", async () => {
+    const { clientIpFromRequest, clientIpFromUpgradeRequest } =
+      await import("./rate-limit")
+    const xff = "203.0.113.10, 10.0.0.1"
+    const request = new Request("https://example.test/", {
+      headers: { "x-forwarded-for": xff, "x-real-ip": "10.0.0.2" },
+    })
+    const upgrade = upgradeRequest({
+      headers: { "x-forwarded-for": xff, "x-real-ip": "10.0.0.2" },
+      remoteAddress: "127.0.0.1",
+    })
+    expect(clientIpFromRequest(request)).toBe("203.0.113.10")
+    expect(clientIpFromUpgradeRequest(upgrade)).toBe(
+      clientIpFromRequest(request),
+    )
+  })
+
+  test("Request and upgrade agree when only X-Real-IP is present", async () => {
+    const { clientIpFromRequest, clientIpFromUpgradeRequest } =
+      await import("./rate-limit")
+    const realIp = "198.51.100.1"
+    const request = new Request("https://example.test/", {
+      headers: { "x-real-ip": realIp },
+    })
+    const upgrade = upgradeRequest({
+      headers: { "x-real-ip": realIp },
+      remoteAddress: "127.0.0.1",
+    })
+    expect(clientIpFromUpgradeRequest(upgrade)).toBe(
+      clientIpFromRequest(request),
+    )
+  })
+})
+
 function createIncrMock(opts?: {
   fail?: boolean
   counts?: Map<string, number>
@@ -43,8 +146,272 @@ function createIncrMock(opts?: {
   }
 }
 
-afterEach(() => {
+afterEach(async () => {
   mock.restore()
+  const { resetTokenBucketsForTests } = await import("./rate-limit")
+  resetTokenBucketsForTests()
+})
+
+describe("consumeTokenBucket", () => {
+  test("allows under capacity and denies when empty", async () => {
+    const { consumeTokenBucket } = await import("./rate-limit")
+    const key = "tb:a"
+    expect(
+      consumeTokenBucket({
+        key,
+        capacity: 2,
+        refillPerSecond: 0,
+        nowMs: 1_000,
+      }),
+    ).toEqual({ allowed: true, remaining: 1 })
+    expect(
+      consumeTokenBucket({
+        key,
+        capacity: 2,
+        refillPerSecond: 0,
+        nowMs: 1_000,
+      }),
+    ).toEqual({ allowed: true, remaining: 0 })
+    expect(
+      consumeTokenBucket({
+        key,
+        capacity: 2,
+        refillPerSecond: 0,
+        nowMs: 1_000,
+      }),
+    ).toEqual({ allowed: false, remaining: 0 })
+  })
+
+  test("refills over time up to capacity", async () => {
+    const { consumeTokenBucket } = await import("./rate-limit")
+    const key = "tb:refill"
+    expect(
+      consumeTokenBucket({
+        key,
+        capacity: 2,
+        refillPerSecond: 10,
+        nowMs: 0,
+      }).allowed,
+    ).toBe(true)
+    expect(
+      consumeTokenBucket({
+        key,
+        capacity: 2,
+        refillPerSecond: 10,
+        nowMs: 0,
+      }).allowed,
+    ).toBe(true)
+    expect(
+      consumeTokenBucket({
+        key,
+        capacity: 2,
+        refillPerSecond: 10,
+        nowMs: 0,
+      }).allowed,
+    ).toBe(false)
+
+    // 0.2s * 10/s = 2 tokens restored
+    expect(
+      consumeTokenBucket({
+        key,
+        capacity: 2,
+        refillPerSecond: 10,
+        nowMs: 200,
+      }),
+    ).toEqual({ allowed: true, remaining: 1 })
+  })
+})
+
+describe("consumeHotWsEventLimit", () => {
+  test("trips seek:preview after burst for the same room+user", async () => {
+    const {
+      HOT_WS_EVENT_LIMITS,
+      consumeHotWsEventLimit,
+      hotWsEventRateKey,
+    } = await import("./rate-limit")
+    const roomId = "room-hot"
+    const userId = "user-hot"
+    const { capacity } = HOT_WS_EVENT_LIMITS["seek:preview"]
+    let allowed = 0
+    let denied = 0
+    for (let i = 0; i < capacity + 5; i++) {
+      const result = consumeHotWsEventLimit({
+        type: "seek:preview",
+        roomId,
+        userId,
+        nowMs: 1_000,
+      })
+      if (result.allowed) allowed += 1
+      else denied += 1
+    }
+    expect(allowed).toBe(capacity)
+    expect(denied).toBe(5)
+    expect(hotWsEventRateKey("seek:preview", roomId, userId)).toBe(
+      `ws:seek-preview:${roomId}:${userId}`,
+    )
+  })
+
+  test("isolates keys by event type and room/user", async () => {
+    const { HOT_WS_EVENT_LIMITS, consumeHotWsEventLimit } =
+      await import("./rate-limit")
+    const nowMs = 5_000
+    for (let i = 0; i < HOT_WS_EVENT_LIMITS["playback:seek"].capacity; i++) {
+      expect(
+        consumeHotWsEventLimit({
+          type: "playback:seek",
+          roomId: "r1",
+          userId: "u1",
+          nowMs,
+        }).allowed,
+      ).toBe(true)
+    }
+    expect(
+      consumeHotWsEventLimit({
+        type: "playback:seek",
+        roomId: "r1",
+        userId: "u1",
+        nowMs,
+      }).allowed,
+    ).toBe(false)
+    expect(
+      consumeHotWsEventLimit({
+        type: "playback:seek",
+        roomId: "r1",
+        userId: "u2",
+        nowMs,
+      }).allowed,
+    ).toBe(true)
+    expect(
+      consumeHotWsEventLimit({
+        type: "participant:update",
+        roomId: "r1",
+        userId: "u1",
+        nowMs,
+      }).allowed,
+    ).toBe(true)
+  })
+
+  test("unknown event types are not limited", async () => {
+    const { consumeHotWsEventLimit } = await import("./rate-limit")
+    expect(
+      consumeHotWsEventLimit({
+        type: "playlist:select",
+        roomId: "r1",
+        userId: "u1",
+      }).allowed,
+    ).toBe(true)
+  })
+
+  test("trips participant:update presence floods for the same room+user", async () => {
+    const { HOT_WS_EVENT_LIMITS, consumeHotWsEventLimit } =
+      await import("./rate-limit")
+    const { capacity } = HOT_WS_EVENT_LIMITS["participant:update"]
+    const nowMs = 9_000
+    for (let i = 0; i < capacity; i++) {
+      expect(
+        consumeHotWsEventLimit({
+          type: "participant:update",
+          roomId: "r-presence",
+          userId: "u-presence",
+          nowMs,
+        }).allowed,
+      ).toBe(true)
+    }
+    expect(
+      consumeHotWsEventLimit({
+        type: "participant:update",
+        roomId: "r-presence",
+        userId: "u-presence",
+        nowMs,
+      }).allowed,
+    ).toBe(false)
+  })
+
+  test("limits local-media:webrtc:signal and sfu:create-transport", async () => {
+    const { HOT_WS_EVENT_LIMITS, consumeHotWsEventLimit, hotWsEventRateKey } =
+      await import("./rate-limit")
+    const nowMs = 12_000
+
+    const webrtcCap = HOT_WS_EVENT_LIMITS["local-media:webrtc:signal"].capacity
+    for (let i = 0; i < webrtcCap; i++) {
+      expect(
+        consumeHotWsEventLimit({
+          type: "local-media:webrtc:signal",
+          roomId: "r-rtc",
+          userId: "u-rtc",
+          nowMs,
+        }).allowed,
+      ).toBe(true)
+    }
+    expect(
+      consumeHotWsEventLimit({
+        type: "local-media:webrtc:signal",
+        roomId: "r-rtc",
+        userId: "u-rtc",
+        nowMs,
+      }).allowed,
+    ).toBe(false)
+    expect(hotWsEventRateKey("local-media:webrtc:signal", "r-rtc", "u-rtc")).toBe(
+      "ws:local-media-webrtc-signal:r-rtc:u-rtc",
+    )
+
+    const sfuCap =
+      HOT_WS_EVENT_LIMITS["local-media:sfu:create-transport"].capacity
+    for (let i = 0; i < sfuCap; i++) {
+      expect(
+        consumeHotWsEventLimit({
+          type: "local-media:sfu:create-transport",
+          roomId: "r-sfu",
+          userId: "u-sfu",
+          nowMs,
+        }).allowed,
+      ).toBe(true)
+    }
+    expect(
+      consumeHotWsEventLimit({
+        type: "local-media:sfu:create-transport",
+        roomId: "r-sfu",
+        userId: "u-sfu",
+        nowMs,
+      }).allowed,
+    ).toBe(false)
+
+    for (const type of [
+      "local-media:sfu:connect-transport",
+      "local-media:sfu:produce-data",
+      "local-media:sfu:consume-data",
+    ] as const) {
+      const cap = HOT_WS_EVENT_LIMITS[type].capacity
+      for (let i = 0; i < cap; i++) {
+        expect(
+          consumeHotWsEventLimit({
+            type,
+            roomId: `r-${type}`,
+            userId: "u-sfu",
+            nowMs,
+          }).allowed,
+        ).toBe(true)
+      }
+      expect(
+        consumeHotWsEventLimit({
+          type,
+          roomId: `r-${type}`,
+          userId: "u-sfu",
+          nowMs,
+        }).allowed,
+      ).toBe(false)
+    }
+
+    // Binary LMC is not a hot WS JSON event type — remains uncapped here.
+    expect(
+      consumeHotWsEventLimit({
+        type: "local-media:chunk",
+        roomId: "r-lmc",
+        userId: "u-lmc",
+        nowMs,
+      }).allowed,
+    ).toBe(true)
+  })
 })
 
 describe("consumeRateLimit", () => {

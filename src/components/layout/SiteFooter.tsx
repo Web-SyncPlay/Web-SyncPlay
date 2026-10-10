@@ -1,6 +1,6 @@
 "use client"
 
-import { isPlayerEmbedPath } from "@/lib/room-utils"
+import { isPlayerEmbedPath } from "@/shared/room-utils"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 

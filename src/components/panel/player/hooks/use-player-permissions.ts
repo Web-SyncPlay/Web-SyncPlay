@@ -1,14 +1,10 @@
 "use client"
 
-import { canControlPlayback } from "@/lib/permissions-utils"
-import type { RoomState } from "@/zod/types"
-import { useMemo } from "react"
+import { canControlPlayback } from "@/shared/permissions-utils"
+import type { RoomRole } from "@/contracts/types"
 
-export function usePlayerPermissions(roomState: RoomState, userId: string) {
-  const myRole = useMemo(
-    () => roomState.participants[userId]?.role ?? "guest",
-    [roomState.participants, userId],
-  )
+/** Role is a preselected string so presence map churn cannot invalidate this. */
+export function usePlayerPermissions(myRole: RoomRole) {
   return {
     myRole,
     canControlPlayback: canControlPlayback(myRole),

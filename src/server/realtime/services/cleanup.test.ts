@@ -1,9 +1,9 @@
-import { afterEach, expect, test } from "bun:test"
+import { afterEach, expect, mock, test } from "bun:test"
 import { setRoomBroadcastBusForTests } from "@/server/realtime/broadcast/room-broadcast-bus"
-import type { RoomState } from "@/zod/types"
-import { cleanupInactiveRooms } from "./cleanup"
+import type { RoomState } from "@/contracts/types"
 
 afterEach(() => {
+  mock.restore()
   setRoomBroadcastBusForTests(null)
 })
 
@@ -64,7 +64,47 @@ function createState(): RoomState {
   }
 }
 
+function mockRedisPruneIndex(options?: {
+  /** Members returned by processDuePrunes sMembers (after cleanup enqueue). */
+  pendingMembers?: string[]
+}) {
+  const pending = new Set<string>(options?.pendingMembers ?? [])
+  const grace = new Map<string, string>()
+
+  mock.module("@/server/redis/client", () => ({
+    getCommandClient: async () => ({
+      set: async (key: string, _value: string) => {
+        grace.set(key, "1")
+        return "OK"
+      },
+      get: async (key: string) => grace.get(key) ?? null,
+      del: async (keys: string | string[]) => {
+        for (const key of Array.isArray(keys) ? keys : [keys]) {
+          grace.delete(key)
+        }
+        return 1
+      },
+      sAdd: async (_key: string, member: string) => {
+        pending.add(member)
+        return 1
+      },
+      sRem: async (_key: string, members: string | string[]) => {
+        for (const member of Array.isArray(members) ? members : [members]) {
+          pending.delete(member)
+        }
+        return 1
+      },
+      sMembers: async () => [...pending],
+      expire: async () => 1,
+    }),
+  }))
+
+  return { pending, grace }
+}
+
 test("cleanup reassigns owner when owner loses presence (grace keeps participant)", async () => {
+  mockRedisPruneIndex()
+  const { cleanupInactiveRooms: cleanup } = await import("./cleanup")
   const state = createState()
 
   const fakeStore = {
@@ -85,7 +125,7 @@ test("cleanup reassigns owner when owner loses presence (grace keeps participant
     },
   }
 
-  await cleanupInactiveRooms(fakeStore as never)
+  await cleanup(fakeStore as never)
 
   expect(state.ownerId).toBe("mod")
   expect(state.participants.mod?.role).toBe("owner")
@@ -93,7 +133,9 @@ test("cleanup reassigns owner when owner loses presence (grace keeps participant
   expect(state.participants.owner).toBeDefined()
 })
 
-test("cleanup removes participants past prune grace", async () => {
+test("cleanup removes participants past prune grace via Redis prune path", async () => {
+  mockRedisPruneIndex()
+  const { cleanupInactiveRooms: cleanup } = await import("./cleanup")
   const state = createState()
   const owner = state.participants.owner
   if (owner) {
@@ -119,7 +161,7 @@ test("cleanup removes participants past prune grace", async () => {
     },
   }
 
-  const result = await cleanupInactiveRooms(fakeStore as never)
+  const result = await cleanup(fakeStore as never)
 
   expect(result.removedParticipants).toBe(1)
   expect(state.participants.owner).toBeUndefined()
@@ -127,6 +169,8 @@ test("cleanup removes participants past prune grace", async () => {
 })
 
 test("cleanup marks everyone offline when WS presence is empty (crash ghosts)", async () => {
+  mockRedisPruneIndex()
+  const { cleanupInactiveRooms: cleanup } = await import("./cleanup")
   const state = createState()
   let deleted = false
   let deletedDuringMutate = false
@@ -153,7 +197,7 @@ test("cleanup marks everyone offline when WS presence is empty (crash ghosts)", 
     },
   }
 
-  await cleanupInactiveRooms(fakeStore as never)
+  await cleanup(fakeStore as never)
 
   expect(state.participants.owner?.connected).toBe(false)
   expect(state.participants.mod?.connected).toBe(false)
@@ -162,6 +206,8 @@ test("cleanup marks everyone offline when WS presence is empty (crash ghosts)", 
 })
 
 test("cleanup destroys empty rooms after WATCH mutate returns", async () => {
+  mockRedisPruneIndex()
+  const { cleanupInactiveRooms: cleanup } = await import("./cleanup")
   const state = createState()
   state.participants = {}
   let deleted = false
@@ -186,7 +232,7 @@ test("cleanup destroys empty rooms after WATCH mutate returns", async () => {
     },
   }
 
-  const result = await cleanupInactiveRooms(fakeStore as never)
+  const result = await cleanup(fakeStore as never)
 
   expect(deletedDuringMutate).toBe(false)
   expect(deleted).toBe(true)
@@ -194,6 +240,8 @@ test("cleanup destroys empty rooms after WATCH mutate returns", async () => {
 })
 
 test("cleanup migrates legacy room fields without waiting for join", async () => {
+  mockRedisPruneIndex()
+  const { cleanupInactiveRooms: cleanup } = await import("./cleanup")
   const state = createState()
   const legacy = state as RoomState & { history?: unknown }
   legacy.history = [{ at: 1 }]
@@ -219,11 +267,10 @@ test("cleanup migrates legacy room fields without waiting for join", async () =>
     },
   }
 
-  await cleanupInactiveRooms(fakeStore as never)
+  await cleanup(fakeStore as never)
 
   expect(legacy.history).toBeUndefined()
   expect(
     (state.playback as { shuffle?: unknown }).shuffle,
   ).toBeUndefined()
 })
-

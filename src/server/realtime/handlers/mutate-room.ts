@@ -1,7 +1,6 @@
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type { RoomPublishHint } from "@/server/realtime/broadcast/channels"
 import {
-  applyOfflinePruning,
   clearPrune,
   reconcileParticipantsConnectivity,
   schedulePrune,
@@ -9,7 +8,7 @@ import {
 import { applyRoomStateRepair } from "@/server/realtime/services/room-state-repair"
 import { markCurrentMedia } from "@/server/realtime/services/timeline"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
-import type { RoomState } from "@/zod/types"
+import type { RoomState } from "@/contracts/types"
 
 function bumpsStructuralRevision(hint: RoomPublishHint): boolean {
   return (
@@ -19,20 +18,17 @@ function bumpsStructuralRevision(hint: RoomPublishHint): boolean {
   )
 }
 
+/**
+ * In-memory presence reconcile only. Prune Redis side effects must wait until
+ * after a successful room write (see mutateRoomMessage post-commit path).
+ */
 async function reconcilePresenceForMutation(
   store: RoomStateStorePort,
   state: RoomState,
   roomId: string,
-) {
+): Promise<{ disconnecting: string[]; reconnecting: string[] }> {
   const active = await store.getWsPresenceUserIds(roomId)
-  const recon = reconcileParticipantsConnectivity(state, active)
-  for (const uid of recon.disconnecting) {
-    await schedulePrune(roomId, uid)
-  }
-  for (const uid of recon.reconnecting) {
-    await clearPrune(roomId, uid)
-  }
-  applyOfflinePruning(state)
+  return reconcileParticipantsConnectivity(state, active)
 }
 
 async function publishAfterMutation(
@@ -81,19 +77,24 @@ export async function mutateRoomMessage(
   body: (
     state: RoomState,
     participant: RoomState["participants"][string],
-  ) => boolean,
+  ) => boolean | Promise<boolean>,
   hint: RoomPublishHint = { kind: "snapshot" },
 ): Promise<RoomState | null> {
+  let disconnectingUserIds: string[] = []
+  let reconnectingUserIds: string[] = []
+
   const next = await store.updateRoom(roomId, async (state) => {
     if (!state) return null
-    await reconcilePresenceForMutation(store, state, roomId)
+    const recon = await reconcilePresenceForMutation(store, state, roomId)
+    disconnectingUserIds = recon.disconnecting
+    reconnectingUserIds = recon.reconnecting
 
     const participant = state.participants[userId]
     if (!participant) {
       return null
     }
 
-    if (!body(state, participant)) {
+    if (!(await body(state, participant))) {
       return null
     }
 
@@ -115,6 +116,14 @@ export async function mutateRoomMessage(
 
   if (!next) {
     return null
+  }
+
+  // H3: only hit Redis prune keys after a successful room write commit.
+  for (const uid of reconnectingUserIds) {
+    await clearPrune(roomId, uid)
+  }
+  for (const uid of disconnectingUserIds) {
+    await schedulePrune(roomId, uid)
   }
 
   await publishAfterMutation(roomId, userId, next, hint)

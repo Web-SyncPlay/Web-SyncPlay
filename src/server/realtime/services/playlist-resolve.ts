@@ -7,8 +7,8 @@ import {
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type { RoomStateStorePort } from "@/server/realtime/ports"
 import { bumpRoomRevisions } from "@/server/realtime/services/timeline"
-import { sanitizeMediaTitle } from "@/lib/sanitize-display"
-import type { PlaylistItem, RoomState } from "@/zod/types"
+import { sanitizeMediaTitle } from "@/shared/sanitize-display"
+import type { PlaylistItem, RoomState } from "@/contracts/types"
 
 /** Process-local dedupe so multi-kick of the same item does not pile up yt-dlp work. */
 const inflightPlaylistResolves = new Set<string>()
@@ -56,9 +56,6 @@ export function applyResolvedMediaToItem(
   item.defaultStreamId = resolved.defaultStreamId
   item.textTracks = resolved.textTracks
   item.defaultTextTrackId = resolved.defaultTextTrackId
-  // Clear deprecated room-selection aliases
-  item.selectedStreamId = undefined
-  item.selectedTextTrackId = undefined
   item.durationSeconds = resolved.durationSeconds ?? undefined
   item.isLive = resolved.isLive ?? undefined
   item.ingestStatus = "ready"

@@ -3,12 +3,12 @@
 import {
   getLocalMediaMimeType,
   getLocalMediaObjectUrl,
-} from "@/lib/local-media-provider"
-import { localMediaIdFromSrc } from "@/lib/local-media-resolve"
-import { withLocalMediaViewerToken } from "@/lib/local-media-viewer-token"
-import { inferMediaViewType } from "@/lib/playback-sync"
+} from "@/client/local-media/local-media-provider"
+import { localMediaIdFromSrc } from "@/client/local-media/local-media-resolve"
+import { withLocalMediaViewerToken } from "@/shared/local-media/local-media-viewer-token"
+import { inferMediaViewType } from "@/client/player/playback-sync"
 import { useEffect, useMemo, useRef, useState } from "react"
-import type { PlaylistItem, ViewerMediaItemPreference } from "@/zod/types"
+import type { PlaylistItem, ViewerMediaItemPreference } from "@/contracts/types"
 import {
   buildPlayerSrc,
   isSameOriginPlaybackUrl,

@@ -5,16 +5,16 @@ import {
 } from "@/server/redis/daily-defaults"
 import { getAppNodeId } from "@/server/node-id"
 import { listAliveAppNodeIds } from "@/server/node-heartbeat"
-import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
-import type {
-  DailyDefaultVideo,
-  RoomStateStorePort,
+import {
+  getRoomPublishPort,
+  type DailyDefaultVideo,
+  type RoomStateStorePort,
 } from "@/server/realtime/ports"
 import {
   roomStateTtlSeconds,
   type PresencePatch,
   type RoomState,
-} from "@/zod/types"
+} from "@/contracts/types"
 import { getCommandClient } from "./client"
 import { keys } from "./keys"
 import {
@@ -95,8 +95,18 @@ function roomLifecycleKeys(roomId: string): string[] {
     keys.roomState(roomId),
     keys.roomPresenceRef(roomId),
     keys.roomPresenceData(roomId),
+    keys.roomPresenceSeq(roomId),
     keys.roomIdentity(roomId),
   ]
+}
+
+/** Refresh lifecycle TTLs at most this often per room (in-process). */
+const TOUCH_WS_PRESENCE_MIN_INTERVAL_MS = 45_000
+const lastTouchWsPresenceByRoom = new Map<string, number>()
+
+/** Test-only: clear in-process touch throttle between cases. */
+export function resetTouchWsPresenceThrottleForTests() {
+  lastTouchWsPresenceByRoom.clear()
 }
 
 async function sleep(ms: number) {
@@ -158,7 +168,8 @@ export class RoomStateStore implements RoomStateStorePort {
   async delete(roomId: string) {
     const client = await getCommandClient()
     await client.del(roomLifecycleKeys(roomId))
-    getRoomBroadcastBus().clearRoom(roomId)
+    lastTouchWsPresenceByRoom.delete(roomId)
+    getRoomPublishPort()?.clearRoom(roomId)
   }
 
   async mergePresenceData(
@@ -306,8 +317,22 @@ export class RoomStateStore implements RoomStateStorePort {
     await client.del([keys.roomPresenceRef(roomId)])
   }
 
-  /** Refresh TTL while the room is active (all room-related keys). */
-  async touchWsPresence(roomId: string, _userId: string) {
+  /**
+   * Refresh TTL while the room is active (all room-related keys).
+   * Throttled to ~45s per roomId in-process; pass `{ force: true }` on join.
+   */
+  async touchWsPresence(
+    roomId: string,
+    _userId: string,
+    options?: { force?: boolean },
+  ) {
+    const now = Date.now()
+    if (!options?.force) {
+      const last = lastTouchWsPresenceByRoom.get(roomId) ?? 0
+      if (now - last < TOUCH_WS_PRESENCE_MIN_INTERVAL_MS) return
+    }
+    lastTouchWsPresenceByRoom.set(roomId, now)
+
     const client = await getCommandClient()
     const multi = client.multi()
     for (const key of roomLifecycleKeys(roomId)) {
@@ -402,6 +427,6 @@ export async function getRoomStateStore() {
   }
   await getCommandClient()
   await storeSingleton.seedDailyDefaultsIfEmpty()
-  getRoomBroadcastBus().attachStore(storeSingleton)
+  getRoomPublishPort()?.attachStore(storeSingleton)
   return storeSingleton
 }
