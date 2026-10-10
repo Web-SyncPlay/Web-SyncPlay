@@ -6,34 +6,12 @@ import {
   type RefObject,
   type SetStateAction,
 } from "react"
+import {
+  pendingSyncFromPlayback,
+  type PendingSyncState,
+} from "@/client/player/pending-sync"
 
-export interface PendingSyncState {
-  paused: boolean
-  playbackRate: number
-  timelineAnchorMs: number
-  serverNowMs: number
-  videoLoop: boolean
-}
-
-/** Build pending sync from room playback (string or boolean loop field). */
-export function pendingSyncFromPlayback(playback: {
-  paused: boolean
-  playbackRate: number
-  timelineAnchorMs: number
-  serverNowMs: number
-  videoLoop: string | boolean
-}): PendingSyncState {
-  return {
-    paused: playback.paused,
-    playbackRate: playback.playbackRate,
-    timelineAnchorMs: playback.timelineAnchorMs,
-    serverNowMs: playback.serverNowMs,
-    videoLoop:
-      typeof playback.videoLoop === "boolean"
-        ? playback.videoLoop
-        : playback.videoLoop !== "off",
-  }
-}
+export type { PendingSyncState }
 
 export function useBufferingWatchdog(config: {
   currentItem: { id: string; name: string } | null
@@ -108,13 +86,7 @@ export function useBufferingWatchdog(config: {
         })
 
         // Keep a sync state ready to apply after recovery/remount.
-        pendingSyncRef.current = {
-          paused: roomPlayback.paused,
-          playbackRate: roomPlayback.playbackRate,
-          timelineAnchorMs: roomPlayback.timelineAnchorMs,
-          serverNowMs: roomPlayback.serverNowMs,
-          videoLoop: roomPlayback.videoLoop !== "off",
-        }
+        pendingSyncRef.current = pendingSyncFromPlayback(roomPlayback)
 
         isMediaReadyRef.current = false
         setIsBuffering(true)

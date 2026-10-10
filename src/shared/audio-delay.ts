@@ -1,4 +1,4 @@
-import { clampNumber, readClampedNumberFromStorage } from "@/shared/storage-utils"
+import { clampNumber } from "@/shared/storage-utils"
 
 /** Local-only audio delay range (ms). Positive delays audio; negative advances it. */
 export const AUDIO_DELAY_MIN_MS = -2000
@@ -13,22 +13,6 @@ export function clampAudioDelayMs(value: number): number {
     AUDIO_DELAY_MAX_MS,
     DEFAULT_AUDIO_DELAY_MS,
   )
-}
-
-export function readAudioDelayMsFromStorage(): number {
-  return readClampedNumberFromStorage(AUDIO_DELAY_STORAGE_KEY, {
-    min: AUDIO_DELAY_MIN_MS,
-    max: AUDIO_DELAY_MAX_MS,
-    fallback: DEFAULT_AUDIO_DELAY_MS,
-  })
-}
-
-export function persistAudioDelayMs(delayMs: number): number {
-  const next = clampAudioDelayMs(delayMs)
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(AUDIO_DELAY_STORAGE_KEY, String(next))
-  }
-  return next
 }
 
 export function formatAudioDelayLabel(delayMs: number): string {

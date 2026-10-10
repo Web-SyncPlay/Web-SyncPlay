@@ -3,24 +3,24 @@ import {
   formatLogTimestamp,
   getActionLogDetails,
 } from "@/shared/log-format"
-import type { ActionLogEntry, ParticipantState } from "@/contracts/types"
+import type { ActionLogEntry } from "@/contracts/types"
 
 function resolveActorName(
   log: ActionLogEntry,
-  participants: Record<string, ParticipantState>,
+  participantUsernames: Record<string, string>,
 ): string {
   return (
     log.actorUsername ??
-    participants[log.actorUserId]?.username ??
+    participantUsernames[log.actorUserId] ??
     log.actorUserId
   )
 }
 
 export function LogList(props: {
   logs: ActionLogEntry[]
-  participants: Record<string, ParticipantState>
+  participantUsernames: Record<string, string>
 }) {
-  const { logs, participants } = props
+  const { logs, participantUsernames } = props
   // Newest first; toReversed avoids mutating the filtered array on each render.
   const ordered = logs.toReversed()
 
@@ -46,7 +46,7 @@ export function LogList(props: {
           </span>
           <span className="text-muted-foreground"> · </span>
           <span className="font-medium">
-            {resolveActorName(log, participants)}
+            {resolveActorName(log, participantUsernames)}
           </span>
           <span className="text-muted-foreground"> · </span>
           <span>{getActionLogDetails(log)}</span>

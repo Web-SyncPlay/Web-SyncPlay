@@ -7,7 +7,10 @@
 - **Layout:** `src/contracts` (schemas/types), `src/shared` (framework-agnostic helpers + `@/shared/test-utils` fixtures), `src/client/{realtime,local-media,player}`, `src/server/{realtime,redis,ws,security,media}`. Prefer these over legacy `src/lib` / `src/zod` (removed).
 - **Tests:** `bun run test:unit`, `test:integration`, `test:a11y`, `test:e2e`, `test:e2e:ws` (`test:integration` needs Valkey/`VALKEY_URL`; latter three need a healthy app; see CI). Client/UI tests should use `@/shared/test-utils` fixtures, not `@/server` fixtures, where practical.
 - **Optional deep run:** `bun run test:fuzz` — property/fuzz suite against Valkey; not part of CI (slow; run locally when changing presence/state-store invariants).
-- **Typecheck:** CI truth is `bun run typecheck` (TypeScript **7** via `@typescript/native`). The IDE uses the workspace `typescript` package → `@typescript/typescript6` (TS6); `.vscode/settings.json` sets `typescript.tsdk` to `node_modules/typescript/lib`. Prefer fixing issues that fail `typecheck`.
+- **Typecheck (dual TypeScript — IDE TS6 vs CI TS7):**
+  - **CI gate (source of truth):** `bun run typecheck` runs TypeScript **7** via `@typescript/native` (`bunx --package @typescript/native tsc -p tsconfig.json --noEmit`). Prefer fixing issues that fail this command — it is what gates PRs in the main CI `Test` job.
+  - **IDE / workspace:** the `typescript` dependency is aliased to `@typescript/typescript6` (TS **6**). `.vscode/settings.json` sets `typescript.tsdk` to `node_modules/typescript/lib` (and prompts to use the workspace SDK) so the editor matches local TS6, not the CI TS7 binary.
+  - **Optional advisory CI:** job **Typecheck (IDE TS6, advisory)** runs the same `tsc` as the IDE (`./node_modules/.bin/tsc -p tsconfig.json --noEmit`) with `continue-on-error`. It does not block merge or Docker; use it to spot IDE/CI drift. If TS6 and TS7 disagree, fix the CI TS7 failure first.
 
 ## Git Commits
 

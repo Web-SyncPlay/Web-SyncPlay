@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/tooltip"
 import type { RoomRailTab } from "@/hooks/use-room-rail"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
-import { cn } from "@/shared/utils"
+import { cn } from "@/components/lib/utils"
 import type { PublicRoomSecurityState } from "@/contracts/types"
 import {
   Check,

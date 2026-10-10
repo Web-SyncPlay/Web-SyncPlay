@@ -1,5 +1,5 @@
 import { extractMetadata } from "@/server/media/yt-dlp"
-import type { DailyDefaultVideo } from "@/server/realtime/ports"
+import type { DailyDefaultVideo } from "@/server/ports"
 
 /** Read path: never blocks on yt-dlp; missing titles fall back to the URL. */
 export function dailyDefaultsForRead(

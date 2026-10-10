@@ -1,7 +1,7 @@
 import { env } from "@/env"
 import {
   createDefaultRoomSecurity,
-  normalizeDefaultJoinRole,
+  normalizeRoomSecurity,
 } from "@/server/realtime/services/room-security"
 import {
   roomActionLogMaxAgeMs,
@@ -34,33 +34,12 @@ export function repairCleanupAndCheckRoomState(state: RoomState) {
     state.roomSecurity = createDefaultRoomSecurity()
     findings.push("room-security-repaired")
   } else {
-    state.roomSecurity = {
-      ...createDefaultRoomSecurity(),
-      ...state.roomSecurity,
-      joinPasswordEnabled: state.roomSecurity.joinPasswordEnabled === true,
-      joinPasswordUpdatedAt:
-        typeof state.roomSecurity.joinPasswordUpdatedAt === "number" &&
-        Number.isFinite(state.roomSecurity.joinPasswordUpdatedAt)
-          ? state.roomSecurity.joinPasswordUpdatedAt
-          : null,
-      admissionVersion:
-        typeof state.roomSecurity.admissionVersion === "number" &&
-        Number.isInteger(state.roomSecurity.admissionVersion) &&
-        state.roomSecurity.admissionVersion >= 0
-          ? state.roomSecurity.admissionVersion
-          : 0,
-      defaultJoinRole: normalizeDefaultJoinRole(
-        state.roomSecurity.defaultJoinRole,
-      ),
-    }
-    if (
-      state.roomSecurity.joinPasswordEnabled &&
+    const hadMissingSecret =
+      state.roomSecurity.joinPasswordEnabled === true &&
       (!state.roomSecurity.joinPasswordHash ||
         !state.roomSecurity.joinPasswordSalt)
-    ) {
-      state.roomSecurity.joinPasswordEnabled = false
-      state.roomSecurity.joinPasswordHash = undefined
-      state.roomSecurity.joinPasswordSalt = undefined
+    state.roomSecurity = normalizeRoomSecurity(state.roomSecurity)
+    if (hadMissingSecret) {
       findings.push("room-security-disabled-missing-secret")
     }
   }

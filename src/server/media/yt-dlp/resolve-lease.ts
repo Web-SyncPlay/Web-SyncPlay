@@ -1,16 +1,10 @@
 import { env } from "@/env"
+import { RENEW_SCRIPT } from "@/server/media/yt-dlp/lease-lua"
 import { recordYtDlpMetric } from "@/server/media/yt-dlp/metrics"
 import { derivedResolveLeaseTtlSeconds } from "@/server/media/yt-dlp/policy"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
 import { randomUUID } from "node:crypto"
-
-const RENEW_SCRIPT = `
-if redis.call("GET", KEYS[1]) == ARGV[1] then
-  return redis.call("EXPIRE", KEYS[1], ARGV[2])
-end
-return 0
-`
 
 function timeoutMs(): number {
   const raw = env.YTDLP_TIMEOUT_MS

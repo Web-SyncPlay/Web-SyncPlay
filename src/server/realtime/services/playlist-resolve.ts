@@ -5,7 +5,7 @@ import {
   type ResolvedMedia,
 } from "@/server/media/resolve"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
-import type { RoomStateStorePort } from "@/server/realtime/ports"
+import type { RoomStateStorePort } from "@/server/ports"
 import { bumpRoomRevisions } from "@/server/realtime/services/timeline"
 import { sanitizeMediaTitle } from "@/shared/sanitize-display"
 import type { PlaylistItem, RoomState } from "@/contracts/types"

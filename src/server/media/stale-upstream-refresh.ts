@@ -1,6 +1,6 @@
 import type { ProxyTokenPayload } from "@/server/media/proxy-token"
 import { recordYtDlpMetric } from "@/server/media/yt-dlp/metrics"
-import { getMediaMaintenancePort } from "@/server/realtime/ports"
+import { getMediaMaintenancePort } from "@/server/ports"
 import { getRoomStateStore } from "@/server/redis/state-store"
 import { consumeRateLimit } from "@/server/security/rate-limit"
 

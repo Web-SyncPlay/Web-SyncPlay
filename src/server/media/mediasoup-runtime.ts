@@ -104,7 +104,7 @@ export async function ensureMediasoupRuntime(): Promise<Runtime | null> {
         notifyWorkerDied()
       })
 
-      const announced = getPublicHostname()
+      const announced = getPublicHostname(env.PUBLIC_DOMAIN)
       const webRtcServer = await worker.createWebRtcServer({
         listenInfos: [
           {

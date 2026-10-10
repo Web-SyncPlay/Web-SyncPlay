@@ -1,4 +1,8 @@
 import { env } from "@/env"
+import {
+  RELEASE_SCRIPT,
+  RENEW_SCRIPT,
+} from "@/server/media/yt-dlp/lease-lua"
 import { recordYtDlpMetric } from "@/server/media/yt-dlp/metrics"
 import {
   derivedExtractFailoverWaitMs,
@@ -9,20 +13,6 @@ import { keys } from "@/server/redis/keys"
 import { randomUUID } from "node:crypto"
 
 const WAIT_POLL_MS = 150
-
-const RENEW_SCRIPT = `
-if redis.call("GET", KEYS[1]) == ARGV[1] then
-  return redis.call("EXPIRE", KEYS[1], ARGV[2])
-end
-return 0
-`
-
-const RELEASE_SCRIPT = `
-if redis.call("GET", KEYS[1]) == ARGV[1] then
-  return redis.call("DEL", KEYS[1])
-end
-return 0
-`
 
 /** Per-process single-flight when Valkey lock is unavailable. */
 const localInflightByHash = new Map<string, Promise<unknown>>()

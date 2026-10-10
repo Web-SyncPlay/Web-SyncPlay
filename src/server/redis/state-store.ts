@@ -9,7 +9,7 @@ import {
   getRoomPublishPort,
   type DailyDefaultVideo,
   type RoomStateStorePort,
-} from "@/server/realtime/ports"
+} from "@/server/ports"
 import {
   roomStateTtlSeconds,
   type PresencePatch,
@@ -75,6 +75,69 @@ else
 end
 redis.call('EXPIRE', KEYS[1], tonumber(ARGV[4]))
 return remaining
+`
+
+/**
+ * Atomic presence-data merge: HGET → shallow merge → HSET + EXPIRE.
+ * Concurrent patches cannot clobber unrelated fields.
+ * `localPlayback` / `localPlaybackReports` keep existing when the patch omits
+ * them or sends JSON null (matches JS `??` semantics; not a deep key merge).
+ * KEYS[1]=hash  ARGV[1]=userId  ARGV[2]=patchJson  ARGV[3]=ttlSeconds
+ * Returns 1 on success.
+ */
+const PRESENCE_MERGE_SCRIPT = `
+pcall(function()
+  cjson.encode_empty_table_as_object(true)
+end)
+
+local raw = redis.call('HGET', KEYS[1], ARGV[1])
+local existing = {}
+if raw and raw ~= '' then
+  local ok, parsed = pcall(cjson.decode, raw)
+  if ok and type(parsed) == 'table' then
+    existing = parsed
+  end
+end
+
+local okPatch, patch = pcall(cjson.decode, ARGV[2])
+if not okPatch or type(patch) ~= 'table' then
+  return redis.error_reply('mergePresenceData: invalid patch JSON')
+end
+
+local merged = {}
+for k, v in pairs(existing) do
+  merged[k] = v
+end
+for k, v in pairs(patch) do
+  merged[k] = v
+end
+
+local function is_nullish(v)
+  return v == nil or v == cjson.null
+end
+
+if is_nullish(patch['localPlayback']) then
+  merged['localPlayback'] = existing['localPlayback']
+else
+  merged['localPlayback'] = patch['localPlayback']
+end
+
+if is_nullish(patch['localPlaybackReports']) then
+  merged['localPlaybackReports'] = existing['localPlaybackReports']
+else
+  merged['localPlaybackReports'] = patch['localPlaybackReports']
+end
+
+if is_nullish(merged['localPlayback']) then
+  merged['localPlayback'] = nil
+end
+if is_nullish(merged['localPlaybackReports']) then
+  merged['localPlaybackReports'] = nil
+end
+
+redis.call('HSET', KEYS[1], ARGV[1], cjson.encode(merged))
+redis.call('EXPIRE', KEYS[1], tonumber(ARGV[3]))
+return 1
 `
 
 function parseJson<T>(raw: string): T {
@@ -179,19 +242,10 @@ export class RoomStateStore implements RoomStateStorePort {
   ) {
     const client = await getCommandClient()
     const hkey = keys.roomPresenceData(roomId)
-    const existingRaw = await client.hGet(hkey, userId)
-    const existing = existingRaw
-      ? (tryParseJson<PresencePatch>(existingRaw) ?? {})
-      : {}
-    const merged: PresencePatch = {
-      ...existing,
-      ...patch,
-      localPlayback: patch.localPlayback ?? existing.localPlayback,
-      localPlaybackReports:
-        patch.localPlaybackReports ?? existing.localPlaybackReports,
-    }
-    await client.hSet(hkey, { [userId]: JSON.stringify(merged) })
-    await client.expire(hkey, roomStateTtlSeconds)
+    await client.eval(PRESENCE_MERGE_SCRIPT, {
+      keys: [hkey],
+      arguments: [userId, JSON.stringify(patch), String(roomStateTtlSeconds)],
+    })
   }
 
   async getPresenceDataAll(roomId: string) {

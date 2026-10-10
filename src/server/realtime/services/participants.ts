@@ -1,5 +1,5 @@
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
-import type { RoomStateStorePort } from "@/server/realtime/ports"
+import type { RoomStateStorePort } from "@/server/ports"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
 import type { RoomState } from "@/contracts/types"

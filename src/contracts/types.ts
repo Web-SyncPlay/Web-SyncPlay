@@ -1,4 +1,25 @@
-import type { z } from "zod"
+import type {
+  actionLogEntrySchema,
+  admissionChangedPayloadSchema,
+  ingestStatusSchema,
+  localPlaybackSchema,
+  participantStateSchema,
+  playbackModeSchema,
+  playbackStateSchema,
+  playlistBlockedReasonSchema,
+  playlistItemSchema,
+  playlistMediaStreamKindSchema,
+  playlistMediaStreamSchema,
+  playlistSourceKindSchema,
+  playlistTextTrackSchema,
+  presenceBatchPayloadSchema,
+  presencePatchSchema,
+  publicRoomSecuritySchema,
+  roomControlPayloadSchema,
+  roomSnapshotPayloadSchema,
+  viewerMediaItemPreferenceSchema,
+  viewerMediaPreferencesStateSchema,
+} from "@/contracts/s2c"
 import type {
   defaultJoinRoleSchema,
   loopModeSchema,
@@ -7,6 +28,7 @@ import type {
   sessionCapabilitiesSchema,
   sessionKindSchema,
 } from "@/contracts/schemas"
+import type { z } from "zod"
 
 /** Inferred from Zod so wire schemas and domain types cannot drift. */
 export type RoomRole = z.infer<typeof roomRoleSchema>
@@ -18,158 +40,52 @@ export type RoomJoinRejectedReason = z.infer<
   typeof roomJoinRejectedReasonSchema
 >
 
-export type PlaylistSourceKind = "remote_url" | "local_file"
-export type PlaybackMode = "direct" | "relay"
-export type IngestStatus = "ready" | "resolving" | "error"
-export type PlaylistBlockedReason = "local_owner_offline"
-export type PlaylistMediaStreamKind = "adaptive" | "combined"
+export type PlaylistSourceKind = z.infer<typeof playlistSourceKindSchema>
+export type PlaybackMode = z.infer<typeof playbackModeSchema>
+export type IngestStatus = z.infer<typeof ingestStatusSchema>
+export type PlaylistBlockedReason = z.infer<typeof playlistBlockedReasonSchema>
+export type PlaylistMediaStreamKind = z.infer<
+  typeof playlistMediaStreamKindSchema
+>
 
-export interface PlaylistMediaStream {
-  id: string
-  src: string
-  type?: string
-  protocol?: string
-  width?: number
-  height?: number
-  bitrate?: number
-  audioBitrate?: number
-  label?: string
-  isDefault?: boolean
-  kind?: PlaylistMediaStreamKind
-  vcodec?: string
-  acodec?: string
-  audioLanguage?: string
-}
+export type PlaylistMediaStream = z.infer<typeof playlistMediaStreamSchema>
+export type PlaylistTextTrack = z.infer<typeof playlistTextTrackSchema>
+export type PlaylistItem = z.infer<typeof playlistItemSchema>
 
-export interface PlaylistTextTrack {
-  id: string
-  src: string
-  label: string
-  language?: string
-  kind?: "captions" | "subtitles" | "chapters" | "descriptions" | "metadata"
-  type?: string
-  isDefault?: boolean
-}
+export type ViewerMediaItemPreference = z.infer<
+  typeof viewerMediaItemPreferenceSchema
+>
+export type ViewerMediaPreferences = z.infer<
+  typeof viewerMediaPreferencesStateSchema
+>
 
-export interface PlaylistItem {
-  id: string
-  name: string
-  sourceKind: PlaylistSourceKind
-  playbackMode: PlaybackMode
-  sourceUrl: string
-  playableUrl: string
-  durationSeconds?: number
-  ingestStatus?: IngestStatus
-  ingestError?: string
-  blockedReason?: PlaylistBlockedReason
-  mediaStreams?: PlaylistMediaStream[]
-  textTracks?: PlaylistTextTrack[]
-  /** Resolve-time catalog default (not room-wide viewer selection). */
-  defaultStreamId?: string
-  /** Resolve-time catalog default caption (not room-wide viewer selection). */
-  defaultTextTrackId?: string
-  /** From yt-dlp when resolve succeeds (live broadcast vs VOD). */
-  isLive?: boolean
-  localMediaId?: string
-  localOriginUserId?: string
-  localMimeType?: string
-  localSizeBytes?: number
-  createdBy: string
-  createdAt: number
-}
+export type ParticipantLocalPlayback = z.infer<typeof localPlaybackSchema>
+export type ParticipantState = z.infer<typeof participantStateSchema>
 
-export interface ViewerMediaItemPreference {
-  streamId?: string
-  textTrackId?: string | null
-  audioLanguage?: string
-}
-
-export interface ViewerMediaPreferences {
-  /** Cap enforced server-side (e.g. last 32 item ids). */
-  byItemId: Record<string, ViewerMediaItemPreference>
-}
-
-export interface ParticipantState {
-  userId: string
-  username: string
-  avatarStyle: string
-  role: RoomRole
-  connected: boolean
-  joinedAt?: number
-  connectedAt?: number
-  disconnectedAt?: number
-  lastSeenAt?: number
-  localPlayback: {
-    paused: boolean
-    currentTimeMs: number
-    loading: boolean
-    error?: string
-    updatedAt: number
-  }
-  viewerMedia?: ViewerMediaPreferences
-}
-
-export interface PlaybackState {
-  mediaId?: string
-  paused: boolean
-  playbackRate: number
-  timelineAnchorMs: number
-  serverNowMs: number
-  videoLoop: LoopMode
-  playlistLoop: LoopMode
-  seekPreview?: {
-    userId: string
-    targetMs: number
-    active: boolean
-    updatedAt: number
-  }
-}
-
-export interface ActionLogEntry {
-  id: string
-  at: number
-  roomId: string
-  actorUserId: string
-  actorUsername?: string
-  action: string
-  payload: Record<string, unknown>
-  error?: string
-}
+export type PlaybackState = z.infer<typeof playbackStateSchema>
+export type ActionLogEntry = z.infer<typeof actionLogEntrySchema>
 
 /** Client-safe security fields (no password material). */
-export interface PublicRoomSecurityState {
-  joinPasswordEnabled: boolean
-  joinPasswordUpdatedAt: number | null
-  admissionVersion: number
-  /** Role assigned to first-time joiners (owner always stays owner). */
-  defaultJoinRole: DefaultJoinRole
-}
+export type PublicRoomSecurityState = z.infer<typeof publicRoomSecuritySchema>
 
 /** Server/persisted security; includes hash/salt used only server-side. */
-export interface RoomSecurityState extends PublicRoomSecurityState {
+export type RoomSecurityState = PublicRoomSecurityState & {
   joinPasswordHash?: string
   joinPasswordSalt?: string
 }
 
-export interface RoomState {
-  roomId: string
-  ownerId: string
+/** Snapshot after sanitize: public security only (no joinPasswordHash/Salt). */
+export type RoomSnapshotPayload = z.infer<typeof roomSnapshotPayloadSchema>
+
+/**
+ * Client-held room state (UI / socket merge). Same as a sanitized snapshot —
+ * never includes join password hash/salt.
+ */
+export type ClientRoomState = RoomSnapshotPayload
+
+/** Server/persisted room state (may include password hash/salt). */
+export type RoomState = Omit<RoomSnapshotPayload, "roomSecurity"> & {
   roomSecurity: RoomSecurityState
-  playback: PlaybackState
-  playlist: PlaylistItem[]
-  currentIndex: number
-  participants: Record<string, ParticipantState>
-  actionLog: ActionLogEntry[]
-  updatedAt: number
-  /** Bumps on every persisted room write (control or structural). */
-  generation: number
-  /** Bumps when playlist / identity / security / logs change (snapshot-worthy). */
-  structuralRevision: number
-  /**
-   * Last applied `presence:batch` revision (client watermark).
-   * Optional so older snapshots / server state without the field still merge.
-   */
-  presenceRevision?: number
 }
 
 /** One media-playing socket's local playback sample (server-side only). */
@@ -182,14 +98,15 @@ export interface LocalPlaybackReport {
   updatedAt: number
 }
 
-/** Per-user fields carried on the coalesced presence channel. */
-export interface PresencePatch {
-  connected?: boolean
-  lastSeenAt?: number
-  disconnectedAt?: number
-  username?: string
-  avatarStyle?: string
-  localPlayback?: ParticipantState["localPlayback"]
+/** Wire presence patch fields (S2C / client merge). */
+export type PresencePatchWire = z.infer<typeof presencePatchSchema>
+
+/**
+ * Per-user fields carried on the coalesced presence channel / Redis.
+ * Extends the S2C wire patch with server-only `localPlaybackReports`
+ * (stripped before client broadcast — never validated by presencePatchSchema).
+ */
+export type PresencePatch = PresencePatchWire & {
   /**
    * Per-connection playback samples used to aggregate `localPlayback`.
    * Stored in Redis; stripped before client broadcast.
@@ -197,39 +114,11 @@ export interface PresencePatch {
   localPlaybackReports?: Record<string, LocalPlaybackReport>
 }
 
-export interface RoomControlPayload {
-  generation: number
-  playback: PlaybackState
-  currentIndex: number
-  updatedAt: number
-}
-
-export interface PresenceBatchPayload {
-  presenceRevision: number
-  participants: Record<string, PresencePatch>
-  serverNowMs: number
-}
-
-/**
- * Published when join-password set/clear bumps admissionVersion.
- * Non-owners are force-disconnected and must re-admit.
- */
-export interface AdmissionChangedPayload {
-  admissionVersion: number
-  ownerId: string
-  joinPasswordEnabled: boolean
-}
-
-/** Snapshot after sanitize: public security only (no joinPasswordHash/Salt). */
-export type RoomSnapshotPayload = Omit<RoomState, "roomSecurity"> & {
-  roomSecurity: PublicRoomSecurityState
-}
-
-/**
- * Client-held room state (UI / socket merge). Same as a sanitized snapshot —
- * never includes join password hash/salt.
- */
-export type ClientRoomState = RoomSnapshotPayload
+export type RoomControlPayload = z.infer<typeof roomControlPayloadSchema>
+export type PresenceBatchPayload = z.infer<typeof presenceBatchPayloadSchema>
+export type AdmissionChangedPayload = z.infer<
+  typeof admissionChangedPayloadSchema
+>
 
 export interface WsEnvelope<T extends string, P> {
   type: T

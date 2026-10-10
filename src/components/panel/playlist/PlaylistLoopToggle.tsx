@@ -6,7 +6,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { cn } from "@/shared/utils"
+import { cn } from "@/components/lib/utils"
 import type { LoopMode } from "@/contracts/types"
 import { Repeat, Repeat1, RepeatOff } from "lucide-react"
 

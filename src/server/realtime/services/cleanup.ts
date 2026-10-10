@@ -1,6 +1,6 @@
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { destroyRoom } from "@/server/realtime/services/disconnect"
-import type { RoomStateStorePort } from "@/server/realtime/ports"
+import type { RoomStateStorePort } from "@/server/ports"
 import { transferOwnershipIfNeeded } from "./ownership"
 import {
   clearPrune,

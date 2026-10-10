@@ -2,7 +2,7 @@ import type { SyncablePlayer } from "@/client/player/apply-playback-sync"
 import {
   queryPlayerMediaElement,
   readPlayerSeekableEndSec,
-} from "@/shared/player-utils"
+} from "@/shared/dom/player-utils"
 import type { MediaPlayerInstance } from "@vidstack/react"
 
 /** Adapt a Vidstack player instance for the pure PlaybackSyncEngine. */

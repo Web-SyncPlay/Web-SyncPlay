@@ -14,7 +14,7 @@ import { removeSocket } from "@/server/ws/registry"
 import { attachWebSocketTransport } from "@/server/ws/transport"
 import type { Server as HttpServer } from "node:http"
 import type { WebSocket } from "ws"
-import type { RoomStateStorePort } from "./ports"
+import type { RoomStateStorePort } from "@/server/ports"
 import { handleSocketMessage } from "./socket-dispatch"
 
 export async function createRealtimeServer(server: HttpServer) {

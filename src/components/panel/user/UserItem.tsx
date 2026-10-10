@@ -1,7 +1,7 @@
 import { useInlineEdit } from "@/hooks/use-inline-edit"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import { formatClockMs, formatRelativeLastSeen } from "@/shared/time-format"
-import { cn } from "@/shared/utils"
+import { cn } from "@/components/lib/utils"
 import type { ParticipantState } from "@/contracts/types"
 import { Badge } from "../../ui/badge"
 import { Input } from "../../ui/input"

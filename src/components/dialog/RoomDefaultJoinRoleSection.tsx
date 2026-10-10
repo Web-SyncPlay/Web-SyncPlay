@@ -9,7 +9,7 @@ import {
   FieldTitle,
 } from "@/components/ui/field"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
-import { cn } from "@/shared/utils"
+import { cn } from "@/components/lib/utils"
 import type { DefaultJoinRole, PublicRoomSecurityState } from "@/contracts/types"
 import { Shield } from "lucide-react"
 

@@ -1,6 +1,6 @@
 import {
   pendingSyncFromPlayback,
-} from "./use-buffering-watchdog"
+} from "@/client/player/pending-sync"
 import { SEEK_ACK_MATCH_THRESHOLD_MS } from "../playback-control/use-playback-timeline-controller"
 import type { SyncedMediaPlayerHandlerDeps } from "./synced-media-player-handler-types"
 

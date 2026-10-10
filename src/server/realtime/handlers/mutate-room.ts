@@ -7,7 +7,7 @@ import {
 } from "@/server/realtime/services/participants"
 import { applyRoomStateRepair } from "@/server/realtime/services/room-state-repair"
 import { markCurrentMedia } from "@/server/realtime/services/timeline"
-import type { RoomStateStorePort } from "@/server/realtime/ports"
+import type { RoomStateStorePort } from "@/server/ports"
 import type { RoomState } from "@/contracts/types"
 
 function bumpsStructuralRevision(hint: RoomPublishHint): boolean {

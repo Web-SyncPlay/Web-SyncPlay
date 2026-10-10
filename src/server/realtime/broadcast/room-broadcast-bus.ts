@@ -1,7 +1,7 @@
 import {
   setRoomPublishPort,
   type RoomStateStorePort,
-} from "@/server/realtime/ports"
+} from "@/server/ports"
 import type {
   AdmissionChangedPayload,
   PresencePatch,

@@ -106,6 +106,27 @@ jobs:
           fi
           pkill -f "next start" || true
 
+  # Advisory only: workspace typescript → @typescript/typescript6 (IDE). Does not gate PRs/Docker.
+  # CI truth remains `bun run typecheck` (TS7 via @typescript/native) in the Test job above.
+  typecheck-ide:
+    name: Typecheck (IDE TS6, advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck with workspace TypeScript 6
+        run: ./node_modules/.bin/tsc -p tsconfig.json --noEmit
+
   docker:
     name: Docker (${{ matrix.platform }})
     needs: test

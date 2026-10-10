@@ -20,6 +20,7 @@ export default defineConfig([
     "**/build/**",
     "**/dist/**",
     ".next/**",
+    ".worktrees/**",
     "public/vendor/**",
     "src/components/ui/**",
     "next-env.d.ts",
@@ -43,9 +44,14 @@ export default defineConfig([
     },
   },
   // Pure shared / contracts: no React, no client/server UI layers.
+  // `src/shared/dom/**` is the intentional browser boundary (see that folder's README).
   {
     files: ["src/shared/**/*.{ts,tsx}", "src/contracts/**/*.{ts,tsx}"],
-    ignores: ["**/*.{test,spec}.{ts,tsx}", "**/*.property.test.ts"],
+    ignores: [
+      "src/shared/dom/**",
+      "**/*.{test,spec}.{ts,tsx}",
+      "**/*.property.test.ts",
+    ],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -71,9 +77,72 @@ export default defineConfig([
                 "@/components/*",
                 "@/hooks",
                 "@/hooks/*",
+                "@/shared/dom",
+                "@/shared/dom/*",
               ],
               message:
-                "shared/contracts must not import server, client, components, or hooks.",
+                "shared/contracts must not import server, client, components, hooks, or shared/dom.",
+            },
+          ],
+        },
+      ],
+      "no-restricted-globals": [
+        "error",
+        {
+          name: "window",
+          message:
+            "Pure shared must not use window; put browser helpers in src/shared/dom/ or src/client/.",
+        },
+        {
+          name: "document",
+          message:
+            "Pure shared must not use document; put browser helpers in src/shared/dom/ or src/client/.",
+        },
+        {
+          name: "localStorage",
+          message:
+            "Pure shared must not use localStorage; put browser helpers in src/shared/dom/ or src/client/.",
+        },
+        {
+          name: "sessionStorage",
+          message:
+            "Pure shared must not use sessionStorage; put browser helpers in src/shared/dom/ or src/client/.",
+        },
+      ],
+    },
+  },
+  // Browser-boundary shared helpers may use DOM globals; still no React/server/UI.
+  {
+    files: ["src/shared/dom/**/*.{ts,tsx}"],
+    ignores: ["**/*.{test,spec}.{ts,tsx}", "**/*.property.test.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "react",
+              message: "shared/dom must stay framework-agnostic.",
+            },
+            {
+              name: "react-dom",
+              message: "shared/dom must stay framework-agnostic.",
+            },
+          ],
+          patterns: [
+            {
+              group: [
+                "@/server",
+                "@/server/*",
+                "@/client",
+                "@/client/*",
+                "@/components",
+                "@/components/*",
+                "@/hooks",
+                "@/hooks/*",
+              ],
+              message:
+                "shared/dom must not import server, client, components, or hooks.",
             },
           ],
         },

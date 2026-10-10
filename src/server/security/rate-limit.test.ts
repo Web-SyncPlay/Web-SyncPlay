@@ -146,6 +146,49 @@ function createIncrMock(opts?: {
   }
 }
 
+/** In-memory stand-in for the Redis Lua token-bucket script. */
+function createTokenBucketEvalMock(opts?: {
+  fail?: boolean
+  buckets?: Map<string, { tokens: number; updatedAtMs: number }>
+}) {
+  const buckets =
+    opts?.buckets ?? new Map<string, { tokens: number; updatedAtMs: number }>()
+  return {
+    incr: async () => 1,
+    expire: async () => true,
+    eval: async (
+      _script: string,
+      params: { keys: string[]; arguments: string[] },
+    ) => {
+      if (opts?.fail) throw new Error("redis down")
+      const key = params.keys[0]!
+      const capacity = Number(params.arguments[0])
+      const refillPerSecond = Number(params.arguments[1])
+      const nowMs = Number(params.arguments[2])
+      const cost = Number(params.arguments[3])
+
+      let bucket = buckets.get(key)
+      if (!bucket) {
+        bucket = { tokens: capacity, updatedAtMs: nowMs }
+        buckets.set(key, bucket)
+      } else {
+        const elapsedSec = Math.max(0, (nowMs - bucket.updatedAtMs) / 1000)
+        bucket.tokens = Math.min(
+          capacity,
+          bucket.tokens + elapsedSec * refillPerSecond,
+        )
+        bucket.updatedAtMs = nowMs
+      }
+
+      if (bucket.tokens < cost) {
+        return [0, Math.floor(bucket.tokens)]
+      }
+      bucket.tokens -= cost
+      return [1, Math.floor(bucket.tokens)]
+    },
+  }
+}
+
 afterEach(async () => {
   mock.restore()
   const { resetTokenBucketsForTests } = await import("./rate-limit")
@@ -222,8 +265,127 @@ describe("consumeTokenBucket", () => {
   })
 })
 
+function mockRedisTokenBucketClient(opts?: {
+  fail?: boolean
+  buckets?: Map<string, { tokens: number; updatedAtMs: number }>
+}) {
+  const client = createTokenBucketEvalMock(opts)
+  mock.module("@/server/redis/client", () => ({
+    getCommandClient: async () => client,
+  }))
+  return client
+}
+
+describe("consumeRedisTokenBucket", () => {
+  test("allows under capacity and denies when empty", async () => {
+    mockRedisTokenBucketClient()
+
+    const { consumeRedisTokenBucket } = await import("./rate-limit")
+    const key = "tb:redis:a"
+    expect(
+      await consumeRedisTokenBucket({
+        key,
+        capacity: 2,
+        refillPerSecond: 0,
+        nowMs: 1_000,
+      }),
+    ).toEqual({ allowed: true, remaining: 1 })
+    expect(
+      await consumeRedisTokenBucket({
+        key,
+        capacity: 2,
+        refillPerSecond: 0,
+        nowMs: 1_000,
+      }),
+    ).toEqual({ allowed: true, remaining: 0 })
+    expect(
+      await consumeRedisTokenBucket({
+        key,
+        capacity: 2,
+        refillPerSecond: 0,
+        nowMs: 1_000,
+      }),
+    ).toEqual({ allowed: false, remaining: 0 })
+  })
+
+  test("refills over time up to capacity", async () => {
+    mockRedisTokenBucketClient()
+
+    const { consumeRedisTokenBucket } = await import("./rate-limit")
+    const key = "tb:redis:refill"
+    expect(
+      (
+        await consumeRedisTokenBucket({
+          key,
+          capacity: 2,
+          refillPerSecond: 10,
+          nowMs: 0,
+        })
+      ).allowed,
+    ).toBe(true)
+    expect(
+      (
+        await consumeRedisTokenBucket({
+          key,
+          capacity: 2,
+          refillPerSecond: 10,
+          nowMs: 0,
+        })
+      ).allowed,
+    ).toBe(true)
+    expect(
+      (
+        await consumeRedisTokenBucket({
+          key,
+          capacity: 2,
+          refillPerSecond: 10,
+          nowMs: 0,
+        })
+      ).allowed,
+    ).toBe(false)
+
+    expect(
+      await consumeRedisTokenBucket({
+        key,
+        capacity: 2,
+        refillPerSecond: 10,
+        nowMs: 200,
+      }),
+    ).toEqual({ allowed: true, remaining: 1 })
+  })
+
+  test("denies by default when Redis is unavailable", async () => {
+    mockRedisTokenBucketClient({ fail: true })
+
+    const { consumeRedisTokenBucket } = await import("./rate-limit")
+    expect(
+      await consumeRedisTokenBucket({
+        key: "tb:fail-closed",
+        capacity: 10,
+        refillPerSecond: 1,
+      }),
+    ).toEqual({ allowed: false, remaining: 0 })
+  })
+
+  test("allows when failOpen is true and Redis is unavailable", async () => {
+    mockRedisTokenBucketClient({ fail: true })
+
+    const { consumeRedisTokenBucket } = await import("./rate-limit")
+    expect(
+      await consumeRedisTokenBucket({
+        key: "tb:fail-open",
+        capacity: 10,
+        refillPerSecond: 1,
+        failOpen: true,
+      }),
+    ).toEqual({ allowed: true, remaining: 10 })
+  })
+})
+
 describe("consumeHotWsEventLimit", () => {
   test("trips seek:preview after burst for the same room+user", async () => {
+    mockRedisTokenBucketClient()
+
     const {
       HOT_WS_EVENT_LIMITS,
       consumeHotWsEventLimit,
@@ -235,7 +397,7 @@ describe("consumeHotWsEventLimit", () => {
     let allowed = 0
     let denied = 0
     for (let i = 0; i < capacity + 5; i++) {
-      const result = consumeHotWsEventLimit({
+      const result = await consumeHotWsEventLimit({
         type: "seek:preview",
         roomId,
         userId,
@@ -252,82 +414,102 @@ describe("consumeHotWsEventLimit", () => {
   })
 
   test("isolates keys by event type and room/user", async () => {
+    mockRedisTokenBucketClient()
+
     const { HOT_WS_EVENT_LIMITS, consumeHotWsEventLimit } =
       await import("./rate-limit")
     const nowMs = 5_000
     for (let i = 0; i < HOT_WS_EVENT_LIMITS["playback:seek"].capacity; i++) {
       expect(
-        consumeHotWsEventLimit({
+        (
+          await consumeHotWsEventLimit({
+            type: "playback:seek",
+            roomId: "r1",
+            userId: "u1",
+            nowMs,
+          })
+        ).allowed,
+      ).toBe(true)
+    }
+    expect(
+      (
+        await consumeHotWsEventLimit({
           type: "playback:seek",
           roomId: "r1",
           userId: "u1",
           nowMs,
-        }).allowed,
-      ).toBe(true)
-    }
-    expect(
-      consumeHotWsEventLimit({
-        type: "playback:seek",
-        roomId: "r1",
-        userId: "u1",
-        nowMs,
-      }).allowed,
+        })
+      ).allowed,
     ).toBe(false)
     expect(
-      consumeHotWsEventLimit({
-        type: "playback:seek",
-        roomId: "r1",
-        userId: "u2",
-        nowMs,
-      }).allowed,
+      (
+        await consumeHotWsEventLimit({
+          type: "playback:seek",
+          roomId: "r1",
+          userId: "u2",
+          nowMs,
+        })
+      ).allowed,
     ).toBe(true)
     expect(
-      consumeHotWsEventLimit({
-        type: "participant:update",
-        roomId: "r1",
-        userId: "u1",
-        nowMs,
-      }).allowed,
+      (
+        await consumeHotWsEventLimit({
+          type: "participant:update",
+          roomId: "r1",
+          userId: "u1",
+          nowMs,
+        })
+      ).allowed,
     ).toBe(true)
   })
 
   test("unknown event types are not limited", async () => {
     const { consumeHotWsEventLimit } = await import("./rate-limit")
     expect(
-      consumeHotWsEventLimit({
-        type: "playlist:select",
-        roomId: "r1",
-        userId: "u1",
-      }).allowed,
+      (
+        await consumeHotWsEventLimit({
+          type: "playlist:select",
+          roomId: "r1",
+          userId: "u1",
+        })
+      ).allowed,
     ).toBe(true)
   })
 
   test("trips participant:update presence floods for the same room+user", async () => {
+    mockRedisTokenBucketClient()
+
     const { HOT_WS_EVENT_LIMITS, consumeHotWsEventLimit } =
       await import("./rate-limit")
     const { capacity } = HOT_WS_EVENT_LIMITS["participant:update"]
     const nowMs = 9_000
     for (let i = 0; i < capacity; i++) {
       expect(
-        consumeHotWsEventLimit({
+        (
+          await consumeHotWsEventLimit({
+            type: "participant:update",
+            roomId: "r-presence",
+            userId: "u-presence",
+            nowMs,
+          })
+        ).allowed,
+      ).toBe(true)
+    }
+    expect(
+      (
+        await consumeHotWsEventLimit({
           type: "participant:update",
           roomId: "r-presence",
           userId: "u-presence",
           nowMs,
-        }).allowed,
-      ).toBe(true)
-    }
-    expect(
-      consumeHotWsEventLimit({
-        type: "participant:update",
-        roomId: "r-presence",
-        userId: "u-presence",
-        nowMs,
-      }).allowed,
+        })
+      ).allowed,
     ).toBe(false)
   })
 
   test("limits local-media:webrtc:signal and sfu:create-transport", async () => {
+    mockRedisTokenBucketClient()
+
     const { HOT_WS_EVENT_LIMITS, consumeHotWsEventLimit, hotWsEventRateKey } =
       await import("./rate-limit")
     const nowMs = 12_000
@@ -335,21 +517,25 @@ describe("consumeHotWsEventLimit", () => {
     const webrtcCap = HOT_WS_EVENT_LIMITS["local-media:webrtc:signal"].capacity
     for (let i = 0; i < webrtcCap; i++) {
       expect(
-        consumeHotWsEventLimit({
+        (
+          await consumeHotWsEventLimit({
+            type: "local-media:webrtc:signal",
+            roomId: "r-rtc",
+            userId: "u-rtc",
+            nowMs,
+          })
+        ).allowed,
+      ).toBe(true)
+    }
+    expect(
+      (
+        await consumeHotWsEventLimit({
           type: "local-media:webrtc:signal",
           roomId: "r-rtc",
           userId: "u-rtc",
           nowMs,
-        }).allowed,
-      ).toBe(true)
-    }
-    expect(
-      consumeHotWsEventLimit({
-        type: "local-media:webrtc:signal",
-        roomId: "r-rtc",
-        userId: "u-rtc",
-        nowMs,
-      }).allowed,
+        })
+      ).allowed,
     ).toBe(false)
     expect(hotWsEventRateKey("local-media:webrtc:signal", "r-rtc", "u-rtc")).toBe(
       "ws:local-media-webrtc-signal:r-rtc:u-rtc",
@@ -359,21 +545,25 @@ describe("consumeHotWsEventLimit", () => {
       HOT_WS_EVENT_LIMITS["local-media:sfu:create-transport"].capacity
     for (let i = 0; i < sfuCap; i++) {
       expect(
-        consumeHotWsEventLimit({
+        (
+          await consumeHotWsEventLimit({
+            type: "local-media:sfu:create-transport",
+            roomId: "r-sfu",
+            userId: "u-sfu",
+            nowMs,
+          })
+        ).allowed,
+      ).toBe(true)
+    }
+    expect(
+      (
+        await consumeHotWsEventLimit({
           type: "local-media:sfu:create-transport",
           roomId: "r-sfu",
           userId: "u-sfu",
           nowMs,
-        }).allowed,
-      ).toBe(true)
-    }
-    expect(
-      consumeHotWsEventLimit({
-        type: "local-media:sfu:create-transport",
-        roomId: "r-sfu",
-        userId: "u-sfu",
-        nowMs,
-      }).allowed,
+        })
+      ).allowed,
     ).toBe(false)
 
     for (const type of [
@@ -384,32 +574,38 @@ describe("consumeHotWsEventLimit", () => {
       const cap = HOT_WS_EVENT_LIMITS[type].capacity
       for (let i = 0; i < cap; i++) {
         expect(
-          consumeHotWsEventLimit({
+          (
+            await consumeHotWsEventLimit({
+              type,
+              roomId: `r-${type}`,
+              userId: "u-sfu",
+              nowMs,
+            })
+          ).allowed,
+        ).toBe(true)
+      }
+      expect(
+        (
+          await consumeHotWsEventLimit({
             type,
             roomId: `r-${type}`,
             userId: "u-sfu",
             nowMs,
-          }).allowed,
-        ).toBe(true)
-      }
-      expect(
-        consumeHotWsEventLimit({
-          type,
-          roomId: `r-${type}`,
-          userId: "u-sfu",
-          nowMs,
-        }).allowed,
+          })
+        ).allowed,
       ).toBe(false)
     }
 
     // Binary LMC is not a hot WS JSON event type — remains uncapped here.
     expect(
-      consumeHotWsEventLimit({
-        type: "local-media:chunk",
-        roomId: "r-lmc",
-        userId: "u-lmc",
-        nowMs,
-      }).allowed,
+      (
+        await consumeHotWsEventLimit({
+          type: "local-media:chunk",
+          roomId: "r-lmc",
+          userId: "u-lmc",
+          nowMs,
+        })
+      ).allowed,
     ).toBe(true)
   })
 })

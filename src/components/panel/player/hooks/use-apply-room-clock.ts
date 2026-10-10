@@ -7,7 +7,9 @@ import type { PendingSyncState } from "./use-buffering-watchdog"
 import { toSyncablePlayer } from "./to-syncable-player"
 
 /**
- * Thin React adapter: apply authoritative room clock via PlaybackSyncEngine.
+ * Thin React adapter: the only UI-facing entry for `engine.applyRoomClock`.
+ * Pair with `usePlaybackDriftCorrection` → `engine.onAuthorityAnchor` for
+ * authority-anchor verify bursts. Panel hooks must not bypass this engine path.
  */
 export function useApplyRoomClock(config: {
   engine: PlaybackSyncEngine

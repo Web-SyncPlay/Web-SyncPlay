@@ -13,7 +13,7 @@ import {
   shouldNackAtDispatch,
 } from "./handlers/mutation-nack"
 import type { RoomMessageContext } from "./handlers/types"
-import type { RoomStateStorePort } from "./ports"
+import type { RoomStateStorePort } from "@/server/ports"
 
 export function rawDataToBuffer(message: RawData): Buffer {
   if (Buffer.isBuffer(message)) return message
@@ -53,12 +53,40 @@ export async function handleSocketMessage(
   await dispatchJsonEnvelope(ws, store, buf.toString("utf8"))
 }
 
+/**
+ * Malformed JSON has no `requestId` / event type to echo — still emit a
+ * client-visible `room:error` (same wire shape as {@link sendMutationNack}).
+ */
+function sendMalformedJsonNack(ws: WebSocket) {
+  if (ws.readyState !== ws.OPEN) return
+  try {
+    ws.send(
+      JSON.stringify({
+        type: "room:error",
+        payload: {
+          code: "invalid_payload",
+          message: "malformed JSON",
+        },
+      }),
+    )
+  } catch (error) {
+    console.error("[realtime] failed to send room:error", error)
+  }
+}
+
 export async function dispatchJsonEnvelope(
   ws: WebSocket,
   store: RoomStateStorePort,
   raw: string,
 ) {
-  const parsed = JSON.parse(raw) as unknown
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw) as unknown
+  } catch {
+    console.warn("[realtime] malformed JSON envelope")
+    sendMalformedJsonNack(ws)
+    return
+  }
   const envelopeResult = wsEnvelopeSchema.safeParse(parsed)
   if (!envelopeResult.success) {
     console.warn("[realtime] invalid envelope", envelopeResult.error.issues)
@@ -89,7 +117,8 @@ export async function dispatchJsonEnvelope(
   await store.touchWsPresence(meta.roomId, meta.userId)
 
   // Drop seek/preview/presence floods before Redis pub/sub or room writes.
-  const hotLimit = consumeHotWsEventLimit({
+  // Hot WS limits are Valkey-backed (cluster-wide token bucket).
+  const hotLimit = await consumeHotWsEventLimit({
     type: data.type,
     roomId: meta.roomId,
     userId: meta.userId,

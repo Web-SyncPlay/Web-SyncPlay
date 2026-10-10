@@ -2,7 +2,7 @@ import { getLocalMediaEntry } from "@/server/media/local-media-store"
 import {
   onMediasoupWorkerDied,
 } from "@/server/media/local-media-sfu-port"
-import { getLocalMediaSfuPort } from "@/server/realtime/ports"
+import { getLocalMediaSfuPort } from "@/server/ports"
 import type {
   RoomMessageContext,
   RoomMessageHandler,

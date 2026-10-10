@@ -16,7 +16,7 @@ import {
   applyRoomStateRepair,
   logRoomStateRepairFindings,
 } from "@/server/realtime/services/room-state-repair"
-import type { RoomStateStorePort } from "@/server/realtime/ports"
+import type { RoomStateStorePort } from "@/server/ports"
 import type {
   ParticipantState,
   RoomState,
@@ -24,6 +24,7 @@ import type {
 } from "@/contracts/types"
 import type { WebSocket } from "ws"
 import { ensureRoomSecurity, evaluateJoinAdmission } from "../../services/room-security"
+import { shouldAppendParticipantJoinedLog } from "./membership-timing"
 import { resolveJoinParticipantProfile } from "./profile"
 import { sendEnvelope } from "./send"
 
@@ -141,7 +142,12 @@ export async function commitJoinMembership(
     // Heal orphaned ownership once the joiner is connected in this commit.
     transferOwnershipIfNeeded(state, "join")
 
-    if (!input.isPresenceAlreadyTracked || !existingParticipant?.connected) {
+    if (
+      shouldAppendParticipantJoinedLog(
+        input.isPresenceAlreadyTracked,
+        existingParticipant?.connected,
+      )
+    ) {
       appendActionLog(state, {
         roomId: input.roomId,
         actorUserId: input.userId,

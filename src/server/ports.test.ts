@@ -9,7 +9,7 @@ import {
   type MediaMaintenancePort,
   type RoomPublishPort,
   type RoomStateStorePort,
-} from "@/server/realtime/ports"
+} from "@/server/ports"
 import {
   createRoomState,
   InMemoryRoomStateStore,

@@ -18,7 +18,7 @@ Watch video or audio in sync with friends. One Next.js app: WebSocket realtime, 
 | [Bun](https://bun.sh) | **1.4.2** (`packageManager` / CI) |
 | Node.js | **≥ 26** (`engines.node`; Docker image / native tooling) |
 
-**TypeScript:** the IDE uses TypeScript **6** (`typescript` → `@typescript/typescript6`). CI/`bun run typecheck` uses TypeScript **7** via `@typescript/native`. Prefer fixing issues that fail `typecheck`.
+**TypeScript:** IDE = TS **6** (`typescript` → `@typescript/typescript6`); CI gate = TS **7** via `@typescript/native` (`bun run typecheck`). Dual setup details: [AGENTS.md](./AGENTS.md). Prefer fixing issues that fail `typecheck`.
 
 ## Quick start (development)
 
@@ -81,6 +81,8 @@ ICE is STUN-only (Google + Cloudflare). No TURN — UDP-blocked clients use HTTP
 `GET /api/health` — liveness (Valkey ping + yt-dlp config/metrics).
 
 Room cleanup, ownership repair, and playlist-resolve reclaim run on a background tick. Daily defaults reseed from `FALLBACK_DEFAULT_MEDIA_URL` when the cache is empty or expired.
+
+Hot WebSocket control paths (seek preview/seek, participant presence updates, local-media WebRTC/SFU signaling) rate-limit via Valkey token buckets (`rate:ws:*`), not in-process maps — every replica shares the same budget per `(roomId, userId)`. Expect one EVAL per limited frame; keep Valkey latency low on the WS nodes.
 
 ### Multi-replica operations (SFU)
 

@@ -5,7 +5,7 @@ import {
 } from "@/server/realtime/services/participants"
 import { scheduleResolvingPlaylistItems } from "@/server/realtime/services/room"
 import type { SessionCapabilities } from "@/server/realtime/services/permissions"
-import type { RoomStateStorePort } from "@/server/realtime/ports"
+import type { RoomStateStorePort } from "@/server/ports"
 import {
   addSocket,
   getSocketClientIp,
@@ -17,6 +17,10 @@ import {
 import type { RoomState, SessionKind } from "@/contracts/types"
 import { WebSocket } from "ws"
 import { abortJoinAfterCommit } from "./abort"
+import {
+  canSetJoinCommitted,
+  shouldAddPresenceOnJoin,
+} from "./membership-timing"
 import { sendEnvelope } from "./send"
 
 export type PostCommitInput = {
@@ -78,14 +82,21 @@ export async function postCommitJoinSideEffects(
     return
   }
 
-  if (!input.isPresenceAlreadyTracked) {
+  if (shouldAddPresenceOnJoin(input.isPresenceAlreadyTracked)) {
     await input.store.addWsConnectionRef(input.roomId, input.userId)
     setSocketPresenceTracked(input.ws, true)
     didAddPresence = true
   }
 
   // R1 again after presence: close may have raced addWsConnectionRef (D3).
-  if (input.ws.readyState !== WebSocket.OPEN || !getSocketMeta(input.ws)) {
+  // R3: only then may joinCommitted flip true.
+  if (
+    !canSetJoinCommitted({
+      readyState: input.ws.readyState,
+      openState: WebSocket.OPEN,
+      hasSocketMeta: Boolean(getSocketMeta(input.ws)),
+    })
+  ) {
     await abortJoinAfterCommit({
       ws: input.ws,
       store: input.store,

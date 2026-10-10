@@ -4,7 +4,7 @@ import {
   deleteLocalMediaEntriesForOwner,
 } from "@/server/media/local-media-store"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
-import type { RoomStateStorePort } from "@/server/realtime/ports"
+import type { RoomStateStorePort } from "@/server/ports"
 import { clearConnectionLocalPlaybackReport } from "@/server/realtime/services/local-playback-report-lifecycle"
 import type { RoomState } from "@/contracts/types"
 import { transferOwnershipIfNeeded } from "./ownership"

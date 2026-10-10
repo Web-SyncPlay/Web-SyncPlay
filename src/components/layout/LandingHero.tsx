@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { parseRoomId, randomRoomId } from "@/shared/room-utils"
-import { cn } from "@/shared/utils"
+import { cn } from "@/components/lib/utils"
 import { ArrowRight, Dice5, Play } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"

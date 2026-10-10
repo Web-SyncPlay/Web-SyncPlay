@@ -9,7 +9,7 @@ import {
   type AvatarStyleId,
 } from "@/shared/avatar"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
-import { cn } from "@/shared/utils"
+import { cn } from "@/components/lib/utils"
 import type { ParticipantState } from "@/contracts/types"
 import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar"

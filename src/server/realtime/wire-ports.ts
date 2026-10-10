@@ -4,7 +4,7 @@ import {
   setLocalMediaSfuPort,
   setMediaMaintenancePort,
   setRoomPublishPort,
-} from "@/server/realtime/ports"
+} from "@/server/ports"
 import { cleanupInactiveRooms } from "@/server/realtime/services/cleanup"
 import { processDuePrunes } from "@/server/realtime/services/participants"
 import { reresolveRemotePlaylistItem } from "@/server/realtime/services/playlist-resolve"

@@ -1,5 +1,5 @@
 import { getAppNodeId } from "@/server/node-id"
-import type { RoomStateStorePort } from "@/server/realtime/ports"
+import type { RoomStateStorePort } from "@/server/ports"
 import {
   bumpPresenceNodeCount,
   isPresentOnAliveNode,

@@ -108,7 +108,7 @@ export const SyncedMediaPlayer = memo(function SyncedMediaPlayer({
   }
 
   // Indirection so handlers look up actions at call time — controller identity
-  // is stable while action slots are rebound each parent render.
+  // and action method identities are stable; implementations live in actionsRef.
   const handlers = useSyncedMediaPlayerHandlers({
     playerRef: controller.playerRef,
     current,

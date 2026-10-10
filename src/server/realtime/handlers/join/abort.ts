@@ -2,7 +2,7 @@ import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-
 import { applyUserWentOffline } from "@/server/realtime/services/disconnect"
 import { schedulePrune } from "@/server/realtime/services/participants"
 import { bumpRoomRevisions } from "@/server/realtime/services/timeline"
-import type { RoomStateStorePort } from "@/server/realtime/ports"
+import type { RoomStateStorePort } from "@/server/ports"
 import { removeSocket } from "@/server/ws/registry"
 import type { WebSocket } from "ws"
 import { sendEnvelope } from "./send"

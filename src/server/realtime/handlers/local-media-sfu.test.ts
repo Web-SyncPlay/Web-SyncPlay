@@ -3,7 +3,7 @@ import { getAppNodeId } from "@/server/node-id"
 import type { LocalMediaSfuPort } from "@/server/media/local-media-sfu-port"
 import {
   setLocalMediaSfuPort,
-} from "@/server/realtime/ports"
+} from "@/server/ports"
 import {
   createFakeWs,
   createHandlerContext,

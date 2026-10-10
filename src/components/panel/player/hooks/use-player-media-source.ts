@@ -5,9 +5,9 @@ import {
   getLocalMediaObjectUrl,
 } from "@/client/local-media/local-media-provider"
 import { localMediaIdFromSrc } from "@/client/local-media/local-media-resolve"
-import { withLocalMediaViewerToken } from "@/shared/local-media/local-media-viewer-token"
+import { withLocalMediaViewerToken } from "@/client/local-media/local-media-viewer-token"
 import { inferMediaViewType } from "@/client/player/playback-sync"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
 import type { PlaylistItem, ViewerMediaItemPreference } from "@/contracts/types"
 import {
   buildPlayerSrc,
@@ -22,10 +22,14 @@ export function usePlayerMediaSource(config: {
   current: PlaylistItem | undefined
   viewerPrefs: ViewerMediaItemPreference | undefined
   userId: string
+  /** Prefer the session controller ref so handlers share one bag. */
+  localBlobFallbackAttemptedRef?: RefObject<string | null>
 }) {
   const { current, viewerPrefs, userId } = config
   const [forceLocalRelaySrc, setForceLocalRelaySrc] = useState(false)
-  const localBlobFallbackAttemptedRef = useRef<string | null>(null)
+  const ownedLocalBlobFallbackAttemptedRef = useRef<string | null>(null)
+  const localBlobFallbackAttemptedRef =
+    config.localBlobFallbackAttemptedRef ?? ownedLocalBlobFallbackAttemptedRef
 
   useEffect(() => {
     queueMicrotask(() => {

@@ -139,11 +139,17 @@ export const env = createEnv({
     /**
      * Public hostname or origin (e.g. web-syncplay.de or https://web-syncplay.de).
      * Used for mediasoup ICE announcedAddress, CORS, and CSP.
+     *
+     * Edge (`src/proxy.ts`) reads the same key via raw `process.env` in
+     * `src/shared/public-domain.ts` so it can avoid importing this full schema.
      */
     PUBLIC_DOMAIN: z.string().min(1).optional(),
     /**
      * Space-separated absolute origins allowed to iframe this app (CSP
      * frame-ancestors), or a single `*`. Unset/empty = no third-party embeds.
+     *
+     * Edge (`src/proxy.ts`) mirrors this key via raw `process.env` in
+     * `src/shared/public-domain.ts` (same rationale as PUBLIC_DOMAIN).
      */
     EMBED_FRAME_ANCESTORS: z
       .string()

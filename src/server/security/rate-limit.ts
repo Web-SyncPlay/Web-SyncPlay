@@ -1,4 +1,5 @@
 import { getCommandClient } from "@/server/redis/client"
+import { keys } from "@/server/redis/keys"
 import type { IncomingMessage } from "node:http"
 
 type RateLimitResult = { allowed: boolean; remaining: number }
@@ -11,11 +12,49 @@ type TokenBucket = {
 const tokenBuckets = new Map<string, TokenBucket>()
 const TOKEN_BUCKET_STALE_MS = 5 * 60_000
 const TOKEN_BUCKET_PRUNE_AT = 10_000
+const REDIS_TOKEN_BUCKET_TTL_SECONDS = Math.ceil(TOKEN_BUCKET_STALE_MS / 1000)
 
 /**
- * In-process token bucket. Prefer this for hot per-message WS paths where a
- * Redis INCR on every frame would add load; use {@link consumeRateLimit} for
- * join/resolve and other cross-replica abusable endpoints.
+ * Atomic Redis token bucket (HASH tokens + updatedAtMs).
+ * KEYS[1]=rate key; ARGV=capacity, refillPerSecond, nowMs, cost, ttlSeconds.
+ * Returns {allowed (0|1), remaining}.
+ */
+const TOKEN_BUCKET_SCRIPT = `
+local capacity = tonumber(ARGV[1])
+local refillPerSecond = tonumber(ARGV[2])
+local nowMs = tonumber(ARGV[3])
+local cost = tonumber(ARGV[4])
+local ttlSeconds = tonumber(ARGV[5])
+
+local data = redis.call('HMGET', KEYS[1], 'tokens', 'updatedAtMs')
+local tokens = tonumber(data[1])
+local updatedAtMs = tonumber(data[2])
+
+if tokens == nil then
+  tokens = capacity
+  updatedAtMs = nowMs
+else
+  local elapsedSec = math.max(0, (nowMs - updatedAtMs) / 1000.0)
+  tokens = math.min(capacity, tokens + elapsedSec * refillPerSecond)
+  updatedAtMs = nowMs
+end
+
+local allowed = 0
+if tokens >= cost then
+  tokens = tokens - cost
+  allowed = 1
+end
+
+redis.call('HSET', KEYS[1], 'tokens', tokens, 'updatedAtMs', updatedAtMs)
+redis.call('EXPIRE', KEYS[1], ttlSeconds)
+
+return {allowed, math.floor(tokens)}
+`
+
+/**
+ * In-process token bucket for tests and truly process-local concerns only.
+ * Hot WS control paths use {@link consumeRedisTokenBucket} /
+ * {@link consumeHotWsEventLimit} (Valkey) so limits are cluster-wide.
  */
 export function consumeTokenBucket(params: {
   key: string
@@ -77,7 +116,7 @@ export function resetTokenBucketsForTests() {
 /**
  * Hot WS control events that fan out via Redis pub/sub (or write room state).
  * Limits are per `(roomId, userId)` and sized for normal scrubbing / presence
- * heartbeats with headroom — not for cross-replica join abuse.
+ * heartbeats with headroom — enforced cluster-wide via Valkey.
  *
  * Client cadences (approx): seek preview ≥120ms; presence poll 500ms with 2s
  * heartbeat; seeks are user-driven.
@@ -141,18 +180,21 @@ export function hotWsEventRateKey(
   return `${HOT_WS_EVENT_LIMITS[type].keyPrefix}:${roomId}:${userId}`
 }
 
-/** Consume one token for a hot WS event; unknown types are always allowed. */
-export function consumeHotWsEventLimit(params: {
+/**
+ * Consume one token for a hot WS event via Valkey; unknown types are always
+ * allowed (no Redis round-trip). Fail-closed on Redis errors.
+ */
+export async function consumeHotWsEventLimit(params: {
   type: string
   roomId: string
   userId: string
   nowMs?: number
-}): RateLimitResult {
+}): Promise<RateLimitResult> {
   if (!isHotWsEventType(params.type)) {
     return { allowed: true, remaining: Number.POSITIVE_INFINITY }
   }
   const limit = HOT_WS_EVENT_LIMITS[params.type]
-  return consumeTokenBucket({
+  return consumeRedisTokenBucket({
     key: hotWsEventRateKey(params.type, params.roomId, params.userId),
     capacity: limit.capacity,
     refillPerSecond: limit.refillPerSecond,
@@ -185,6 +227,73 @@ export function clientIpFromForwardingHeaders(headers: {
   return normalizeHeaderValue(headers.realIp)
 }
 
+function parseTokenBucketEvalResult(raw: unknown): RateLimitResult {
+  if (!Array.isArray(raw) || raw.length < 2) {
+    return { allowed: false, remaining: 0 }
+  }
+  const allowedRaw = raw[0]
+  const remainingRaw = raw[1]
+  const allowed =
+    allowedRaw === 1 ||
+    allowedRaw === 1n ||
+    allowedRaw === "1" ||
+    allowedRaw === true
+  const remaining = Math.max(0, Math.floor(Number(remainingRaw)))
+  return {
+    allowed,
+    remaining: Number.isFinite(remaining) ? remaining : 0,
+  }
+}
+
+/**
+ * Redis (Valkey) token-bucket rate limiter via Lua — cluster-safe for hot WS
+ * paths. Fail-closed on Redis errors by default. Pass `failOpen: true` only
+ * for non-abusable reads.
+ */
+export async function consumeRedisTokenBucket(params: {
+  key: string
+  capacity: number
+  refillPerSecond: number
+  cost?: number
+  nowMs?: number
+  /** Allow the request when Redis is unavailable. Default: deny. */
+  failOpen?: boolean
+}): Promise<RateLimitResult> {
+  const capacity = Math.max(1, params.capacity)
+  const refillPerSecond = Math.max(0, params.refillPerSecond)
+  const cost = Math.max(0, params.cost ?? 1)
+  const nowMs = params.nowMs ?? Date.now()
+  const redisKey = keys.rateLimit(params.key)
+
+  try {
+    const client = await getCommandClient()
+    const raw = await client.eval(TOKEN_BUCKET_SCRIPT, {
+      keys: [redisKey],
+      arguments: [
+        String(capacity),
+        String(refillPerSecond),
+        String(nowMs),
+        String(cost),
+        String(REDIS_TOKEN_BUCKET_TTL_SECONDS),
+      ],
+    })
+    return parseTokenBucketEvalResult(raw)
+  } catch (error) {
+    if (params.failOpen) {
+      console.warn(
+        "[rate-limit] redis token-bucket unavailable; allowing request (failOpen)",
+        error,
+      )
+      return { allowed: true, remaining: capacity }
+    }
+    console.warn(
+      "[rate-limit] redis token-bucket unavailable; denying request",
+      error,
+    )
+    return { allowed: false, remaining: 0 }
+  }
+}
+
 /**
  * Redis fixed-window rate limiter (INCR + EXPIRE).
  * Fail-closed on Redis errors by default so abusable endpoints stay protected
@@ -198,7 +307,7 @@ export async function consumeRateLimit(params: {
   failOpen?: boolean
 }): Promise<RateLimitResult> {
   const windowSeconds = Math.max(1, Math.ceil(params.windowMs / 1000))
-  const redisKey = `rate:${params.key}`
+  const redisKey = keys.rateLimit(params.key)
 
   try {
     const client = await getCommandClient()

@@ -3,7 +3,7 @@ import { derivedResolveReclaimIntervalMs } from "@/server/media/yt-dlp/policy"
 import {
   getMediaMaintenancePort,
   type RoomStateStorePort,
-} from "@/server/realtime/ports"
+} from "@/server/ports"
 import { env } from "@/env"
 import {
   installShutdownOnce,

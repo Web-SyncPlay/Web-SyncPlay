@@ -1,4 +1,4 @@
-import type { RoomStateStorePort } from "@/server/realtime/ports"
+import type { RoomStateStorePort } from "@/server/ports"
 import type { SessionKind, WsEnvelope } from "@/contracts/types"
 import type { WebSocket } from "ws"
 

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { handleLocalMediaUploadDisabled } from "@/server/media/http/local-upload"
 
 /**
  * Local media is no longer uploaded to the server. The providing browser keeps
@@ -6,12 +6,5 @@ import { NextResponse } from "next/server"
  * GET /api/media/local/{id}.
  */
 export async function POST() {
-  return NextResponse.json(
-    {
-      error:
-        "Local media upload is disabled. Share a local file from the room UI; bytes are streamed from the provider on demand.",
-      code: "local_media_relay_only",
-    },
-    { status: 410 },
-  )
+  return handleLocalMediaUploadDisabled()
 }

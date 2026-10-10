@@ -1,5 +1,5 @@
 import { keys } from "@/server/redis/keys"
-import type { RoomStateStorePort } from "@/server/realtime/ports"
+import type { RoomStateStorePort } from "@/server/ports"
 import type { SnapshotEnvelope } from "./channels"
 import type { PublishCapture } from "./control-publisher"
 import { publishTyped } from "./control-publisher"

@@ -1,13 +1,18 @@
 import { describe, expect, test } from "bun:test"
-import {
-  joinMessageSchema,
-  roomMessageEventTypes,
-  roomMessageSchemas,
-  transportEnvelopeSchema,
-} from "@/server/realtime/contracts"
 import { roomMessageHandlers } from "@/server/realtime/handlers"
-import type { ClientEventType } from "@/contracts/room-events"
-import { roomErrorPayloadSchema, serverEventSchemas } from "@/contracts/s2c"
+import {
+  roomMessageSchemas,
+  type ClientEventType,
+} from "@/contracts/room-events"
+import {
+  actionLogEntrySchema,
+  participantStateSchema,
+  playlistItemSchema,
+  roomErrorPayloadSchema,
+  roomSnapshotPayloadSchema,
+  serverEventSchemas,
+  viewerMediaPreferencesStateSchema,
+} from "@/contracts/s2c"
 import {
   participantRoleUpdateSchema,
   participantUpdateSchema,
@@ -36,9 +41,13 @@ import {
   wsEnvelopeSchema,
 } from "@/contracts/schemas"
 
+const roomMessageEventTypes = Object.keys(
+  roomMessageSchemas,
+) as ClientEventType[]
+
 describe("transport envelope interface", () => {
   test("accepts minimal valid envelope", () => {
-    const result = transportEnvelopeSchema.safeParse({
+    const result = wsEnvelopeSchema.safeParse({
       type: "playback:seek",
       payload: { targetMs: 1 },
     })
@@ -54,7 +63,7 @@ describe("transport envelope interface", () => {
   })
 
   test("accepts optional requestId and sourceUserId", () => {
-    const result = transportEnvelopeSchema.safeParse({
+    const result = wsEnvelopeSchema.safeParse({
       type: "participant:update",
       requestId: "req-1",
       sourceUserId: "user-1",
@@ -66,7 +75,7 @@ describe("transport envelope interface", () => {
 
 describe("room:join interface", () => {
   test("requires roomId and userSecret", () => {
-    expect(joinMessageSchema.safeParse({}).success).toBe(false)
+    expect(roomJoinSchema.safeParse({}).success).toBe(false)
     expect(
       roomJoinSchema.safeParse({
         roomId: "r1",
@@ -404,6 +413,121 @@ describe("room:error mutation nack", () => {
       }).success,
     ).toBe(true)
     expect(serverEventSchemas["room:error"]).toBe(roomErrorPayloadSchema)
+  })
+})
+
+describe("S2C playlist / participant domain schemas", () => {
+  const basePlaylistItem = {
+    id: "item-1",
+    name: "Clip",
+    sourceKind: "remote_url" as const,
+    playbackMode: "direct" as const,
+    sourceUrl: "https://example.com/a.mp4",
+    playableUrl: "https://example.com/a.mp4",
+    createdBy: "u1",
+    createdAt: 1,
+  }
+
+  test("playlist item validates catalog fields and strips unknown keys", () => {
+    const result = playlistItemSchema.safeParse({
+      ...basePlaylistItem,
+      ingestStatus: "ready",
+      mediaStreams: [
+        {
+          id: "s1",
+          src: "https://example.com/a.m3u8",
+          kind: "adaptive",
+          height: 720,
+        },
+      ],
+      textTracks: [
+        {
+          id: "t1",
+          src: "https://example.com/a.vtt",
+          label: "English",
+          kind: "captions",
+        },
+      ],
+      defaultStreamId: "s1",
+      isLive: false,
+      legacySelectedStreamId: "drop-me",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.mediaStreams?.[0]?.id).toBe("s1")
+      expect(result.data.textTracks?.[0]?.kind).toBe("captions")
+      expect(
+        "legacySelectedStreamId" in (result.data as Record<string, unknown>),
+      ).toBe(false)
+    }
+    expect(
+      playlistItemSchema.safeParse({
+        ...basePlaylistItem,
+        sourceKind: "torrent",
+      }).success,
+    ).toBe(false)
+    expect(
+      playlistItemSchema.safeParse({
+        ...basePlaylistItem,
+        ingestStatus: "pending",
+      }).success,
+    ).toBe(false)
+  })
+
+  test("participant viewerMedia uses typed item preferences", () => {
+    const result = participantStateSchema.safeParse({
+      userId: "u1",
+      username: "Ada",
+      avatarStyle: "bottts",
+      role: "guest",
+      connected: true,
+      localPlayback: {
+        paused: true,
+        currentTimeMs: 0,
+        loading: false,
+        updatedAt: 1,
+      },
+      viewerMedia: {
+        byItemId: {
+          "item-1": {
+            streamId: "s1",
+            textTrackId: null,
+            audioLanguage: "en",
+          },
+        },
+      },
+    })
+    expect(result.success).toBe(true)
+    expect(
+      viewerMediaPreferencesStateSchema.safeParse({
+        byItemId: { "item-1": { streamId: 12 } },
+      }).success,
+    ).toBe(false)
+  })
+
+  test("action log accepts optional actorUsername/error without passthrough", () => {
+    const result = actionLogEntrySchema.safeParse({
+      id: "log-1",
+      at: 1,
+      roomId: "r1",
+      actorUserId: "u1",
+      actorUsername: "Ada",
+      action: "playlist:add:url",
+      payload: { url: "https://example.com" },
+      error: "boom",
+      extra: "stripped",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.actorUsername).toBe("Ada")
+      expect(result.data.error).toBe("boom")
+      expect("extra" in (result.data as Record<string, unknown>)).toBe(false)
+    }
+  })
+
+  test("room snapshot schema is registered for snapshot and legacy state", () => {
+    expect(serverEventSchemas["room:snapshot"]).toBe(roomSnapshotPayloadSchema)
+    expect(serverEventSchemas["room:state"]).toBe(roomSnapshotPayloadSchema)
   })
 })
 

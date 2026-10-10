@@ -13,7 +13,7 @@ import {
   canMutateFromClientSession,
 } from "@/shared/permissions-utils"
 import { resolveCurrentPlaylistItem } from "@/shared/playlist-current"
-import { cn } from "@/shared/utils"
+import { cn } from "@/components/lib/utils"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import type { RoomPanelProps } from "./types"

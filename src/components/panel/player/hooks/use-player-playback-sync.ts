@@ -5,8 +5,8 @@ import type { TypedRoomEventSender } from "@/contracts/room-events"
 import {
   queryPlayerMediaElement,
   readMediaSeekableEndSec,
-  resolveLiveEdgeSec,
-} from "@/shared/player-utils"
+} from "@/shared/dom/player-utils"
+import { resolveLiveEdgeSec } from "@/shared/player-utils"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import {
   useCallback,
@@ -19,14 +19,19 @@ import type { PlaylistItem, RoomState } from "@/contracts/types"
 import {
   pendingSyncFromPlayback,
   type PendingSyncState,
-} from "./use-buffering-watchdog"
+} from "@/client/player/pending-sync"
 import { useApplyRoomClock } from "./use-apply-room-clock"
 import { usePlaybackDriftCorrection } from "./use-playback-drift-correction"
 import { usePlaybackSyncEngine } from "./use-playback-sync-engine"
+import { usePlayerPresenceHeartbeat } from "./use-player-presence-heartbeat"
 import { SEEK_ACK_MATCH_THRESHOLD_MS } from "../playback-control/use-playback-timeline-controller"
 
 /**
- * Room-clock application, drift correction, presence heartbeat, and live-edge seek.
+ * Room-clock application, drift correction, and live-edge seek.
+ *
+ * Room clock writes must go through `engine.applyRoomClock` /
+ * `engine.onAuthorityAnchor` only (see useApplyRoomClock +
+ * usePlaybackDriftCorrection). Do not apply pending sync via ad-hoc seeks.
  */
 export function usePlayerPlaybackSync(config: {
   playerRef: RefObject<MediaPlayerInstance | null>
@@ -212,63 +217,14 @@ export function usePlayerPlaybackSync(config: {
     playerRef,
   ])
 
-  useEffect(() => {
-    const player = playerRef.current
-    if (!player) {
-      return
-    }
-
-    // Presence ticks: only send when paused/loading/error change, time drifts,
-    // or a slow heartbeat keeps lastSeen fresh.
-    const HEARTBEAT_MS = 2_000
-    const TIME_DIRTY_MS = 750
-    let lastSent = {
-      paused: Boolean(player.paused),
-      currentTimeMs: Math.max(
-        0,
-        Math.floor(Number(player.currentTime ?? 0) * 1000),
-      ),
-      loading: isBuffering,
-      // Send null (not undefined) so JSON keeps the key and the server can clear.
-      error:
-        playbackErrorLabel ?? participantStatusErrorRef.current ?? null,
-      at: 0,
-    }
-
-    const timer = window.setInterval(() => {
-      const next = {
-        paused: Boolean(player.paused),
-        currentTimeMs: Math.max(
-          0,
-          Math.floor(Number(player.currentTime ?? 0) * 1000),
-        ),
-        loading: isBuffering,
-        error:
-          playbackErrorLabel ?? participantStatusErrorRef.current ?? null,
-      }
-      const now = Date.now()
-      const dirty =
-        next.paused !== lastSent.paused ||
-        next.loading !== lastSent.loading ||
-        next.error !== lastSent.error ||
-        Math.abs(next.currentTimeMs - lastSent.currentTimeMs) >= TIME_DIRTY_MS ||
-        now - lastSent.at >= HEARTBEAT_MS
-      if (!dirty) {
-        return
-      }
-
-      lastSent = { ...next, at: now }
-      send("participant:update", next)
-    }, 500)
-    return () => window.clearInterval(timer)
-  }, [
-    isBuffering,
-    participantStatusErrorRef,
-    playbackErrorLabel,
+  usePlayerPresenceHeartbeat({
     playerRef,
+    participantStatusErrorRef,
+    isBuffering,
+    playbackErrorLabel,
     currentIndex,
     send,
-  ])
+  })
 
   const enforceServerPlaybackState = useCallback(() => {
     const player = playerRef.current

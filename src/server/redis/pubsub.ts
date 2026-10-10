@@ -1,5 +1,5 @@
 import { getAppNodeId } from "@/server/node-id"
-import { getRoomPublishPort } from "@/server/realtime/ports"
+import { getRoomPublishPort } from "@/server/ports"
 import { getSubscriberClient } from "./client"
 import { keys } from "./keys"
 import {

@@ -17,7 +17,7 @@ import {
   clearLocalMediaViewerToken,
   loadLocalMediaViewerToken,
   persistLocalMediaViewerToken,
-} from "@/shared/local-media/local-media-viewer-token"
+} from "@/client/local-media/local-media-viewer-token"
 import type { RoomState } from "@/contracts/types"
 import { createRoomSocketConnection } from "./room-socket-connection"
 

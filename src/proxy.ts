@@ -1,3 +1,8 @@
+/**
+ * Edge middleware: CSP/CORS via `@/shared/public-domain`, which reads
+ * PUBLIC_DOMAIN / EMBED_FRAME_ANCESTORS from raw `process.env` (validated by
+ * `src/env.ts` on Node boot). Do not import `@/env` here — full server schema.
+ */
 import {
   buildContentSecurityPolicy,
   isOriginAllowed,

@@ -69,6 +69,25 @@ describe("handleSocketMessage", () => {
     expect(sent).toHaveLength(0)
   })
 
+  test("nacks malformed JSON text frames with room:error", async () => {
+    const { ws, sent } = createFakeWs()
+    const store = new InMemoryRoomStateStore(createRoomState())
+
+    await handleSocketMessage(
+      ws,
+      store,
+      Buffer.from("{not-json", "utf8"),
+      false,
+    )
+
+    expect(sent).toEqual([
+      {
+        type: "room:error",
+        payload: { code: "invalid_payload", message: "malformed JSON" },
+      },
+    ])
+  })
+
   test("nacks mutations when joinCommitted is false", async () => {
     const { ws, sent } = createFakeWs()
     const store = new InMemoryRoomStateStore(createRoomState())

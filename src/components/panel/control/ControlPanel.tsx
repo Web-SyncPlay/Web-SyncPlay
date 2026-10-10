@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { formatClockMs } from "@/shared/time-format"
-import { cn } from "@/shared/utils"
+import { cn } from "@/components/lib/utils"
 import { SkipBack, SkipForward } from "lucide-react"
 
 function getSliderTargetMs(values: number | readonly number[]): number {

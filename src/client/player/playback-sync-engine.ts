@@ -8,6 +8,7 @@ import {
   measurePlaybackDriftSec,
   type PlaybackSyncState,
 } from "@/client/player/playback-sync"
+import { pendingSyncFromPlayback } from "@/client/player/pending-sync"
 import { serverNowEstimateMs } from "@/shared/server-clock"
 
 /** Single scheduler phases for room ↔ local playhead sync. */
@@ -77,21 +78,6 @@ export type PlaybackSyncEngine = {
   clearTransportNudge: () => void
 }
 
-export function pendingSyncFromPlaybackSnapshot(
-  playback: PlaybackSnapshot,
-): EngineSyncState {
-  return {
-    paused: playback.paused,
-    playbackRate: playback.playbackRate,
-    timelineAnchorMs: playback.timelineAnchorMs,
-    serverNowMs: playback.serverNowMs,
-    videoLoop:
-      typeof playback.videoLoop === "boolean"
-        ? playback.videoLoop
-        : playback.videoLoop !== "off",
-  }
-}
-
 /**
  * Resolve the sync snapshot for a watchdog tick, then decide apply vs clear.
  * Measure and apply must share this same `syncState` (not a fresh playback read).
@@ -106,7 +92,7 @@ export function planPlaybackDriftCorrection(input: {
   | { action: "clear"; syncState: EngineSyncState }
   | { action: "apply"; syncState: EngineSyncState } {
   const syncState =
-    input.pending ?? pendingSyncFromPlaybackSnapshot(input.playback)
+    input.pending ?? pendingSyncFromPlayback(input.playback)
   if (input.driftSec === null) {
     return { action: "noop", syncState }
   }
@@ -294,7 +280,7 @@ export function createPlaybackSyncEngine(
       return
     }
 
-    const syncState = pendingSyncFromPlaybackSnapshot(host.getPlayback())
+    const syncState = pendingSyncFromPlayback(host.getPlayback())
     const driftSec = measureDrift(player, syncState, scheduler.nowMs())
     if (
       driftSec === null ||
@@ -338,8 +324,7 @@ export function createPlaybackSyncEngine(
     }
 
     const syncState =
-      host.getPendingSync() ??
-      pendingSyncFromPlaybackSnapshot(host.getPlayback())
+      host.getPendingSync() ?? pendingSyncFromPlayback(host.getPlayback())
     const plan = planPlaybackDriftCorrection({
       pending: host.getPendingSync(),
       playback: host.getPlayback(),

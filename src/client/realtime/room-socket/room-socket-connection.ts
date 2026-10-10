@@ -23,7 +23,7 @@ import type {
   SessionKind,
   WsEnvelope,
 } from "@/contracts/types"
-import { clearLocalMediaViewerToken } from "@/shared/local-media/local-media-viewer-token"
+import { clearLocalMediaViewerToken } from "@/client/local-media/local-media-viewer-token"
 import { loadPersistedControlToken } from "@/client/realtime/session-identity"
 import { startTransition, type Dispatch, type MutableRefObject, type SetStateAction } from "react"
 

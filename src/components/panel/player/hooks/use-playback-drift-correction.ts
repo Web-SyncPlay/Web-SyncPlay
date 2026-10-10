@@ -12,8 +12,9 @@ import type { PendingSyncState } from "./use-buffering-watchdog"
 export { planPlaybackDriftCorrection }
 
 /**
- * Thin React adapter: hold-local-seek + authority-anchor verify burst
- * are owned by PlaybackSyncEngine.
+ * Thin React adapter: hold-local-seek + `engine.onAuthorityAnchor` verify burst.
+ * Together with `useApplyRoomClock`, this is the only room-clock engine surface
+ * UI hooks should touch.
  */
 export function usePlaybackDriftCorrection(config: {
   engine: PlaybackSyncEngine

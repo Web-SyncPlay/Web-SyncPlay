@@ -12,7 +12,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { cn } from "@/shared/utils"
+import { cn } from "@/components/lib/utils"
 import type { PlaylistItem } from "@/contracts/types"
 import { useSortable } from "@dnd-kit/react/sortable"
 import { Copy, GripVertical, Loader2, Play, Trash2 } from "lucide-react"

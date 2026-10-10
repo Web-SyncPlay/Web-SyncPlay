@@ -205,6 +205,11 @@ export const keys = {
     return `${CONTROL_TOKEN_PREFIX}${tokenHash}`
   },
 
+  /** Fixed-window / token-bucket rate-limit key (`rate:{logicalKey}`). */
+  rateLimit(logicalKey: string) {
+    return `rate:${logicalKey}`
+  },
+
   localMediaEntry(id: string) {
     return `${LOCAL_MEDIA_PREFIX}${id}`
   },

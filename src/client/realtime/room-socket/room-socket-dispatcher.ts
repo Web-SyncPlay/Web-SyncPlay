@@ -192,7 +192,7 @@ function handleCapabilities(
   const caps = normalizeSessionCapabilities(payload, options.sessionKind)
   options.setSessionCapabilities(caps)
   if (payload.viewerToken) {
-    void import("@/shared/local-media/local-media-viewer-token").then(
+    void import("@/client/local-media/local-media-viewer-token").then(
       ({ persistLocalMediaViewerToken }) => {
         persistLocalMediaViewerToken({
           roomId: options.roomId,

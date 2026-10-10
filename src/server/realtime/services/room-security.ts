@@ -47,8 +47,13 @@ export function createDefaultRoomSecurity(): RoomSecurityState {
   }
 }
 
-export function ensureRoomSecurity(state: RoomState): RoomSecurityState {
-  const current = state.roomSecurity
+/**
+ * Normalize a persisted / partially corrupted roomSecurity object into a
+ * canonical RoomSecurityState. Disables join password when hash/salt are missing.
+ */
+export function normalizeRoomSecurity(
+  current: Partial<RoomSecurityState> | null | undefined,
+): RoomSecurityState {
   const normalized: RoomSecurityState = {
     joinPasswordEnabled: current?.joinPasswordEnabled === true,
     joinPasswordUpdatedAt: asFiniteNumberOrNull(current?.joinPasswordUpdatedAt),
@@ -67,6 +72,11 @@ export function ensureRoomSecurity(state: RoomState): RoomSecurityState {
     normalized.joinPasswordSalt = undefined
   }
 
+  return normalized
+}
+
+export function ensureRoomSecurity(state: RoomState): RoomSecurityState {
+  const normalized = normalizeRoomSecurity(state.roomSecurity)
   state.roomSecurity = normalized
   return normalized
 }

@@ -1,4 +1,4 @@
-import type { RoomStateStorePort } from "@/server/realtime/ports"
+import type { RoomStateStorePort } from "@/server/ports"
 import { sanitizeRoomStateForClient } from "@/server/realtime/services/room-security"
 import { peekPresenceRevision } from "@/server/realtime/broadcast/presence-seq"
 import type {
