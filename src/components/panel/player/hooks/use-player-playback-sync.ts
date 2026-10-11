@@ -6,11 +6,12 @@ import {
   queryPlayerMediaElement,
   readMediaSeekableEndSec,
 } from "@/shared/dom/player-utils"
-import { resolveLiveEdgeSec } from "@/shared/player-utils"
+import { isNativeProviderUrl, resolveLiveEdgeSec } from "@/shared/player-utils"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import {
   useCallback,
   useEffect,
+  useRef,
   type RefObject,
 } from "react"
 import { toast } from "sonner"
@@ -25,6 +26,7 @@ import { useApplyRoomClock } from "./use-apply-room-clock"
 import { usePlaybackDriftCorrection } from "./use-playback-drift-correction"
 import { usePlaybackSyncEngine } from "./use-playback-sync-engine"
 import { usePlayerPresenceHeartbeat } from "./use-player-presence-heartbeat"
+import { readSyncPlayheadSec } from "./to-syncable-player"
 import { SEEK_ACK_MATCH_THRESHOLD_MS } from "../playback-control/use-playback-timeline-controller"
 
 /**
@@ -98,6 +100,16 @@ export function usePlayerPlaybackSync(config: {
     viewType,
   })
 
+  const isNativeSource = useCallback(
+    () => isNativeProviderUrl(applyFailContextRef.current.src),
+    [applyFailContextRef],
+  )
+  const catalogDurationRef = useLatestRef(
+    current?.isLive === true
+      ? Number.POSITIVE_INFINITY
+      : Number(current?.durationSeconds),
+  )
+
   const syncEngine = usePlaybackSyncEngine({
     playerRef,
     isMediaReadyRef,
@@ -109,6 +121,7 @@ export function usePlayerPlaybackSync(config: {
     // HLS / direct media resolve to undefined and keep engine defaults.
     getSyncTuning: () =>
       resolveProviderSyncTuning(applyFailContextRef.current.src),
+    getDurationHintSec: () => catalogDurationRef.current,
     onApplyFailed: (syncState) => {
       console.warn("[player] applyRoomClock failed", {
         ...applyFailContextRef.current,
@@ -119,6 +132,7 @@ export function usePlayerPlaybackSync(config: {
 
   const { applyRoomClock, clearTransportNudge } = useApplyRoomClock({
     engine: syncEngine,
+    isNativeSource,
   })
 
   useEffect(() => {
@@ -167,13 +181,15 @@ export function usePlayerPlaybackSync(config: {
       return 0
     }
 
-    const mediaEl = queryPlayerMediaElement(player.el)
-    const mediaTime = Number(mediaEl?.currentTime)
-    if (Number.isFinite(mediaTime) && mediaTime >= 0) {
-      return Math.max(0, Math.floor(mediaTime * 1000))
-    }
-    return Math.max(0, Math.floor(Number(player.currentTime ?? 0) * 1000))
-  }, [playerRef])
+    // Same read as the sync engine (media element for HLS, provider time for
+    // YouTube/Vimeo) so presence and drift correction cannot disagree.
+    const playheadSec = readSyncPlayheadSec(player, {
+      native: isNativeSource(),
+    })
+    return Number.isFinite(playheadSec)
+      ? Math.max(0, Math.floor(playheadSec * 1000))
+      : 0
+  }, [isNativeSource, playerRef])
 
   usePlaybackDriftCorrection({
     engine: syncEngine,
@@ -182,11 +198,20 @@ export function usePlayerPlaybackSync(config: {
     timelineAnchorMs,
   })
 
+  /** Last `playback.paused` seen by the authority effect (edge detection). */
+  const prevRoomPausedRef = useRef<boolean | null>(null)
+
   useEffect(() => {
     const player = playerRef.current
     if (!player) {
       return
     }
+
+    // Authority play → pause edge: HLS / local HTTP relay often ignores the
+    // first pause() and sits under the 0.8s drift threshold, so force-snap
+    // (threshold 0) and re-arm the pause nudge burst from a clean slate.
+    const pausedEdge =
+      prevRoomPausedRef.current === false && playback.paused
 
     const syncState = pendingSyncFromPlayback(playback)
     const shouldHoldForLocalSeek =
@@ -196,6 +221,7 @@ export function usePlayerPlaybackSync(config: {
     if (shouldHoldForLocalSeek) {
       return
     }
+    prevRoomPausedRef.current = playback.paused
 
     pendingSyncRef.current = syncState
     if (!isMediaReadyRef.current) {
@@ -209,8 +235,16 @@ export function usePlayerPlaybackSync(config: {
     const anchorChanged =
       lastAppliedTimelineAnchorMsRef.current !== null &&
       lastAppliedTimelineAnchorMsRef.current !== syncState.timelineAnchorMs
-    applyRoomClock(player, syncState, anchorChanged ? 0 : undefined)
+    if (pausedEdge) {
+      clearTransportNudge()
+    }
+    applyRoomClock(
+      player,
+      syncState,
+      anchorChanged || pausedEdge ? 0 : undefined,
+    )
   }, [
+    clearTransportNudge,
     applyRoomClock,
     awaitingSeekTargetMs,
     isMediaReadyRef,
@@ -231,6 +265,12 @@ export function usePlayerPlaybackSync(config: {
     playbackErrorLabel,
     currentIndex,
     send,
+    getPlayheadSec: () => {
+      const player = playerRef.current
+      return player
+        ? readSyncPlayheadSec(player, { native: isNativeSource() })
+        : 0
+    },
   })
 
   const enforceServerPlaybackState = useCallback(() => {
@@ -318,6 +358,7 @@ export function usePlayerPlaybackSync(config: {
 
   return {
     applyRoomClock,
+    clearTransportNudge,
     getCurrentTimeMs,
     enforceServerPlaybackState,
     commitLiveEdgeSeek,

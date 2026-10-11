@@ -13,6 +13,8 @@ import { toSyncablePlayer } from "./to-syncable-player"
  */
 export function useApplyRoomClock(config: {
   engine: PlaybackSyncEngine
+  /** Native iframe source — playhead comes from provider time only. */
+  isNativeSource?: () => boolean
   /** Kept for call-site compatibility; engine host owns readiness. */
   isMediaReadyRef?: RefObject<boolean>
   playbackPausedRef?: RefObject<boolean>
@@ -20,7 +22,7 @@ export function useApplyRoomClock(config: {
   lastAppliedTimelineAnchorMsRef?: RefObject<number | null>
   onApplyFailed?: (syncState: PendingSyncState) => void
 }) {
-  const { engine } = config
+  const { engine, isNativeSource } = config
 
   const applyRoomClock = useCallback(
     (
@@ -29,12 +31,12 @@ export function useApplyRoomClock(config: {
       driftThresholdSec?: number,
     ) => {
       engine.applyRoomClock(
-        toSyncablePlayer(player),
+        toSyncablePlayer(player, { native: isNativeSource?.() ?? false }),
         syncState,
         driftThresholdSec,
       )
     },
-    [engine],
+    [engine, isNativeSource],
   )
 
   const clearTransportNudge = useCallback(() => {

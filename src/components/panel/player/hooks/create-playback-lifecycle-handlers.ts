@@ -3,6 +3,7 @@ import {
 } from "@/client/player/pending-sync"
 import { SEEK_ACK_MATCH_THRESHOLD_MS } from "../playback-control/use-playback-timeline-controller"
 import type { SyncedMediaPlayerHandlerDeps } from "./synced-media-player-handler-types"
+import { isTransportIntentInFlight } from "./transport-intent"
 
 type PlaybackLifecycleDeps = Pick<
   SyncedMediaPlayerHandlerDeps,
@@ -12,6 +13,7 @@ type PlaybackLifecycleDeps = Pick<
   | "isMuted"
   | "preferredVolume"
   | "playbackRef"
+  | "transportIntentRef"
   | "isMediaReadyRef"
   | "bufferingSinceRef"
   | "participantStatusErrorRef"
@@ -34,6 +36,7 @@ export function createPlaybackLifecycleHandlers(deps: PlaybackLifecycleDeps) {
     isMuted,
     preferredVolume,
     playbackRef,
+    transportIntentRef,
     isMediaReadyRef,
     bufferingSinceRef,
     participantStatusErrorRef,
@@ -61,9 +64,13 @@ export function createPlaybackLifecycleHandlers(deps: PlaybackLifecycleDeps) {
       setIsBuffering(false)
       bufferingSinceRef.current = null
       // Unexpected provider pauses must not stick while room says playing.
-      // User gestures are preventDefault'd above, so this only recovers
-      // provider drift — not a controller click that already sent pause.
-      if (!playbackRef.current.paused) {
+      // A controller pause click whose authority has not landed yet is user
+      // intent — enforcing now would resume playback and fight the pause.
+      const roomPaused = playbackRef.current.paused
+      if (
+        !roomPaused &&
+        !isTransportIntentInFlight(transportIntentRef, true, roomPaused)
+      ) {
         enforceServerPlaybackState()
       }
     },
@@ -74,7 +81,11 @@ export function createPlaybackLifecycleHandlers(deps: PlaybackLifecycleDeps) {
       bufferingSinceRef.current = null
       // HLS/local HTTP can emit `playing` after an authority pause (late
       // resume). Re-assert pause through the engine so pending pause survives.
-      if (playbackRef.current.paused) {
+      const roomPaused = playbackRef.current.paused
+      if (
+        roomPaused &&
+        !isTransportIntentInFlight(transportIntentRef, false, roomPaused)
+      ) {
         enforceServerPlaybackState()
       }
       if (

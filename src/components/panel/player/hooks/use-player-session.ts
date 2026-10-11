@@ -197,6 +197,7 @@ export function usePlayerSession({
   syncPlayerSessionActions(actionsRef, {
     applyRoomClock: sync.applyRoomClock,
     enforceServerPlaybackState: sync.enforceServerPlaybackState,
+    clearTransportNudge: sync.clearTransportNudge,
     getCurrentTimeMs: sync.getCurrentTimeMs,
     commitLiveEdgeSeek: sync.commitLiveEdgeSeek,
     selectPlaylistIndex: chrome.selectPlaylistIndex,

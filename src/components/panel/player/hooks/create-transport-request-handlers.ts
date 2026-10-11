@@ -1,9 +1,14 @@
 import type { SyncedMediaPlayerHandlerDeps } from "./synced-media-player-handler-types"
+import { markTransportIntent } from "./transport-intent"
+import { readPlayerLivePlaying } from "./to-syncable-player"
 
 type TransportRequestDeps = Pick<
   SyncedMediaPlayerHandlerDeps,
+  | "playerRef"
   | "canControlPlayback"
   | "enforceServerPlaybackState"
+  | "clearTransportNudge"
+  | "transportIntentRef"
   | "playbackRef"
   | "send"
   | "getCurrentTimeMs"
@@ -17,8 +22,11 @@ type TransportRequestDeps = Pick<
 /** Gesture/request handlers that map Vidstack transport to room events. */
 export function createTransportRequestHandlers(deps: TransportRequestDeps) {
   const {
+    playerRef,
     canControlPlayback,
     enforceServerPlaybackState,
+    clearTransportNudge,
+    transportIntentRef,
     playbackRef,
     send,
     getCurrentTimeMs,
@@ -56,7 +64,13 @@ export function createTransportRequestHandlers(deps: TransportRequestDeps) {
         enforceServerPlaybackState()
         return
       }
-      if (playbackRef.current.paused) {
+      // User intent: send when the room is paused OR the element is actually
+      // paused (room ref can lag/lead the live element).
+      const roomPaused = playbackRef.current.paused
+      const elementPlaying = readPlayerLivePlaying(playerRef.current)
+      if (roomPaused || elementPlaying === false) {
+        markTransportIntent(transportIntentRef, false)
+        clearTransportNudge()
         send("playback:play", { currentTimeMs: getCurrentTimeMs() })
       }
     },
@@ -66,7 +80,14 @@ export function createTransportRequestHandlers(deps: TransportRequestDeps) {
         enforceServerPlaybackState()
         return
       }
-      if (!playbackRef.current.paused) {
+      // User intent: send when the room is unpaused OR the element is
+      // actually playing (room ref may already say paused while HLS / local
+      // HTTP still plays — skipping the send leaves authority unpaused).
+      const roomPaused = playbackRef.current.paused
+      const elementPlaying = readPlayerLivePlaying(playerRef.current)
+      if (!roomPaused || elementPlaying === true) {
+        markTransportIntent(transportIntentRef, true)
+        clearTransportNudge()
         send("playback:pause", { currentTimeMs: getCurrentTimeMs() })
       }
     },

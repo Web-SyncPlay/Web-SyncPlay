@@ -13,6 +13,7 @@ import type {
 } from "@/contracts/types"
 import type { PlayerSrcInput } from "./player-src"
 import type { PendingSyncState } from "./hooks/use-buffering-watchdog"
+import type { TransportIntent } from "./hooks/transport-intent"
 import type { PlaylistNavSnapshot } from "./hooks/use-synced-media-player-handlers"
 import type { LocalSeekPhase } from "./playback-control/use-playback-timeline-controller"
 
@@ -28,6 +29,7 @@ export type PlayerSessionActions = {
     driftThresholdSec?: number,
   ) => void
   enforceServerPlaybackState: () => void
+  clearTransportNudge: () => void
   getCurrentTimeMs: () => number
   commitLiveEdgeSeek: () => void
   selectPlaylistIndex: (index: number) => void
@@ -62,6 +64,7 @@ export type PlayerSessionController = {
   bufferingSinceRef: RefObject<number | null>
   participantStatusErrorRef: RefObject<string | null>
   pendingSyncRef: RefObject<PendingSyncState | null>
+  transportIntentRef: RefObject<TransportIntent | null>
   reportedItemErrorRef: RefObject<string | null>
   reportedDurationItemIdRef: RefObject<string | null>
   proxyRenewAttemptedRef: RefObject<string | null>
@@ -69,6 +72,7 @@ export type PlayerSessionController = {
 
   applyRoomClock: PlayerSessionActions["applyRoomClock"]
   enforceServerPlaybackState: PlayerSessionActions["enforceServerPlaybackState"]
+  clearTransportNudge: PlayerSessionActions["clearTransportNudge"]
   getCurrentTimeMs: PlayerSessionActions["getCurrentTimeMs"]
   commitLiveEdgeSeek: PlayerSessionActions["commitLiveEdgeSeek"]
   selectPlaylistIndex: PlayerSessionActions["selectPlaylistIndex"]
@@ -116,6 +120,7 @@ export type SyncedMediaPlayerViewModel = {
 const noopActions: PlayerSessionActions = {
   applyRoomClock: () => {},
   enforceServerPlaybackState: () => {},
+  clearTransportNudge: () => {},
   getCurrentTimeMs: () => 0,
   commitLiveEdgeSeek: () => {},
   selectPlaylistIndex: () => {},
@@ -149,6 +154,7 @@ export function createPlayerSessionController(
     bufferingSinceRef: RefObject<number | null>
     participantStatusErrorRef: RefObject<string | null>
     pendingSyncRef: RefObject<PendingSyncState | null>
+    transportIntentRef: RefObject<TransportIntent | null>
     reportedItemErrorRef: RefObject<string | null>
     reportedDurationItemIdRef: RefObject<string | null>
     proxyRenewAttemptedRef: RefObject<string | null>
@@ -162,6 +168,7 @@ export function createPlayerSessionController(
       actionsRef.current.applyRoomClock(player, syncState, driftThresholdSec),
     enforceServerPlaybackState: () =>
       actionsRef.current.enforceServerPlaybackState(),
+    clearTransportNudge: () => actionsRef.current.clearTransportNudge(),
     getCurrentTimeMs: () => actionsRef.current.getCurrentTimeMs(),
     commitLiveEdgeSeek: () => actionsRef.current.commitLiveEdgeSeek(),
     selectPlaylistIndex: (index) =>

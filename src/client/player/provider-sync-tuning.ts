@@ -13,6 +13,13 @@ export type ProviderSyncTuning = {
   pauseRetryDelaysMs?: readonly number[]
   /** Force-threshold seeks allowed per authority anchor. */
   maxForceSeeksPerAnchor?: number
+  /**
+   * Native iframe provider (YouTube / Vimeo): wrapper `currentTime` / `paused`
+   * can lie, so the engine keeps pendingSync until the playhead is observed
+   * converging, gates hard seeks on a known duration, and repeats pause until
+   * the provider is quiescent. See `native-provider-sync.ts`.
+   */
+  nativeProvider?: boolean
 }
 
 /**
@@ -38,6 +45,7 @@ export const IFRAME_PROVIDER_SYNC_TUNING: ProviderSyncTuning = {
   retryDelaysMs: IFRAME_RETRY_DELAYS_MS,
   pauseRetryDelaysMs: IFRAME_PAUSE_RETRY_DELAYS_MS,
   maxForceSeeksPerAnchor: IFRAME_MAX_FORCE_SEEKS_PER_ANCHOR,
+  nativeProvider: true,
 }
 
 /**

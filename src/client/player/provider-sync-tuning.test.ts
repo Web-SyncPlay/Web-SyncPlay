@@ -214,3 +214,298 @@ describe("engine honours provider sync tuning", () => {
     expect(player.paused).toBe(false)
   })
 })
+
+describe("native iframe pending / quiescence rules", () => {
+  function createScheduler(startMs = 0) {
+    let now = startMs
+    let nextId = 1
+    const timers: { id: number; due: number; ms: number; fn: () => void }[] =
+      []
+    const scheduler: PlaybackSyncScheduler = {
+      nowMs: () => now,
+      setTimeout: (fn, ms) => {
+        const id = nextId++
+        timers.push({ id, due: now + ms, ms, fn })
+        return id
+      },
+      clearTimeout: (id) => {
+        const idx = timers.findIndex((t) => t.id === id)
+        if (idx >= 0) timers.splice(idx, 1)
+      },
+      setInterval: () => nextId++,
+      clearInterval: () => {},
+    }
+    const advance = (ms: number) => {
+      const target = now + ms
+      for (;;) {
+        const next = timers
+          .filter((t) => t.due <= target)
+          .sort((a, b) => a.due - b.due)[0]
+        if (!next) {
+          now = target
+          return
+        }
+        now = next.due
+        timers.splice(timers.indexOf(next), 1)
+        next.fn()
+      }
+    }
+    return { scheduler, advance }
+  }
+
+  const ANCHOR_MS = 19_000
+  const pausedRoom: EngineSyncState = {
+    paused: true,
+    playbackRate: 1,
+    timelineAnchorMs: ANCHOR_MS,
+    serverNowMs: 0,
+    videoLoop: false,
+  }
+
+  function createHarness(config: {
+    player: SyncablePlayer
+    url: string
+    room?: EngineSyncState
+    durationHintSec?: number | null
+    scheduler: PlaybackSyncScheduler
+  }) {
+    const room = config.room ?? pausedRoom
+    const playback: PlaybackSnapshot = { ...room, videoLoop: "off" }
+    let pending: EngineSyncState | null = null
+    let lastApplied: number | null = null
+    const host: PlaybackSyncEngineHost = {
+      getPlayer: () => config.player,
+      isMediaReady: () => true,
+      getPlayback: () => playback,
+      getPendingSync: () => pending,
+      setPendingSync: (next) => {
+        pending = next
+      },
+      getLastAppliedAnchorMs: () => lastApplied,
+      setLastAppliedAnchorMs: (next) => {
+        lastApplied = next
+      },
+      isAuthorityPaused: () => room.paused,
+      getSyncTuning: () => resolveProviderSyncTuning(config.url),
+      getDurationHintSec: () => config.durationHintSec,
+    }
+    const engine = createPlaybackSyncEngine(host, config.scheduler)
+    return { engine, host, room, getPending: () => pending }
+  }
+
+  /** Wrapper echoes the requested time at once (lying), `paused` is honest. */
+  function createEchoPlayer(initialSec: number): SyncablePlayer & {
+    seekWrites: number[]
+  } {
+    let time = initialSec
+    const seekWrites: number[] = []
+    return {
+      playbackRate: 1,
+      duration: 600,
+      paused: true,
+      seekWrites,
+      get currentTime() {
+        return time
+      },
+      set currentTime(value: number) {
+        seekWrites.push(value)
+        time = value
+      },
+      pause() {},
+      play() {},
+    }
+  }
+
+  test("HLS clears pending on an echoed seek; native keeps it until a later read", () => {
+    for (const [url, expectKept] of [
+      ["https://example.com/live.m3u8", false],
+      ["https://youtu.be/abc", true],
+    ] as const) {
+      const { scheduler, advance } = createScheduler(0)
+      const player = createEchoPlayer(0)
+      const { engine, getPending } = createHarness({ player, url, scheduler })
+      engine.start()
+      engine.applyRoomClock(player, pausedRoom)
+      expect(player.seekWrites.at(-1)).toBe(19)
+      expect(getPending() !== null).toBe(expectKept)
+
+      if (expectKept) {
+        // Later verify tick sees the playhead moved toward the target.
+        advance(IFRAME_RETRY_DELAYS_MS[0]!)
+        expect(getPending()).toBeNull()
+      }
+    }
+  })
+
+  test("no-op iframe seek never clears pending across the retry burst", () => {
+    const { scheduler, advance } = createScheduler(0)
+    // Wrapper ignores seek writes entirely: playhead stays at 0.
+    const player: SyncablePlayer = {
+      playbackRate: 1,
+      duration: 600,
+      paused: true,
+      currentTime: 0,
+      pause() {},
+      play() {},
+    }
+    Object.defineProperty(player, "currentTime", {
+      get: () => 0,
+      set: () => {},
+    })
+    const { engine, getPending } = createHarness({
+      player,
+      url: "https://vimeo.com/1",
+      scheduler,
+    })
+    engine.start()
+    engine.applyRoomClock(player, pausedRoom)
+    for (const delay of IFRAME_RETRY_DELAYS_MS) {
+      expect(getPending()).not.toBeNull()
+      advance(delay)
+    }
+    advance(IFRAME_RETRY_DELAYS_MS.at(-1)!)
+    expect(getPending()).not.toBeNull()
+  })
+
+  test("duration gate: seek is a no-op until duration is known, then re-applied", () => {
+    const { scheduler } = createScheduler(0)
+    const player = createEchoPlayer(0)
+    player.duration = 0
+    const { engine, getPending } = createHarness({
+      player,
+      url: "https://youtu.be/abc",
+      scheduler,
+    })
+    engine.start()
+    engine.applyRoomClock(player, pausedRoom)
+    expect(player.seekWrites).toEqual([])
+    expect(getPending()).not.toBeNull()
+
+    // Duration arrives (onDurationChange) -> threshold-0 re-apply.
+    player.duration = 120
+    engine.onDurationAvailable()
+    expect(player.seekWrites).toEqual([19])
+  })
+
+  test("duration gate opens from the catalog hint alone", () => {
+    const { scheduler } = createScheduler(0)
+    const player = createEchoPlayer(0)
+    player.duration = 0
+    const { engine } = createHarness({
+      player,
+      url: "https://youtu.be/abc",
+      scheduler,
+      durationHintSec: 120,
+    })
+    engine.start()
+    engine.applyRoomClock(player, pausedRoom)
+    expect(player.seekWrites).toEqual([19])
+  })
+
+  test("duration gate: verify burst re-applies once duration appears", () => {
+    const { scheduler, advance } = createScheduler(0)
+    const player = createEchoPlayer(0)
+    player.duration = 0
+    const { engine, getPending } = createHarness({
+      player,
+      url: "https://youtu.be/abc",
+      scheduler,
+    })
+    engine.start()
+    engine.applyRoomClock(player, pausedRoom)
+    engine.onAuthorityAnchor(ANCHOR_MS)
+    advance(IFRAME_RETRY_DELAYS_MS[0]!)
+    expect(player.seekWrites).toEqual([])
+    expect(getPending()).not.toBeNull()
+
+    player.duration = 120
+    advance(IFRAME_RETRY_DELAYS_MS[1]! - IFRAME_RETRY_DELAYS_MS[0]!)
+    expect(player.seekWrites).toEqual([19])
+  })
+
+  test("HLS ignores the duration gate", () => {
+    const { scheduler } = createScheduler(0)
+    const player = createEchoPlayer(0)
+    player.duration = 0
+    const { engine } = createHarness({
+      player,
+      url: "https://example.com/video.mp4",
+      scheduler,
+    })
+    engine.start()
+    engine.applyRoomClock(player, pausedRoom)
+    expect(player.seekWrites).toEqual([19])
+  })
+
+  test("room pause hard-seeks once, then repeats pause until quiescent (lying paused)", () => {
+    const { scheduler, advance } = createScheduler(0)
+    // Embed keeps playing past the paused flag: wrapper `paused` says true,
+    // but the playhead advances until the provider honours pause() at 3s.
+    const acceptPauseAtMs = 3_000
+    let playingSinceMs: number | null = 0
+    let baseSec = 10
+    let pauseCalls = 0
+    const read = () =>
+      playingSinceMs === null
+        ? baseSec
+        : baseSec + (scheduler.nowMs() - playingSinceMs) / 1000
+    const seekWrites: number[] = []
+    const player: SyncablePlayer = {
+      playbackRate: 1,
+      duration: 600,
+      paused: true,
+      get currentTime() {
+        return read()
+      },
+      set currentTime(value: number) {
+        seekWrites.push(value)
+        baseSec = value
+        if (playingSinceMs !== null) playingSinceMs = scheduler.nowMs()
+      },
+      pause() {
+        pauseCalls += 1
+        if (scheduler.nowMs() >= acceptPauseAtMs && playingSinceMs !== null) {
+          baseSec = read()
+          playingSinceMs = null
+        }
+      },
+      play() {},
+    }
+    const { engine, getPending } = createHarness({
+      player,
+      url: "https://youtu.be/abc",
+      scheduler,
+    })
+    engine.start()
+    engine.applyRoomClock(player, pausedRoom)
+
+    // Threshold-0 seek to the pause anchor happened first.
+    expect(seekWrites[0]).toBe(19)
+    expect(pauseCalls).toBeGreaterThan(0)
+    expect(getPending()).not.toBeNull()
+
+    const callsAtStart = pauseCalls
+    advance(2_400)
+    // Still "playing" under a paused flag: keeps nudging, pending held.
+    expect(pauseCalls).toBeGreaterThan(callsAtStart)
+    expect(getPending()).not.toBeNull()
+
+    advance(IFRAME_RETRY_DELAYS_MS.at(-1)! - 2_400)
+    // Provider finally honoured pause and then stayed stable.
+    expect(playingSinceMs).toBeNull()
+    expect(getPending()).toBeNull()
+  })
+
+  test("HLS paused room does not sample quiescence (clears on paused flag)", () => {
+    const { scheduler } = createScheduler(0)
+    const player = createEchoPlayer(19)
+    const { engine, getPending } = createHarness({
+      player,
+      url: "https://example.com/video.mp4",
+      scheduler,
+    })
+    engine.start()
+    engine.applyRoomClock(player, pausedRoom)
+    expect(getPending()).toBeNull()
+  })
+})

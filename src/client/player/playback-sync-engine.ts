@@ -6,9 +6,15 @@ import {
 } from "@/client/player/apply-playback-sync"
 import {
   DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
+  computeExpectedPlaybackTimeSec,
   measurePlaybackDriftSec,
+  resolveSeekCeilingSec,
   type PlaybackSyncState,
 } from "@/client/player/playback-sync"
+import {
+  createNativeSyncTracker,
+  isNativeDurationReady,
+} from "@/client/player/native-provider-sync"
 import { pendingSyncFromPlayback } from "@/client/player/pending-sync"
 import type { ProviderSyncTuning } from "@/client/player/provider-sync-tuning"
 import { serverNowEstimateMs } from "@/shared/server-clock"
@@ -69,6 +75,12 @@ export type PlaybackSyncEngineHost = {
    * default (HLS / direct media) schedule.
    */
   getSyncTuning?: () => ProviderSyncTuning | undefined
+  /**
+   * Catalog duration (seconds) for native providers whose wrapper duration is
+   * 0/NaN until the iframe boots. `Infinity` for live. Used by the native
+   * duration gate only.
+   */
+  getDurationHintSec?: () => number | null | undefined
   onApplyFailed?: (syncState: EngineSyncState) => void
 }
 
@@ -90,6 +102,11 @@ export type PlaybackSyncEngine = {
     driftThresholdSec?: number,
   ) => void
   clearTransportNudge: () => void
+  /**
+   * Native providers: a finite duration just became available (catalog or
+   * `onDurationChange`). Re-applies the room clock if sync was gated.
+   */
+  onDurationAvailable: () => void
 }
 
 /**
@@ -166,6 +183,17 @@ export function createPlaybackSyncEngine(
   /** First ready apply after media swap uses threshold 0 (late-join snap). */
   let initialSnapPending = true
   let forceSeeksForAnchor = { anchorMs: 0, count: 0 }
+  const native = createNativeSyncTracker()
+  /** Native only: hard seeks were skipped because duration was unknown. */
+  let durationGated = false
+
+  const isNativeSync = () =>
+    host.getSyncTuning?.()?.nativeProvider === true
+  const nativeDurationReady = (player: SyncablePlayer) =>
+    isNativeDurationReady({
+      playerDurationSec: Number(player.duration),
+      hintDurationSec: host.getDurationHintSec?.(),
+    })
 
   const retryDelaysMs = (): readonly number[] =>
     host.getSyncTuning?.()?.retryDelaysMs ?? ANCHOR_RETRY_DELAYS_MS
@@ -220,6 +248,30 @@ export function createPlaybackSyncEngine(
     host.isAuthorityPaused() && player.paused === false
 
   /**
+   * Native iframe pause: sample the playhead; while it still advances (or the
+   * wrapper says playing) re-issue pause() unconditionally — `paused` lies.
+   * Returns true once the provider is quiescent.
+   */
+  const settleNativePause = (player: SyncablePlayer): boolean => {
+    const { quiescent, sampled } = native.samplePauseQuiescence({
+      currentSec: readPlayheadSec(player),
+      wrapperPaused: player.paused,
+      nowMs: scheduler.nowMs(),
+    })
+    if (quiescent) {
+      return true
+    }
+    if (sampled || player.paused === false) {
+      try {
+        player.pause()
+      } catch {
+        // Provider may be rebuilding.
+      }
+    }
+    return false
+  }
+
+  /**
    * Authority pause: HLS/local HTTP can ignore the first pause() or resume on
    * a late `playing` event. Retry on the same burst schedule as seeks, reading
    * a fresh player each tick (adapter snapshots go stale).
@@ -232,7 +284,15 @@ export function createPlaybackSyncEngine(
           return
         }
         const fresh = host.getPlayer()
-        if (!fresh || fresh.paused !== false) {
+        if (!fresh) {
+          return
+        }
+        if (isNativeSync()) {
+          // Wrapper `paused` can lie; keep pausing until the playhead settles.
+          settleNativePause(fresh)
+          return
+        }
+        if (fresh.paused !== false) {
           return
         }
         void nudgePlaybackTransport({ player: fresh, paused: true })
@@ -279,34 +339,97 @@ export function createPlaybackSyncEngine(
     if (disposed) {
       return
     }
-    const isInitialSnap = initialSnapPending && host.isMediaReady()
+    const nativeMode = isNativeSync()
+    // Native: no hard seeks until duration is known (iframe seek is a no-op
+    // before boot). Re-applied via onDurationAvailable / verify / watchdog.
+    const gated = nativeMode && !nativeDurationReady(player)
+    if (gated) {
+      durationGated = true
+    }
+    const reapplyAfterGate = nativeMode && !gated && durationGated
+    if (reapplyAfterGate) {
+      durationGated = false
+    }
+    const isInitialSnap =
+      !gated && initialSnapPending && host.isMediaReady()
     if (isInitialSnap) {
       initialSnapPending = false
     }
     // Late join: first ready apply force-snaps to the room clock (threshold 0)
     // unless the caller already chose a threshold.
-    const effectiveThresholdSec =
-      driftThresholdSec ?? (isInitialSnap ? 0 : undefined)
+    let effectiveThresholdSec =
+      driftThresholdSec ??
+      (isInitialSnap || reapplyAfterGate ? 0 : undefined)
+    if (gated) {
+      effectiveThresholdSec = Number.POSITIVE_INFINITY
+    } else if (
+      nativeMode &&
+      syncState.paused &&
+      effectiveThresholdSec === undefined &&
+      native.claimPauseSeek(
+        `${syncState.timelineAnchorMs}:${syncState.serverNowMs}`,
+      )
+    ) {
+      // Room pause / anchor change on iframe: hard-seek to the anchor once,
+      // then the pause burst repeats until the provider is quiescent.
+      effectiveThresholdSec = 0
+    }
     setPhase("applying")
     try {
       const seekableEndSec = Number.isFinite(Number(player.seekableEnd))
         ? Number(player.seekableEnd)
         : undefined
-      applyPlaybackSyncToPlayer({
+      const nowMs = scheduler.nowMs()
+      const playheadBeforeSec = readPlayheadSec(player)
+      const result = applyPlaybackSyncToPlayer({
         player,
         syncState,
         driftThresholdSec: effectiveThresholdSec,
-        nowMs: scheduler.nowMs(),
+        nowMs,
         mode: "clock",
         seekableEndSec,
       })
-      host.setLastAppliedAnchorMs(syncState.timelineAnchorMs)
+      if (!gated) {
+        host.setLastAppliedAnchorMs(syncState.timelineAnchorMs)
+      }
+
+      let nativeSeekPending = false
+      if (nativeMode && !gated) {
+        if (result.seekAttempted) {
+          // The wrapper may echo the requested time immediately; only a later
+          // read that moved toward the target can confirm the seek.
+          const ceiling = resolveSeekCeilingSec({
+            durationSec: Number(player.duration),
+            seekableEndSec,
+          })
+          const expectedSec = computeExpectedPlaybackTimeSec(syncState, nowMs)
+          native.noteSeek({
+            anchorMs: syncState.timelineAnchorMs,
+            fromSec: playheadBeforeSec,
+            targetSec:
+              ceiling !== null ? Math.min(expectedSec, ceiling) : expectedSec,
+            nowMs,
+          })
+          nativeSeekPending = true
+        } else if (native.hasSeekProbe()) {
+          nativeSeekPending =
+            native.evaluateSeek({
+              anchorMs: syncState.timelineAnchorMs,
+              currentSec: readPlayheadSec(player),
+              driftSec: result.driftSec,
+              thresholdSec: DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
+              roomPaused: syncState.paused,
+              nowMs,
+            }) === "pending"
+        }
+      }
 
       // HLS/proxy often accepts the write asynchronously (or no-ops once).
       // Keep pending until verify / watchdog confirms the playhead caught up.
       const driftSec = measureDrift(player, syncState, scheduler.nowMs())
       if (!syncState.paused && player.paused) {
         clearPauseTimers()
+        native.resetPauseSamples()
         void nudgePlaybackTransport({ player, paused: false }).playAttempt
         scheduleTransportNudge(player)
       } else if (syncState.paused) {
@@ -317,21 +440,36 @@ export function createPlaybackSyncEngine(
         schedulePauseNudgeBurst()
       } else {
         clearPauseTimers()
+        native.resetPauseSamples()
       }
 
       // A playing element against a paused room is unconverged even when the
       // playhead matches — keep pending so `playing` events cannot clear it.
       // Re-read after the nudge: a synchronous pause() converges immediately.
+      // Native: wrapper `paused` can lie, so also wait for quiescence (the
+      // apply itself only baselines the sample, never settles).
+      const nativePauseUnsettled =
+        nativeMode &&
+        !gated &&
+        syncState.paused &&
+        !settleNativePause(host.getPlayer() ?? player)
       const pauseUnconverged =
-        syncState.paused && host.getPlayer()?.paused === false
+        (syncState.paused && host.getPlayer()?.paused === false) ||
+        nativePauseUnsettled
       const stillDrifting =
+        gated ||
+        nativeSeekPending ||
         driftSec === null ||
         driftSec > DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC ||
         pauseUnconverged
       host.setPendingSync(stillDrifting ? syncState : null)
       setPhase(stillDrifting ? "verifying" : "idle")
 
-      if (isInitialSnap && stillDrifting && !holdLocalSeek) {
+      if (
+        (isInitialSnap || reapplyAfterGate) &&
+        stillDrifting &&
+        !holdLocalSeek
+      ) {
         // Media became ready after the authority-anchor burst expired
         // (late join). Re-arm verify retries until within threshold.
         scheduleAnchorVerifyBurst(host.getPlayback().timelineAnchorMs)
@@ -372,6 +510,53 @@ export function createPlaybackSyncEngine(
     applyRoomClock(player, syncState, threshold)
   }
 
+  /**
+   * Native duration gate for verify/watchdog ticks. Returns true when the tick
+   * is fully handled (still gated, or re-applied now that duration arrived).
+   */
+  const gateNativeTick = (
+    player: SyncablePlayer,
+    syncState: EngineSyncState,
+  ): boolean => {
+    if (!nativeDurationReady(player)) {
+      durationGated = true
+      host.setPendingSync(syncState)
+      setPhase("verifying")
+      return true
+    }
+    if (durationGated) {
+      applyRoomClock(player, syncState)
+      return true
+    }
+    return false
+  }
+
+  /**
+   * Native: keep pending while a written seek is unconfirmed (wrapper echoes
+   * the target) or a paused room's provider is not yet quiescent.
+   */
+  const nativeShouldHold = (
+    player: SyncablePlayer,
+    syncState: EngineSyncState,
+    driftSec: number | null,
+  ): boolean => {
+    const seekVerdict = native.evaluateSeek({
+      anchorMs: syncState.timelineAnchorMs,
+      currentSec: readPlayheadSec(player),
+      driftSec,
+      thresholdSec: DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
+      roomPaused: syncState.paused,
+      nowMs: scheduler.nowMs(),
+    })
+    if (seekVerdict === "pending") {
+      return true
+    }
+    if (syncState.paused) {
+      return !settleNativePause(player)
+    }
+    return false
+  }
+
   const runVerifyTick = (anchorAtSchedule: number) => {
     if (disposed || holdLocalSeek || !host.isMediaReady()) {
       return
@@ -385,10 +570,16 @@ export function createPlaybackSyncEngine(
     }
 
     const syncState = pendingSyncFromPlayback(host.getPlayback())
+    const nativeMode = isNativeSync()
+    if (nativeMode && gateNativeTick(player, syncState)) {
+      return
+    }
     const driftSec = measureDrift(player, syncState, scheduler.nowMs())
     const pauseUnconverged = reconcilePausedTransport(player)
+    const nativeHold = nativeMode && nativeShouldHold(player, syncState, driftSec)
     if (
       !pauseUnconverged &&
+      !nativeHold &&
       (driftSec === null ||
         driftSec <= DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC)
     ) {
@@ -406,7 +597,8 @@ export function createPlaybackSyncEngine(
     ) {
       tryForceSeek(player, syncState, anchorAtSchedule)
     } else {
-      // Playhead is fine; only the paused transport is outstanding.
+      // Playhead is fine; only the paused transport (or native confirmation)
+      // is outstanding.
       host.setPendingSync(syncState)
     }
   }
@@ -439,10 +631,15 @@ export function createPlaybackSyncEngine(
 
     const syncState =
       host.getPendingSync() ?? pendingSyncFromPlayback(host.getPlayback())
+    const nativeMode = isNativeSync()
+    if (nativeMode && gateNativeTick(player, syncState)) {
+      return
+    }
+    const driftSec = measureDrift(player, syncState, scheduler.nowMs())
     const plan = planPlaybackDriftCorrection({
       pending: host.getPendingSync(),
       playback: host.getPlayback(),
-      driftSec: measureDrift(player, syncState, scheduler.nowMs()),
+      driftSec,
     })
     // Steady-state pause enforcement: HLS `playing` must not leave a paused
     // room running (and must not clear pending below).
@@ -451,7 +648,9 @@ export function createPlaybackSyncEngine(
       return
     }
     if (plan.action === "clear") {
-      if (pauseUnconverged) {
+      const nativeHold =
+        nativeMode && nativeShouldHold(player, syncState, driftSec)
+      if (pauseUnconverged || nativeHold) {
         host.setPendingSync(syncState)
         return
       }
@@ -488,6 +687,8 @@ export function createPlaybackSyncEngine(
     clearRetryTimers()
     clearTransportNudge()
     initialSnapPending = true
+    durationGated = false
+    native.reset()
     if (watchdogTimer !== undefined) {
       scheduler.clearInterval(watchdogTimer)
       watchdogTimer = undefined
@@ -500,6 +701,8 @@ export function createPlaybackSyncEngine(
     clearRetryTimers()
     clearTransportNudge()
     initialSnapPending = true
+    durationGated = false
+    native.reset()
     forceSeeksForAnchor = { anchorMs: 0, count: 0 }
     if (!holdLocalSeek) {
       setPhase("idle")
@@ -528,5 +731,20 @@ export function createPlaybackSyncEngine(
     },
     applyRoomClock,
     clearTransportNudge,
+    onDurationAvailable: () => {
+      if (disposed || holdLocalSeek || !isNativeSync() || !host.isMediaReady()) {
+        return
+      }
+      const player = host.getPlayer()
+      if (!player || !nativeDurationReady(player)) {
+        return
+      }
+      if (!durationGated) {
+        return
+      }
+      const playback = host.getPlayback()
+      applyRoomClock(player, pendingSyncFromPlayback(playback))
+      scheduleAnchorVerifyBurst(playback.timelineAnchorMs)
+    },
   }
 }

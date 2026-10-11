@@ -12,6 +12,14 @@ import type { Browser, BrowserContext, Page } from "playwright"
 import { chromium } from "playwright"
 import { checkHealth } from "./lib/check-health.ts"
 import { identityHash } from "./lib/identity-hash.ts"
+import {
+  createServerClockEstimate,
+  expectedPlayheadSec,
+  hostPlaybackPause,
+  hostPlaybackPlay,
+  hostPlaybackSeek,
+  wireServerClockFromRoomClient,
+} from "./lib/playback-harness.ts"
 import { RoomClient } from "./lib/room-ws-client.ts"
 
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000"
@@ -411,10 +419,10 @@ const MEDIA_CASES: MediaCase[] = [
   {
     id: "mp4",
     label: "Direct MP4",
-    url: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
-    match: "flower.mp4",
+    url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    match: "BigBuckBunny",
     kind: "direct",
-    seekTargetSec: 3,
+    seekTargetSec: 15,
   },
   {
     id: "hls",
@@ -518,6 +526,7 @@ async function runMediaCase(
   await seedUsername(guestCtx, guestId)
   await seedUsername(modCtx, modId)
 
+  const roomClock = createServerClockEstimate()
   const observer = new RoomClient({
     baseUrl: BASE,
     roomId,
@@ -526,7 +535,10 @@ async function runMediaCase(
     username: "observer",
     sessionKind: "player",
   })
+  wireServerClockFromRoomClient(observer, roomClock)
 
+  let hostCtl: RoomClient | undefined
+  let guestCtl: RoomClient | undefined
   let hostPage: Page | undefined
   let guestPage: Page | undefined
   let latePage: Page | undefined
@@ -534,13 +546,32 @@ async function runMediaCase(
 
   try {
     // Host must create the room (first join becomes owner). Observer is read-only.
-    // NOTE: do not open a RoomClient with the same uid/secret as a browser tab —
-    // hash bootstrap currently fails to persist the hash secret (Strict Mode race),
-    // so a second join with the scripted secret gets identity_mismatch.
     hostPage = await openRoom(hostCtx, roomId, hostId, hostSecret)
     guestPage = await openRoom(guestCtx, roomId, guestId, guestSecret)
     await observer.connect()
     await observer.waitFor((c) => Boolean(c.roomState), 20_000)
+
+    // Same uid/secret as browser host/guest — drives playback:play|pause|seek over WS.
+    hostCtl = new RoomClient({
+      baseUrl: BASE,
+      roomId,
+      userId: hostId,
+      userSecret: hostSecret,
+      username: hostId.slice(0, 8),
+      sessionKind: "player",
+    })
+    guestCtl = new RoomClient({
+      baseUrl: BASE,
+      roomId,
+      userId: guestId,
+      userSecret: guestSecret,
+      username: guestId.slice(0, 8),
+      sessionKind: "player",
+    })
+    await hostCtl.connect()
+    await guestCtl.connect()
+    await hostCtl.waitFor((c) => Boolean(c.roomState), 20_000)
+    await guestCtl.waitFor((c) => Boolean(c.roomState), 20_000)
 
     note({
       id: `${media.id}-join`,
@@ -688,7 +719,7 @@ async function runMediaCase(
       .catch(() => {})
 
     // --- PLAY ---
-    const playClicked = await clickPlayPause(hostPage, "Play")
+    const playVia = await hostPlaybackPlay(hostCtl, hostPage, clickPlayPause)
     await settle(3_500)
     await observer
       .waitFor((c) => c.roomState?.playback?.paused === false, 15_000)
@@ -706,7 +737,7 @@ async function runMediaCase(
         scenario: "play",
         title: "Room transport label mismatch after play",
         detail: `host=${hostTransport} guest=${guestTransport}`,
-        measured: { playClicked },
+        measured: { playVia },
       })
     }
 
@@ -767,7 +798,7 @@ async function runMediaCase(
       })
     }
 
-    // Drift vs room clock if we can compute expected time
+    // Drift vs room clock — only when playheads come from media-player (not presence grain).
     const pb = observer.roomState?.playback as
       | {
           paused?: boolean
@@ -776,18 +807,20 @@ async function runMediaCase(
           serverNowMs?: number
         }
       | undefined
+    const expected =
+      pb && roomClock.hasSample()
+        ? expectedPlayheadSec(pb, roomClock.serverNowEstimateMs)
+        : null
     if (
-      pb &&
-      pair.host.currentTimeSec !== null &&
-      typeof pb.timelineAnchorMs === "number" &&
-      typeof pb.serverNowMs === "number"
+      expected !== null &&
+      pair.host.source === "player" &&
+      pair.host.tag === "media-player" &&
+      pair.host.currentTimeSec !== null
     ) {
-      const now = Date.now()
-      const expected =
-        pb.timelineAnchorMs / 1000 +
-        (pb.paused ? 0 : Math.max(0, (now - pb.serverNowMs) / 1000) * (pb.playbackRate ?? 1))
       const hostDrift = Math.abs(pair.host.currentTimeSec - expected)
       const guestDrift =
+        pair.guest.source === "player" &&
+        pair.guest.tag === "media-player" &&
         pair.guest.currentTimeSec !== null
           ? Math.abs(pair.guest.currentTimeSec - expected)
           : null
@@ -798,7 +831,7 @@ async function runMediaCase(
           media: media.label,
           scenario: "play",
           title: "Host playhead vs room clock",
-          detail: `hostDrift=${hostDrift.toFixed(3)}s expected≈${expected.toFixed(2)}s (threshold ${DRIFT_THRESHOLD_SEC}s)`,
+          detail: `hostDrift=${hostDrift.toFixed(3)}s expected≈${expected.toFixed(2)}s (threshold ${DRIFT_THRESHOLD_SEC}s; serverNowEstimateMs)`,
           measured: { hostDrift, expected, hostSec: pair.host.currentTimeSec },
         })
       }
@@ -809,14 +842,14 @@ async function runMediaCase(
           media: media.label,
           scenario: "play",
           title: "Guest playhead vs room clock",
-          detail: `guestDrift=${guestDrift.toFixed(3)}s expected≈${expected.toFixed(2)}s`,
+          detail: `guestDrift=${guestDrift.toFixed(3)}s expected≈${expected.toFixed(2)}s (serverNowEstimateMs)`,
           measured: { guestDrift, expected, guestSec: pair.guest.currentTimeSec },
         })
       }
     }
 
     // --- PAUSE ---
-    await clickPlayPause(hostPage, "Pause")
+    const pauseVia = await hostPlaybackPause(hostCtl, hostPage, clickPlayPause)
     await settle(2_000)
     await observer
       .waitFor((c) => c.roomState?.playback?.paused === true, 10_000)
@@ -892,6 +925,7 @@ async function runMediaCase(
           hostSec: pair.host.currentTimeSec,
           guestSec: pair.guest.currentTimeSec,
           deltaSec: pair.peerDeltaSec,
+          pauseVia,
         },
       })
     }
@@ -914,18 +948,24 @@ async function runMediaCase(
 
     // --- SEEK (while paused) ---
     const seekTarget = media.seekTargetSec ?? 10
-    const sought = await seekViaRoomControl(hostPage, seekTarget)
-    if (!sought) {
+    const seekVia = await hostPlaybackSeek(
+      hostCtl,
+      hostPage,
+      observer,
+      seekTarget,
+      seekViaRoomControl,
+    )
+    if (seekVia === "none") {
       note({
         id: `${media.id}-seek-ui-missing`,
         severity: "warn",
         media: media.label,
         scenario: "seek",
-        title: "No seek UI / media element to drive seek",
-        detail: `wanted ~${seekTarget}s`,
+        title: "Seek did not reach target timeline anchor",
+        detail: `wanted ~${seekTarget}s (hostCtl + UI fallback)`,
       })
     }
-    await settle(3_500)
+    await settle(1_500)
     pair = await measurePair(hostPage, guestPage)
     const seekTol = Math.max(PEER_FAIL_SEC, 2.0) // iframe providers can be coarse
     if (pair.peerDeltaSec === null) {
@@ -1044,7 +1084,7 @@ async function runMediaCase(
     latePage = undefined
 
     // Resume play then late-join while playing
-    await clickPlayPause(hostPage, "Play")
+    await hostPlaybackPlay(hostCtl, hostPage, clickPlayPause)
     await settle(3_000)
     latePage = await openRoom(guestCtx, roomId, randomUUID(), secret())
     await settle(5_000)
@@ -1127,18 +1167,18 @@ async function runMediaCase(
         detail: modId.slice(0, 8),
       })
 
-      // Race via UI: host + mod seek different slider positions, then opposite transport.
+      // Race: host via RoomClient + mod via UI seek/play-pause.
       const beforeRace = Number(
         (observer.roomState?.playback as { timelineAnchorMs?: number } | undefined)
           ?.timelineAnchorMs,
       )
       await Promise.all([
-        seekViaRoomControl(hostPage!, 5),
+        hostCtl!.send("playback:seek", { targetMs: 5_000 }),
         seekViaRoomControl(modPage!, 25),
       ])
       await settle(500)
       await Promise.all([
-        clickPlayPause(hostPage!, "Play"),
+        hostCtl!.send("playback:play"),
         clickPlayPause(modPage!, "Pause"),
       ])
       await settle(3_500)
@@ -1195,17 +1235,23 @@ async function runMediaCase(
           },
         })
       }
+
     }
 
-    // Guest must not control — click Pause/Play; room authority should ignore.
-    const beforePaused = Boolean(observer.roomState?.playback?.paused)
+    if (modPage) {
+      await modPage.close().catch(() => {})
+      modPage = undefined
+    }
+
+    // Guest must not control — protocol-level pause (NC-10); not UI after concurrent-mod.
+    const beforePaused = observer.roomState?.playback?.paused
     const beforeAnchor = Number(
       (observer.roomState?.playback as { timelineAnchorMs?: number } | undefined)
         ?.timelineAnchorMs,
     )
-    await clickPlayPause(guestPage!, beforePaused ? "Play" : "Pause")
+    guestCtl!.send("playback:pause")
     await settle(1_500)
-    const afterPaused = Boolean(observer.roomState?.playback?.paused)
+    const afterPaused = observer.roomState?.playback?.paused
     const afterAnchor = Number(
       (observer.roomState?.playback as { timelineAnchorMs?: number } | undefined)
         ?.timelineAnchorMs,
@@ -1216,8 +1262,8 @@ async function runMediaCase(
         severity: "fail",
         media: media.label,
         scenario: "authz",
-        title: "Guest transport click changed room pause state",
-        detail: `paused ${beforePaused}->${afterPaused}`,
+        title: "Guest playback:pause changed room pause state",
+        detail: `paused ${String(beforePaused)}->${String(afterPaused)}`,
       })
     } else {
       note({
@@ -1225,8 +1271,8 @@ async function runMediaCase(
         severity: "pass",
         media: media.label,
         scenario: "authz",
-        title: "Guest control ignored",
-        detail: `paused stayed ${afterPaused}; anchor ${beforeAnchor}->${afterAnchor}`,
+        title: "Guest playback:pause ignored",
+        detail: `paused stayed ${String(afterPaused)}; anchor ${beforeAnchor}->${afterAnchor}`,
       })
     }
   } catch (error) {
@@ -1246,6 +1292,8 @@ async function runMediaCase(
     await hostCtx.close().catch(() => {})
     await guestCtx.close().catch(() => {})
     await modCtx.close().catch(() => {})
+    hostCtl?.close()
+    guestCtl?.close()
     observer.close()
   }
 }
@@ -1443,7 +1491,7 @@ async function main() {
     detail: `valkey=${String(health.valkey)} ytdlpBin=${String((health as { ytdlpBin?: string }).ytdlpBin)}`,
   })
 
-  // Probe identity hash bootstrap (known product issue under React Strict Mode).
+  // Probe identity hash bootstrap (RoomClient + browser share uid/secret when hash is honored).
   {
     const probeBrowser = await chromium.launch({ headless: true })
     try {

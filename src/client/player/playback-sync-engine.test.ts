@@ -504,6 +504,68 @@ describe("PlaybackSyncEngine", () => {
       expect(player.paused).toBe(true)
     })
 
+    test("local pause edge: threshold 0 snaps + pauses even under 0.8s drift", () => {
+      const { scheduler, advance } = createFakeScheduler(1_000)
+      // 0.3s ahead of the paused anchor: under the default 0.8s threshold.
+      const player = createStickyPlayingPlayer(10.3)
+      player.unblockPause()
+      const host = createHost({
+        player,
+        playback: { ...pausedState, videoLoop: "off" },
+      })
+      const engine = createPlaybackSyncEngine(host, scheduler)
+      engine.start()
+
+      // Burn the one-shot late-join snap, then re-enter at sub-threshold drift.
+      engine.applyRoomClock(player, pausedState)
+      player.currentTime = 10.3
+      player.resumeLate()
+      // Default threshold leaves the playhead alone but still pauses.
+      engine.applyRoomClock(player, pausedState)
+      expect(player.paused).toBe(true)
+      expect(player.currentTime).toBe(10.3)
+
+      // Authority pause edge uses threshold 0 → exact snap to the anchor.
+      player.resumeLate()
+      engine.clearTransportNudge()
+      engine.applyRoomClock(player, pausedState, 0)
+      expect(player.paused).toBe(true)
+      expect(player.currentTime).toBe(10)
+      advance(1_000)
+      expect(player.paused).toBe(true)
+    })
+
+    test("authority pause cancels a queued play retry", () => {
+      const { scheduler, advance } = createFakeScheduler(1_000)
+      const player = createStickyPlayingPlayer(10)
+      player.unblockPause()
+      player.paused = true
+      let playCalls = 0
+      // Provider ignores play() so the retry timer would keep firing.
+      player.play = () => {
+        playCalls += 1
+      }
+      const playingState: EngineSyncState = { ...pausedState, paused: false }
+      let authorityPaused = false
+      const host = createHost({
+        player,
+        playback: { ...playingState, videoLoop: "off" },
+      })
+      host.isAuthorityPaused = () => authorityPaused
+      const engine = createPlaybackSyncEngine(host, scheduler)
+      engine.start()
+
+      engine.applyRoomClock(player, playingState, 0)
+      expect(playCalls).toBe(1)
+
+      authorityPaused = true
+      host.setPlayback({ ...pausedState, videoLoop: "off" })
+      engine.applyRoomClock(player, pausedState, 0)
+      expect(player.paused).toBe(true)
+      advance(1_000)
+      expect(playCalls).toBe(1)
+    })
+
     test("watchdog does not clear pending while paused room still plays", () => {
       const { scheduler, advance } = createFakeScheduler(1_000)
       const player = createStickyPlayingPlayer(10)

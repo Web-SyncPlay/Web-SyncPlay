@@ -126,6 +126,7 @@ export const SyncedMediaPlayer = memo(function SyncedMediaPlayer({
     bufferingSinceRef: controller.bufferingSinceRef,
     participantStatusErrorRef: controller.participantStatusErrorRef,
     pendingSyncRef: controller.pendingSyncRef,
+    transportIntentRef: controller.transportIntentRef,
     reportedItemErrorRef: controller.reportedItemErrorRef,
     reportedDurationItemIdRef: controller.reportedDurationItemIdRef,
     proxyRenewAttemptedRef: controller.proxyRenewAttemptedRef,
@@ -137,6 +138,7 @@ export const SyncedMediaPlayer = memo(function SyncedMediaPlayer({
     applyRoomClock: (player, syncState, driftThresholdSec) =>
       controller.applyRoomClock(player, syncState, driftThresholdSec),
     enforceServerPlaybackState: () => controller.enforceServerPlaybackState(),
+    clearTransportNudge: () => controller.clearTransportNudge(),
     getCurrentTimeMs: () => controller.getCurrentTimeMs(),
     commitLiveEdgeSeek: () => controller.commitLiveEdgeSeek(),
     selectPlaylistIndex: (index) => controller.selectPlaylistIndex(index),

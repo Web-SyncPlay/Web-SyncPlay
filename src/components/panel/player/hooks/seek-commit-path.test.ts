@@ -21,8 +21,11 @@ function createWiredHandlers(config: { seekPhase: "idle" | "previewing" }) {
   } as never)
 
   const handlers = createTransportRequestHandlers({
+    playerRef: { current: null },
     canControlPlayback: true,
     enforceServerPlaybackState: () => {},
+    clearTransportNudge: () => {},
+    transportIntentRef: { current: null },
     playbackRef: { current: roomState.playback },
     send,
     getCurrentTimeMs: () => 0,

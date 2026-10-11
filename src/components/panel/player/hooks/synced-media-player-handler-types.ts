@@ -8,6 +8,7 @@ import type { ClientRoomState, LoopMode, PlaylistItem } from "@/contracts/types"
 import type { PlayerSrcInput } from "../player-src"
 import type { PendingSyncState } from "./use-buffering-watchdog"
 import type { LocalSeekPhase } from "../playback-control/use-playback-timeline-controller"
+import type { TransportIntent } from "./transport-intent"
 
 /** Playlist nav fields read from a ref so ended logic avoids prop churn. */
 export type PlaylistNavSnapshot = {
@@ -32,6 +33,8 @@ export type SyncedMediaPlayerHandlerDeps = {
   bufferingSinceRef: RefObject<number | null>
   participantStatusErrorRef: RefObject<string | null>
   pendingSyncRef: RefObject<PendingSyncState | null>
+  /** Controller pause/play click awaiting authority (suppresses enforce). */
+  transportIntentRef: RefObject<TransportIntent | null>
   reportedItemErrorRef: RefObject<string | null>
   reportedDurationItemIdRef: RefObject<string | null>
   proxyRenewAttemptedRef: RefObject<string | null>
@@ -46,6 +49,8 @@ export type SyncedMediaPlayerHandlerDeps = {
     driftThresholdSec?: number,
   ) => void
   enforceServerPlaybackState: () => void
+  /** Drop play/pause nudge retry timers (user intent supersedes them). */
+  clearTransportNudge: () => void
   getCurrentTimeMs: () => number
   commitLiveEdgeSeek: () => void
   selectPlaylistIndex: (index: number) => void

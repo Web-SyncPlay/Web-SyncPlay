@@ -3,6 +3,10 @@ import { createRoomState } from "@/shared/test-utils/room-fixtures"
 import type { LoopMode } from "@/contracts/types"
 import type { LocalSeekPhase } from "../playback-control/use-playback-timeline-controller"
 import { createTransportRequestHandlers } from "./create-transport-request-handlers"
+import {
+  isTransportIntentInFlight,
+  type TransportIntent,
+} from "./transport-intent"
 
 function createDeps(overrides: {
   canControlPlayback?: boolean
@@ -10,6 +14,8 @@ function createDeps(overrides: {
   playbackRate?: number
   videoLoop?: LoopMode
   seekPhase?: LocalSeekPhase
+  /** Live element paused flag; `undefined` = no player mounted. */
+  elementPaused?: boolean
 } = {}) {
   const sent: Array<{ type: string; payload: unknown }> = []
   const enforceServerPlaybackState = mock(() => {})
@@ -17,10 +23,22 @@ function createDeps(overrides: {
   const updateSeek = mock((_ms: number) => {})
   const commitSeek = mock((_ms: number) => {})
   const commitLiveEdgeSeek = mock(() => {})
+  const clearTransportNudge = mock(() => {})
+  const transportIntentRef: { current: TransportIntent | null } = {
+    current: null,
+  }
 
   const handlers = createTransportRequestHandlers({
+    playerRef: {
+      current:
+        overrides.elementPaused === undefined
+          ? null
+          : ({ paused: overrides.elementPaused, el: null } as never),
+    },
     canControlPlayback: overrides.canControlPlayback ?? true,
     enforceServerPlaybackState,
+    clearTransportNudge,
+    transportIntentRef,
     playbackRef: {
       current: {
         ...createRoomState().playback,
@@ -44,6 +62,8 @@ function createDeps(overrides: {
     handlers,
     sent,
     enforceServerPlaybackState,
+    clearTransportNudge,
+    transportIntentRef,
     beginSeek,
     updateSeek,
     commitSeek,
@@ -138,6 +158,64 @@ describe("createTransportRequestHandlers", () => {
     expect(pause.sent).toEqual([
       { type: "playback:pause", payload: { currentTimeMs: 12_500 } },
     ])
+  })
+
+  test("pause is sent when room ref says paused but the element is playing", () => {
+    const { handlers, sent, clearTransportNudge, transportIntentRef } =
+      createDeps({ paused: true, elementPaused: false })
+    handlers.onMediaPauseRequest({ preventDefault: mock(() => {}) })
+    expect(sent).toEqual([
+      { type: "playback:pause", payload: { currentTimeMs: 12_500 } },
+    ])
+    expect(clearTransportNudge).toHaveBeenCalledTimes(1)
+    expect(transportIntentRef.current?.paused).toBe(true)
+  })
+
+  test("pause is skipped when room is paused and the element is paused", () => {
+    const { handlers, sent, clearTransportNudge } = createDeps({
+      paused: true,
+      elementPaused: true,
+    })
+    handlers.onMediaPauseRequest({ preventDefault: mock(() => {}) })
+    expect(sent).toHaveLength(0)
+    expect(clearTransportNudge).not.toHaveBeenCalled()
+  })
+
+  test("play is sent when room ref says playing but the element is paused", () => {
+    const { handlers, sent, clearTransportNudge, transportIntentRef } =
+      createDeps({ paused: false, elementPaused: true })
+    handlers.onMediaPlayRequest({ preventDefault: mock(() => {}) })
+    expect(sent).toEqual([
+      { type: "playback:play", payload: { currentTimeMs: 12_500 } },
+    ])
+    expect(clearTransportNudge).toHaveBeenCalledTimes(1)
+    expect(transportIntentRef.current?.paused).toBe(false)
+  })
+
+  test("pause/play requests clear the transport nudge and mark intent in flight", () => {
+    const pause = createDeps({ paused: false, elementPaused: false })
+    pause.handlers.onMediaPauseRequest({ preventDefault: mock(() => {}) })
+    expect(pause.clearTransportNudge).toHaveBeenCalledTimes(1)
+    // Room still unpaused → intent suppresses the pause-enforce window.
+    expect(
+      isTransportIntentInFlight(pause.transportIntentRef, true, false),
+    ).toBe(true)
+    // Expires after ~1.8s.
+    expect(
+      isTransportIntentInFlight(
+        pause.transportIntentRef,
+        true,
+        false,
+        Date.now() + 2_000,
+      ),
+    ).toBe(false)
+
+    const play = createDeps({ paused: true, elementPaused: true })
+    play.handlers.onMediaPlayRequest({ preventDefault: mock(() => {}) })
+    expect(play.clearTransportNudge).toHaveBeenCalledTimes(1)
+    expect(
+      isTransportIntentInFlight(play.transportIntentRef, false, true),
+    ).toBe(true)
   })
 
   test("seeking maps seconds to ms and uses live edge for non-finite targets", () => {

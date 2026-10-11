@@ -30,6 +30,8 @@ export function usePlaybackSyncEngine(config: {
   }>
   /** Provider-aware retry knobs (YouTube/Vimeo); `undefined` keeps HLS defaults. */
   getSyncTuning?: () => ProviderSyncTuning | undefined
+  /** Catalog duration hint for the native duration gate (Infinity = live). */
+  getDurationHintSec?: () => number | null | undefined
   onApplyFailed?: (syncState: PendingSyncState) => void
 }): PlaybackSyncEngine {
   const {
@@ -40,11 +42,13 @@ export function usePlaybackSyncEngine(config: {
     lastAppliedTimelineAnchorMsRef,
     playbackRef,
     getSyncTuning,
+    getDurationHintSec,
     onApplyFailed,
   } = config
 
   const onApplyFailedRef = useLatestRef(onApplyFailed)
   const getSyncTuningRef = useLatestRef(getSyncTuning)
+  const getDurationHintSecRef = useLatestRef(getDurationHintSec)
   const engineRef = useRef<PlaybackSyncEngine | null>(null)
 
   // Lazy-once init: engine closes over refs; identity stays fixed for the mount.
@@ -53,7 +57,11 @@ export function usePlaybackSyncEngine(config: {
     engineRef.current = createPlaybackSyncEngine({
       getPlayer: () => {
         const player = playerRef.current
-        return player ? toSyncablePlayer(player) : null
+        return player
+          ? toSyncablePlayer(player, {
+              native: getSyncTuningRef.current?.()?.nativeProvider === true,
+            })
+          : null
       },
       isMediaReady: () => isMediaReadyRef.current,
       getPlayback: () => playbackRef.current,
@@ -67,6 +75,7 @@ export function usePlaybackSyncEngine(config: {
       },
       isAuthorityPaused: () => playbackPausedRef.current,
       getSyncTuning: () => getSyncTuningRef.current?.(),
+      getDurationHintSec: () => getDurationHintSecRef.current?.(),
       onApplyFailed: (syncState) => {
         onApplyFailedRef.current?.(syncState)
       },

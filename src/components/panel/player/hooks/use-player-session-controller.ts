@@ -5,6 +5,7 @@ import { useRef, type MutableRefObject } from "react"
 import { useLatestRef } from "@/hooks/use-latest-ref"
 import type { ClientRoomState } from "@/contracts/types"
 import type { PendingSyncState } from "./use-buffering-watchdog"
+import type { TransportIntent } from "./transport-intent"
 import type { PlaylistNavSnapshot } from "./use-synced-media-player-handlers"
 import {
   createPlayerSessionActionsRef,
@@ -36,6 +37,7 @@ export function usePlayerSessionController(config: {
   const bufferingSinceRef = useRef<number | null>(null)
   const participantStatusErrorRef = useRef<string | null>(null)
   const pendingSyncRef = useRef<PendingSyncState | null>(null)
+  const transportIntentRef = useRef<TransportIntent | null>(null)
   const reportedItemErrorRef = useRef<string | null>(null)
   const reportedDurationItemIdRef = useRef<string | null>(null)
   const proxyRenewAttemptedRef = useRef<string | null>(null)
@@ -57,6 +59,7 @@ export function usePlayerSessionController(config: {
         bufferingSinceRef,
         participantStatusErrorRef,
         pendingSyncRef,
+        transportIntentRef,
         reportedItemErrorRef,
         reportedDurationItemIdRef,
         proxyRenewAttemptedRef,

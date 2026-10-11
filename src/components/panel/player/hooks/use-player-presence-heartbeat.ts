@@ -3,6 +3,7 @@
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import { useEffect, type RefObject } from "react"
+import { useLatestRef } from "@/hooks/use-latest-ref"
 
 /**
  * Emits participant:update ticks when pause/loading/error change, time drifts,
@@ -16,6 +17,8 @@ export function usePlayerPresenceHeartbeat(config: {
   /** Remount presence loop when the playlist index changes. */
   currentIndex: number
   send: TypedRoomEventSender
+  /** Shared playhead read (engine parity); defaults to `player.currentTime`. */
+  getPlayheadSec?: () => number
 }): void {
   const {
     playerRef,
@@ -24,7 +27,9 @@ export function usePlayerPresenceHeartbeat(config: {
     playbackErrorLabel,
     currentIndex,
     send,
+    getPlayheadSec,
   } = config
+  const getPlayheadSecRef = useLatestRef(getPlayheadSec)
 
   useEffect(() => {
     const player = playerRef.current
@@ -32,14 +37,16 @@ export function usePlayerPresenceHeartbeat(config: {
       return
     }
 
+    const readCurrentTimeMs = () => {
+      const sec =
+        getPlayheadSecRef.current?.() ?? Number(player.currentTime ?? 0)
+      return Math.max(0, Math.floor((Number.isFinite(sec) ? sec : 0) * 1000))
+    }
     const HEARTBEAT_MS = 2_000
     const TIME_DIRTY_MS = 750
     let lastSent = {
       paused: Boolean(player.paused),
-      currentTimeMs: Math.max(
-        0,
-        Math.floor(Number(player.currentTime ?? 0) * 1000),
-      ),
+      currentTimeMs: readCurrentTimeMs(),
       loading: isBuffering,
       // Send null (not undefined) so JSON keeps the key and the server can clear.
       error: playbackErrorLabel ?? participantStatusErrorRef.current ?? null,
@@ -49,10 +56,7 @@ export function usePlayerPresenceHeartbeat(config: {
     const timer = window.setInterval(() => {
       const next = {
         paused: Boolean(player.paused),
-        currentTimeMs: Math.max(
-          0,
-          Math.floor(Number(player.currentTime ?? 0) * 1000),
-        ),
+        currentTimeMs: readCurrentTimeMs(),
         loading: isBuffering,
         error: playbackErrorLabel ?? participantStatusErrorRef.current ?? null,
       }
@@ -77,6 +81,7 @@ export function usePlayerPresenceHeartbeat(config: {
     playbackErrorLabel,
     playerRef,
     currentIndex,
+    getPlayheadSecRef,
     send,
   ])
 }
