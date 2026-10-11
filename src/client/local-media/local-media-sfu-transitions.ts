@@ -1,7 +1,4 @@
-/**
- * Pure SFU viewer/provider state-transition helpers.
- * Runtime (mediasoup, WS) stays in local-media-sfu* / room-socket-local-media-sfu.
- */
+/** Pure SFU/P2P/HTTP delivery planning (no mediasoup/WS I/O). */
 
 /** Cooldown after a failed viewer ensure before warming again. */
 export const ENSURE_RETRY_COOLDOWN_MS = 3_000
@@ -10,14 +7,11 @@ export type LocalMediaDeliveryMode = "sfu" | "p2p" | "http"
 
 export type LocalMediaDeliveryAttempt = {
   mode: LocalMediaDeliveryMode
-  /** True when this mode should be tried now (warm path). */
+  /** Warm path: mode can be tried immediately. */
   ready: boolean
 }
 
-/**
- * Ordered attempts: SFU (if available) → P2P (if provider known) → HTTP.
- * Cold SFU can still be warmed in the background without blocking HTTP.
- */
+/** SFU (if available) → P2P (if provider known) → HTTP. Cold SFU may warm without blocking HTTP. */
 export function planLocalMediaDeliveryAttempts(input: {
   sfuAvailable: boolean
   sfuViewerReady: boolean
@@ -34,16 +28,12 @@ export function planLocalMediaDeliveryAttempts(input: {
   return attempts
 }
 
-/** First ready mode in the plan, or null if somehow empty. */
 export function pickFirstReadyDeliveryMode(
   attempts: LocalMediaDeliveryAttempt[],
 ): LocalMediaDeliveryMode | null {
   return attempts.find((a) => a.ready)?.mode ?? null
 }
 
-/**
- * After a failed attempt, return the next mode to try (skipping the failed one).
- */
 export function nextDeliveryModeAfterFailure(
   attempts: LocalMediaDeliveryAttempt[],
   failed: LocalMediaDeliveryMode,
@@ -58,7 +48,7 @@ export function nextDeliveryModeAfterFailure(
   return null
 }
 
-/** Invalidate async SFU work when session generation advances. */
+/** True when async SFU work still belongs to the current session generation. */
 export function isSfuSessionGenerationCurrent(
   sessionGeneration: number,
   workGeneration: number,
@@ -66,12 +56,11 @@ export function isSfuSessionGenerationCurrent(
   return sessionGeneration === workGeneration
 }
 
-/** Bump generation so in-flight producer/ensure work can no-op. */
 export function nextSfuSessionGeneration(current: number): number {
   return current + 1
 }
 
-/** Viewer channels are usable only after ready ack and while open. */
+/** Ready ack received and neither side closed. */
 export function isSfuViewerChannelReady(input: {
   ready: boolean
   requestProducerClosed: boolean
@@ -82,7 +71,7 @@ export function isSfuViewerChannelReady(input: {
   )
 }
 
-/** Local file holders publish; they must not also consume as viewers. */
+/** File holders publish; they must not also consume as viewers. */
 export function shouldActAsSfuViewer(holdsLocalFile: boolean): boolean {
   return !holdsLocalFile
 }
@@ -91,10 +80,7 @@ export function shouldEnsureSfuProvider(holdsLocalFile: boolean): boolean {
   return holdsLocalFile
 }
 
-/**
- * Fire-and-forget viewer warm: skip when we hold the file, ensure already
- * in flight, or failure cooldown has not elapsed.
- */
+/** Skip warm when holding the file, ensure in flight, or cooldown active. */
 export function shouldWarmSfuViewer(input: {
   holdsLocalFile: boolean
   hasInFlightEnsure: boolean
@@ -107,7 +93,6 @@ export function shouldWarmSfuViewer(input: {
   return input.nowMs - input.lastFailureAtMs >= cooldown
 }
 
-/** Provide now vs queue until capabilities mark SFU available. */
 export function planSfuProvideAttempt(
   sfuAvailable: boolean,
 ): "provide" | "queue" {
@@ -120,9 +105,8 @@ export type SfuProducerWireAction =
   | "ensure-viewer"
 
 /**
- * Route a `local-media:sfu:producer` broadcast to produce/consume work.
- * `requests` kind → provider consumes viewer request channel;
- * provider block channel → non-holders ensure a viewer.
+ * `requests` → provider consumes viewer request channel;
+ * provider blocks → non-holders ensure a viewer.
  */
 export function decideSfuProducerWireAction(input: {
   sfuAvailable: boolean

@@ -58,13 +58,10 @@ export const keys = {
   },
 
   /**
-   * Presence ownership (triple model — do not collapse roles):
-   * - `presenceRef` → liveness (WS node-map refcounts; who is online)
-   * - `presenceData` HASH → clocks (PresencePatch / localPlayback, etc.)
-   * - room JSON `participants.*.connected` → identity/roles only (not source of truth for online)
-   *
-   * HASH userId → JSON `{ [nodeId]: refcount }` of active WS connections.
-   * Legacy plain integer values are ignored (orphaned after process crash).
+   * Presence triple (do not collapse):
+   * - `presenceRef` → online (HASH userId → `{ [nodeId]: refcount }`; legacy ints ignored)
+   * - `presenceData` → clocks (PresencePatch / localPlayback)
+   * - `participants.*.connected` → identity/roles only (not online truth)
    */
   roomPresenceRef(roomId: string) {
     return `${ROOM_PREFIX}${roomId}:presenceRef`
@@ -79,15 +76,12 @@ export const keys = {
     return "app:node:*:alive"
   },
 
-  /** HASH userId → JSON PresencePatch (clocks; see ownership on `roomPresenceRef`). */
+  /** HASH userId → PresencePatch clocks (see `roomPresenceRef` ownership). */
   roomPresenceData(roomId: string) {
     return `${ROOM_PREFIX}${roomId}:presenceData`
   },
 
-  /**
-   * Cluster-monotonic presence batch revision (Redis INCR).
-   * Published as `presence:batch.presenceRevision` — not process-local.
-   */
+  /** Cluster-monotonic presence batch revision (Redis INCR → `presence:batch.presenceRevision`). */
   roomPresenceSeq(roomId: string) {
     return `${ROOM_PREFIX}${roomId}:presenceSeq`
   },

@@ -1,7 +1,6 @@
 /**
- * Edge middleware: CSP/CORS via `@/shared/public-domain`, which reads
- * PUBLIC_DOMAIN / EMBED_FRAME_ANCESTORS from raw `process.env` (validated by
- * `src/env.ts` on Node boot). Do not import `@/env` here — full server schema.
+ * Edge CSP/CORS via `@/shared/public-domain` (raw `process.env`).
+ * Do not import `@/env` — full server schema is Node-only.
  */
 import {
   buildContentSecurityPolicy,
@@ -53,10 +52,7 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Apply CSP/CORS to app + API. Skip Next internals and static assets
-     * that do not need these headers on every hit.
-     */
+    // App + API; skip Next internals and static assets.
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)",
   ],
 }

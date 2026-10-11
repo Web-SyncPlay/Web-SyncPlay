@@ -7,16 +7,10 @@ import type { PresencePatch, RoomState } from "@/contracts/types"
 /** Playlist / landing default media entry persisted under `defaults:daily-top-10`. */
 export type DailyDefaultVideo = { title: string; url: string }
 
-/**
- * Port used by realtime handlers/services so unit tests can supply an in-memory store
- * without Redis. {@link RoomStateStore} is the production adapter.
- */
+/** Room store port; tests may supply an in-memory adapter. Production: {@link RoomStateStore}. */
 export interface RoomStateStorePort {
-  // --- Room state ---
   get(roomId: string): Promise<RoomState | null>
-  /**
-   * Persist room state only — does not publish. Callers use RoomBroadcastBus.
-   */
+  /** Persist only — does not publish (callers use RoomBroadcastBus). */
   updateRoom(
     roomId: string,
     mutate: (
@@ -26,46 +20,35 @@ export interface RoomStateStorePort {
   delete(roomId: string): Promise<void>
   listRoomIds(): Promise<string[]>
 
-  // --- Daily defaults ---
   getDailyDefaults(): Promise<DailyDefaultVideo[]>
   setDailyDefaults(videos: DailyDefaultVideo[]): Promise<void>
   seedDailyDefaultsIfEmpty(): Promise<void>
 
-  // --- WS connection presence (HASH refcounts) ---
   addWsConnectionRef(roomId: string, userId: string): Promise<void>
   removeWsConnectionRef(roomId: string, userId: string): Promise<void>
-  /** Drop one user's presence field (join rollback / explicit clear). */
+  /** Join rollback / explicit clear. */
   clearWsConnectionRef(roomId: string, userId: string): Promise<void>
   touchWsPresence(
     roomId: string,
     userId: string,
     options?: { force?: boolean },
   ): Promise<void>
-  /**
-   * Read-only online user set from presence refs (no HASH writes).
-   * Prefer this inside / adjacent to WATCH mutate paths.
-   */
+  /** Read-only online set (no HASH writes) — safe near WATCH mutate paths. */
   readWsPresenceUserIds(roomId: string): Promise<Set<string>>
-  /**
-   * Drop stale presence fields / dead-node refcounts (HASH writes).
-   * Call outside WATCH — never from an `updateRoom` mutate closure.
-   */
+  /** HASH writes; call outside WATCH — never inside `updateRoom` mutate. */
   reconcilePresenceRefs(roomId: string): Promise<void>
   /**
-   * Compatibility: read online users and reconcile stale refs in one pass
-   * (includes HASH writes). Prefer {@link readWsPresenceUserIds} +
-   * {@link reconcilePresenceRefs} outside WATCH mutate closures.
+   * Read + reconcile in one pass (HASH writes). Prefer
+   * {@link readWsPresenceUserIds} + {@link reconcilePresenceRefs} outside WATCH.
    */
   getWsPresenceUserIds(roomId: string): Promise<Set<string>>
 
-  // --- Presence data HASH (localPlayback clocks, etc.) ---
-  /** Merge presence fields for one user into the presence HASH. */
   mergePresenceData(
     roomId: string,
     userId: string,
     patch: PresencePatch,
   ): Promise<void>
-  /** Single-user presence read (HGET) — prefer over {@link getPresenceDataAll} on hot paths. */
+  /** HGET — prefer over {@link getPresenceDataAll} on hot paths. */
   getPresenceData(
     roomId: string,
     userId: string,
@@ -75,9 +58,8 @@ export interface RoomStateStorePort {
 }
 
 /**
- * Pub/sub → local fan-out surface used by redis state-store / pubsub so those
- * modules do not import {@link RoomBroadcastBus} (breaks redis ↔ realtime cycle).
- * Production adapter: RoomBroadcastBus.
+ * Pub/sub → local fan-out. Keeps redis modules from importing
+ * {@link RoomBroadcastBus} (breaks redis ↔ realtime cycle).
  */
 export interface RoomPublishPort {
   attachStore(store: RoomStateStorePort): void
@@ -98,10 +80,7 @@ export interface RoomPublishPort {
   ): void
 }
 
-/**
- * Media reclaim / stale-upstream callbacks so media modules do not deeply import
- * realtime playlist-resolve / cleanup / participants services.
- */
+/** Media reclaim / stale-upstream callbacks without deep-importing realtime services. */
 export interface MediaMaintenancePort {
   reresolveRemotePlaylistItem(params: {
     store: RoomStateStorePort
@@ -137,7 +116,6 @@ function getPortSlot(): PortSlot {
   return slot as PortSlot
 }
 
-/** Composition-root wiring (realtime-server / maintenance / tests). */
 export function setRoomPublishPort(port: RoomPublishPort | null) {
   getPortSlot().roomPublish = port
 }
@@ -146,7 +124,6 @@ export function getRoomPublishPort(): RoomPublishPort | null {
   return getPortSlot().roomPublish
 }
 
-/** Composition-root wiring (realtime-server / maintenance / tests). */
 export function setMediaMaintenancePort(port: MediaMaintenancePort | null) {
   getPortSlot().mediaMaintenance = port
 }
@@ -155,28 +132,24 @@ export function getMediaMaintenancePort(): MediaMaintenancePort | null {
   return getPortSlot().mediaMaintenance
 }
 
-/** Composition-root wiring (realtime-server / tests). */
 export function setLocalMediaSfuPort(port: LocalMediaSfuPort | null) {
   getPortSlot().localMediaSfu = port
 }
 
 export function getLocalMediaSfuPort(): LocalMediaSfuPort {
   const slot = getPortSlot()
-  // Lazy default so unit tests that import handlers without wireRealtimePorts
-  // still get a working process-local adapter.
+  // Lazy default when tests import handlers without wireRealtimePorts.
   slot.localMediaSfu ??= createLocalMediaSfuPort()
   return slot.localMediaSfu
 }
 
-/** Composition-root wiring (realtime-server / tests). */
 export function setMediaResolvePort(port: MediaResolvePort | null) {
   getPortSlot().mediaResolve = port
 }
 
 export function getMediaResolvePort(): MediaResolvePort {
   const slot = getPortSlot()
-  // Lazy default so unit tests that import playlist-resolve without
-  // wireRealtimePorts still get a working production adapter.
+  // Lazy default when tests import playlist-resolve without wireRealtimePorts.
   slot.mediaResolve ??= createMediaResolvePort()
   return slot.mediaResolve
 }

@@ -25,14 +25,11 @@ function isValidEmbedFrameAncestors(raw: string): boolean {
   return parts.every(isValidEmbedFrameAncestorToken)
 }
 
-/** Clear message when only one of the multi-replica local-media pair is set. */
+/** Schema error when only one of the multi-replica local-media pair is set. */
 export const LOCAL_MEDIA_INTERNAL_PAIR_MESSAGE =
   "INTERNAL_NODE_BASE_URL and LOCAL_MEDIA_INTERNAL_SECRET must both be set or both be unset"
 
-/**
- * Cross-field check for multi-replica local-media HTTP affinity.
- * Both unset and both set are valid; exactly one set is not.
- */
+/** Both unset or both set; exactly one set is invalid. */
 export function refineLocalMediaInternalEnvPair(
   data: {
     INTERNAL_NODE_BASE_URL?: string
@@ -53,15 +50,10 @@ export function refineLocalMediaInternalEnvPair(
 }
 
 export const env = createEnv({
-  /**
-   * Specify your server-side environment variables schema here. This way you can ensure the app
-   * isn't built with invalid env vars.
-   */
   server: {
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("production"),
-    /** Next.js telemetry; default disabled. */
     NEXT_TELEMETRY_DISABLED: z
       .enum(["0", "1"])
       .default("1")
@@ -104,7 +96,7 @@ export const env = createEnv({
       .enum(["true", "false"])
       .default("false")
       .transform((value) => {
-        // Never allow private/LAN proxy targets in production, regardless of input.
+        // Forced false in production regardless of input.
         if (process.env.NODE_ENV === "production") return false
         return value === "true"
       }),
@@ -116,8 +108,7 @@ export const env = createEnv({
       .default(60 * 60 * 12),
     /**
      * Retention input for the Valkey yt-dlp extract cache (0–86400).
-     * Successful writes use a shorter TTL capped by derived stream-URL max age;
-     * this is not always the Redis EX on success.
+     * Successful writes use a shorter TTL capped by stream-URL max age.
      */
     YTDLP_CACHE_TTL_SECONDS: z.coerce
       .number()
@@ -125,31 +116,19 @@ export const env = createEnv({
       .min(0)
       .max(86_400)
       .default(1800),
-    /**
-     * This replica's reachable base URL for internal local-media range fetch
-     * (e.g. http://web-1:3000). Must be set together with LOCAL_MEDIA_INTERNAL_SECRET
-     * (both unset disables cross-node HTTP affinity; Redis pub/sub remains the path).
-     */
+    /** Per-replica base URL for internal local-media range fetch; pair with LOCAL_MEDIA_INTERNAL_SECRET. */
     INTERNAL_NODE_BASE_URL: z.url().optional(),
-    /**
-     * Shared secret for /api/media/local/internal/* (min 16 chars when set).
-     * Must be set together with INTERNAL_NODE_BASE_URL.
-     */
+    /** Shared secret for /api/media/local/internal/* (≥16 chars when set). */
     LOCAL_MEDIA_INTERNAL_SECRET: z.string().min(16).optional(),
     /**
-     * Public hostname or origin (e.g. web-syncplay.de or https://web-syncplay.de).
-     * Used for mediasoup ICE announcedAddress, CORS, and CSP.
-     *
-     * Edge (`src/proxy.ts`) reads the same key via raw `process.env` in
-     * `src/shared/public-domain.ts` so it can avoid importing this full schema.
+     * Public hostname/origin for ICE announcedAddress, CORS, CSP.
+     * Edge reads the same key via raw `process.env` in `src/shared/public-domain.ts`
+     * (cannot import this full schema).
      */
     PUBLIC_DOMAIN: z.string().min(1).optional(),
     /**
-     * Space-separated absolute origins allowed to iframe this app (CSP
-     * frame-ancestors), or a single `*`. Unset/empty = no third-party embeds.
-     *
-     * Edge (`src/proxy.ts`) mirrors this key via raw `process.env` in
-     * `src/shared/public-domain.ts` (same rationale as PUBLIC_DOMAIN).
+     * CSP frame-ancestors allowlist (space-separated origins or `*`).
+     * Edge mirrors via raw `process.env` in `src/shared/public-domain.ts`.
      */
     EMBED_FRAME_ANCESTORS: z
       .string()
@@ -160,17 +139,9 @@ export const env = createEnv({
       .optional(),
   },
 
-  /**
-   * Specify your client-side environment variables schema here. This way you can ensure the app
-   * isn't built with invalid env vars. To expose them to the client, prefix them with
-   * `NEXT_PUBLIC_`.
-   */
   client: {},
 
-  /**
-   * You can't destruct `process.env` as a regular object in the Next.js edge runtimes (e.g.
-   * middlewares) or client-side so we need to destruct manually.
-   */
+  // Must list keys explicitly — edge/client cannot destruct `process.env`.
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
     NEXT_TELEMETRY_DISABLED: process.env.NEXT_TELEMETRY_DISABLED,
@@ -192,15 +163,7 @@ export const env = createEnv({
     EMBED_FRAME_ANCESTORS: process.env.EMBED_FRAME_ANCESTORS,
   },
 
-  /**
-   * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
-   * useful for Docker builds.
-   */
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
-  /**
-   * Makes it so that empty strings are treated as undefined. `SOME_VAR: z.string()` and
-   * `SOME_VAR=''` will throw an error.
-   */
   emptyStringAsUndefined: true,
   createFinalSchema: (shape) =>
     z.object(shape).superRefine(refineLocalMediaInternalEnvPair),

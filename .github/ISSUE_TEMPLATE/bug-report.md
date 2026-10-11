@@ -8,7 +8,7 @@ assignees: ""
 
 ## Description
 
-What went wrong? Include the room route if relevant (`/room/[id]`, `/embed`, `/player`, `/control`).
+What went wrong? Include the room route if relevant (`/room/[id]`, `/room/[id]/embed`, `/room/[id]/player`, `/room/[id]/control`).
 
 ## Steps to reproduce
 
@@ -26,13 +26,15 @@ What happened instead? Include error messages or UI symptoms.
 
 ## Environment
 
-- **Deployment:** [ ] web-syncplay.de  [ ] self-hosted Docker  [ ] local Bun (`bun run dev`)
+- **Deployment:** [ ] web-syncplay.de [ ] self-hosted Docker [ ] local Bun (`bun run dev`)
 - **Browser / version:**
 - **OS:**
 - **App version / image tag:** (commit SHA, `latest`, or semver if known)
 
 ## Logs and health (if relevant)
 
-Paste redacted server logs, browser console errors, or `GET /api/health` output. For sync/WebRTC issues, note whether UDP 40000 is reachable and whether local media used SFU, P2P, or HTTP relay. Self-hosted multi-replica: confirm sticky `/api/ws` / same replica as the provider — see [Multi-replica operations (SFU)](../../README.md#multi-replica-operations-sfu).
+Paste redacted server logs, browser console errors, or `GET /api/health` output.
+
+For sync / WebRTC issues, note whether UDP 40000 is reachable and whether local media used SFU, P2P, or HTTP relay. Self-hosted multi-replica: confirm sticky `/api/ws` on the same replica as the provider — see [Multi-replica operations (SFU)](../../README.md#multi-replica-operations-sfu).
 
 Do **not** report security vulnerabilities here — see [SECURITY.md](../../SECURITY.md).

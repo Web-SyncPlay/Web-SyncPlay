@@ -1,26 +1,23 @@
-# Local / single-node stack: Next app + Valkey.
-# Copy `.env.example` → `.env` for PUBLIC_DOMAIN (optional for smoke).
+# Local / single-node: Next app + Valkey.
+# Optional `.env` from `.env.example` (PUBLIC_DOMAIN for real deploys).
 # Health: http://127.0.0.1:3000/api/health
 services:
   web:
     build: .
     restart: unless-stopped
-    # Optional project `.env` (copy from `.env.example`). Not required to start.
     env_file:
       - path: .env
         required: false
     environment:
-      # Always use the compose Valkey service (overrides VALKEY_URL from `.env`).
+      # Always use the compose Valkey service.
       VALKEY_URL: redis://valkey:6379
-      # Image is production; do not inherit NODE_ENV=development from a local `.env`.
+      # Do not inherit NODE_ENV=development from a local `.env`.
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
-      # Public hostname/origin for ICE + CORS + CSP (set in `.env` for real deploys).
       PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-}
     ports:
-      # HTTP/WS — loopback for local compose; operators publish via reverse proxy.
       - "127.0.0.1:3000:3000"
-      # mediasoup WebRtcServer — fixed UDP 40000 browsers must reach (see MEDIASOUP_RTC_UDP_PORT).
+      # mediasoup WebRtcServer — fixed UDP 40000 (see MEDIASOUP_RTC_UDP_PORT).
       - "40000:40000/udp"
     depends_on:
       valkey:
@@ -30,7 +27,7 @@ services:
     image: valkey/valkey:9
     restart: unless-stopped
     ports:
-      # Loopback only — for `bun run dev` against compose Valkey; not LAN-reachable.
+      # Loopback for `bun run dev` against compose Valkey.
       - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "sh", "-c", "valkey-cli ping"]

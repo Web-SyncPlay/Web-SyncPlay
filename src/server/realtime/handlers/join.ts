@@ -18,10 +18,7 @@ import type { JoinHandler } from "./types"
 
 export { resolveJoinParticipantProfile }
 
-/**
- * Join pipeline: admit → claimIdentity → authorizeSession → commitMembership →
- * postCommitSideEffects. Stages live under `./join/`.
- */
+/** Join: admit → claimIdentity → authorizeSession → commitMembership → postCommit (`./join/`). */
 export const handleRoomJoin: JoinHandler = async (ctx, data) => {
   const join = parseOrWarn(roomJoinSchema, data.payload, data.type)
   if (!join) return

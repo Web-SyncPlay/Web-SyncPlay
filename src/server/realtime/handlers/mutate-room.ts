@@ -54,9 +54,8 @@ async function publishAfterMutation(
 }
 
 /**
- * WATCH/GET/mutate/SET for one user message: reconcile presence, run body, bump activity.
- * Presence Redis I/O runs outside WATCH (same pattern as cleanupInactiveRooms).
- * Body returns false to abort (no write). Publish via RoomBroadcastBus per hint.
+ * One user message under WATCH: reconcile presence outside WATCH, mutate, bump activity.
+ * Body `false` aborts (no write). Publish via RoomBroadcastBus per hint.
  */
 export async function mutateRoomMessage(
   store: RoomStateStorePort,

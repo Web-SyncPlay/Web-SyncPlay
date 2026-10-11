@@ -1,10 +1,4 @@
-/**
- * Local-media SFU signaling handlers (process-local mediasoup).
- *
- * Multi-replica SFU is unsupported — no clustering. Sticky `/api/ws` and UDP
- * 40000 must land on the same process as the provider; cross-replica SFU will
- * fail (see README multi-replica SFU notes / `LocalMediaSfuPort` affinity).
- */
+/** Local-media SFU signaling (process-local; see `LocalMediaSfuPort` / README). */
 import { getLocalMediaEntry } from "@/server/media/local-media-store"
 import {
   onMediasoupWorkerDied,

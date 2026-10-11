@@ -5,9 +5,7 @@ import type {
   WsEnvelope,
 } from "@/contracts/types"
 
-/** Re-export from contracts — single type home is `@/contracts/types`. */
 export type { SessionCapabilities, RoomJoinRejectedReason }
-/** Alias of {@link RoomJoinRejectedReason} (zod `roomJoinRejectedReasonSchema`). */
 export type JoinRejectedReason = RoomJoinRejectedReason
 
 export type JoinStatus =
@@ -20,7 +18,7 @@ export type JoinStatus =
   | "rate_limited"
   | "identity_mismatch"
 
-/** Cooldown before auto-reconnect after a rate_limited rejection. */
+/** Pause auto-reconnect this long after `rate_limited`. */
 export const RATE_LIMITED_RECONNECT_MS = 15_000
 
 export function createDefaultSessionCapabilities(
@@ -72,7 +70,6 @@ export function messageForJoinRejected(
   return "This room requires a join password."
 }
 
-/** Map join rejection reasons to UI status (password prompt vs hard errors). */
 export function statusForJoinRejected(
   reason?: JoinRejectedReason,
 ): JoinStatus {
@@ -92,8 +89,8 @@ export function statusForJoinRejected(
 }
 
 /**
- * Password waits and hard identity/media failures must not auto-reconnect.
- * Rate limits pause until {@link RATE_LIMITED_RECONNECT_MS} elapses.
+ * Password / identity / media failures must not auto-reconnect.
+ * `rate_limited` pauses until {@link RATE_LIMITED_RECONNECT_MS}; `connection_closed` does not pause.
  */
 export function shouldPauseAutoReconnect(
   reason?: JoinRejectedReason,
@@ -105,21 +102,16 @@ export function shouldPauseAutoReconnect(
     reason === "identity_mismatch" ||
     reason === "media_url_unsupported" ||
     reason === undefined
-    // connection_closed: allow normal reconnect
   )
 }
 
-/** Rejections that permanently stop the socket (no cooldown resume). */
+/** Hard stop — no cooldown resume. */
 export function isTerminalJoinRejection(
   reason?: JoinRejectedReason,
 ): boolean {
   return reason === "media_url_unsupported" || reason === "identity_mismatch"
 }
 
-/**
- * Status shown while opening a new socket. If we were already connected,
- * surface "reconnecting"; otherwise "connecting".
- */
 export function nextJoinStatusOnConnectAttempt(prev: JoinStatus): JoinStatus {
   return prev === "connected" ? "reconnecting" : "connecting"
 }

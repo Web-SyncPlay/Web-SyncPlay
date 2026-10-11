@@ -1,13 +1,8 @@
 /**
- * Service Worker source of truth for local-media Range interception.
- * Built to public/local-media-sw.js via scripts/build-local-media-sw.ts.
- *
- * Intercepts /api/media/local/* Range requests and asks the page for
- * bytes via SFU → P2P before falling back to network (HTTP relay).
- * Default open-ended range length matches LOCAL_MEDIA_MAX_BLOCK_BYTES (256KiB).
- *
- * Viewer capability (`?vt=` / `uid=`): page posts the active token; network
- * fallback fetches are decorated when the request URL lacks them.
+ * Local-media Range SW (built to public/local-media-sw.js).
+ * Intercepts /api/media/local/* and prefers SFU → P2P before HTTP relay.
+ * Open-ended ranges default to LOCAL_MEDIA_MAX_BLOCK_BYTES (256KiB).
+ * Network fallback adds `?vt=` / `uid=` from the page when missing.
  */
 import { LOCAL_MEDIA_MAX_BLOCK_BYTES } from "../shared/local-media/local-media-block-protocol"
 import { parseRawBytesRangeHeader } from "../shared/local-media/local-media-range"

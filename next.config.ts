@@ -1,12 +1,9 @@
 import type { NextConfig } from "next"
 
-// Default on for all next CLI paths (dev/build/start); Docker also sets this via ENV.
+// Default for next CLI (dev/build/start); Docker also sets ENV.
 process.env.NEXT_TELEMETRY_DISABLED ??= "1"
 
-/**
- * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful
- * for Docker builds.
- */
+// Validates env at boot; set SKIP_ENV_VALIDATION=1 to skip (e.g. image build).
 import "./src/env"
 
 const config: NextConfig = {

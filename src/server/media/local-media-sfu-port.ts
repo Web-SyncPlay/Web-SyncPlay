@@ -20,18 +20,12 @@ import {
   type MediasoupDataProducerAppData,
   type MediasoupTransportAppData,
 } from "@/server/media/mediasoup-runtime"
-import { MEDIASOUP_RTC_UDP_PORT } from "@/shared/public-domain"
 import type { types as MsTypes } from "mediasoup"
 
 /**
- * Process-local mediasoup SFU surface for local-media DataChannels.
- *
- * Affinity: SFU routers/transports/producers live only in this process. Sticky
- * `/api/ws` must land provider + SFU viewers on the same replica, and UDP
- * {@link MEDIASOUP_RTC_UDP_PORT} must reach that same process (see README
- * multi-replica SFU notes). When a media entry’s `providerNodeId` is set and
- * differs from {@link getAppNodeId}, signaling must fail with `sfu_wrong_node`
- * rather than silently creating transports that can never deliver bytes.
+ * Process-local mediasoup SFU for local-media DataChannels.
+ * Wrong `providerNodeId` → `sfu_wrong_node` (do not create undeliverable transports).
+ * Affinity ops: README multi-replica SFU notes.
  */
 export interface LocalMediaSfuPort {
   ensureRuntime(): Promise<boolean>
@@ -110,9 +104,6 @@ export function createLocalMediaSfuPort(): LocalMediaSfuPort {
     closeDataProducer: closeLocalMediaSfuDataProducer,
     closeRoom: mediasoupCloseRoom,
     assertProviderNodeAffinity(providerNodeId) {
-      // Sticky WS alone is insufficient: UDP MEDIASOUP_RTC_UDP_PORT must also
-      // reach this process. Wrong-node signaling is an affinity failure.
-      void MEDIASOUP_RTC_UDP_PORT
       if (
         typeof providerNodeId === "string" &&
         providerNodeId.length > 0 &&
@@ -124,5 +115,4 @@ export function createLocalMediaSfuPort(): LocalMediaSfuPort {
   }
 }
 
-/** Re-export worker-died hook for handlers that broadcast unavailable. */
 export { onMediasoupWorkerDied }

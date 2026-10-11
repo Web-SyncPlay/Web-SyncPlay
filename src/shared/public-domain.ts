@@ -1,28 +1,14 @@
 /**
- * Public reachability helpers for CORS, CSP, and mediasoup ICE.
- *
- * `PUBLIC_DOMAIN` and `EMBED_FRAME_ANCESTORS` are **defined and validated** in
- * [`src/env.ts`](../env.ts). This module reads the same keys via raw
- * `process.env` so Edge middleware ([`src/proxy.ts`](../proxy.ts)) can build
- * CSP/CORS without importing `@/env` (which validates the full server schema,
- * including `VALKEY_URL`).
- *
- * On Node server paths that already hold a validated `env` handle, prefer
- * `env.PUBLIC_DOMAIN` / `env.EMBED_FRAME_ANCESTORS` for typed access; these
- * helpers remain correct because createEnv populates the same `process.env`
- * keys at boot.
+ * CORS / CSP / mediasoup ICE helpers.
+ * Reads `PUBLIC_DOMAIN` / `EMBED_FRAME_ANCESTORS` from raw `process.env` so Edge
+ * (`src/proxy.ts`) need not import `@/env` (full server schema). Validated in
+ * `src/env.ts` on Node boot; prefer `env.*` on Node when already loaded.
  */
 
-/** Hardcoded mediasoup WebRtcServer UDP port (operators firewall this). */
+/** Fixed mediasoup WebRtcServer UDP port. */
 export const MEDIASOUP_RTC_UDP_PORT = 40000 as const
 
-/**
- * Host or origin operators set for public reachability.
- * Examples: `web-syncplay.de`, `https://web-syncplay.de`, `203.0.113.10`
- *
- * Pass `env.PUBLIC_DOMAIN` on Node when validated env is already loaded.
- * Default reads raw `process.env` (Edge-safe — see module doc).
- */
+/** Bare host or origin, e.g. `web-syncplay.de` / `https://web-syncplay.de`. */
 export function getPublicDomain(
   rawPublicDomain: string | undefined = process.env.PUBLIC_DOMAIN,
 ): string | undefined {
@@ -106,12 +92,8 @@ export function isOriginAllowed(
 }
 
 /**
- * Tokens from `EMBED_FRAME_ANCESTORS` (space-separated origins or a sole `*`).
- * Empty / unset → no third-party frame ancestors (secure default).
- * Trailing slashes are stripped so CSP gets bare origins (not path-bearing sources).
- *
- * Pass `env.EMBED_FRAME_ANCESTORS` on Node when validated env is already loaded.
- * Default reads raw `process.env` (Edge-safe — see module doc).
+ * `EMBED_FRAME_ANCESTORS` tokens (origins or sole `*`). Empty → no third-party
+ * framing. Trailing slashes stripped for CSP.
  */
 export function getEmbedFrameAncestors(
   rawAncestors: string | undefined = process.env.EMBED_FRAME_ANCESTORS,

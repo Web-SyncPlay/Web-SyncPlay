@@ -2,25 +2,56 @@
 
 ## Project map
 
-- **Product / ops docs:** [README.md](./README.md) — requirements, env vars, architecture, multi-replica SFU (sticky `/api/ws`).
-- **Env schema:** [`src/env.ts`](./src/env.ts) (copy [`.env.example`](./.env.example)).
-- **Layout:** `src/app` (App Router pages + HTTP APIs), `src/pages/api/ws.ts` (WebSocket upgrade), `src/proxy.ts` (Edge CSP/CORS), `src/contracts` (schemas/types), `src/shared` (framework-agnostic helpers + `shared/dom` + `@/shared/test-utils` fixtures), `src/client/{realtime,local-media,player}`, `src/server/{realtime,redis,ws,security,media}`, `src/hooks` (compose `client/*`), `src/components` (UI), `src/sw` (local-media service worker). Prefer these over legacy `src/lib` / `src/zod` (removed). See README Architecture table for the same map.
-- **Tests:** `bun run test:unit`, `test:integration`, `test:a11y`, `test:e2e`, `test:e2e:ws` (`test:integration` needs Valkey/`VALKEY_URL`; latter three need a healthy app; see CI). Client/UI tests should use `@/shared/test-utils` fixtures, not `@/server` fixtures, where practical.
-- **Optional deep run:** `bun run test:fuzz` — property/fuzz suite against Valkey; not part of CI (slow; run locally when changing presence/state-store invariants).
-- **Typecheck (dual TypeScript — IDE TS6 vs CI TS7):**
-  - **CI gate (source of truth):** `bun run typecheck` runs TypeScript **7** via `@typescript/native` (`bunx --package @typescript/native tsc -p tsconfig.json --noEmit`). Prefer fixing issues that fail this command — it is what gates PRs in the main CI `Test` job.
-  - **IDE / workspace:** the `typescript` dependency is aliased to `@typescript/typescript6` (TS **6**). `.vscode/settings.json` sets `typescript.tsdk` to `node_modules/typescript/lib` (and prompts to use the workspace SDK) so the editor matches local TS6, not the CI TS7 binary.
-  - **Optional advisory CI:** job **Typecheck (IDE TS6, advisory)** runs the same `tsc` as the IDE (`./node_modules/.bin/tsc -p tsconfig.json --noEmit`) with `continue-on-error`. It does not block merge or Docker; use it to spot IDE/CI drift. If TS6 and TS7 disagree, fix the CI TS7 failure first.
+| Item                         | Where                                                                              |
+| ---------------------------- | ---------------------------------------------------------------------------------- |
+| Product / ops docs           | [README.md](./README.md) — requirements, env vars, architecture, multi-replica SFU |
+| Env schema                   | [`src/env.ts`](./src/env.ts); copy [`.env.example`](./.env.example)                |
+| App + HTTP APIs              | `src/app`                                                                          |
+| WebSocket upgrade            | `src/pages/api/ws.ts`                                                              |
+| Edge middleware (CSP / CORS) | `src/proxy.ts`                                                                     |
+| Wire schemas / types         | `src/contracts`                                                                    |
+| Shared helpers               | `src/shared` (`shared/dom`, `@/shared/test-utils` fixtures)                        |
+| Browser packages             | `src/client/{realtime,local-media,player}`                                         |
+| Server packages              | `src/server/{realtime,redis,ws,security,media}`                                    |
+| Ports / wiring               | `src/server/ports.ts`, `src/server/realtime/wire-ports.ts`                         |
+| React composition            | `src/hooks` → `src/client/*`; UI in `src/components`                               |
+| Local-media SW               | `src/sw`                                                                           |
 
-## Git Commits
+Full layout table: [README Architecture](./README.md#architecture-developers).
 
-Commit messages must adhere to the [Conventional Commits](https://www.conventionalcommits.org/) naming scheme.
+## Tests
 
-Format: `<type>[optional scope]: <description>`
+| Command                                          | Needs                                                                       |
+| ------------------------------------------------ | --------------------------------------------------------------------------- |
+| `bun run test:unit`                              | Nothing extra                                                               |
+| `bun run test:integration`                       | Valkey / `VALKEY_URL`                                                       |
+| `bun run test:a11y` / `test:e2e` / `test:e2e:ws` | Healthy app (see CI)                                                        |
+| `bun run test:fuzz`                              | Valkey; **not in CI** — run when changing presence / state-store invariants |
 
-Common types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+Prefer `@/shared/test-utils` fixtures in client/UI tests over `@/server` fixtures where practical.
+
+## Typecheck (IDE TS6 vs CI TS7)
+
+| Context                       | Command / setup                                                                                                                        |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| **CI gate (source of truth)** | `bun run typecheck` → TypeScript **7** via `@typescript/native`                                                                        |
+| **IDE / workspace**           | `typescript` → `@typescript/typescript6` (TS **6**); `.vscode/settings.json` points `typescript.tsdk` at `node_modules/typescript/lib` |
+| **Advisory CI**               | Job **Typecheck (IDE TS6, advisory)** runs `./node_modules/.bin/tsc` with `continue-on-error`                                          |
+
+Prefer fixing failures from `bun run typecheck`. If TS6 and TS7 disagree, fix the CI TS7 failure first.
+
+## Git commits
+
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>[optional scope]: <description>
+```
+
+Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
 
 Examples:
+
 - `feat: add playlist drag-and-drop reordering`
 - `fix(player): correct sync drift on seek`
 - `chore: update dependencies`

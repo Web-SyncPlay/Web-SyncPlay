@@ -18,6 +18,8 @@ describe("local-media internal env pair", () => {
   })
 
   test("allows both set", () => {
+    // Schema-only fixture URL — not a multi-replica ops recommendation
+    // (shared service DNS like http://web:3000 is wrong for affinity; see README).
     const result = pairSchema.safeParse({
       INTERNAL_NODE_BASE_URL: "http://web:3000",
       LOCAL_MEDIA_INTERNAL_SECRET: "change-me-to-at-least-16-chars",
