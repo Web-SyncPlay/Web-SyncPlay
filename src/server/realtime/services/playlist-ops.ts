@@ -169,6 +169,36 @@ export function applyPlaylistItemDuration(
   return item
 }
 
+/** True when catalog display name is still the unresolved source-URL placeholder. */
+export function isPlaylistItemNamePlaceholder(
+  item: Pick<PlaylistItem, "name" | "sourceUrl">,
+): boolean {
+  return item.name.trim() === item.sourceUrl.trim()
+}
+
+/**
+ * Fill catalog title from a player observation when still the URL placeholder.
+ * First non-placeholder sanitized value wins — does not require rename authority.
+ */
+export function applyPlaylistItemTitle(
+  state: RoomState,
+  itemId: string,
+  rawName: string,
+): PlaylistItem | null {
+  const item = state.playlist.find((entry) => entry.id === itemId)
+  if (!item) return null
+  if (!isPlaylistItemNamePlaceholder(item)) return null
+
+  const nextName = rawName.trim()
+  if (!nextName) return null
+  // Reject no-ops and writing the URL back as the "title".
+  if (nextName === item.name.trim()) return null
+  if (nextName === item.sourceUrl.trim()) return null
+
+  item.name = nextName
+  return item
+}
+
 export function isPlaylistAtLimit(state: RoomState, limit: number): boolean {
   return state.playlist.length >= limit
 }

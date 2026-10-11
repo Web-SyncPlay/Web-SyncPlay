@@ -273,6 +273,15 @@ export const playlistItemDurationSchema = z.object({
   durationSeconds: z.number().positive().max(60 * 60 * 24),
 })
 
+/**
+ * Player-observed title write-back when catalog `name` is still the source URL
+ * placeholder (native embeds). Sanitized via {@link mediaTitleSchema}.
+ */
+export const playlistItemTitleSchema = z.object({
+  itemId: itemIdSchema,
+  name: mediaTitleSchema,
+})
+
 export const viewerMediaPreferencesSchema = z.object({
   itemId: itemIdSchema,
   streamId: z.string().min(1).max(128).nullable().optional(),

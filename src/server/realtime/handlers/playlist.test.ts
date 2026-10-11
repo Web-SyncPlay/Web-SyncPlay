@@ -7,6 +7,7 @@ import {
   handlePlaylistAddLocal,
   handlePlaylistItemDuration,
   handlePlaylistItemError,
+  handlePlaylistItemTitle,
   handlePlaylistRemove,
   handlePlaylistRename,
   handlePlaylistReorder,
@@ -209,6 +210,41 @@ describe("playlist handler interfaces", () => {
       }),
     )
     expect(store.peek("room-1")?.playlist[0]?.durationSeconds).toBe(301)
+  })
+
+  test("item title write-back fills URL placeholder from any participant", async () => {
+    const url = "https://youtu.be/abc123"
+    const store = new InMemoryRoomStateStore(
+      createRoomState({
+        playlist: [
+          createPlaylistItem({
+            id: "item-a",
+            name: url,
+            sourceUrl: url,
+          }),
+        ],
+      }),
+    )
+    createTestBroadcastBus(store)
+    const guestCtx = createHandlerContext({ store, userId: "guest" })
+
+    await handlePlaylistItemTitle(
+      guestCtx,
+      envelope("playlist:item:title", {
+        itemId: "item-a",
+        name: "Native Title",
+      }),
+    )
+    expect(store.peek("room-1")?.playlist[0]?.name).toBe("Native Title")
+
+    await handlePlaylistItemTitle(
+      guestCtx,
+      envelope("playlist:item:title", {
+        itemId: "item-a",
+        name: "Should Not Replace",
+      }),
+    )
+    expect(store.peek("room-1")?.playlist[0]?.name).toBe("Native Title")
   })
 
   test("item error marks ingest error and may advance current index", async () => {

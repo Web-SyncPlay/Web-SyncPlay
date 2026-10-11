@@ -26,6 +26,7 @@ import {
   playlistAddUrlSchema,
   playlistItemDurationSchema,
   playlistItemErrorSchema,
+  playlistItemTitleSchema,
   playlistRemoveSchema,
   playlistRenameSchema,
   playlistReorderSchema,
@@ -295,6 +296,18 @@ describe("playlist payload interfaces", () => {
       playlistItemDurationSchema.safeParse({
         itemId: "i1",
         durationSeconds: 0,
+      }).success,
+    ).toBe(false)
+    expect(
+      playlistItemTitleSchema.safeParse({
+        itemId: "i1",
+        name: "Cool Video",
+      }).success,
+    ).toBe(true)
+    expect(
+      playlistItemTitleSchema.safeParse({
+        itemId: "i1",
+        name: "",
       }).success,
     ).toBe(false)
     expect(

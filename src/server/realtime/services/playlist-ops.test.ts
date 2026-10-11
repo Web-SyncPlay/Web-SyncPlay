@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import {
   applyPlaylistItemDuration,
   applyPlaylistItemError,
+  applyPlaylistItemTitle,
   applyPlaylistRemove,
   applyPlaylistRename,
   applyPlaylistReorder,
@@ -10,6 +11,7 @@ import {
   buildRemoteUrlPlaylistItem,
   canRetryRemotePlaylistItem,
   isPlaylistAtLimit,
+  isPlaylistItemNamePlaceholder,
 } from "./playlist-ops"
 import {
   createPlaylistItem,
@@ -204,5 +206,40 @@ describe("playlist-ops", () => {
 
     state.playlist[1]!.isLive = true
     expect(applyPlaylistItemDuration(state, "item-b", 90)).toBeNull()
+  })
+
+  test("applyPlaylistItemTitle fills placeholder once and ignores rename/url", () => {
+    const url = "https://youtu.be/abc123"
+    const state = createRoomState({
+      playlist: [
+        createPlaylistItem({
+          id: "yt-1",
+          name: url,
+          sourceUrl: url,
+        }),
+        createPlaylistItem({
+          id: "named",
+          name: "Already Named",
+          sourceUrl: url,
+        }),
+      ],
+    })
+
+    expect(isPlaylistItemNamePlaceholder(state.playlist[0]!)).toBe(true)
+    expect(applyPlaylistItemTitle(state, "yt-1", "Cool Video")?.name).toBe(
+      "Cool Video",
+    )
+    expect(state.playlist[0]?.name).toBe("Cool Video")
+
+    // First fill wins — not a general rename path.
+    expect(applyPlaylistItemTitle(state, "yt-1", "Other")).toBeNull()
+    expect(state.playlist[0]?.name).toBe("Cool Video")
+
+    expect(applyPlaylistItemTitle(state, "named", "Nope")).toBeNull()
+    expect(applyPlaylistItemTitle(state, "missing", "X")).toBeNull()
+    expect(applyPlaylistItemTitle(state, "yt-1", url)).toBeNull()
+
+    state.playlist[0]!.name = url
+    expect(applyPlaylistItemTitle(state, "yt-1", `  ${url}  `)).toBeNull()
   })
 })

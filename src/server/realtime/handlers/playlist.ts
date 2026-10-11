@@ -9,6 +9,7 @@ import {
 import {
   applyPlaylistItemDuration,
   applyPlaylistItemError,
+  applyPlaylistItemTitle,
   applyPlaylistRemove,
   applyPlaylistRename,
   applyPlaylistReorder,
@@ -25,6 +26,7 @@ import {
   playlistAddUrlSchema,
   playlistItemDurationSchema,
   playlistItemErrorSchema,
+  playlistItemTitleSchema,
   playlistRemoveSchema,
   playlistRenameSchema,
   playlistReorderSchema,
@@ -282,6 +284,29 @@ export const handlePlaylistItemDuration: RoomMessageHandler = async (
         parsed.itemId,
         parsed.durationSeconds,
       )
+      return Boolean(item)
+    },
+    { kind: "snapshot" },
+  )
+}
+
+/**
+ * Any connected player may fill a URL-placeholder catalog title once observed.
+ * Only applies when `name` still equals `sourceUrl` — not a general rename.
+ */
+export const handlePlaylistItemTitle: RoomMessageHandler = async (
+  ctx,
+  data,
+) => {
+  const parsed = parseOrNack(playlistItemTitleSchema, ctx.ws, data)
+  if (!parsed) return
+
+  await mutateRoomMessage(
+    ctx.store,
+    ctx.roomId,
+    ctx.userId,
+    (state) => {
+      const item = applyPlaylistItemTitle(state, parsed.itemId, parsed.name)
       return Boolean(item)
     },
     { kind: "snapshot" },

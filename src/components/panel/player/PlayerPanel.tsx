@@ -9,6 +9,7 @@ import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { RoomPanelProps } from "../../layout/page/types"
 import { usePlayerSession } from "./hooks/use-player-session"
 import { bindSeekPreview } from "./playback-control/bind-seek-preview"
+import { NativePlaylistMetadataProbeHost } from "../playlist/NativePlaylistMetadataProbeHost"
 import { PlayerEmptyState } from "./PlayerEmptyState"
 import { PlayerErrorRecoveryOverlay } from "./PlayerErrorRecoveryOverlay"
 import { PlayerPanelGlobalStyles } from "./PlayerPanelGlobalStyles"
@@ -99,6 +100,11 @@ const PlayerPanelShell = memo(
           className,
         )}
       >
+        <NativePlaylistMetadataProbeHost
+          playlist={slice.playlist}
+          userId={userId}
+          send={send}
+        />
         {!canControlPlayback && (
           <div className="guest-view-hint pointer-events-none absolute left-3 top-3 z-20 rounded-md bg-black/70 px-2 py-1 text-xs text-white/90">
             Guest view — use player settings for tracks, captions, quality &

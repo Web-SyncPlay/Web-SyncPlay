@@ -7,6 +7,7 @@ import {
   persistLocalMediaHandle,
   pickLocalMediaFileWithFsa,
 } from "@/client/local-media/local-media-handles"
+import { queueNativePlaylistMetadataProbe } from "@/client/player/native-playlist-metadata-probe"
 import { resolvePlayableMimeType } from "@/shared/media-mime"
 import { registerLocalMediaFile } from "@/client/local-media/local-media-provider"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
@@ -40,6 +41,8 @@ export function PlaylistAddMediaControls(props: {
     const trimmedUrl = url.trim()
     if (!canManagePlaylist || !trimmedUrl) return
     send("playlist:add:url", { url: trimmedUrl })
+    // Adder-only: hidden embed fills YouTube/Vimeo title + duration.
+    queueNativePlaylistMetadataProbe(trimmedUrl)
     setUrl("")
     toast.success("Added URL, resolving metadata in background")
   }
