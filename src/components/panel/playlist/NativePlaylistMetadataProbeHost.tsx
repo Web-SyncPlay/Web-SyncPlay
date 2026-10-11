@@ -41,8 +41,6 @@ export function NativePlaylistMetadataProbeHost(props: {
   const sentDurationRef = useRef(false)
   const completedRef = useRef(false)
   const playerRef = useRef<MediaPlayerInstance | null>(null)
-  const activeRef = useRef<ActiveProbe | null>(null)
-  activeRef.current = active
 
   useEffect(() => {
     return subscribeNativePlaylistMetadataProbeQueue(() => {
@@ -55,25 +53,42 @@ export function NativePlaylistMetadataProbeHost(props: {
     if (!hasPendingNativePlaylistMetadataProbes()) return
     const claimed = claimNextNativePlaylistMetadataProbe({ playlist, userId })
     if (!claimed) return
-    sentTitleRef.current = !claimed.needsTitle
-    sentDurationRef.current = !claimed.needsDuration
-    completedRef.current = false
-    setActive({
+    const next: ActiveProbe = {
       itemId: claimed.item.id,
       sourceUrl: claimed.item.sourceUrl,
       needsTitle: claimed.needsTitle,
       needsDuration: claimed.needsDuration,
-    })
+    }
+    // Defer setState out of the effect body (react-hooks/set-state-in-effect).
+    let applied = false
+    const timer = window.setTimeout(() => {
+      applied = true
+      sentTitleRef.current = !claimed.needsTitle
+      sentDurationRef.current = !claimed.needsDuration
+      completedRef.current = false
+      setActive(next)
+    }, 0)
+    return () => {
+      window.clearTimeout(timer)
+      if (!applied) {
+        releaseNativePlaylistMetadataProbe({
+          itemId: claimed.item.id,
+          sourceUrl: claimed.item.sourceUrl,
+          completed: false,
+        })
+      }
+    }
   }, [active, playlist, userId, queueVersion])
 
   useEffect(() => {
     if (!active) return
+    const probe = active
 
     const timeoutId = window.setTimeout(() => {
       completedRef.current = true
       releaseNativePlaylistMetadataProbe({
-        itemId: active.itemId,
-        sourceUrl: active.sourceUrl,
+        itemId: probe.itemId,
+        sourceUrl: probe.sourceUrl,
         completed: true,
       })
       setActive(null)
@@ -81,11 +96,9 @@ export function NativePlaylistMetadataProbeHost(props: {
 
     return () => {
       window.clearTimeout(timeoutId)
-      const current = activeRef.current
-      if (!current || current.itemId !== active.itemId) return
       releaseNativePlaylistMetadataProbe({
-        itemId: current.itemId,
-        sourceUrl: current.sourceUrl,
+        itemId: probe.itemId,
+        sourceUrl: probe.sourceUrl,
         completed: completedRef.current,
       })
     }
