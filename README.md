@@ -66,6 +66,8 @@ Local Bun may skip the mediasoup native worker; the Docker image runs the in-pro
 
 ## Deploy
 
+Product version is the git tag, `package.json` `version`, and Docker semver tags published from CI.
+
 ### Pull image
 
 Minimal `docker-compose.yml`:

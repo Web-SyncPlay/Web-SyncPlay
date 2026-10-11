@@ -1,5 +1,6 @@
 {
   "name": "web-syncplay",
+  "version": "3.0.0",
   "private": true,
   "packageManager": "bun@1.4.2",
   "engines": {
