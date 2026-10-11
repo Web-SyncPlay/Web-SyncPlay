@@ -301,7 +301,7 @@ describe("PlaybackSyncEngine", () => {
     expect(engine.phase()).toBe("idle")
   })
 
-  test("caps force seeks per anchor at MAX_FORCE_SEEKS_PER_ANCHOR", () => {
+  test("keeps watchdog catch-up after burst budget for stable anchors", () => {
     const { scheduler, advance } = createFakeScheduler(1_000)
     const player = createHlsNoopPlayer(0)
     const syncState: EngineSyncState = {
@@ -319,19 +319,22 @@ describe("PlaybackSyncEngine", () => {
     engine.start()
 
     engine.applyRoomClock(player, syncState, 0)
-    const seeksAfterAuthority = player.seeks.length
     engine.onAuthorityAnchor(syncState.timelineAnchorMs)
 
-    // Fire all burst delays + several watchdog ticks; HLS keeps no-op'ing.
+    // Exhaust burst retries + several watchdog ticks while HLS no-ops.
     for (const delay of ANCHOR_RETRY_DELAYS_MS) {
       advance(delay)
     }
     advance(5_000)
-
-    const forceSeeks = player.seeks.length - seeksAfterAuthority
-    expect(forceSeeks).toBeLessThanOrEqual(MAX_FORCE_SEEKS_PER_ANCHOR)
+    expect(player.seeks.length).toBeGreaterThan(MAX_FORCE_SEEKS_PER_ANCHOR)
     expect(player.currentTime).toBe(0)
     expect(host.getPendingSync()).not.toBeNull()
+
+    // Late canSeek / late joiner: a post-burst watchdog tick must still catch up
+    // while timelineAnchorMs stays unchanged for the whole playing segment.
+    player.forceAcceptNextSeek()
+    advance(1_000)
+    expect(player.currentTime).toBe(12)
   })
 
   test("successful apply within threshold goes idle and clears pending", () => {

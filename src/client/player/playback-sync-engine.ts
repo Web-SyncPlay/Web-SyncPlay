@@ -256,11 +256,19 @@ export function createPlaybackSyncEngine(
       forceSeeksForAnchor = { anchorMs, count: 0 }
     }
     if (forceSeeksForAnchor.count >= MAX_FORCE_SEEKS_PER_ANCHOR) {
+      // Burst budget spent (slow YouTube iframe / late canSeek). Keep applying
+      // at the normal drift threshold so late joiners are not stranded for the
+      // entire remaining play session while timelineAnchorMs stays fixed.
+      applyRoomClock(
+        player,
+        syncState,
+        DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
+      )
       return
     }
     forceSeeksForAnchor.count += 1
-    // First force seek uses threshold 0; later retries use the default threshold
-    // so we do not spam seeks when HLS keeps no-op'ing.
+    // First force seek uses threshold 0; later burst retries use the default
+    // threshold so we do not spam hard seeks when HLS keeps no-op'ing.
     const threshold =
       forceSeeksForAnchor.count === 1
         ? 0

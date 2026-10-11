@@ -37,13 +37,19 @@ describe("hydrateMissingDailyDefaultTitles", () => {
     const { videos, hydratedCount } = await hydrate([
       { title: "Keep", url: "https://x.test/a" },
       { title: "  ", url: "https://x.test/b" },
+      { title: "", url: "https://www.youtube.com/watch?v=abc" },
     ])
 
     expect(hydratedCount).toBe(1)
     expect(videos).toEqual([
       { title: "Keep", url: "https://x.test/a" },
       { title: "Resolved:https://x.test/b", url: "https://x.test/b" },
+      {
+        title: "https://www.youtube.com/watch?v=abc",
+        url: "https://www.youtube.com/watch?v=abc",
+      },
     ])
     expect(extract).toHaveBeenCalledTimes(1)
+    expect(extract).toHaveBeenCalledWith("https://x.test/b")
   })
 })

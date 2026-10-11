@@ -2,6 +2,7 @@ import { afterEach, expect, test } from "bun:test"
 import {
   acaoAllowsBrowserPlayback,
   probeCorsPlayback,
+  probeUpstreamPlayback,
 } from "@/server/media/cors/cors-probe"
 
 const originalFetch = globalThis.fetch
@@ -79,4 +80,39 @@ test("HEAD without ACAO falls back to GET before denying", async () => {
     true,
   )
   expect(calls).toEqual(["HEAD", "GET"])
+})
+
+test("403 with ACAO * is unreachable, not playable-direct", async () => {
+  globalThis.fetch = (async () =>
+    new Response("<Error>AccessDenied</Error>", {
+      status: 403,
+      headers: {
+        "access-control-allow-origin": "*",
+        "content-type": "application/xml",
+      },
+    })) as typeof fetch
+
+  await expect(
+    probeUpstreamPlayback("https://cdn.example/denied.mp4"),
+  ).resolves.toBe("unreachable")
+  await expect(probeCorsPlayback("https://cdn.example/denied.mp4")).resolves.toBe(
+    false,
+  )
+})
+
+test("200 without ACAO is blocked (relay candidate)", async () => {
+  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    const method = (init?.method ?? "GET").toUpperCase()
+    if (method === "HEAD") {
+      return new Response(null, { status: 200 })
+    }
+    return new Response(new Uint8Array([0]), {
+      status: 206,
+      headers: { "content-type": "video/mp4" },
+    })
+  }) as typeof fetch
+
+  await expect(
+    probeUpstreamPlayback("https://cdn.example/private.mp4"),
+  ).resolves.toBe("blocked")
 })

@@ -145,8 +145,8 @@ async function extractInfoUncached(url: string): Promise<YtDlpExtractResult> {
 
 /**
  * Title/duration only. Prefers a warm full-extract cache before a lightweight
- * `--print` spawn. Used for native providers (YouTube/Vimeo) so control pages
- * get catalog duration without a local player, and for defaults refresh.
+ * `--print` spawn. Used for non-native defaults hydration — not for YouTube/Vimeo
+ * (those play via embed and never call yt-dlp).
  */
 export async function extractMetadata(url: string): Promise<YtDlpMetadata> {
   const cached = await readExtractCache(url)
@@ -177,9 +177,11 @@ async function extractMetadataLight(url: string): Promise<YtDlpMetadata> {
       spawnErrorCode: result.spawnErrorCode,
     })
     recordSpawnishMetrics(result.failureKind)
+    recordYtDlpMetric("extractFail")
     console.warn("[yt-dlp] metadata extract failed", {
       host: logHost(url),
       classification,
+      code: result.code,
     })
     return { title: null, durationSeconds: null }
   }
@@ -207,5 +209,6 @@ async function extractMetadataLight(url: string): Promise<YtDlpMetadata> {
     }
   }
 
+  recordYtDlpMetric("extractOk")
   return { title, durationSeconds }
 }

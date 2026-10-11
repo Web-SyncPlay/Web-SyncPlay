@@ -1,4 +1,4 @@
-import { probeCorsPlayback } from "@/server/media/cors/cors-probe"
+import { probeUpstreamPlayback } from "@/server/media/cors/cors-probe"
 import {
   UNSUPPORTED_MPEG_TS_PROGRESSIVE_MESSAGE,
   isUnsupportedMpegTsProgressiveUrl,
@@ -9,7 +9,6 @@ import { resolveWithYtDlp } from "@/server/media/providers/yt-dlp-provider"
 import { buildSelectableStreams } from "@/server/media/resolve/build-selectable-streams"
 import { applyRelayToResolvedUrls } from "@/server/media/resolve/relay-urls"
 import { buildStreamPlan } from "@/server/media/stream/stream-plan"
-import { extractMetadata } from "@/server/media/yt-dlp"
 import { emptyYtDlpCatalog } from "@/server/media/yt-dlp/types"
 import { assertPublicHttpUrlResolved } from "@/server/security/url-safety"
 import type { PlaylistMediaStream, PlaylistTextTrack } from "@/contracts/types"
@@ -89,23 +88,18 @@ export async function resolveMediaSource(input: {
 
   const native = detectNativeSupport(resolvedInputUrl)
 
-  // Native providers (YouTube/Vimeo) play without a full yt-dlp extract, but
-  // control pages still need catalog title/duration — light metadata only.
-  // Direct file URLs skip the spawn and rely on player write-back.
+  // Native providers (YouTube/Vimeo) and direct file URLs play in the browser
+  // without yt-dlp. Catalog title/duration come from the seed name or player
+  // write-back — never spawn yt-dlp against Google/Vimeo (they block datacenter IPs).
   const ytResolved = native.canPlayNatively
-    ? await (async () => {
-        const meta = native.isNativeProvider
-          ? await extractMetadata(resolvedInputUrl)
-          : { title: null as string | null, durationSeconds: null as number | null }
-        return {
-          extractOk: true as const,
-          title: meta.title,
-          durationSeconds: meta.durationSeconds,
-          playableUrl: resolvedInputUrl as string | null,
-          ...emptyYtDlpCatalog(),
-          isLive: null as boolean | null,
-        }
-      })()
+    ? {
+        extractOk: true as const,
+        title: null as string | null,
+        durationSeconds: null as number | null,
+        playableUrl: resolvedInputUrl as string | null,
+        ...emptyYtDlpCatalog(),
+        isLive: null as boolean | null,
+      }
     : await resolveWithYtDlp(resolvedInputUrl)
 
   if (!native.canPlayNatively && !ytResolved.extractOk) {
@@ -162,9 +156,21 @@ export async function resolveMediaSource(input: {
   }
   let textTracks = selectable.textTracks
 
-  const corsAllowed = native.isNativeProvider
-    ? true
-    : await probeCorsPlayback(playableUrl)
+  let corsAllowed = true
+  if (!native.isNativeProvider) {
+    const probe = await probeUpstreamPlayback(playableUrl)
+    if (probe === "unreachable") {
+      return unresolvedMedia(input, {
+        title: ytResolved.title ?? input.name ?? input.url,
+        durationSeconds: ytResolved.durationSeconds,
+        failureReason: "source_unreachable",
+        resolveUserMessage:
+          "The media host refused or could not serve this URL.",
+        isLive: ytResolved.isLive,
+      })
+    }
+    corsAllowed = probe === "allowed"
+  }
 
   const streamPlan = buildStreamPlan({
     playableUrl,

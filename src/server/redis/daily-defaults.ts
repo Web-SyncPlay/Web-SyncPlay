@@ -1,4 +1,5 @@
 import { extractMetadata } from "@/server/media/yt-dlp"
+import { isNativeProviderUrl } from "@/shared/player-utils"
 import type { DailyDefaultVideo } from "@/server/ports"
 
 /** Read path: never blocks on yt-dlp; missing titles fall back to the URL. */
@@ -16,7 +17,9 @@ export function dailyDefaultsForRead(
 
 /**
  * Background hydration for persisted defaults missing titles.
- * Returns the number of entries updated via yt-dlp.
+ * Native providers (YouTube/Vimeo) are skipped — they play via embed without
+ * yt-dlp, and Google blocks datacenter extracts. Returns the number of entries
+ * updated via yt-dlp.
  */
 export async function hydrateMissingDailyDefaultTitles(
   entries: DailyDefaultVideo[],
@@ -27,6 +30,9 @@ export async function hydrateMissingDailyDefaultTitles(
       const cleanTitle = entry.title?.trim() ?? ""
       if (cleanTitle) {
         return { title: cleanTitle, url: entry.url }
+      }
+      if (isNativeProviderUrl(entry.url)) {
+        return { title: entry.url, url: entry.url }
       }
 
       const metadata = await extractMetadata(entry.url)
