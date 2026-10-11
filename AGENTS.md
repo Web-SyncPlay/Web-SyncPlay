@@ -25,7 +25,7 @@ Full layout table: [README Architecture](./README.md#architecture-developers).
 | ------------------------------------------------ | --------------------------------------------------------------------------- |
 | `bun run test:unit`                              | Nothing extra                                                               |
 | `bun run test:integration`                       | Valkey / `VALKEY_URL`                                                       |
-| `bun run test:a11y` / `test:e2e` / `test:e2e:ws` | Healthy app (see CI)                                                        |
+| `bun run test:a11y` / `test:e2e` / `test:e2e:ws` / `test:e2e:password` / `test:e2e:local-media` | Healthy app (see CI)                                                        |
 | `bun run test:fuzz`                              | Valkey; **not in CI** — run when changing presence / state-store invariants |
 
 Prefer `@/shared/test-utils` fixtures in client/UI tests over `@/server` fixtures where practical.

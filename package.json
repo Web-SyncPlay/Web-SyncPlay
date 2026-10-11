@@ -22,6 +22,8 @@
     "test:fuzz": "bun scripts/run-property-fuzz.ts",
     "test:e2e": "bun scripts/e2e-concurrent.ts",
     "test:e2e:ws": "bun scripts/e2e-ws-concurrent.ts",
+    "test:e2e:password": "bun scripts/e2e-password-join.ts",
+    "test:e2e:local-media": "bun scripts/e2e-local-media-relay.ts",
     "test:a11y": "bun scripts/a11y-wcag.ts",
     "format": "prettier --write ."
   },
