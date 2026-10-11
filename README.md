@@ -19,8 +19,17 @@ Watch video or audio in sync with friends. One Next.js app: WebSocket realtime, 
 | [Using the app](#using-the-app) / [Embed](#embed-on-your-site)          | Routes and host-site iframes     |
 | [Architecture](#architecture-developers)                                | Source layout and media paths    |
 | [Security](#security--accessibility)                                    | Reporting and a11y gate          |
+| [Changelog](./CHANGELOG.md) / [Migrate from v2](./docs/MIGRATION-v3.md) | v3.0.0 notes and greenfield cutover |
 
 Agent-oriented map and dual TypeScript notes: [AGENTS.md](./AGENTS.md).
+
+### Release caveats (v3)
+
+- **SFU:** Prefer a **single `web` replica**; mediasoup is process-local on fixed **UDP `40000`**. **No TURN** (STUN-only; UDP-blocked clients use HTTP relay). Sticky `/api/ws` alone does **not** make SFU cluster-safe — see [Multi-replica operations (SFU)](#multi-replica-operations-sfu).
+- **Rooms:** Valkey-backed state with ~**1 hour** TTL; no durable v2 room import ([migration](./docs/MIGRATION-v3.md)).
+- **Rate limits:** Hot WebSocket paths **fail closed** if Valkey errors — keep Valkey healthy/low-latency on WS nodes.
+- **Accessibility:** WCAG 2.2 AAA badge reflects the **automated** axe CI gate (`bun run test:a11y`), not a formal W3C certification — see [Security & accessibility](#security--accessibility).
+- **Upgrading from v2:** Port `8081`→`3000`, `REDIS_URL`→`VALKEY_URL`, Socket.IO and ops HTTP gone — [CHANGELOG](./CHANGELOG.md) · [MIGRATION-v3](./docs/MIGRATION-v3.md).
 
 ## Requirements
 
@@ -272,5 +281,6 @@ Reusing a room ID with a new `media` query does **not** replace the playlist. Ch
 
 ## Security & accessibility
 
-- Vulnerabilities: [`SECURITY.md`](./SECURITY.md). Scorecard + Dependabot on `main`.
+- Vulnerabilities: [`SECURITY.md`](./SECURITY.md) (supported line: **3.x**). Scorecard + Dependabot on `main`.
 - UI a11y: axe-core **WCAG 2.2 AAA** in CI (`bun run test:a11y`). Automated gate, not a formal W3C certification.
+- Release history and operator breaking changes: [`CHANGELOG.md`](./CHANGELOG.md). v2 → v3 cutover: [`docs/MIGRATION-v3.md`](./docs/MIGRATION-v3.md).
