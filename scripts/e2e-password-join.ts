@@ -139,10 +139,15 @@ async function runBrowserPasswordPrompt(browser: Browser) {
       { waitUntil: "domcontentloaded" },
     )
     await waitForConnected(page)
+    // EmptyTitle is a styled div, not a heading role.
     const promptVisible = await page
-      .getByRole("heading", { name: "Password required" })
+      .getByLabel("Room join password")
       .isVisible()
-    record("browser shows password prompt", promptVisible)
+    record(
+      "browser shows password prompt",
+      promptVisible &&
+        (await page.locator("body").innerText()).includes("Password required"),
+    )
 
     await page.getByLabel("Room join password").fill("wrong-password")
     await page.getByRole("button", { name: "Join room" }).click()
