@@ -18,6 +18,7 @@ Watch video or audio in sync with friends. One Next.js app: WebSocket realtime, 
 | [Environment variables](#environment-variables)                         | Config reference (`src/env.ts`)  |
 | [Using the app](#using-the-app) / [Embed](#embed-on-your-site)          | Routes and host-site iframes     |
 | [Architecture](#architecture-developers)                                | Source layout and media paths    |
+| [Contributing](#contributing)                                           | Setup, checks, PR expectations   |
 | [Security](#security--accessibility)                                    | Reporting and a11y gate          |
 
 Agent-oriented map and dual TypeScript notes: [AGENTS.md](./AGENTS.md).
@@ -269,6 +270,10 @@ Reusing a room ID with a new `media` query does **not** replace the playlist. Ch
 **Remote media:** resolve (yt-dlp or native host) → Valkey-cached extract → stream catalog → same-origin proxy when CORS blocks → HLS rewrite. Cluster-safe locks/leases reclaim abandoned resolves.
 
 **Local files:** stay on the sharer’s browser `File` (no upload). Delivery order: **SFU → P2P → HTTP relay**. SFU is process-local (UDP 40000). P2P signaling is cluster-aware (Redis user-targeted fan-out); ICE/UDP remains peer-side. Ops checklist: [Multi-replica operations (SFU)](#multi-replica-operations-sfu). Optional ABR via ffmpeg.wasm on the provider.
+
+## Contributing
+
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md) and [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md).
 
 ## Security & accessibility
 
