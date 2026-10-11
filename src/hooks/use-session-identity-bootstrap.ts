@@ -65,16 +65,29 @@ export function useSessionIdentityBootstrap(options?: {
   useEffect(() => {
     // Some clients briefly re-apply the initial hash during hydration/history sync.
     // Re-strip identity bootstrap fragments after mount and on hash changes.
+    // The initial strip is deferred until the (single-flight) hash consume has
+    // finished so a Strict Mode remount never observes a hash cleared before
+    // uid/secret were persisted (NC-01). hashchange strips stay immediate.
+    let disposed = false
+    let stripTimer: number | undefined
+    let stripRaf: number | undefined
     const strip = () => {
       stripIdentityHashFromUrl()
     }
-    strip()
-    const stripTimer = window.setTimeout(strip, 0)
-    const stripRaf = window.requestAnimationFrame(strip)
+    const afterConsume = () => {
+      if (disposed) {
+        return
+      }
+      strip()
+      stripTimer = window.setTimeout(strip, 0)
+      stripRaf = window.requestAnimationFrame(strip)
+    }
+    void consumeSessionIdentityFromHash().then(afterConsume, afterConsume)
     window.addEventListener("hashchange", strip)
     return () => {
-      window.clearTimeout(stripTimer)
-      window.cancelAnimationFrame(stripRaf)
+      disposed = true
+      if (stripTimer !== undefined) window.clearTimeout(stripTimer)
+      if (stripRaf !== undefined) window.cancelAnimationFrame(stripRaf)
       window.removeEventListener("hashchange", strip)
     }
   }, [])

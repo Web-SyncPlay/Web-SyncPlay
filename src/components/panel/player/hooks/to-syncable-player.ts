@@ -20,7 +20,10 @@ export function toSyncablePlayer(player: MediaPlayerInstance): SyncablePlayer {
     duration: player.duration,
     seekableEnd: seekableEndSec,
     mediaEl,
-    paused: player.paused,
+    // Live read: retry timers must see the current transport state.
+    get paused() {
+      return player.paused
+    },
     pause: () => player.pause(),
     play: () => player.play(),
   }

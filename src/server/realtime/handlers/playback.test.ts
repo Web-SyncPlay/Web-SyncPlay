@@ -11,7 +11,9 @@ import {
   handlePlaybackRate,
   handlePlaybackSeek,
 } from "@/server/realtime/handlers/playback"
+import { computeSessionCapabilities } from "@/server/realtime/services/permissions"
 import {
+  createFakeWs,
   createHandlerContext,
   createRoomState,
   envelope,
@@ -63,6 +65,66 @@ describe("playback handler interfaces", () => {
 
     await handlePlaybackPause(ownerCtx, envelope("playback:pause", {}))
     expect(store.peek("room-1")?.playback.paused).toBe(true)
+  })
+
+  test("guest playback:pause never changes playing room state (NC-10)", async () => {
+    const initial = createRoomState()
+    initial.playback.paused = false
+    initial.playback.timelineAnchorMs = 7_000
+    const store = new InMemoryRoomStateStore(initial)
+    createTestBroadcastBus(store)
+    const fake = createFakeWs()
+    const guestCtx = createHandlerContext({
+      store,
+      userId: "guest",
+      ws: fake.ws,
+    })
+    const logLenBefore = store.peek("room-1")?.actionLog.length ?? 0
+
+    await handlePlaybackPause(
+      guestCtx,
+      envelope("playback:pause", { currentTimeMs: 1_234 }, "req-guest-pause"),
+    )
+
+    const after = store.peek("room-1")
+    expect(after?.playback.paused).toBe(false)
+    expect(after?.playback.timelineAnchorMs).toBe(7_000)
+    expect(after?.actionLog.length).toBe(logLenBefore)
+    expect(fake.sent).toEqual([
+      {
+        type: "room:error",
+        requestId: "req-guest-pause",
+        payload: { code: "unauthorized", type: "playback:pause" },
+      },
+    ])
+
+    // Guest session capabilities mirror the server gate.
+    expect(
+      computeSessionCapabilities({
+        role: "guest",
+        sessionKind: "room",
+        isControlSession: false,
+        controlAuthorized: false,
+      }).canControlPlayback,
+    ).toBe(false)
+  })
+
+  test("guest cannot pause via embed session either", async () => {
+    const initial = createRoomState()
+    initial.playback.paused = false
+    const store = new InMemoryRoomStateStore(initial)
+    createTestBroadcastBus(store)
+    const guestEmbed = createHandlerContext({
+      store,
+      userId: "guest",
+      sessionKind: "embed",
+    })
+
+    await handlePlaybackPause(
+      guestEmbed,
+      envelope("playback:pause", { currentTimeMs: 100 }),
+    )
+    expect(store.peek("room-1")?.playback.paused).toBe(false)
   })
 
   test("rate and loop modes mutate playback state when authorized", async () => {

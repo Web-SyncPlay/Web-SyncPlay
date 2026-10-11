@@ -85,6 +85,45 @@ describe("createTransportRequestHandlers", () => {
     expect(sent).toHaveLength(0)
   })
 
+  test("guest pause on a playing room never sends and re-syncs (NC-10)", () => {
+    const { handlers, sent, enforceServerPlaybackState } = createDeps({
+      canControlPlayback: false,
+      paused: false,
+    })
+    const preventDefault = mock(() => {})
+    handlers.onMediaPauseRequest({ preventDefault })
+    expect(preventDefault).toHaveBeenCalledTimes(1)
+    expect(enforceServerPlaybackState).toHaveBeenCalledTimes(1)
+    expect(sent).toHaveLength(0)
+  })
+
+  test("guest cannot send any playback mutation through transport handlers", () => {
+    const g = createDeps({ canControlPlayback: false, paused: false })
+    const preventDefault = mock(() => {})
+    g.handlers.onMediaPlayRequest({ preventDefault })
+    g.handlers.onMediaPauseRequest({ preventDefault })
+    g.handlers.onMediaSeekingRequest(5)
+    g.handlers.onMediaSeekRequest(5)
+    g.handlers.onMediaLiveEdgeRequest()
+    g.handlers.onMediaRateChangeRequest(2)
+    g.handlers.onMediaUserLoopChangeRequest(true)
+    expect(g.sent).toHaveLength(0)
+    expect(g.beginSeek).not.toHaveBeenCalled()
+    expect(g.updateSeek).not.toHaveBeenCalled()
+    expect(g.commitSeek).not.toHaveBeenCalled()
+    expect(g.commitLiveEdgeSeek).not.toHaveBeenCalled()
+    expect(g.enforceServerPlaybackState).toHaveBeenCalledTimes(7)
+  })
+
+  test("guest keyboard space/k are blocked (no local pause toggle)", () => {
+    const { handlers } = createDeps({ canControlPlayback: false })
+    for (const key of [" ", "k", "K", "MediaPlayPause"]) {
+      const fn = mock(() => {})
+      handlers.onKeyDownCapture({ key, preventDefault: fn, stopPropagation: fn })
+      expect(fn).toHaveBeenCalledTimes(2)
+    }
+  })
+
   test("controller sends play/pause only on state transitions", () => {
     const play = createDeps({ paused: true })
     const playPrevent = mock(() => {})

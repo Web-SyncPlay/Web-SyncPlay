@@ -4,6 +4,7 @@ import {
   createPlaybackSyncEngine,
   type PlaybackSyncEngine,
 } from "@/client/player/playback-sync-engine"
+import type { ProviderSyncTuning } from "@/client/player/provider-sync-tuning"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import { useEffect, useRef, type RefObject } from "react"
 import { useLatestRef } from "@/hooks/use-latest-ref"
@@ -27,6 +28,8 @@ export function usePlaybackSyncEngine(config: {
     serverNowMs: number
     videoLoop: string
   }>
+  /** Provider-aware retry knobs (YouTube/Vimeo); `undefined` keeps HLS defaults. */
+  getSyncTuning?: () => ProviderSyncTuning | undefined
   onApplyFailed?: (syncState: PendingSyncState) => void
 }): PlaybackSyncEngine {
   const {
@@ -36,10 +39,12 @@ export function usePlaybackSyncEngine(config: {
     pendingSyncRef,
     lastAppliedTimelineAnchorMsRef,
     playbackRef,
+    getSyncTuning,
     onApplyFailed,
   } = config
 
   const onApplyFailedRef = useLatestRef(onApplyFailed)
+  const getSyncTuningRef = useLatestRef(getSyncTuning)
   const engineRef = useRef<PlaybackSyncEngine | null>(null)
 
   // Lazy-once init: engine closes over refs; identity stays fixed for the mount.
@@ -61,6 +66,7 @@ export function usePlaybackSyncEngine(config: {
         lastAppliedTimelineAnchorMsRef.current = next
       },
       isAuthorityPaused: () => playbackPausedRef.current,
+      getSyncTuning: () => getSyncTuningRef.current?.(),
       onApplyFailed: (syncState) => {
         onApplyFailedRef.current?.(syncState)
       },

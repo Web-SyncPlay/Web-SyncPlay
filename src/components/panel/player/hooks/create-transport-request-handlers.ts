@@ -100,6 +100,10 @@ export function createTransportRequestHandlers(deps: TransportRequestDeps) {
       commitSeek(Math.max(0, Math.floor(targetSec * 1000)))
     },
     onMediaLiveEdgeRequest: () => {
+      if (!canControlPlayback) {
+        enforceServerPlaybackState()
+        return
+      }
       commitLiveEdgeSeek()
     },
     onMediaRateChangeRequest: (detail: unknown) => {

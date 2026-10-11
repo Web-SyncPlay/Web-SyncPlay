@@ -249,3 +249,113 @@ describe("applyPlaybackSyncToPlayer", () => {
     expect(result.playAttempt).toBeNull()
   })
 })
+
+describe("real playhead (media element) measurement", () => {
+  test("seeks when the wrapper claims sync but the element is behind", () => {
+    const wrapperWrites: number[] = []
+    const mediaEl = { currentTime: 2 }
+    const player = {
+      playbackRate: 1,
+      duration: 120,
+      mediaEl,
+      // Wrapper currentTime lies (already at the target).
+      get currentTime() {
+        return 30
+      },
+      set currentTime(value: number) {
+        wrapperWrites.push(value)
+      },
+    }
+
+    const result = applyPlaybackClockToPlayer({
+      player,
+      syncState: {
+        paused: true,
+        playbackRate: 1,
+        timelineAnchorMs: 30_000,
+        serverNowMs: 100,
+      },
+      nowMs: 100,
+    })
+
+    expect(result.seekAttempted).toBe(true)
+    expect(wrapperWrites).toEqual([30])
+    expect(mediaEl.currentTime).toBe(30)
+    expect(result.driftSec).toBe(0)
+  })
+
+  test("still writes the media element when the wrapper setter throws", () => {
+    const mediaEl = { currentTime: 0 }
+    const player = {
+      playbackRate: 1,
+      duration: 120,
+      mediaEl,
+      get currentTime() {
+        return 0
+      },
+      set currentTime(_value: number) {
+        throw new Error("wrapper not seekable")
+      },
+    }
+
+    const result = applyPlaybackClockToPlayer({
+      player,
+      syncState: {
+        paused: true,
+        playbackRate: 1,
+        timelineAnchorMs: 12_000,
+        serverNowMs: 100,
+      },
+      nowMs: 100,
+    })
+
+    expect(result.seekAttempted).toBe(true)
+    expect(mediaEl.currentTime).toBe(12)
+  })
+
+  test("threshold 0 force-seeks a sub-threshold late-join offset", () => {
+    const mediaEl = { currentTime: 5.5 }
+    const player = {
+      playbackRate: 1,
+      duration: 120,
+      mediaEl,
+      currentTime: 5.5,
+    }
+    const syncState = {
+      paused: false,
+      playbackRate: 1,
+      timelineAnchorMs: 6_000,
+      serverNowMs: 100,
+    }
+
+    applyPlaybackClockToPlayer({ player, syncState, nowMs: 100 })
+    expect(mediaEl.currentTime).toBe(5.5)
+
+    applyPlaybackClockToPlayer({
+      player,
+      syncState,
+      nowMs: 100,
+      driftThresholdSec: 0,
+    })
+    expect(mediaEl.currentTime).toBe(6)
+    expect(player.currentTime).toBe(6)
+  })
+})
+
+describe("nudgePlaybackTransport pause", () => {
+  test("pauses a playing element and is idempotent once paused", () => {
+    let pauseCalls = 0
+    const player = {
+      paused: false as boolean | undefined,
+      pause() {
+        pauseCalls += 1
+        this.paused = true
+      },
+      play: () => {},
+    }
+    nudgePlaybackTransport({ player, paused: true })
+    nudgePlaybackTransport({ player, paused: true })
+    expect(pauseCalls).toBe(1)
+    expect(player.paused).toBe(true)
+  })
+})

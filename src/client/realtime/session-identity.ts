@@ -109,18 +109,76 @@ export async function getOrCreateSessionIdentity(): Promise<{
   return { userId, userSecret }
 }
 
-export async function consumeSessionIdentityFromHash(): Promise<{
+export type ConsumedSessionIdentity = {
   userId?: string
   userSecret?: string
   controlToken?: string
-}> {
+}
+
+/**
+ * Single-flight state for hash bootstrap. React Strict Mode double-mounts
+ * effects: mount A consumes + strips the hash, mount B would otherwise see an
+ * empty hash and mint a new secret that wins on room:join (NC-01).
+ */
+let consumeInFlight: Promise<ConsumedSessionIdentity> | null = null
+let consumeInFlightHash: string | null = null
+let consumedFromHash: ConsumedSessionIdentity | null = null
+
+/** @internal Test-only: reset single-flight / cached hash-consume state. */
+export function resetSessionIdentityBootstrapForTests(): void {
+  consumeInFlight = null
+  consumeInFlightHash = null
+  consumedFromHash = null
+}
+
+export function consumeSessionIdentityFromHash(): Promise<ConsumedSessionIdentity> {
   if (typeof window === "undefined") {
-    return {}
+    return Promise.resolve({})
   }
 
   const rawHash = window.location.hash.startsWith("#")
     ? window.location.hash.slice(1)
     : window.location.hash
+
+  // Concurrent remount: share the in-flight consume even if the hash was
+  // stripped meanwhile (or is the same fragment).
+  if (consumeInFlight && (!rawHash || rawHash === consumeInFlightHash)) {
+    return consumeInFlight
+  }
+  // Remount after consume finished and the hash was stripped.
+  if (!rawHash && consumedFromHash) {
+    return Promise.resolve(consumedFromHash)
+  }
+
+  const run: Promise<ConsumedSessionIdentity> = consumeSessionIdentityFromHashOnce(
+    rawHash,
+  ).then(
+    (result) => {
+      if (consumeInFlight === run) {
+        consumeInFlight = null
+        consumeInFlightHash = null
+        if (isValidIdentityValue(result.userId ?? null)) {
+          consumedFromHash = result
+        }
+      }
+      return result
+    },
+    (error: unknown) => {
+      if (consumeInFlight === run) {
+        consumeInFlight = null
+        consumeInFlightHash = null
+      }
+      throw error
+    },
+  )
+  consumeInFlight = run
+  consumeInFlightHash = rawHash
+  return run
+}
+
+async function consumeSessionIdentityFromHashOnce(
+  rawHash: string,
+): Promise<ConsumedSessionIdentity> {
   if (!rawHash) {
     return {}
   }

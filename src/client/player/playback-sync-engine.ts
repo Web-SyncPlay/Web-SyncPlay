@@ -1,6 +1,7 @@
 import {
   applyPlaybackSyncToPlayer,
   nudgePlaybackTransport,
+  readPlayerPlayheadSec,
   type SyncablePlayer,
 } from "@/client/player/apply-playback-sync"
 import {
@@ -9,6 +10,7 @@ import {
   type PlaybackSyncState,
 } from "@/client/player/playback-sync"
 import { pendingSyncFromPlayback } from "@/client/player/pending-sync"
+import type { ProviderSyncTuning } from "@/client/player/provider-sync-tuning"
 import { serverNowEstimateMs } from "@/shared/server-clock"
 
 /** Single scheduler phases for room ↔ local playhead sync. */
@@ -20,10 +22,16 @@ export type PlaybackSyncPhase =
 
 export const TRANSPORT_NUDGE_RETRY_MS = 350
 export const WATCHDOG_INTERVAL_MS = 1_000
-/** HLS often no-ops the first currentTime write; retry while the anchor is fresh. */
-export const ANCHOR_RETRY_DELAYS_MS = [200, 600, 1_200, 2_400] as const
+/**
+ * HLS often no-ops the first currentTime write; retry while the anchor is
+ * fresh. The tail (4s/6s) extends the burst for slow proxies / late canSeek.
+ * Pause nudges reuse the same schedule.
+ */
+export const ANCHOR_RETRY_DELAYS_MS = [
+  200, 600, 1_200, 2_400, 4_000, 6_000,
+] as const
 /** Cap force-threshold seeks per anchor to avoid HLS seek storms. */
-export const MAX_FORCE_SEEKS_PER_ANCHOR = 4
+export const MAX_FORCE_SEEKS_PER_ANCHOR = 6
 
 export type EngineSyncState = PlaybackSyncState & {
   videoLoop: boolean
@@ -55,6 +63,12 @@ export type PlaybackSyncEngineHost = {
   setLastAppliedAnchorMs: (next: number | null) => void
   /** Room authority paused flag (transport nudge must not fight pause). */
   isAuthorityPaused: () => boolean
+  /**
+   * Provider-aware overrides (YouTube/Vimeo iframes). Read at schedule time so
+   * a media swap picks up the new provider. Omit / return `undefined` for the
+   * default (HLS / direct media) schedule.
+   */
+  getSyncTuning?: () => ProviderSyncTuning | undefined
   onApplyFailed?: (syncState: EngineSyncState) => void
 }
 
@@ -114,13 +128,7 @@ function defaultScheduler(): PlaybackSyncScheduler {
   }
 }
 
-function readPlayheadSec(player: SyncablePlayer): number {
-  const mediaTime = Number(player.mediaEl?.currentTime)
-  if (Number.isFinite(mediaTime)) {
-    return mediaTime
-  }
-  return Number(player.currentTime ?? 0)
-}
+const readPlayheadSec = readPlayerPlayheadSec
 
 function measureDrift(
   player: SyncablePlayer,
@@ -154,7 +162,24 @@ export function createPlaybackSyncEngine(
   let playRetryTimer: number | undefined
   let watchdogTimer: number | undefined
   const retryTimers: number[] = []
+  const pauseTimers: number[] = []
+  /** First ready apply after media swap uses threshold 0 (late-join snap). */
+  let initialSnapPending = true
   let forceSeeksForAnchor = { anchorMs: 0, count: 0 }
+
+  const retryDelaysMs = (): readonly number[] =>
+    host.getSyncTuning?.()?.retryDelaysMs ?? ANCHOR_RETRY_DELAYS_MS
+  const pauseRetryDelaysMs = (): readonly number[] => {
+    const tuning = host.getSyncTuning?.()
+    return (
+      tuning?.pauseRetryDelaysMs ??
+      tuning?.retryDelaysMs ??
+      ANCHOR_RETRY_DELAYS_MS
+    )
+  }
+  const maxForceSeeks = () =>
+    host.getSyncTuning?.()?.maxForceSeeksPerAnchor ??
+    MAX_FORCE_SEEKS_PER_ANCHOR
 
   /** Public phase: local-seek hold always wins over internal apply/verify work. */
   const resolvePhase = (): PlaybackSyncPhase => {
@@ -175,11 +200,54 @@ export function createPlaybackSyncEngine(
     retryTimers.length = 0
   }
 
+  const clearPauseTimers = () => {
+    for (const id of pauseTimers) {
+      scheduler.clearTimeout(id)
+    }
+    pauseTimers.length = 0
+  }
+
   const clearTransportNudge = () => {
     if (playRetryTimer !== undefined) {
       scheduler.clearTimeout(playRetryTimer)
       playRetryTimer = undefined
     }
+    clearPauseTimers()
+  }
+
+  /** Room says paused but the element is still playing (HLS/local HTTP). */
+  const isPlayingAgainstPause = (player: SyncablePlayer) =>
+    host.isAuthorityPaused() && player.paused === false
+
+  /**
+   * Authority pause: HLS/local HTTP can ignore the first pause() or resume on
+   * a late `playing` event. Retry on the same burst schedule as seeks, reading
+   * a fresh player each tick (adapter snapshots go stale).
+   */
+  const schedulePauseNudgeBurst = () => {
+    clearPauseTimers()
+    for (const delayMs of pauseRetryDelaysMs()) {
+      const timerId = scheduler.setTimeout(() => {
+        if (disposed || !host.isAuthorityPaused()) {
+          return
+        }
+        const fresh = host.getPlayer()
+        if (!fresh || fresh.paused !== false) {
+          return
+        }
+        void nudgePlaybackTransport({ player: fresh, paused: true })
+      }, delayMs)
+      pauseTimers.push(timerId)
+    }
+  }
+
+  /** Imperative pause when authority is paused; keeps the burst armed. */
+  const reconcilePausedTransport = (player: SyncablePlayer) => {
+    if (!isPlayingAgainstPause(player)) {
+      return false
+    }
+    void nudgePlaybackTransport({ player, paused: true })
+    return true
   }
 
   const scheduleTransportNudge = (player: SyncablePlayer) => {
@@ -195,10 +263,11 @@ export function createPlaybackSyncEngine(
       if (host.isAuthorityPaused()) {
         return
       }
-      if (player.paused === false) {
+      const fresh = host.getPlayer() ?? player
+      if (fresh.paused === false) {
         return
       }
-      void nudgePlaybackTransport({ player, paused: false }).playAttempt
+      void nudgePlaybackTransport({ player: fresh, paused: false }).playAttempt
     }, TRANSPORT_NUDGE_RETRY_MS)
   }
 
@@ -210,6 +279,14 @@ export function createPlaybackSyncEngine(
     if (disposed) {
       return
     }
+    const isInitialSnap = initialSnapPending && host.isMediaReady()
+    if (isInitialSnap) {
+      initialSnapPending = false
+    }
+    // Late join: first ready apply force-snaps to the room clock (threshold 0)
+    // unless the caller already chose a threshold.
+    const effectiveThresholdSec =
+      driftThresholdSec ?? (isInitialSnap ? 0 : undefined)
     setPhase("applying")
     try {
       const seekableEndSec = Number.isFinite(Number(player.seekableEnd))
@@ -218,7 +295,7 @@ export function createPlaybackSyncEngine(
       applyPlaybackSyncToPlayer({
         player,
         syncState,
-        driftThresholdSec,
+        driftThresholdSec: effectiveThresholdSec,
         nowMs: scheduler.nowMs(),
         mode: "clock",
         seekableEndSec,
@@ -228,17 +305,36 @@ export function createPlaybackSyncEngine(
       // HLS/proxy often accepts the write asynchronously (or no-ops once).
       // Keep pending until verify / watchdog confirms the playhead caught up.
       const driftSec = measureDrift(player, syncState, scheduler.nowMs())
+      if (!syncState.paused && player.paused) {
+        clearPauseTimers()
+        void nudgePlaybackTransport({ player, paused: false }).playAttempt
+        scheduleTransportNudge(player)
+      } else if (syncState.paused) {
+        if (player.paused === false) {
+          void nudgePlaybackTransport({ player, paused: true })
+        }
+        // Always arm: pause() may no-op now or HLS may resume on `playing`.
+        schedulePauseNudgeBurst()
+      } else {
+        clearPauseTimers()
+      }
+
+      // A playing element against a paused room is unconverged even when the
+      // playhead matches — keep pending so `playing` events cannot clear it.
+      // Re-read after the nudge: a synchronous pause() converges immediately.
+      const pauseUnconverged =
+        syncState.paused && host.getPlayer()?.paused === false
       const stillDrifting =
         driftSec === null ||
-        driftSec > DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC
+        driftSec > DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC ||
+        pauseUnconverged
       host.setPendingSync(stillDrifting ? syncState : null)
       setPhase(stillDrifting ? "verifying" : "idle")
 
-      if (!syncState.paused && player.paused) {
-        void nudgePlaybackTransport({ player, paused: false }).playAttempt
-        scheduleTransportNudge(player)
-      } else if (syncState.paused && player.paused === false) {
-        void nudgePlaybackTransport({ player, paused: true }).playAttempt
+      if (isInitialSnap && stillDrifting && !holdLocalSeek) {
+        // Media became ready after the authority-anchor burst expired
+        // (late join). Re-arm verify retries until within threshold.
+        scheduleAnchorVerifyBurst(host.getPlayback().timelineAnchorMs)
       }
     } catch {
       host.setPendingSync(syncState)
@@ -255,7 +351,7 @@ export function createPlaybackSyncEngine(
     if (forceSeeksForAnchor.anchorMs !== anchorMs) {
       forceSeeksForAnchor = { anchorMs, count: 0 }
     }
-    if (forceSeeksForAnchor.count >= MAX_FORCE_SEEKS_PER_ANCHOR) {
+    if (forceSeeksForAnchor.count >= maxForceSeeks()) {
       // Burst budget spent (slow YouTube iframe / late canSeek). Keep applying
       // at the normal drift threshold so late joiners are not stranded for the
       // entire remaining play session while timelineAnchorMs stays fixed.
@@ -290,9 +386,11 @@ export function createPlaybackSyncEngine(
 
     const syncState = pendingSyncFromPlayback(host.getPlayback())
     const driftSec = measureDrift(player, syncState, scheduler.nowMs())
+    const pauseUnconverged = reconcilePausedTransport(player)
     if (
-      driftSec === null ||
-      driftSec <= DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC
+      !pauseUnconverged &&
+      (driftSec === null ||
+        driftSec <= DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC)
     ) {
       host.setPendingSync(null)
       if (!holdLocalSeek) {
@@ -302,7 +400,15 @@ export function createPlaybackSyncEngine(
     }
 
     setPhase("verifying")
-    tryForceSeek(player, syncState, anchorAtSchedule)
+    if (
+      driftSec !== null &&
+      driftSec > DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC
+    ) {
+      tryForceSeek(player, syncState, anchorAtSchedule)
+    } else {
+      // Playhead is fine; only the paused transport is outstanding.
+      host.setPendingSync(syncState)
+    }
   }
 
   const scheduleAnchorVerifyBurst = (anchorMs: number) => {
@@ -314,7 +420,7 @@ export function createPlaybackSyncEngine(
     if (!holdLocalSeek && phase !== "applying") {
       setPhase("verifying")
     }
-    for (const delayMs of ANCHOR_RETRY_DELAYS_MS) {
+    for (const delayMs of retryDelaysMs()) {
       const timerId = scheduler.setTimeout(() => {
         runVerifyTick(anchorMs)
       }, delayMs)
@@ -338,10 +444,17 @@ export function createPlaybackSyncEngine(
       playback: host.getPlayback(),
       driftSec: measureDrift(player, syncState, scheduler.nowMs()),
     })
+    // Steady-state pause enforcement: HLS `playing` must not leave a paused
+    // room running (and must not clear pending below).
+    const pauseUnconverged = reconcilePausedTransport(player)
     if (plan.action === "noop") {
       return
     }
     if (plan.action === "clear") {
+      if (pauseUnconverged) {
+        host.setPendingSync(syncState)
+        return
+      }
       host.setPendingSync(null)
       if (!holdLocalSeek && phase === "verifying") {
         setPhase("idle")
@@ -374,6 +487,7 @@ export function createPlaybackSyncEngine(
     disposed = true
     clearRetryTimers()
     clearTransportNudge()
+    initialSnapPending = true
     if (watchdogTimer !== undefined) {
       scheduler.clearInterval(watchdogTimer)
       watchdogTimer = undefined
@@ -385,6 +499,7 @@ export function createPlaybackSyncEngine(
   const reset = () => {
     clearRetryTimers()
     clearTransportNudge()
+    initialSnapPending = true
     forceSeeksForAnchor = { anchorMs: 0, count: 0 }
     if (!holdLocalSeek) {
       setPhase("idle")

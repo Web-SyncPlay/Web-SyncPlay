@@ -8,6 +8,7 @@ import {
   loadPersistedControlTokenRecord,
   persistControlToken,
   persistUsername,
+  resetSessionIdentityBootstrapForTests,
   stripIdentityHashFromUrl,
 } from "./session-identity"
 import {
@@ -23,6 +24,7 @@ type MockStorage = {
 }
 
 function createMockWindow(hash: string) {
+  resetSessionIdentityBootstrapForTests()
   const storage = new Map<string, string>()
   let replacedUrl: string | null = null
   const localStorage: MockStorage = {
@@ -78,6 +80,7 @@ function createMockWindow(hash: string) {
 function cleanupWindow() {
   delete (globalThis as { window?: unknown }).window
   resetSecretStorageCacheForTests()
+  resetSessionIdentityBootstrapForTests()
 }
 
 test("consumeSessionIdentityFromHash stores encrypted identity and strips hash", async () => {
@@ -92,6 +95,34 @@ test("consumeSessionIdentityFromHash stores encrypted identity and strips hash",
   expect(isEncryptedSecret(storedSecret!)).toBe(true)
   expect(storedSecret).not.toContain("secret-1")
   expect(mock.getReplacedUrl()).toBe("/room/abc/player?embed=1")
+  cleanupWindow()
+})
+
+test("concurrent consumeSessionIdentityFromHash shares one consume after hash is cleared mid-flight (Strict Mode)", async () => {
+  const mock = createMockWindow("#uid=user-1&secret=secret-1")
+  const win = (globalThis as unknown as {
+    window: { location: { hash: string } }
+  }).window
+
+  // Mount A: sync-writes userId, then awaits persistEncryptedUserSecret.
+  const mountA = consumeSessionIdentityFromHash()
+  // Strip effect clears the URL hash before mount B runs.
+  win.location.hash = ""
+  // Mount B: sees an empty hash but must reuse A's consume.
+  const mountB = consumeSessionIdentityFromHash()
+
+  const [a, b] = await Promise.all([mountA, mountB])
+  expect(a).toEqual({ userId: "user-1", userSecret: "secret-1" })
+  expect(b).toEqual(a)
+
+  // getOrCreate after consume must keep the hash secret, not mint a new one.
+  const session = await getOrCreateSessionIdentity()
+  expect(session).toEqual({ userId: "user-1", userSecret: "secret-1" })
+  expect(mock.storage.get("web-syncplay:user-id")).toBe("user-1")
+
+  // Late remount after consume completed still gets the cached identity.
+  const late = await consumeSessionIdentityFromHash()
+  expect(late).toEqual(a)
   cleanupWindow()
 })
 

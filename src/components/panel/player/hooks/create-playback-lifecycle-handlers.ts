@@ -72,6 +72,11 @@ export function createPlaybackLifecycleHandlers(deps: PlaybackLifecycleDeps) {
       setPlaybackError(undefined)
       participantStatusErrorRef.current = null
       bufferingSinceRef.current = null
+      // HLS/local HTTP can emit `playing` after an authority pause (late
+      // resume). Re-assert pause through the engine so pending pause survives.
+      if (playbackRef.current.paused) {
+        enforceServerPlaybackState()
+      }
       if (
         current &&
         canControlPlayback &&

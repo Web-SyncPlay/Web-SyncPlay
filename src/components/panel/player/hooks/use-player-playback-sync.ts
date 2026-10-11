@@ -20,6 +20,7 @@ import {
   pendingSyncFromPlayback,
   type PendingSyncState,
 } from "@/client/player/pending-sync"
+import { resolveProviderSyncTuning } from "@/client/player/provider-sync-tuning"
 import { useApplyRoomClock } from "./use-apply-room-clock"
 import { usePlaybackDriftCorrection } from "./use-playback-drift-correction"
 import { usePlaybackSyncEngine } from "./use-playback-sync-engine"
@@ -104,6 +105,10 @@ export function usePlayerPlaybackSync(config: {
     pendingSyncRef,
     lastAppliedTimelineAnchorMsRef,
     playbackRef,
+    // Native iframe providers (YouTube/Vimeo) get longer pause/seek retries;
+    // HLS / direct media resolve to undefined and keep engine defaults.
+    getSyncTuning: () =>
+      resolveProviderSyncTuning(applyFailContextRef.current.src),
     onApplyFailed: (syncState) => {
       console.warn("[player] applyRoomClock failed", {
         ...applyFailContextRef.current,
@@ -198,7 +203,9 @@ export function usePlayerPlaybackSync(config: {
     }
 
     // Authority seeks must always apply — the default drift threshold can
-    // skip small jumps and leave peers on the previous timeline.
+    // skip small jumps and leave peers on the previous timeline. The engine
+    // additionally force-snaps (threshold 0) on the first ready apply so late
+    // joiners converge even when `anchorChanged` is still false.
     const anchorChanged =
       lastAppliedTimelineAnchorMsRef.current !== null &&
       lastAppliedTimelineAnchorMsRef.current !== syncState.timelineAnchorMs

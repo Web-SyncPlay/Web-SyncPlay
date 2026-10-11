@@ -32,6 +32,21 @@ export type SyncablePlayer = {
 }
 
 /**
+ * Real playhead in seconds: prefer the underlying media element (what the
+ * viewer actually sees/hears) over the player wrapper, which can lag or no-op
+ * for HLS/proxy/local HTTP sources.
+ */
+export function readPlayerPlayheadSec(
+  player: Pick<SyncablePlayer, "currentTime" | "mediaEl">,
+): number {
+  const mediaTime = Number(player.mediaEl?.currentTime)
+  if (Number.isFinite(mediaTime)) {
+    return mediaTime
+  }
+  return Number(player.currentTime ?? 0)
+}
+
+/**
  * Apply authoritative room playback clock to a local media element.
  *
  * Seek runs before any transport nudge: iframe providers (YouTube/Vimeo) often
@@ -119,7 +134,7 @@ export function applyPlaybackClockToPlayer(config: {
   })
   const clampedExpectedSec =
     ceiling !== null ? Math.min(expectedTimeSec, ceiling) : expectedTimeSec
-  const currentTimeSec = Number(player.currentTime ?? 0)
+  const currentTimeSec = readPlayerPlayheadSec(player)
   let seekAttempted = false
   if (
     Number.isFinite(currentTimeSec) &&
@@ -130,24 +145,28 @@ export function applyPlaybackClockToPlayer(config: {
       driftThresholdSec,
     )
   ) {
+    // Write wrapper and media element independently: a throwing/no-op wrapper
+    // setter must not block the element (Vidstack live/HLS often ignores the
+    // wrapper write while the element still accepts the seek).
     try {
       player.currentTime = clampedExpectedSec
-      // Vidstack live players often report canSeek=false and no-op the wrapper
-      // setter; the underlying media element still accepts DVR seeks.
-      if (player.mediaEl) {
-        player.mediaEl.currentTime = clampedExpectedSec
-      }
-      seekAttempted = true
     } catch {
       // Ignore transient seek failures while provider is rebuilding.
-      seekAttempted = true
     }
+    if (player.mediaEl) {
+      try {
+        player.mediaEl.currentTime = clampedExpectedSec
+      } catch {
+        // Element may be detached during provider swap.
+      }
+    }
+    seekAttempted = true
   }
 
   return {
     seekAttempted,
     driftSec: measurePlaybackDriftSec(
-      Number(player.currentTime ?? 0),
+      readPlayerPlayheadSec(player),
       syncState,
       nowMs,
       durationSec,
