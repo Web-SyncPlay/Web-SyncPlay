@@ -1,10 +1,13 @@
-import { env } from "@/env"
 import {
   installShutdownOnce,
   registerShutdownHandler,
 } from "@/server/lifecycle"
 import { clientIpFromUpgradeRequest } from "@/server/security/rate-limit"
 import { setSocketClientIp } from "@/server/ws/registry"
+import {
+  WS_HEARTBEAT_INTERVAL_MS,
+  WS_HEARTBEAT_TIMEOUT_MS,
+} from "@/server/ws/heartbeat"
 import type { Server as HttpServer, IncomingMessage } from "node:http"
 import type { Socket } from "node:net"
 import { WebSocketServer, type WebSocket } from "ws"
@@ -118,7 +121,6 @@ export function attachWebSocketTransport(
     })
   }
 
-  const heartbeatTimeoutMs = env.WS_HEARTBEAT_INTERVAL_MS * 3
   slot.heartbeat = setInterval(() => {
     const nowMs = Date.now()
     for (const ws of wss.clients) {
@@ -127,7 +129,7 @@ export function attachWebSocketTransport(
         shouldTerminateForMissedHeartbeat({
           nowMs,
           lastPongAtMs: slot.lastPongAt.get(ws),
-          heartbeatTimeoutMs,
+          heartbeatTimeoutMs: WS_HEARTBEAT_TIMEOUT_MS,
         })
       ) {
         ws.terminate()
@@ -135,7 +137,7 @@ export function attachWebSocketTransport(
       }
       ws.ping()
     }
-  }, env.WS_HEARTBEAT_INTERVAL_MS)
+  }, WS_HEARTBEAT_INTERVAL_MS)
 
   wss.on("close", () => {
     clearHeartbeat(slot)

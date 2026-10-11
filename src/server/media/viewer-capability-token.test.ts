@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, mock, test } from "bun:test"
 import { createHash } from "node:crypto"
 import { keys } from "@/server/redis/keys"
-import { roomStateTtlSeconds } from "@/contracts/types"
+import { roomStateTtlSeconds } from "@/shared/room-lifecycle"
 
 type KvStore = Map<string, { value: string; ex?: number }>
 

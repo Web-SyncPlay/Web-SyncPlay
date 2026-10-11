@@ -1,6 +1,7 @@
 /**
- * Auto-derived yt-dlp knobs. Operators only set YTDLP_CACHE_TTL_SECONDS /
- * YTDLP_TIMEOUT_MS / YTDLP_MAX_CONCURRENT; everything else follows from those.
+ * Auto-derived yt-dlp knobs. Operators only set YTDLP_TIMEOUT_MS /
+ * YTDLP_MAX_CONCURRENT; cache retention and stream-URL max age are fixed /
+ * derived here.
  */
 
 /** Heights kept in the selectable progressive ladder (and format-sort target). */
@@ -10,12 +11,23 @@ export const PLAYBACK_MAX_HEIGHT =
   PLAYBACK_LADDER_HEIGHTS[PLAYBACK_LADDER_HEIGHTS.length - 1]!
 
 /**
- * How long cached stream/CDN URLs stay usable (and the EX used on successful
- * extract cache writes). Derived from `YTDLP_CACHE_TTL_SECONDS` (retention
- * input): fresher than a full retention window, capped for typical signed-URL
- * lifetimes, never exceeding the configured cache TTL.
+ * Retention input for the Valkey extract cache (not always the Redis EX on
+ * success). Product constant — not an admin env.
  */
-export function derivedStreamUrlMaxAgeSeconds(cacheTtlSeconds: number): number {
+export const YTDLP_CACHE_RETENTION_SECONDS = 1800
+
+/** Short-lived EX for failed extract cache entries. */
+export const YTDLP_CACHE_FAILURE_TTL_SECONDS = 60
+
+/**
+ * How long cached stream/CDN URLs stay usable (and the EX used on successful
+ * extract cache writes). Derived from {@link YTDLP_CACHE_RETENTION_SECONDS}:
+ * fresher than a full retention window, capped for typical signed-URL
+ * lifetimes, never exceeding the retention input.
+ */
+export function derivedStreamUrlMaxAgeSeconds(
+  cacheTtlSeconds: number = YTDLP_CACHE_RETENTION_SECONDS,
+): number {
   if (cacheTtlSeconds <= 0) return 0
   const third = Math.floor(cacheTtlSeconds / 3)
   const comfortCap = 600

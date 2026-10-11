@@ -1,8 +1,10 @@
 import { createHash, randomBytes } from "node:crypto"
-import { env } from "@/env"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
 import { z } from "zod"
+
+/** Control-embed token lifetime. Not an admin env — product constant. */
+export const CONTROL_TOKEN_TTL_SECONDS = 60 * 60 * 12
 
 export type ControlTokenRecord = {
   roomId: string
@@ -38,7 +40,7 @@ export async function mintControlToken(input: {
   const token = randomBytes(32).toString("base64url")
   const tokenHash = hashToken(token)
   const mintedAt = Date.now()
-  const expiresAt = mintedAt + env.CONTROL_TOKEN_TTL_SECONDS * 1000
+  const expiresAt = mintedAt + CONTROL_TOKEN_TTL_SECONDS * 1000
   const record: ControlTokenRecord = {
     roomId: input.roomId,
     userId: input.userId,
@@ -47,7 +49,7 @@ export async function mintControlToken(input: {
   }
   const client = await getCommandClient()
   await client.set(keys.controlToken(tokenHash), JSON.stringify(record), {
-    EX: env.CONTROL_TOKEN_TTL_SECONDS,
+    EX: CONTROL_TOKEN_TTL_SECONDS,
   })
   return { token, expiresAt }
 }

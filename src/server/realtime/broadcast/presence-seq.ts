@@ -1,6 +1,6 @@
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
-import { roomStateTtlSeconds } from "@/contracts/types"
+import { roomStateTtlSeconds } from "@/shared/room-lifecycle"
 
 /** Process-local fallback when Redis INCR is unavailable (tests / blips). */
 const presenceSeqFallback = new Map<string, number>()

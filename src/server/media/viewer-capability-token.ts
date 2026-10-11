@@ -10,7 +10,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
-import { roomStateTtlSeconds } from "@/contracts/types"
+import { roomStateTtlSeconds } from "@/shared/room-lifecycle"
 import { z } from "zod"
 
 export type ViewerCapabilityRecord = {

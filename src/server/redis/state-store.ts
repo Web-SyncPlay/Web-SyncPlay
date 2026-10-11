@@ -10,11 +10,11 @@ import {
   type DailyDefaultVideo,
   type RoomStateStorePort,
 } from "@/server/ports"
+import type { PresencePatch, RoomState } from "@/contracts/types"
 import {
   roomStateTtlSeconds,
-  type PresencePatch,
-  type RoomState,
-} from "@/contracts/types"
+  TOUCH_WS_PRESENCE_MIN_INTERVAL_MS,
+} from "@/server/redis/ttl-policy"
 import { getCommandClient } from "./client"
 import { keys } from "./keys"
 import {
@@ -57,8 +57,6 @@ function roomLifecycleKeys(roomId: string): string[] {
   ]
 }
 
-/** Refresh lifecycle TTLs at most this often per room (in-process). */
-const TOUCH_WS_PRESENCE_MIN_INTERVAL_MS = 45_000
 const TOUCH_WS_PRESENCE_PRUNE_AT = 10_000
 const lastTouchWsPresenceByRoom = new Map<string, number>()
 
@@ -283,7 +281,8 @@ export class RoomStateStore implements RoomStateStorePort {
 
   /**
    * Refresh TTL while the room is active (all room-related keys).
-   * Throttled to ~45s per roomId in-process; pass `{ force: true }` on join.
+   * Throttled per roomId in-process ({@link TOUCH_WS_PRESENCE_MIN_INTERVAL_MS});
+   * pass `{ force: true }` on join.
    */
   async touchWsPresence(
     roomId: string,

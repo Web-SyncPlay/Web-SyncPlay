@@ -1,7 +1,10 @@
-import { env } from "@/env"
 import { sha256HexUrl } from "@/server/media/url-hash"
 import { recordYtDlpMetric } from "@/server/media/yt-dlp/metrics"
-import { derivedStreamUrlMaxAgeSeconds } from "@/server/media/yt-dlp/policy"
+import {
+  derivedStreamUrlMaxAgeSeconds,
+  YTDLP_CACHE_FAILURE_TTL_SECONDS,
+  YTDLP_CACHE_RETENTION_SECONDS,
+} from "@/server/media/yt-dlp/policy"
 import type { YtDlpExtractResult } from "@/server/media/yt-dlp/types"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
@@ -96,12 +99,6 @@ export type YtDlpCacheEnvelope = z.infer<typeof envelopeSchema>
 
 export const urlHash = sha256HexUrl
 
-/** Operator retention input (`YTDLP_CACHE_TTL_SECONDS`); success writes use a shorter derived TTL. */
-function cacheTtlSeconds(): number {
-  const raw = env.YTDLP_CACHE_TTL_SECONDS
-  return typeof raw === "number" && Number.isFinite(raw) ? raw : 1800
-}
-
 export function parseCachedExtract(raw: string): YtDlpExtractResult | null {
   let parsed: unknown
   try {
@@ -122,7 +119,7 @@ function freshnessFilter(envelope: YtDlpCacheEnvelope): YtDlpExtractResult | nul
   const { result, extractedAt } = envelope
   if (!result.ok) return result
 
-  const maxAgeSeconds = derivedStreamUrlMaxAgeSeconds(cacheTtlSeconds())
+  const maxAgeSeconds = derivedStreamUrlMaxAgeSeconds()
   if (maxAgeSeconds <= 0) return result
 
   const ageSeconds = Math.max(0, (Date.now() - extractedAt) / 1000)
@@ -136,7 +133,7 @@ function freshnessFilter(envelope: YtDlpCacheEnvelope): YtDlpExtractResult | nul
 export async function readExtractCache(
   url: string,
 ): Promise<YtDlpExtractResult | null> {
-  if (cacheTtlSeconds() <= 0) return null
+  if (YTDLP_CACHE_RETENTION_SECONDS <= 0) return null
   try {
     const client = await getCommandClient()
     const raw = await client.get(keys.mediaYtDlpExtract(urlHash(url)))
@@ -158,13 +155,12 @@ export async function readExtractCache(
 }
 
 export async function writeExtractCache(url: string, result: YtDlpExtractResult) {
-  const configuredTtl = cacheTtlSeconds()
-  if (configuredTtl <= 0) return
-  // YTDLP_CACHE_TTL_SECONDS is retention input; success EX is capped by
-  // derived stream-URL max age. Failures stay short-lived.
+  if (YTDLP_CACHE_RETENTION_SECONDS <= 0) return
+  // Retention is a product constant; success EX is capped by derived
+  // stream-URL max age. Failures stay short-lived.
   const ttl = result.ok
-    ? derivedStreamUrlMaxAgeSeconds(configuredTtl)
-    : 60
+    ? derivedStreamUrlMaxAgeSeconds()
+    : YTDLP_CACHE_FAILURE_TTL_SECONDS
   if (ttl <= 0) return
   const envelope: YtDlpCacheEnvelope = {
     v: CACHE_VERSION,

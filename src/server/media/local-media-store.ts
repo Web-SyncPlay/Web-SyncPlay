@@ -2,6 +2,10 @@ import { getAppNodeId } from "@/server/node-id"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
 import { invalidateLocalMediaBlockCache } from "@/server/media/local-media-block-cache"
+import {
+  roomActionLogMaxAgeMs,
+  roomStateTtlSeconds,
+} from "@/shared/room-lifecycle"
 
 export type LocalMediaAbrVariant = {
   localMediaId: string
@@ -39,8 +43,8 @@ export type LocalMediaEntry = {
 }
 
 /** Aligns with room state TTL — metadata only; bytes stay on the providing browser. */
-const LOCAL_MEDIA_TTL_MS = 1000 * 60 * 60
-const LOCAL_MEDIA_TTL_SECONDS = Math.floor(LOCAL_MEDIA_TTL_MS / 1000)
+const LOCAL_MEDIA_TTL_MS = roomActionLogMaxAgeMs
+const LOCAL_MEDIA_TTL_SECONDS = roomStateTtlSeconds
 
 export async function createLocalMediaEntry(input: {
   id: string

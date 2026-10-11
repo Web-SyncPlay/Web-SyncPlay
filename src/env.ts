@@ -86,12 +86,6 @@ export const env = createEnv({
       .min(1)
       .max(200)
       .default(50),
-    WS_HEARTBEAT_INTERVAL_MS: z.coerce
-      .number()
-      .int()
-      .min(100)
-      .max(30000)
-      .default(5000),
     PROXY_ALLOW_PRIVATE_URLS: z
       .enum(["true", "false"])
       .default("false")
@@ -100,22 +94,6 @@ export const env = createEnv({
         if (process.env.NODE_ENV === "production") return false
         return value === "true"
       }),
-    CONTROL_TOKEN_TTL_SECONDS: z.coerce
-      .number()
-      .int()
-      .min(60)
-      .max(60 * 60 * 48)
-      .default(60 * 60 * 12),
-    /**
-     * Retention input for the Valkey yt-dlp extract cache (0–86400).
-     * Successful writes use a shorter TTL capped by stream-URL max age.
-     */
-    YTDLP_CACHE_TTL_SECONDS: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .max(86_400)
-      .default(1800),
     /** Per-replica base URL for internal local-media range fetch; pair with LOCAL_MEDIA_INTERNAL_SECRET. */
     INTERNAL_NODE_BASE_URL: z.url().optional(),
     /** Shared secret for /api/media/local/internal/* (≥16 chars when set). */
@@ -153,10 +131,7 @@ export const env = createEnv({
     ROOM_PARTICIPANTS_LIMIT: process.env.ROOM_PARTICIPANTS_LIMIT,
     ROOM_ACTION_LOG_LIMIT: process.env.ROOM_ACTION_LOG_LIMIT,
     ROOM_PLAYLIST_LIMIT: process.env.ROOM_PLAYLIST_LIMIT,
-    WS_HEARTBEAT_INTERVAL_MS: process.env.WS_HEARTBEAT_INTERVAL_MS,
     PROXY_ALLOW_PRIVATE_URLS: process.env.PROXY_ALLOW_PRIVATE_URLS,
-    CONTROL_TOKEN_TTL_SECONDS: process.env.CONTROL_TOKEN_TTL_SECONDS,
-    YTDLP_CACHE_TTL_SECONDS: process.env.YTDLP_CACHE_TTL_SECONDS,
     INTERNAL_NODE_BASE_URL: process.env.INTERNAL_NODE_BASE_URL,
     LOCAL_MEDIA_INTERNAL_SECRET: process.env.LOCAL_MEDIA_INTERNAL_SECRET,
     PUBLIC_DOMAIN: process.env.PUBLIC_DOMAIN,

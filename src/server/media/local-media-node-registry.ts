@@ -2,9 +2,12 @@ import { env } from "@/env"
 import { getAppNodeId } from "@/server/node-id"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
+import { derivedHeartbeatTtlSeconds } from "@/server/redis/ttl-policy"
 
-const NODE_REGISTRY_TTL_SECONDS = 90
 const NODE_HEARTBEAT_INTERVAL_MS = 30_000
+const NODE_REGISTRY_TTL_SECONDS = derivedHeartbeatTtlSeconds(
+  NODE_HEARTBEAT_INTERVAL_MS,
+)
 
 export type LocalMediaNodeRecord = {
   nodeId: string

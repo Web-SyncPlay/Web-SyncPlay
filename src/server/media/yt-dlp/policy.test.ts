@@ -6,9 +6,12 @@ import {
   derivedStreamUrlMaxAgeSeconds,
   derivedYtDlpDumpArgs,
   PLAYBACK_MAX_HEIGHT,
+  YTDLP_CACHE_RETENTION_SECONDS,
 } from "@/server/media/yt-dlp/policy"
 
-test("stream URL max age is derived from cache TTL", () => {
+test("stream URL max age is derived from cache retention", () => {
+  expect(YTDLP_CACHE_RETENTION_SECONDS).toBe(1800)
+  expect(derivedStreamUrlMaxAgeSeconds()).toBe(600)
   expect(derivedStreamUrlMaxAgeSeconds(0)).toBe(0)
   expect(derivedStreamUrlMaxAgeSeconds(1800)).toBe(600)
   expect(derivedStreamUrlMaxAgeSeconds(300)).toBe(120)

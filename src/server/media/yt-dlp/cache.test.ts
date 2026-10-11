@@ -43,7 +43,7 @@ test("rejects success envelope older than derived stream URL max age", () => {
     extractedAt: Date.now() - 3_600_000,
     result: success(),
   })
-  // Derived max age from default cache TTL (1800) is 600s; 1h-old URLs must miss.
+  // Derived max age from YTDLP_CACHE_RETENTION_SECONDS (1800) is 600s; 1h-old URLs must miss.
   expect(parseCachedExtract(raw)).toBeNull()
 })
 

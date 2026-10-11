@@ -7,6 +7,7 @@ import {
   derivedLockHeartbeatTtlSeconds,
   derivedResolveReclaimIntervalMs,
   derivedStreamUrlMaxAgeSeconds,
+  YTDLP_CACHE_RETENTION_SECONDS,
 } from "@/server/media/yt-dlp/policy"
 import { getCommandClient } from "@/server/redis/client"
 import { NextResponse } from "next/server"
@@ -23,7 +24,7 @@ async function pingValkey(): Promise<boolean> {
 export async function GET() {
   void ensureBackgroundMaintenance()
   const valkeyOk = await pingValkey()
-  const cacheTtl = env.YTDLP_CACHE_TTL_SECONDS
+  const cacheTtl = YTDLP_CACHE_RETENTION_SECONDS
   const timeoutMs = env.YTDLP_TIMEOUT_MS
   // Warn-only: unset affinity / multi-replica SFU locality must not flip liveness
   // (existing single-node deploys stay 200 when Valkey is up).

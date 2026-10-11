@@ -78,9 +78,7 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
     FALLBACK_DEFAULT_MEDIA_URL=https://youtu.be/uD4izuDMUQA \
     ROOM_PARTICIPANTS_LIMIT=100 \
     ROOM_ACTION_LOG_LIMIT=500 \
-    WS_HEARTBEAT_INTERVAL_MS=5000 \
-    PROXY_ALLOW_PRIVATE_URLS=false \
-    CONTROL_TOKEN_TTL_SECONDS=43200
+    PROXY_ALLOW_PRIVATE_URLS=false
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl \

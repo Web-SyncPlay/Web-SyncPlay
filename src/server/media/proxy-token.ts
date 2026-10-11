@@ -4,8 +4,6 @@ import { sha256HexUrl } from "@/server/media/url-hash"
 import { assertPublicHttpUrlResolved } from "@/server/security/url-safety"
 import { getCommandClient } from "../redis/client"
 import { keys } from "../redis/keys"
-import { roomStateTtlSeconds } from "@/contracts/types"
-
 /**
  * Tokens map UUID → upstream URL + fetch metadata.
  * Sliding expiry on each successful proxy hit keeps active streams alive.
@@ -153,5 +151,3 @@ export async function roomStillExists(roomId: string | undefined): Promise<boole
   const exists = await client.exists(keys.roomState(roomId))
   return exists === 1
 }
-
-export { roomStateTtlSeconds }

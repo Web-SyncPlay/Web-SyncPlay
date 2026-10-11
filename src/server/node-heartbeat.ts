@@ -2,13 +2,15 @@ import { getAppNodeId } from "@/server/node-id"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
 import {
+  APP_NODE_ALIVE_TTL_SECONDS,
+  APP_NODE_HEARTBEAT_INTERVAL_MS,
+} from "@/server/redis/ttl-policy"
+import {
   installShutdownOnce,
   registerShutdownHandler,
 } from "@/server/lifecycle"
 
-/** Must outlive a couple of missed heartbeats but clear quickly after crash. */
-export const APP_NODE_ALIVE_TTL_SECONDS = 45
-const APP_NODE_HEARTBEAT_INTERVAL_MS = 15_000
+export { APP_NODE_ALIVE_TTL_SECONDS }
 
 /** In-process TTL so mutateRoom does not SCAN Valkey on every presence read. */
 export const ALIVE_NODE_LIST_CACHE_TTL_MS = 10_000
