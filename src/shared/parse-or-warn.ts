@@ -39,7 +39,7 @@ export function parseOrWarn<T extends z.ZodType>(
 ): z.infer<T> | null {
   const result = schema.safeParse(payload)
   if (!result.success) {
-    console.warn(`${logPrefix} invalid ${type} payload`, {
+    console.warn("%s invalid %s payload", logPrefix, type, {
       payload: redactPayloadForLog(payload),
       issues: result.error.issues,
     })
