@@ -98,6 +98,16 @@ jobs:
         env:
           E2E_BASE_URL: http://127.0.0.1:3000
 
+      - name: Password-gated join e2e
+        run: bun run test:e2e:password
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3000
+
+      - name: Local-media HTTP relay e2e
+        run: bun run test:e2e:local-media
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3000
+
       - name: Stop app
         if: always()
         run: |
