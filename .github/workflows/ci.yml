@@ -162,13 +162,13 @@ jobs:
             org.opencontainers.image.title=Web-SyncPlay
             org.opencontainers.image.description=Watch any yt-dlp source in sync—or stream local files to everyone
             org.opencontainers.image.url=https://web-syncplay.de
-            org.opencontainers.image.documentation=https://github.com/Yasamato/Web-SyncPlay#readme
+            org.opencontainers.image.documentation=https://github.com/Web-SyncPlay/Web-SyncPlay#readme
             org.opencontainers.image.authors=Yasamato <https://github.com/Yasamato>
           annotations: |
             org.opencontainers.image.title=Web-SyncPlay
             org.opencontainers.image.description=Watch any yt-dlp source in sync—or stream local files to everyone
             org.opencontainers.image.url=https://web-syncplay.de
-            org.opencontainers.image.documentation=https://github.com/Yasamato/Web-SyncPlay#readme
+            org.opencontainers.image.documentation=https://github.com/Web-SyncPlay/Web-SyncPlay#readme
             org.opencontainers.image.authors=Yasamato <https://github.com/Yasamato>
 
       - name: Set up Docker Buildx
@@ -241,13 +241,13 @@ jobs:
             org.opencontainers.image.title=Web-SyncPlay
             org.opencontainers.image.description=Watch any yt-dlp source in sync—or stream local files to everyone
             org.opencontainers.image.url=https://web-syncplay.de
-            org.opencontainers.image.documentation=https://github.com/Yasamato/Web-SyncPlay#readme
+            org.opencontainers.image.documentation=https://github.com/Web-SyncPlay/Web-SyncPlay#readme
             org.opencontainers.image.authors=Yasamato <https://github.com/Yasamato>
           annotations: |
             org.opencontainers.image.title=Web-SyncPlay
             org.opencontainers.image.description=Watch any yt-dlp source in sync—or stream local files to everyone
             org.opencontainers.image.url=https://web-syncplay.de
-            org.opencontainers.image.documentation=https://github.com/Yasamato/Web-SyncPlay#readme
+            org.opencontainers.image.documentation=https://github.com/Web-SyncPlay/Web-SyncPlay#readme
             org.opencontainers.image.authors=Yasamato <https://github.com/Yasamato>
         env:
           # imagetools create only supports index / manifest-descriptor annotations.
