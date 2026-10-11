@@ -83,7 +83,7 @@ test("HEAD without ACAO falls back to GET before denying", async () => {
 })
 
 test("403 with ACAO * is unreachable, not playable-direct", async () => {
-  globalThis.fetch = (async () =>
+  globalThis.fetch = (async (_input: RequestInfo | URL, _init?: RequestInit) =>
     new Response("<Error>AccessDenied</Error>", {
       status: 403,
       headers: {
