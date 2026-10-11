@@ -1,26 +1,48 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
 
-beforeEach(() => {
-  // Reset redis client mock so prior files' partial mocks do not leak.
+// Capture real exports before this file's partial `mock.module` overrides.
+// Bun's mock.module is process-sticky; restore after each test so later files
+// are not poisoned by incomplete export surfaces.
+const localMediaStoreActual = await import("@/server/media/local-media-store")
+const stateStoreActual = await import("@/server/redis/state-store")
+
+type KvStore = Map<string, { value: string; ex?: number }>
+
+function mockRedisClient(store: KvStore) {
+  const redis = {
+    set: async (key: string, value: string, opts?: { EX?: number }) => {
+      store.set(key, { value, ex: opts?.EX })
+      return "OK"
+    },
+    get: async (key: string) => store.get(key)?.value ?? null,
+    del: async (...keyList: string[]) => {
+      let removed = 0
+      for (const key of keyList) {
+        if (store.delete(key)) removed += 1
+      }
+      return removed
+    },
+  }
   mock.module("@/server/redis/client", () => ({
-    getCommandClient: async () => ({
-      get: async () => null,
-      set: async () => "OK",
-      del: async () => 0,
-    }),
-    getSubscriberClient: async () => ({
-      subscribe: async () => undefined,
-    }),
+    getCommandClient: async () => redis,
+    getSubscriberClient: async () => redis,
   }))
+}
+
+beforeEach(() => {
+  mockRedisClient(new Map())
 })
 
 afterEach(() => {
+  mock.module("@/server/media/local-media-store", () => localMediaStoreActual)
+  mock.module("@/server/redis/state-store", () => stateStoreActual)
   mock.restore()
 })
 
 describe("resolveServeableLocalMedia", () => {
   test("denies access without viewer token", async () => {
     mock.module("@/server/media/local-media-store", () => ({
+      ...localMediaStoreActual,
       getLocalMediaEntry: async () => ({
         id: "media-1",
         roomId: "room-1",
@@ -30,10 +52,8 @@ describe("resolveServeableLocalMedia", () => {
         mimeType: "video/mp4",
       }),
     }))
-    mock.module("@/server/media/viewer-capability-token", () => ({
-      validateViewerCapabilityToken: async () => true,
-    }))
     mock.module("@/server/redis/state-store", () => ({
+      ...stateStoreActual,
       getRoomStateStore: async () => ({
         getWsPresenceUserIds: async () => new Set(["owner-1"]),
       }),
@@ -54,6 +74,7 @@ describe("resolveServeableLocalMedia", () => {
 
   test("denies when capability validation fails", async () => {
     mock.module("@/server/media/local-media-store", () => ({
+      ...localMediaStoreActual,
       getLocalMediaEntry: async () => ({
         id: "media-1",
         roomId: "room-1",
@@ -63,10 +84,8 @@ describe("resolveServeableLocalMedia", () => {
         mimeType: "video/mp4",
       }),
     }))
-    mock.module("@/server/media/viewer-capability-token", () => ({
-      validateViewerCapabilityToken: async () => false,
-    }))
     mock.module("@/server/redis/state-store", () => ({
+      ...stateStoreActual,
       getRoomStateStore: async () => ({
         getWsPresenceUserIds: async () => new Set(["owner-1"]),
       }),
@@ -88,14 +107,11 @@ describe("resolveServeableLocalMedia", () => {
   })
 
   test("allows when token validates and owner is ready", async () => {
-    let validated: {
-      token: string
-      roomId: string
-      userId: string
-      clientIp: string
-    } | null = null
+    const store: KvStore = new Map()
+    mockRedisClient(store)
 
     mock.module("@/server/media/local-media-store", () => ({
+      ...localMediaStoreActual,
       getLocalMediaEntry: async () => ({
         id: "media-1",
         roomId: "room-1",
@@ -105,40 +121,37 @@ describe("resolveServeableLocalMedia", () => {
         mimeType: "video/mp4",
       }),
     }))
-    mock.module("@/server/media/viewer-capability-token", () => ({
-      validateViewerCapabilityToken: async (input: {
-        token: string
-        roomId: string
-        userId: string
-        clientIp: string
-      }) => {
-        validated = input
-        return true
-      },
-    }))
     mock.module("@/server/redis/state-store", () => ({
+      ...stateStoreActual,
       getRoomStateStore: async () => ({
         getWsPresenceUserIds: async () => new Set(["owner-1"]),
       }),
     }))
 
+    // Use the real mint/validate path so this file never stubs
+    // viewer-capability-token (partial mocks leak across Bun test files).
+    const { mintViewerCapabilityToken } = await import(
+      "./viewer-capability-token"
+    )
+    const { token } = await mintViewerCapabilityToken({
+      roomId: "room-1",
+      userId: "user-1",
+      boundIp: "203.0.113.10",
+    })
+
     const { resolveServeableLocalMedia } = await import("./local-media-access")
 
     const ok = await resolveServeableLocalMedia("media-1", {
       viewer: {
-        token: "good-token",
+        token,
         userId: "user-1",
         clientIp: "203.0.113.10",
       },
     })
     expect(ok.ok).toBe(true)
-    expect(validated).not.toBeNull()
-    expect(validated!).toEqual({
-      token: "good-token",
-      roomId: "room-1",
-      userId: "user-1",
-      clientIp: "203.0.113.10",
-    })
+    if (ok.ok) {
+      expect(ok.entry.id).toBe("media-1")
+    }
   })
 
   test("viewerAuthFromLocalMediaRequest reads vt, uid, and client IP", async () => {
