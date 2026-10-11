@@ -2,7 +2,9 @@
 
 ## Supported versions
 
-Security fixes land on `main` and on current Docker image tags (`latest` and semver tags published from CI). The supported major line is **3.x** (v3.0.0 and later). Older majors (including **2.x**) are not backported by default.
+Security fixes land on `main` and on current Docker image tags (`latest` and
+semver tags such as `3.0.0` / `3.0` published from CI). The supported major line
+is **3.x**. Older majors (including **2.x**) are not backported by default.
 
 ## Reporting a vulnerability
 

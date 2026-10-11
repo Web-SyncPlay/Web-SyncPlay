@@ -11,15 +11,15 @@ Watch video or audio in sync with friends. One Next.js app: WebSocket realtime, 
 
 **Stack:** Bun · Next.js · React · TypeScript · Tailwind · Vidstack · mediasoup · Valkey · yt-dlp
 
-| Section                                                                 | For                              |
-| ----------------------------------------------------------------------- | -------------------------------- |
-| [Requirements](#requirements) / [Quick start](#quick-start-development) | Local development                |
-| [Deploy](#deploy)                                                       | Docker, ports, multi-replica SFU |
-| [Environment variables](#environment-variables)                         | Config reference (`src/env.ts`)  |
-| [Using the app](#using-the-app) / [Embed](#embed-on-your-site)          | Routes and host-site iframes     |
-| [Architecture](#architecture-developers)                                | Source layout and media paths    |
-| [Contributing](#contributing)                                           | Setup, checks, PR expectations   |
-| [Security](#security--accessibility)                                    | Reporting and a11y gate          |
+| Section                                                                 | For                                 |
+| ----------------------------------------------------------------------- | ----------------------------------- |
+| [Requirements](#requirements) / [Quick start](#quick-start-development) | Local development                   |
+| [Deploy](#deploy)                                                       | Docker, ports, multi-replica SFU    |
+| [Environment variables](#environment-variables)                         | Config reference (`src/env.ts`)     |
+| [Using the app](#using-the-app) / [Embed](#embed-on-your-site)          | Routes and host-site iframes        |
+| [Architecture](#architecture-developers)                                | Source layout and media paths       |
+| [Contributing](#contributing)                                           | Setup, checks, PR expectations      |
+| [Security](#security--accessibility)                                    | Reporting and a11y gate             |
 | [Changelog](./CHANGELOG.md) / [Migrate from v2](./docs/MIGRATION-v3.md) | v3.0.0 notes and greenfield cutover |
 
 Agent-oriented map and dual TypeScript notes: [AGENTS.md](./AGENTS.md).
@@ -52,16 +52,16 @@ bun run dev
 
 Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
-| Script                                           | Purpose                                                     |
-| ------------------------------------------------ | ----------------------------------------------------------- |
-| `bun run typecheck`                              | CI TypeScript 7 gate                                        |
-| `bun run lint`                                   | ESLint                                                      |
-| `bun run test:unit`                              | Unit tests (no live app; prefer this locally)               |
-| `bun run test:integration`                       | Needs Valkey / `VALKEY_URL`                                 |
-| `bun run test`                                   | Full `bun test` suite (includes integration → needs Valkey) |
+| Script                                                                                          | Purpose                                                     |
+| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `bun run typecheck`                                                                             | CI TypeScript 7 gate                                        |
+| `bun run lint`                                                                                  | ESLint                                                      |
+| `bun run test:unit`                                                                             | Unit tests (no live app; prefer this locally)               |
+| `bun run test:integration`                                                                      | Needs Valkey / `VALKEY_URL`                                 |
+| `bun run test`                                                                                  | Full `bun test` suite (includes integration → needs Valkey) |
 | `bun run test:a11y` / `test:e2e` / `test:e2e:ws` / `test:e2e:password` / `test:e2e:local-media` | Need a healthy app (`bun run start` or `dev`)               |
-| `bun run test:fuzz`                              | Optional Valkey property suite (not in CI)                  |
-| `bun run check:local-media-sw`                   | Verify committed SW artifact matches source                 |
+| `bun run test:fuzz`                                                                             | Optional Valkey property suite (not in CI)                  |
+| `bun run check:local-media-sw`                                                                  | Verify committed SW artifact matches source                 |
 
 Local Bun may skip the mediasoup native worker; the Docker image runs the in-process SFU.
 
@@ -71,12 +71,13 @@ Product version is the git tag, `package.json` `version`, and Docker semver tags
 
 ### Pull image
 
-Minimal `docker-compose.yml`:
+Minimal `docker-compose.yml` (pin a release tag in production; `latest` tracks
+`main`):
 
 ```yaml
 services:
   web:
-    image: websyncplay/websyncplay:latest
+    image: websyncplay/websyncplay:3.0.0
     restart: unless-stopped
     environment:
       VALKEY_URL: redis://valkey:6379
@@ -120,7 +121,7 @@ ICE is STUN-only (Google + Cloudflare). No TURN — UDP-blocked clients use HTTP
 - Background tick: room cleanup, ownership repair, playlist-resolve reclaim.
 - Daily defaults reseed from `FALLBACK_DEFAULT_MEDIA_URL` when the cache is empty or expired.
 
-Hot WebSocket control paths rate-limit via Valkey token buckets (`rate:ws:*`), shared across replicas per `(roomId, userId)`. High-frequency types (`seek:preview`, `local-media:webrtc:signal`) prepaid-batch a few tokens per EVAL then allow locally; other hot types cost one EVAL per message. Fail-closed on Redis errors — keep Valkey latency low on WS nodes.
+Hot WebSocket control paths rate-limit via Valkey token buckets (`rate:ws:*`), shared across replicas per `(roomId, userId)`. High-frequency types (`seek:preview`, `local-media:webrtc:signal`) prepaid-batch a few tokens per EVAL then allow locally; other hot types cost one EVAL per message. Fail-closed on Valkey errors — keep Valkey latency low on WS nodes.
 
 ### Multi-replica operations (SFU)
 
@@ -128,10 +129,10 @@ Room sync and remote media scale across replicas via Valkey. Local-media HTTP ca
 
 | Path                            | Cross-replica? | Notes                                                                                                   |
 | ------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------- |
-| Room sync / playlist / presence | Yes            | Valkey + Redis pub/sub                                                                                  |
+| Room sync / playlist / presence | Yes            | Valkey + pub/sub                                                                                        |
 | Remote media (yt-dlp / proxy)   | Yes            | Shared cache and locks                                                                                  |
 | Local-media HTTP relay          | Yes*           | Needs internal URL + secret; prefer affinity to the provider’s node                                     |
-| Local-media P2P signaling       | Yes            | Redis user-targeted fan-out; ICE/UDP is peer-side                                                       |
+| Local-media P2P signaling       | Yes            | Valkey user-targeted fan-out; ICE/UDP is peer-side                                                      |
 | mediasoup SFU (WebRTC)          | **No**         | Provider and SFU viewers must share the replica that holds the provider WS; UDP `40000` on that process |
 
 **Affinity-sensitive paths**
@@ -145,7 +146,7 @@ Room sync and remote media scale across replicas via Valkey. Local-media HTTP ca
 
 - Prefer a **single `web` replica** for SFU-heavy deployments.
 - With multiple replicas: sticky `/api/ws` **and** UDP `40000` to the **same** replica that holds the provider WS (e.g. `hostNetwork`, or a per-pod/host UDP mapping).
-- Without WS stickiness, **SFU fails**. P2P signaling may still work via Redis; P2P ICE/UDP is peer-side.
+- Without WS stickiness, **SFU fails**. P2P signaling may still work via Valkey; P2P ICE/UDP is peer-side.
 
 **Sticky `/api/ws` (reverse proxy)** — key on a cookie or client IP:
 
@@ -187,7 +188,7 @@ Schema: [`src/env.ts`](./src/env.ts). Copy [`.env.example`](./.env.example) for 
 
 ### Multi-replica
 
-Set **both** on every `web` replica for sticky local-media HTTP affinity (miss path: provider WS → internal HTTP → Redis pub/sub). Keep the internal route off public ingress. SFU remains process-local either way — see [Multi-replica operations (SFU)](#multi-replica-operations-sfu).
+Set **both** on every `web` replica for sticky local-media HTTP affinity (miss path: provider WS → internal HTTP → Valkey pub/sub). Keep the internal route off public ingress. SFU remains process-local either way — see [Multi-replica operations (SFU)](#multi-replica-operations-sfu).
 
 | Variable                      | Default | Description                                                                                                               |
 | ----------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -276,11 +277,11 @@ Reusing a room ID with a new `media` query does **not** replace the playlist. Ch
 | `src/components`         | UI                                                                 |
 | `src/sw`                 | Local-media service worker source                                  |
 
-**Realtime outbound:** `room:control` (instant play/pause/seek), `presence:batch` (~250ms clocks), `room:snapshot` (~100ms structure). Presence ticks do not rewrite full Redis room state.
+**Realtime outbound:** `room:control` (instant play/pause/seek), `presence:batch` (~250ms clocks), `room:snapshot` (~100ms structure). Presence ticks do not rewrite full Valkey room state.
 
 **Remote media:** resolve (yt-dlp or native host) → Valkey-cached extract → stream catalog → same-origin proxy when CORS blocks → HLS rewrite. Cluster-safe locks/leases reclaim abandoned resolves.
 
-**Local files:** stay on the sharer’s browser `File` (no upload). Delivery order: **SFU → P2P → HTTP relay**. SFU is process-local (UDP 40000). P2P signaling is cluster-aware (Redis user-targeted fan-out); ICE/UDP remains peer-side. Ops checklist: [Multi-replica operations (SFU)](#multi-replica-operations-sfu). Optional ABR via ffmpeg.wasm on the provider.
+**Local files:** stay on the sharer’s browser `File` (no upload). Delivery order: **SFU → P2P → HTTP relay**. SFU is process-local (UDP 40000). P2P signaling is cluster-aware (Valkey user-targeted fan-out); ICE/UDP remains peer-side. Ops checklist: [Multi-replica operations (SFU)](#multi-replica-operations-sfu). Optional ABR via ffmpeg.wasm on the provider.
 
 ## Contributing
 

@@ -4,9 +4,10 @@ Thanks for helping improve Web-SyncPlay. Keep changes focused; match existing st
 
 ## Setup
 
-| Tool                  | Version                          |
-| --------------------- | -------------------------------- |
-| [Bun](https://bun.sh) | **1.4.2** (`packageManager` / CI) |
+| Tool                  | Version                                                  |
+| --------------------- | -------------------------------------------------------- |
+| [Bun](https://bun.sh) | **1.4.2** (`packageManager` / CI)                        |
+| Node.js               | **≥ 26** (`engines.node`; Docker image / native tooling) |
 
 ```bash
 bun install
@@ -17,11 +18,11 @@ bun run dev
 
 ## Checks before a PR
 
-| Command               | Notes                                      |
-| --------------------- | ------------------------------------------ |
-| `bun run test:unit`   | Prefer locally (no live app)               |
-| `bun run typecheck`   | CI gate (TypeScript **7**)                 |
-| `bun run lint`        | ESLint                                     |
+| Command             | Notes                        |
+| ------------------- | ---------------------------- |
+| `bun run test:unit` | Prefer locally (no live app) |
+| `bun run typecheck` | CI gate (TypeScript **7**)   |
+| `bun run lint`      | ESLint                       |
 
 **TypeScript:** IDE uses TS **6**; CI uses TS **7**. Prefer fixing `bun run typecheck` failures. Details: [AGENTS.md](./AGENTS.md).
 

@@ -5,6 +5,7 @@
 | Item                         | Where                                                                              |
 | ---------------------------- | ---------------------------------------------------------------------------------- |
 | Product / ops docs           | [README.md](./README.md) — requirements, env vars, architecture, multi-replica SFU |
+| Release / migration          | [CHANGELOG.md](./CHANGELOG.md), [docs/MIGRATION-v3.md](./docs/MIGRATION-v3.md)     |
 | Env schema                   | [`src/env.ts`](./src/env.ts); copy [`.env.example`](./.env.example)                |
 | App + HTTP APIs              | `src/app`                                                                          |
 | WebSocket upgrade            | `src/pages/api/ws.ts`                                                              |
@@ -21,12 +22,12 @@ Full layout table: [README Architecture](./README.md#architecture-developers).
 
 ## Tests
 
-| Command                                          | Needs                                                                       |
-| ------------------------------------------------ | --------------------------------------------------------------------------- |
-| `bun run test:unit`                              | Nothing extra                                                               |
-| `bun run test:integration`                       | Valkey / `VALKEY_URL`                                                       |
+| Command                                                                                         | Needs                                                                       |
+| ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `bun run test:unit`                                                                             | Nothing extra                                                               |
+| `bun run test:integration`                                                                      | Valkey / `VALKEY_URL`                                                       |
 | `bun run test:a11y` / `test:e2e` / `test:e2e:ws` / `test:e2e:password` / `test:e2e:local-media` | Healthy app (see CI)                                                        |
-| `bun run test:fuzz`                              | Valkey; **not in CI** — run when changing presence / state-store invariants |
+| `bun run test:fuzz`                                                                             | Valkey; **not in CI** — run when changing presence / state-store invariants |
 
 Prefer `@/shared/test-utils` fixtures in client/UI tests over `@/server` fixtures where practical.
 
