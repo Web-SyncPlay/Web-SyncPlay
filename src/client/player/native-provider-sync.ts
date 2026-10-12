@@ -21,6 +21,12 @@ export const NATIVE_STALE_EPSILON_SEC = 0.05
 export const NATIVE_QUIESCE_EPSILON_SEC = 0.35
 /** Ignore samples closer together than this (too small to judge motion). */
 export const NATIVE_MIN_SAMPLE_GAP_MS = 150
+/**
+ * Pause quiescence needs a wider gap than seek stale detection: iframe
+ * providers often expose 1Hz integer `currentTime`, so two reads 150ms apart
+ * can both report the same second while the embed is still playing.
+ */
+export const NATIVE_PAUSE_MIN_SAMPLE_GAP_MS = 1_500
 /** Stable samples required before a paused provider counts as quiescent. */
 export const NATIVE_QUIESCENT_SAMPLES = 2
 
@@ -68,6 +74,8 @@ type SeekProbe = {
   writtenAtMs: number
   lastSampleSec: number
   lastSampleAtMs: number
+  /** Playing confirm: prior sample was already within room-drift threshold. */
+  lastNearRoom: boolean
 }
 
 export type NativeSeekVerdict =
@@ -145,7 +153,12 @@ export function createNativeSyncTracker(): NativeSyncTracker {
       if (probe && probe.anchorMs === anchorMs) {
         // Retry write for the same anchor: keep the original baseline so a
         // wrapper that echoes `targetSec` cannot reset "moved toward".
-        probe = { ...probe, targetSec, writtenAtMs: nowMs }
+        probe = {
+          ...probe,
+          targetSec,
+          writtenAtMs: nowMs,
+          lastNearRoom: false,
+        }
         return
       }
       probe = {
@@ -155,6 +168,7 @@ export function createNativeSyncTracker(): NativeSyncTracker {
         writtenAtMs: nowMs,
         lastSampleSec: fromSec,
         lastSampleAtMs: nowMs,
+        lastNearRoom: false,
       }
       seekFailures = 0
     },
@@ -193,13 +207,39 @@ export function createNativeSyncTracker(): NativeSyncTracker {
       if (nowMs - probe.writtenAtMs < NATIVE_MIN_CONFIRM_MS) {
         return "pending"
       }
+
+      // Playing rooms: drift ≤ threshold already means "near room". Confirm
+      // only after a later sample advances from a prior near-room read so a
+      // frozen dual-echo cannot clear pending while the room clock moves.
+      // Do not key off static probe.targetSec (room expected advances).
+      if (!roomPaused) {
+        const sampleGapOk =
+          nowMs - probe.lastSampleAtMs >= NATIVE_MIN_SAMPLE_GAP_MS
+        const advanced =
+          Math.abs(currentSec - probe.lastSampleSec) >=
+          NATIVE_STALE_EPSILON_SEC
+        const wasNearRoom = probe.lastNearRoom
+        probe.lastSampleSec = currentSec
+        probe.lastSampleAtMs = nowMs
+        probe.lastNearRoom = true
+        if (wasNearRoom && advanced) {
+          probe = null
+          seekFailures = 0
+          return "confirmed"
+        }
+        if (wasNearRoom && sampleGapOk && !advanced) {
+          return fail()
+        }
+        // First near-room sample (echo) or gap too small — keep pending.
+        return "pending"
+      }
+
       const moved = hasPlayheadMovedToward({
         fromSec: probe.fromSec,
         currentSec,
         targetSec: probe.targetSec,
       })
       const stale =
-        !roomPaused &&
         !moved &&
         nowMs - probe.lastSampleAtMs >= NATIVE_MIN_SAMPLE_GAP_MS &&
         Math.abs(currentSec - probe.lastSampleSec) < NATIVE_STALE_EPSILON_SEC
@@ -208,8 +248,8 @@ export function createNativeSyncTracker(): NativeSyncTracker {
       if (!moved && stale) {
         return fail()
       }
-      // Not "moved" here only for tiny seeks whose baseline was already near
-      // the target; a later read inside the threshold is then enough.
+      // Paused: not "moved" only for tiny seeks whose baseline was already
+      // near the target; a later read inside the threshold is then enough.
       probe = null
       seekFailures = 0
       return "confirmed"
@@ -223,7 +263,7 @@ export function createNativeSyncTracker(): NativeSyncTracker {
         stableSamples = 0
         return { quiescent: false, sampled: true }
       }
-      if (nowMs - pauseSample.atMs < NATIVE_MIN_SAMPLE_GAP_MS) {
+      if (nowMs - pauseSample.atMs < NATIVE_PAUSE_MIN_SAMPLE_GAP_MS) {
         // Too close to judge: keep the last verdict so two schedulers
         // (pause burst + verify tick) sharing one clock cannot starve it.
         return { quiescent: pauseSettled, sampled: false }

@@ -50,6 +50,7 @@ export const SyncedMediaPlayer = memo(function SyncedMediaPlayer({
     videoLoop,
     roomPaused,
     roomPlaybackRate,
+    catchUpRate,
     userId,
     send,
     canControlPlayback,
@@ -165,7 +166,7 @@ export const SyncedMediaPlayer = memo(function SyncedMediaPlayer({
       // Room playback is the transport authority — player follows.
       paused={roomPaused}
       autoPlay={!roomPaused}
-      playbackRate={roomPlaybackRate}
+      playbackRate={catchUpRate ?? roomPlaybackRate}
       // ARD/catch-up HLS often lacks EXT-X-ENDLIST, so hls.js reports
       // `live` and Vidstack disables seeking. Force VOD unless catalog says live.
       streamType={playerStreamType}

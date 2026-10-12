@@ -12,6 +12,7 @@ import type { PlaylistItem, ViewerMediaItemPreference } from "@/contracts/types"
 import {
   buildPlayerSrc,
   isSameOriginPlaybackUrl,
+  playerSrcContentKey,
   type PlayerSrcInput,
 } from "../player-src"
 
@@ -121,16 +122,51 @@ export function usePlayerMediaSource(config: {
       : null
   })()
 
-  const playerSrc: PlayerSrcInput = useMemo(
-    () =>
-      buildPlayerSrc(
-        activePlaybackSrc,
-        current,
-        activeStream,
-        localMimeHint ?? activeStream?.type,
-      ),
-    [activePlaybackSrc, activeStream, current, localMimeHint],
-  )
+  // Depend on primitives that affect buildPlayerSrc (not whole item/stream
+  // object identity). Retain the previous PlayerSrcInput when the content key
+  // is unchanged so Vidstack does not see a fresh `{ src, type }` each tick.
+  const streamKind = activeStream?.kind
+  const streamType = activeStream?.type
+  const streamProtocol = activeStream?.protocol
+  const defaultStreamId = current?.defaultStreamId
+  const catalogDefaultType = current?.mediaStreams?.find(
+    (s) => s.id === current.defaultStreamId,
+  )?.type
+  const catalogIsDefaultType = current?.mediaStreams?.find(
+    (s) => s.isDefault,
+  )?.type
+  const catalogFirstType = current?.mediaStreams?.[0]?.type
+
+  const playerSrcPrevRef = useRef<PlayerSrcInput>("")
+  const currentRef = useRef(current)
+  const activeStreamRef = useRef(activeStream)
+  currentRef.current = current
+  activeStreamRef.current = activeStream
+
+  const playerSrc: PlayerSrcInput = useMemo(() => {
+    const next = buildPlayerSrc(
+      activePlaybackSrc,
+      currentRef.current,
+      activeStreamRef.current,
+      localMimeHint ?? activeStreamRef.current?.type,
+    )
+    const prev = playerSrcPrevRef.current
+    if (playerSrcContentKey(next) === playerSrcContentKey(prev)) {
+      return prev
+    }
+    playerSrcPrevRef.current = next
+    return next
+  }, [
+    activePlaybackSrc,
+    catalogDefaultType,
+    catalogFirstType,
+    catalogIsDefaultType,
+    defaultStreamId,
+    localMimeHint,
+    streamKind,
+    streamProtocol,
+    streamType,
+  ])
 
   const playbackUrlForOrigin =
     typeof playerSrc === "string" ? playerSrc : playerSrc.src

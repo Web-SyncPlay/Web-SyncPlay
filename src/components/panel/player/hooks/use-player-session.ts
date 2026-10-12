@@ -164,6 +164,8 @@ export function usePlayerSession({
   })
 
   const lastAppliedTimelineAnchorMsRef = useRef<number | null>(null)
+  const catchUpRateRef = useRef<number | null>(null)
+  const [catchUpRate, setCatchUpRate] = useState<number | null>(null)
   const playbackPausedRef = useLatestRef(playback.paused)
   const sync = usePlayerPlaybackSync({
     playerRef: controller.playerRef,
@@ -172,6 +174,8 @@ export function usePlayerSession({
     participantStatusErrorRef: controller.participantStatusErrorRef,
     pendingSyncRef: controller.pendingSyncRef,
     lastAppliedTimelineAnchorMsRef,
+    catchUpRateRef,
+    onCatchUpRateChange: setCatchUpRate,
     playbackRef: controller.playbackRef,
     playbackPausedRef,
     reportedItemErrorRef: controller.reportedItemErrorRef,
@@ -226,6 +230,7 @@ export function usePlayerSession({
       videoLoop,
       roomPaused,
       roomPlaybackRate,
+      catchUpRate,
       userId,
       send,
       canControlPlayback,
@@ -253,6 +258,7 @@ export function usePlayerSession({
       videoLoop,
       roomPaused,
       roomPlaybackRate,
+      catchUpRate,
       userId,
       send,
       canControlPlayback,

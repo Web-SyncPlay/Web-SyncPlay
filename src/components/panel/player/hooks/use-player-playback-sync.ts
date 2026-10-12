@@ -28,6 +28,10 @@ import { usePlaybackSyncEngine } from "./use-playback-sync-engine"
 import { usePlayerPresenceHeartbeat } from "./use-player-presence-heartbeat"
 import { readSyncPlayheadSec } from "./to-syncable-player"
 import { SEEK_ACK_MATCH_THRESHOLD_MS } from "../playback-control/use-playback-timeline-controller"
+import {
+  playerSrcContentKey,
+  type PlayerSrcInput,
+} from "../player-src"
 
 /**
  * Room-clock application, drift correction, and live-edge seek.
@@ -43,6 +47,8 @@ export function usePlayerPlaybackSync(config: {
   participantStatusErrorRef: RefObject<string | null>
   pendingSyncRef: RefObject<PendingSyncState | null>
   lastAppliedTimelineAnchorMsRef: RefObject<number | null>
+  catchUpRateRef: RefObject<number | null>
+  onCatchUpRateChange?: (next: number | null) => void
   playbackRef: RefObject<ClientRoomState["playback"]>
   playbackPausedRef: RefObject<boolean>
   reportedItemErrorRef: RefObject<string | null>
@@ -50,7 +56,7 @@ export function usePlayerPlaybackSync(config: {
   current: PlaylistItem | undefined
   activePlaybackSrc: string
   viewType: "audio" | "video"
-  playerSrc: unknown
+  playerSrc: PlayerSrcInput
   /** Playback slice — not the full room (presence stays off this hook). */
   playback: ClientRoomState["playback"]
   currentIndex: number
@@ -72,6 +78,8 @@ export function usePlayerPlaybackSync(config: {
     participantStatusErrorRef,
     pendingSyncRef,
     lastAppliedTimelineAnchorMsRef,
+    catchUpRateRef,
+    onCatchUpRateChange,
     playbackRef,
     playbackPausedRef,
     reportedItemErrorRef,
@@ -110,12 +118,19 @@ export function usePlayerPlaybackSync(config: {
       : Number(current?.durationSeconds),
   )
 
+  // Content key — not object identity — so playlist/room churn with the same
+  // URL+MIME does not clear isMediaReady without a real media reload.
+  const mediaSourceKey =
+    playerSrcContentKey(playerSrc) || activePlaybackSrc
+
   const syncEngine = usePlaybackSyncEngine({
     playerRef,
     isMediaReadyRef,
     playbackPausedRef,
     pendingSyncRef,
     lastAppliedTimelineAnchorMsRef,
+    catchUpRateRef,
+    onCatchUpRateChange,
     playbackRef,
     // Native iframe providers (YouTube/Vimeo) get longer pause/seek retries;
     // HLS / direct media resolve to undefined and keep engine defaults.
@@ -168,9 +183,9 @@ export function usePlayerPlaybackSync(config: {
     current?.id,
     isMediaReadyRef,
     lastAppliedTimelineAnchorMsRef,
+    mediaSourceKey,
     participantStatusErrorRef,
     pendingSyncRef,
-    playerSrc,
     proxyRenewAttemptedRef,
     syncEngine,
   ])

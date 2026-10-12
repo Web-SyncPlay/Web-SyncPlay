@@ -21,6 +21,8 @@ export function usePlaybackSyncEngine(config: {
   playbackPausedRef: RefObject<boolean>
   pendingSyncRef: RefObject<PendingSyncState | null>
   lastAppliedTimelineAnchorMsRef: RefObject<number | null>
+  catchUpRateRef: RefObject<number | null>
+  onCatchUpRateChange?: (next: number | null) => void
   playbackRef: RefObject<{
     paused: boolean
     playbackRate: number
@@ -40,6 +42,8 @@ export function usePlaybackSyncEngine(config: {
     playbackPausedRef,
     pendingSyncRef,
     lastAppliedTimelineAnchorMsRef,
+    catchUpRateRef,
+    onCatchUpRateChange,
     playbackRef,
     getSyncTuning,
     getDurationHintSec,
@@ -47,6 +51,7 @@ export function usePlaybackSyncEngine(config: {
   } = config
 
   const onApplyFailedRef = useLatestRef(onApplyFailed)
+  const onCatchUpRateChangeRef = useLatestRef(onCatchUpRateChange)
   const getSyncTuningRef = useLatestRef(getSyncTuning)
   const getDurationHintSecRef = useLatestRef(getDurationHintSec)
   const engineRef = useRef<PlaybackSyncEngine | null>(null)
@@ -76,6 +81,11 @@ export function usePlaybackSyncEngine(config: {
       isAuthorityPaused: () => playbackPausedRef.current,
       getSyncTuning: () => getSyncTuningRef.current?.(),
       getDurationHintSec: () => getDurationHintSecRef.current?.(),
+      getCatchUpRate: () => catchUpRateRef.current,
+      setCatchUpRate: (next) => {
+        catchUpRateRef.current = next
+        onCatchUpRateChangeRef.current?.(next)
+      },
       onApplyFailed: (syncState) => {
         onApplyFailedRef.current?.(syncState)
       },

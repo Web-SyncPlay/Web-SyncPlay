@@ -90,6 +90,18 @@ export async function dispatchJsonEnvelope(
   const envelopeResult = wsEnvelopeSchema.safeParse(parsed)
   if (!envelopeResult.success) {
     console.warn("[realtime] invalid envelope", envelopeResult.error.issues)
+    // Still nack mutable commands when the client sent a requestId — missing
+    // `payload` (and similar shape errors) used to fail closed with no reply.
+    const loose =
+      parsed && typeof parsed === "object"
+        ? (parsed as { requestId?: unknown; type?: unknown })
+        : null
+    const requestId =
+      typeof loose?.requestId === "string" ? loose.requestId : undefined
+    const type = typeof loose?.type === "string" ? loose.type : undefined
+    if (requestId && type && shouldNackAtDispatch(type)) {
+      sendMutationNack(ws, { requestId, type }, "invalid_payload")
+    }
     return
   }
   const data = envelopeResult.data as WsEnvelope<

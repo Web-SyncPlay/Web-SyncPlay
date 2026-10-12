@@ -53,6 +53,15 @@ export type Capabilities = {
   [key: string]: unknown
 }
 
+/** Latest `room:error` nack (mutation denials include `unauthorized`). */
+export type RoomErrorNack = {
+  code?: string
+  type?: string
+  requestId?: string
+  message?: string
+  [key: string]: unknown
+}
+
 export class RoomClient {
   baseUrl: string
   roomId: string
@@ -68,6 +77,7 @@ export class RoomClient {
   roomState: RoomState | null
   capabilities: Capabilities | null
   rejected: { reason?: string; [key: string]: unknown } | null
+  lastError: RoomErrorNack | null
   _waiters: Array<() => void>
 
   constructor(options: RoomClientOptions) {
@@ -85,6 +95,7 @@ export class RoomClient {
     this.roomState = null
     this.capabilities = null
     this.rejected = null
+    this.lastError = null
     this._waiters = []
   }
 
@@ -129,6 +140,7 @@ export class RoomClient {
         if (isBinary) return
         const msg = JSON.parse(String(raw)) as {
           type: string
+          requestId?: string
           payload: Record<string, unknown>
         }
         if (msg.type === "room:snapshot" || msg.type === "room:state") {
@@ -139,6 +151,20 @@ export class RoomClient {
           this._flush()
         } else if (msg.type === "room:join:rejected") {
           this.rejected = msg.payload as { reason?: string }
+          this._flush()
+        } else if (msg.type === "room:error") {
+          this.lastError = {
+            ...msg.payload,
+            code:
+              typeof msg.payload.code === "string"
+                ? msg.payload.code
+                : undefined,
+            type:
+              typeof msg.payload.type === "string"
+                ? msg.payload.type
+                : undefined,
+            requestId: msg.requestId,
+          }
           this._flush()
         } else if (msg.type === "room:control" && this.roomState) {
           const payload = msg.payload as {
@@ -192,14 +218,17 @@ export class RoomClient {
     })
   }
 
-  send(type: string, payload: Record<string, unknown>) {
+  /** Send a C2S envelope; returns `requestId` for correlating `room:error` nacks. */
+  send(type: string, payload: Record<string, unknown> = {}): string {
+    const requestId = randomUUID()
     this.ws!.send(
       JSON.stringify({
         type,
-        requestId: randomUUID(),
+        requestId,
         payload,
       }),
     )
+    return requestId
   }
 
   /** Send a pre-encoded binary frame (e.g. LMC local-media chunk). */

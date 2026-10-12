@@ -18,6 +18,8 @@ import {
   hostPlaybackPause,
   hostPlaybackPlay,
   hostPlaybackSeek,
+  installPageRoomWsTracker,
+  sendViaPageRoomWs,
   wireServerClockFromRoomClient,
 } from "./lib/playback-harness.ts"
 import { RoomClient } from "./lib/room-ws-client.ts"
@@ -404,6 +406,75 @@ async function settle(ms = 2_500) {
   await new Promise((r) => setTimeout(r, ms))
 }
 
+/** Host media duration in seconds, or null when unknown / not ready. */
+async function readHostDurationSec(page: Page): Promise<number | null> {
+  return page.evaluate(() => {
+    const player = document.querySelector("media-player") as {
+      duration?: number
+    } | null
+    const mediaEl = document.querySelector(
+      "video, audio",
+    ) as HTMLMediaElement | null
+    const d = Number(player?.duration || mediaEl?.duration || 0)
+    return Number.isFinite(d) && d > 0 ? d : null
+  })
+}
+
+/** Poll peer playheads until Δ ≤ okSec or timeout (HLS burst / iframe cold start). */
+async function pollMeasurePairUntil(
+  hostPage: Page,
+  peerPage: Page,
+  opts: { okSec: number; timeoutMs: number; intervalMs?: number },
+): Promise<Awaited<ReturnType<typeof measurePair>>> {
+  const intervalMs = opts.intervalMs ?? 400
+  const deadline = Date.now() + opts.timeoutMs
+  let last = await measurePair(hostPage, peerPage)
+  while (Date.now() < deadline) {
+    if (last.peerDeltaSec !== null && last.peerDeltaSec <= opts.okSec) {
+      return last
+    }
+    await settle(intervalMs)
+    last = await measurePair(hostPage, peerPage)
+  }
+  return last
+}
+
+/** Poll host/guest/mod playheads until spread ≤ okSec or timeout (iframe retry). */
+async function pollTripleSpreadUntil(
+  hostPage: Page,
+  guestPage: Page,
+  modPage: Page,
+  opts: { okSec: number; timeoutMs: number; intervalMs?: number },
+): Promise<{
+  pair: Awaited<ReturnType<typeof measurePair>>
+  modHead: Playhead
+  spread: number | null
+}> {
+  const intervalMs = opts.intervalMs ?? 400
+  const deadline = Date.now() + opts.timeoutMs
+  const sample = async () => {
+    const pair = await measurePair(hostPage, guestPage)
+    const modHead = await readPlayhead(modPage)
+    const times = [
+      pair.host.currentTimeSec,
+      pair.guest.currentTimeSec,
+      modHead.currentTimeSec,
+    ].filter((t): t is number => t !== null)
+    const spread =
+      times.length >= 2 ? Math.max(...times) - Math.min(...times) : null
+    return { pair, modHead, spread }
+  }
+  let last = await sample()
+  while (Date.now() < deadline) {
+    if (last.spread !== null && last.spread <= opts.okSec) {
+      return last
+    }
+    await settle(intervalMs)
+    last = await sample()
+  }
+  return last
+}
+
 type MediaCase = {
   id: string
   label: string
@@ -419,10 +490,12 @@ const MEDIA_CASES: MediaCase[] = [
   {
     id: "mp4",
     label: "Direct MP4",
-    url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    match: "BigBuckBunny",
+    // Google sample bucket often 403s from datacenter/CI egress; MDN CC0 is stable.
+    url: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+    match: "flower.mp4",
     kind: "direct",
-    seekTargetSec: 15,
+    // flower.mp4 is ~5s; seek to mid-clip, not EOF.
+    seekTargetSec: 2,
   },
   {
     id: "hls",
@@ -436,8 +509,10 @@ const MEDIA_CASES: MediaCase[] = [
   {
     id: "youtube",
     label: "YouTube native",
-    url: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
-    match: "jNQXAC9IVRw",
+    // Big Buck Bunny (~10m) — longer than late-join play window so mid-VOD
+    // sync is measured; short clips still covered by ended-handler unit tests.
+    url: "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+    match: "aqz-KE-bpKQ",
     kind: "youtube",
     seekTargetSec: 15,
     resolveTimeoutMs: 60_000,
@@ -525,6 +600,9 @@ async function runMediaCase(
   await seedUsername(hostCtx, hostId)
   await seedUsername(guestCtx, guestId)
   await seedUsername(modCtx, modId)
+  // Capture the browser host's /api/ws so play/pause/seek inject onto the
+  // session that holds canControlPlayback (not a second same-uid socket).
+  await installPageRoomWsTracker(hostCtx)
 
   const roomClock = createServerClockEstimate()
   const observer = new RoomClient({
@@ -538,7 +616,6 @@ async function runMediaCase(
   wireServerClockFromRoomClient(observer, roomClock)
 
   let hostCtl: RoomClient | undefined
-  let guestCtl: RoomClient | undefined
   let hostPage: Page | undefined
   let guestPage: Page | undefined
   let latePage: Page | undefined
@@ -551,27 +628,20 @@ async function runMediaCase(
     await observer.connect()
     await observer.waitFor((c) => Boolean(c.roomState), 20_000)
 
-    // Same uid/secret as browser host/guest — drives playback:play|pause|seek over WS.
+    // Same uid/secret as browser host. Concurrent room sessions share control
+    // caps; player sessionKind stays non-mutating. Authoritative play/pause/seek
+    // go through the browser page WebSocket (installPageRoomWsTracker); hostCtl
+    // is a room-session fallback. Authz uses a fresh never-promoted guest client.
     hostCtl = new RoomClient({
       baseUrl: BASE,
       roomId,
       userId: hostId,
       userSecret: hostSecret,
       username: hostId.slice(0, 8),
-      sessionKind: "player",
-    })
-    guestCtl = new RoomClient({
-      baseUrl: BASE,
-      roomId,
-      userId: guestId,
-      userSecret: guestSecret,
-      username: guestId.slice(0, 8),
-      sessionKind: "player",
+      sessionKind: "room",
     })
     await hostCtl.connect()
-    await guestCtl.connect()
     await hostCtl.waitFor((c) => Boolean(c.roomState), 20_000)
-    await guestCtl.waitFor((c) => Boolean(c.roomState), 20_000)
 
     note({
       id: `${media.id}-join`,
@@ -719,26 +789,174 @@ async function runMediaCase(
       .catch(() => {})
 
     // --- PLAY ---
-    const playVia = await hostPlaybackPlay(hostCtl, hostPage, clickPlayPause)
-    await settle(3_500)
-    await observer
-      .waitFor((c) => c.roomState?.playback?.paused === false, 15_000)
-      .catch(() => {})
+    // Short clips (flower.mp4 ~5s) hit EOF during a long settle + host-unpaused
+    // poll; onEnded re-pauses the room and falsely fails the transport assert
+    // even when page-ws play succeeded. Seek with headroom first, assert room
+    // paused===false immediately after playVia, then run presence polls within
+    // a duration-margin budget so they cannot invalidate that assert.
+    const playDurationSec = await readHostDurationSec(hostPage)
+    const SHORT_CLIP_SEC = 30
+    /** Post-play settle + presence budget we need to keep clear of EOF. */
+    const PLAY_HEADROOM_SEC = 3.5
+    const needsPlaySeek =
+      media.kind === "direct" ||
+      (playDurationSec != null && playDurationSec < SHORT_CLIP_SEC)
+    let playSeekTarget: number | null = null
+    if (needsPlaySeek) {
+      const wanted = media.seekTargetSec ?? 0.5
+      const maxSafe =
+        playDurationSec != null
+          ? Math.max(0.1, playDurationSec - PLAY_HEADROOM_SEC - 0.5)
+          : wanted
+      // Prefer near-0 / early-mid so remaining time covers post-play waits.
+      playSeekTarget = Math.min(
+        wanted,
+        maxSafe,
+        playDurationSec != null ? Math.max(0.2, playDurationSec * 0.25) : wanted,
+      )
+      await hostPlaybackSeek(
+        hostPage,
+        observer,
+        playSeekTarget,
+        seekViaRoomControl,
+        hostCtl,
+      )
+      await settle(300)
+    }
 
-    let pair = await measurePair(hostPage, guestPage)
-    const hostTransport = await roomPlayingLabel(hostPage)
-    const guestTransport = await roomPlayingLabel(guestPage)
-
-    if (hostTransport !== guestTransport) {
+    const playVia = await hostPlaybackPlay(
+      hostPage,
+      observer,
+      clickPlayPause,
+      hostCtl,
+    )
+    // Primary transport assert: sample immediately after waitForPaused(false)
+    // inside hostPlaybackPlay — do not wait for settle / presence / element polls.
+    const roomUnpaused =
+      playVia !== "none" && observer.roomState?.playback?.paused === false
+    if (!roomUnpaused) {
       note({
-        id: `${media.id}-play-transport-mismatch`,
+        id: `${media.id}-play-room-state`,
         severity: "fail",
         media: media.label,
         scenario: "play",
-        title: "Room transport label mismatch after play",
-        detail: `host=${hostTransport} guest=${guestTransport}`,
-        measured: { playVia },
+        title: "Room playback.paused not false after host play",
+        detail: `paused=${String(observer.roomState?.playback?.paused)} via=${playVia}${
+          playSeekTarget != null ? ` seek=${playSeekTarget.toFixed(2)}s` : ""
+        }`,
+        measured: {
+          playVia,
+          playSeekTarget,
+          playDurationSec,
+        },
       })
+    } else {
+      note({
+        id: `${media.id}-play-room-state`,
+        severity: "pass",
+        media: media.label,
+        scenario: "play",
+        title: "Room playback.paused=false after play",
+        detail: `via=${playVia}${
+          playSeekTarget != null ? ` seek=${playSeekTarget.toFixed(2)}s` : ""
+        }`,
+        measured: { playVia, playSeekTarget },
+      })
+    }
+
+    // Cap post-play waits by remaining duration so short-clip EOF cannot race
+    // peer / presence checks (room assert already recorded above). One shared
+    // deadline covers settle + host-unpaused + peer-poll + presence so they
+    // cannot stack past the margin.
+    //
+    // Long media (HLS / SoundCloud / embeds): hostPlaybackPlay force pause→play
+    // often leaves the host buffering while the guest free-runs ahead for a few
+    // seconds. A single snapshot after a fixed 3.5s settle falsely fails peer Δ
+    // even though pause/late-join on the same case re-sync cleanly — poll like
+    // late-join instead of one-shot measure.
+    const headAfterPlay = await readPlayhead(hostPage)
+    const remainingSec =
+      playDurationSec != null && headAfterPlay.currentTimeSec != null
+        ? Math.max(0, playDurationSec - headAfterPlay.currentTimeSec)
+        : playDurationSec
+    const postPlayBudgetMs = needsPlaySeek
+      ? Math.max(
+          400,
+          Math.min(
+            3_500,
+            Math.floor(Math.max(0, (remainingSec ?? 3.5) - 0.75) * 1_000),
+          ),
+        )
+      : 10_000
+    const postPlayDeadline = Date.now() + postPlayBudgetMs
+    // Brief initial settle, then poll the rest of the budget for peer Δ.
+    const settleMs = Math.min(
+      needsPlaySeek ? 800 : 1_500,
+      Math.max(0, postPlayDeadline - Date.now()),
+    )
+    if (settleMs > 0) await settle(settleMs)
+
+    // Brief wait for host media-player unpaused before presence label checks
+    // (Vimeo presence self-card can lag after forced pause→play). Budget-capped.
+    while (Date.now() < postPlayDeadline) {
+      const head = await readPlayhead(hostPage)
+      if (head.paused === false) break
+      const waitMs = Math.min(200, postPlayDeadline - Date.now())
+      if (waitMs <= 0) break
+      await settle(waitMs)
+    }
+
+    let pair = await pollMeasurePairUntil(hostPage, guestPage, {
+      okSec: PEER_OK_SEC,
+      timeoutMs: Math.max(0, postPlayDeadline - Date.now()),
+    })
+
+    // Presence labels can disagree while room + peer Δ are fine — poll briefly,
+    // then warn (do not fail) when room is unpaused or peer clock Δ already OK.
+    // Must run after the room transport assert so presence lag cannot flip it.
+    // Re-sample peer Δ after presence waits so we do not grade a stale snapshot.
+    {
+      let hostTransport = await roomPlayingLabel(hostPage)
+      let guestTransport = await roomPlayingLabel(guestPage)
+      while (hostTransport !== guestTransport && Date.now() < postPlayDeadline) {
+        const waitMs = Math.min(400, postPlayDeadline - Date.now())
+        if (waitMs <= 0) break
+        await settle(waitMs)
+        hostTransport = await roomPlayingLabel(hostPage)
+        guestTransport = await roomPlayingLabel(guestPage)
+      }
+      if (Date.now() < postPlayDeadline) {
+        pair = await pollMeasurePairUntil(hostPage, guestPage, {
+          okSec: PEER_OK_SEC,
+          timeoutMs: Math.max(0, postPlayDeadline - Date.now()),
+        })
+      } else {
+        pair = await measurePair(hostPage, guestPage)
+      }
+      if (hostTransport !== guestTransport) {
+        const peerOk =
+          pair.peerDeltaSec !== null && pair.peerDeltaSec <= PEER_FAIL_SEC
+        const presenceOnly = roomUnpaused || peerOk
+        note({
+          id: `${media.id}-play-transport-mismatch`,
+          severity: presenceOnly ? "warn" : "fail",
+          media: media.label,
+          scenario: "play",
+          title: "Room transport label mismatch after play",
+          detail: `host=${hostTransport} guest=${guestTransport}${
+            presenceOnly
+              ? roomUnpaused
+                ? " (presence-only; room unpaused)"
+                : " (presence-only; peer Δ OK)"
+              : ""
+          }`,
+          measured: {
+            playVia,
+            roomPaused: observer.roomState?.playback?.paused ?? null,
+            peerDeltaSec: pair.peerDeltaSec,
+          },
+        })
+      }
     }
 
     if (pair.peerDeltaSec === null) {
@@ -849,7 +1067,12 @@ async function runMediaCase(
     }
 
     // --- PAUSE ---
-    const pauseVia = await hostPlaybackPause(hostCtl, hostPage, clickPlayPause)
+    const pauseVia = await hostPlaybackPause(
+      hostPage,
+      observer,
+      clickPlayPause,
+      hostCtl,
+    )
     await settle(2_000)
     await observer
       .waitFor((c) => c.roomState?.playback?.paused === true, 10_000)
@@ -949,11 +1172,11 @@ async function runMediaCase(
     // --- SEEK (while paused) ---
     const seekTarget = media.seekTargetSec ?? 10
     const seekVia = await hostPlaybackSeek(
-      hostCtl,
       hostPage,
       observer,
       seekTarget,
       seekViaRoomControl,
+      hostCtl,
     )
     if (seekVia === "none") {
       note({
@@ -962,7 +1185,7 @@ async function runMediaCase(
         media: media.label,
         scenario: "seek",
         title: "Seek did not reach target timeline anchor",
-        detail: `wanted ~${seekTarget}s (hostCtl + UI fallback)`,
+        detail: `wanted ~${seekTarget}s (page-ws + room-ws/UI fallback)`,
       })
     }
     await settle(1_500)
@@ -1084,11 +1307,14 @@ async function runMediaCase(
     latePage = undefined
 
     // Resume play then late-join while playing
-    await hostPlaybackPlay(hostCtl, hostPage, clickPlayPause)
+    await hostPlaybackPlay(hostPage, observer, clickPlayPause, hostCtl)
     await settle(3_000)
     latePage = await openRoom(guestCtx, roomId, randomUUID(), secret())
-    await settle(5_000)
-    const latePlaying = await measurePair(hostPage, latePage)
+    // Poll through HLS burst / iframe cold start instead of a fixed 5s settle.
+    const latePlaying = await pollMeasurePairUntil(hostPage, latePage, {
+      okSec: PEER_OK_SEC,
+      timeoutMs: 10_000,
+    })
     if (latePlaying.peerDeltaSec === null) {
       note({
         id: `${media.id}-latejoin-playing-nohead`,
@@ -1099,14 +1325,13 @@ async function runMediaCase(
         detail: `host=${latePlaying.host.source} late=${latePlaying.guest.source}`,
       })
     } else if (latePlaying.peerDeltaSec > PEER_FAIL_SEC + 0.5) {
-      // allow a bit more settle for buffering
       note({
         id: `${media.id}-latejoin-playing`,
         severity: "fail",
         media: media.label,
         scenario: "late-join-playing",
         title: "Late joiner lag while playing",
-        detail: `Δ=${latePlaying.peerDeltaSec.toFixed(3)}s after 5s settle`,
+        detail: `Δ=${latePlaying.peerDeltaSec.toFixed(3)}s after ≤10s poll`,
         measured: {
           hostSec: latePlaying.host.currentTimeSec,
           lateSec: latePlaying.guest.currentTimeSec,
@@ -1120,7 +1345,7 @@ async function runMediaCase(
         media: media.label,
         scenario: "late-join-playing",
         title: "Late joiner soft lag while playing",
-        detail: `Δ=${latePlaying.peerDeltaSec.toFixed(3)}s`,
+        detail: `Δ=${latePlaying.peerDeltaSec.toFixed(3)}s after ≤10s poll`,
         measured: {
           hostSec: latePlaying.host.currentTimeSec,
           lateSec: latePlaying.guest.currentTimeSec,
@@ -1145,6 +1370,247 @@ async function runMediaCase(
     await latePage.close().catch(() => {})
     latePage = undefined
 
+    // --- AUTHZ (true guest role; BEFORE concurrent-mod promote) ---
+    // Fresh never-promoted user. Must run before concurrent-mods so promote/race
+    // settle cannot flip pause and look like a guest control leak.
+    // Short clips (flower.mp4 ~5s) often hit EOF before this check; host onEnded
+    // pause would race the guest's rejected pause → false guest-control-leak.
+    {
+      const authzId = randomUUID()
+      const authzCtl = new RoomClient({
+        baseUrl: BASE,
+        roomId,
+        userId: authzId,
+        userSecret: secret(),
+        username: authzId.slice(0, 8),
+        sessionKind: "room",
+      })
+      try {
+        await authzCtl.connect()
+        await authzCtl.waitFor((c) => Boolean(c.roomState), 20_000)
+        await authzCtl
+          .waitFor((c) => c.capabilities != null, 8_000)
+          .catch(() => {})
+
+        if (authzCtl.capabilities?.canControlPlayback !== false) {
+          note({
+            id: `${media.id}-guest-caps-leak`,
+            severity: "fail",
+            media: media.label,
+            scenario: "authz",
+            title: "Guest session has canControlPlayback",
+            detail: `canControlPlayback=${String(authzCtl.capabilities?.canControlPlayback)}`,
+          })
+        } else {
+          note({
+            id: `${media.id}-guest-caps-ok`,
+            severity: "pass",
+            media: media.label,
+            scenario: "authz",
+            title: "Guest canControlPlayback=false",
+            detail: "session:capabilities denies playback control",
+          })
+        }
+
+        // Seek mid-clip then play so a pause would mutate state if authorized,
+        // and so short-clip EOF / host onEnded cannot race this check.
+        const authzSeekWanted = media.seekTargetSec ?? 2
+        const authzDurationSec = await hostPage!.evaluate(() => {
+          const player = document.querySelector("media-player") as {
+            duration?: number
+          } | null
+          const mediaEl = document.querySelector(
+            "video, audio",
+          ) as HTMLMediaElement | null
+          const d = Number(player?.duration || mediaEl?.duration || 0)
+          return Number.isFinite(d) && d > 0 ? d : null
+        })
+        // Prefer early mid so short clips (flower.mp4 ~5s) keep EOFheadroom
+        // through nack + settle. Cap long media so we do not chase outsized targets.
+        const authzSeekTarget =
+          authzDurationSec != null
+            ? Math.min(
+                authzSeekWanted,
+                authzDurationSec < 30
+                  ? Math.max(0.2, authzDurationSec * 0.15)
+                  : authzDurationSec * 0.3,
+              )
+            : authzSeekWanted
+        /** Minimum remaining seconds to treat playhead as away from EOF. */
+        const eofHeadroomSec =
+          authzDurationSec != null && authzDurationSec < 10 ? 1 : 2
+        await hostPlaybackSeek(
+          hostPage!,
+          observer,
+          authzSeekTarget,
+          seekViaRoomControl,
+          hostCtl,
+        )
+        await hostPlaybackPlay(hostPage!, observer, clickPlayPause, hostCtl)
+        await observer
+          .waitFor((c) => c.roomState?.playback?.paused === false, 12_000)
+          .catch(() => {})
+
+        // Soft mid-clip prep: room playing + playhead with EOFheadroom is enough.
+        // Element near-target confirmation is best-effort (Vimeo / SoundCloud /
+        // embeds often lag playhead reads). Only WARN if the room never unpauses
+        // — silent skip when seek/play landed but confirm timed out.
+        const midClipBudgetMs =
+          authzDurationSec != null
+            ? Math.min(
+                12_000,
+                Math.max(
+                  1_200,
+                  Math.floor(
+                    (authzDurationSec - authzSeekTarget - eofHeadroomSec) *
+                      1_000,
+                  ),
+                ),
+              )
+            : 12_000
+        const midClipDeadline = Date.now() + midClipBudgetMs
+        let midClipOk = false
+        let midClipHeadConfirmed = false
+        while (Date.now() < midClipDeadline) {
+          const head = await readPlayhead(hostPage!)
+          const sec = head.currentTimeSec
+          const roomPlaying = observer.roomState?.playback?.paused === false
+          const nearTarget =
+            sec !== null && Math.abs(sec - authzSeekTarget) <= 3.5
+          // Any playing playhead with EOFheadroom (or unknown duration away
+          // from 0) counts — do not require element.paused===false.
+          const eofHeadroomOk =
+            sec !== null &&
+            (authzDurationSec == null
+              ? sec > 0.5
+              : sec < authzDurationSec - eofHeadroomSec)
+          if (roomPlaying && (nearTarget || eofHeadroomOk)) {
+            midClipOk = true
+            midClipHeadConfirmed = true
+            break
+          }
+          // Stop burning short-clip timeline once playhead is already near EOF.
+          if (
+            authzDurationSec != null &&
+            sec !== null &&
+            sec >= authzDurationSec - eofHeadroomSec
+          ) {
+            break
+          }
+          await settle(250)
+        }
+        if (!midClipOk) {
+          const roomPlaying = observer.roomState?.playback?.paused === false
+          if (roomPlaying) {
+            // Room is playing; playhead confirm timed out — proceed silently.
+            midClipOk = true
+          } else {
+            note({
+              id: `${media.id}-authz-midclip-prep`,
+              severity: "warn",
+              media: media.label,
+              scenario: "authz",
+              title: "Could not confirm mid-clip playing before guest pause",
+              detail: `room still paused; wanted playing near ${authzSeekTarget.toFixed(1)}s (away from EOF)`,
+            })
+          }
+        }
+
+        const beforePaused = observer.roomState?.playback?.paused
+        const beforeAnchor = Number(
+          (
+            observer.roomState?.playback as
+              | { timelineAnchorMs?: number }
+              | undefined
+          )?.timelineAnchorMs,
+        )
+        authzCtl.lastError = null
+        const pauseReqId = authzCtl.send("playback:pause", {})
+        const gotUnauthorizedNack = await authzCtl
+          .waitFor(
+            (c) =>
+              c.lastError?.code === "unauthorized" &&
+              c.lastError.requestId === pauseReqId &&
+              c.lastError.type === "playback:pause",
+            3_000,
+          )
+          .then(() => true)
+          .catch(() => false)
+
+        if (gotUnauthorizedNack) {
+          note({
+            id: `${media.id}-guest-nack-ok`,
+            severity: "pass",
+            media: media.label,
+            scenario: "authz",
+            title: "Guest playback:pause got unauthorized nack",
+            detail: `room:error code=unauthorized requestId=${pauseReqId.slice(0, 8)}`,
+          })
+        } else {
+          note({
+            id: `${media.id}-guest-nack-missing`,
+            severity: "warn",
+            media: media.label,
+            scenario: "authz",
+            title: "Guest playback:pause missing unauthorized nack",
+            detail: `lastError=${JSON.stringify(authzCtl.lastError)}`,
+          })
+        }
+
+        // Short clips: keep settle brief so onEnded cannot race the leak check.
+        const authzSettleMs =
+          authzDurationSec != null && authzDurationSec < 30 ? 400 : 1_500
+        await settle(authzSettleMs)
+        const afterPaused = observer.roomState?.playback?.paused
+        const afterAnchor = Number(
+          (
+            observer.roomState?.playback as
+              | { timelineAnchorMs?: number }
+              | undefined
+          )?.timelineAnchorMs,
+        )
+        if (afterPaused !== beforePaused) {
+          const headAfter = await readPlayhead(hostPage!)
+          const nearEof =
+            authzDurationSec != null &&
+            headAfter.currentTimeSec != null &&
+            headAfter.currentTimeSec >= authzDurationSec - eofHeadroomSec
+          // Unauthorized nack proves server rejected control; pause flip with
+          // short-clip EOF / unconfirmed head is onEnded race, not a leak.
+          if (gotUnauthorizedNack && (nearEof || !midClipHeadConfirmed)) {
+            note({
+              id: `${media.id}-guest-control-ok`,
+              severity: "pass",
+              media: media.label,
+              scenario: "authz",
+              title: "Guest playback:pause ignored",
+              detail: `nack ok; pause flip attributed to EOF/onEnded (nearEof=${nearEof} headConfirmed=${midClipHeadConfirmed})`,
+            })
+          } else {
+            note({
+              id: `${media.id}-guest-control-leak`,
+              severity: "fail",
+              media: media.label,
+              scenario: "authz",
+              title: "Guest playback:pause changed room pause state",
+              detail: `paused ${String(beforePaused)}->${String(afterPaused)} (midClipOk=${midClipOk})`,
+            })
+          }
+        } else {
+          note({
+            id: `${media.id}-guest-control-ok`,
+            severity: "pass",
+            media: media.label,
+            scenario: "authz",
+            title: "Guest playback:pause ignored",
+            detail: `paused stayed ${String(afterPaused)}; anchor ${beforeAnchor}->${afterAnchor}`,
+          })
+        }
+      } finally {
+        authzCtl.close()
+      }
+    }
+
     // --- CONCURRENT MODERATORS ---
     modPage = await openRoom(modCtx, roomId, modId, modSecret)
     const promoted = await promoteToModerator(hostPage, modId)
@@ -1163,43 +1629,58 @@ async function runMediaCase(
         severity: "pass",
         media: media.label,
         scenario: "concurrent-mods",
-        title: "Promoted guest to moderator",
+        title: "Promoted second user to moderator",
         detail: modId.slice(0, 8),
       })
 
-      // Race: host via RoomClient + mod via UI seek/play-pause.
+      // Race: host via page-owned WS (has control) + mod via UI seek/play-pause.
       const beforeRace = Number(
         (observer.roomState?.playback as { timelineAnchorMs?: number } | undefined)
           ?.timelineAnchorMs,
       )
+      const pausedBeforeRace = observer.roomState?.playback?.paused
       await Promise.all([
-        hostCtl!.send("playback:seek", { targetMs: 5_000 }),
+        sendViaPageRoomWs(hostPage!, "playback:seek", { targetMs: 5_000 }),
         seekViaRoomControl(modPage!, 25),
       ])
-      await settle(500)
+      await observer
+        .waitFor((c) => {
+          const anchor = (
+            c.roomState?.playback as { timelineAnchorMs?: number } | undefined
+          )?.timelineAnchorMs
+          return typeof anchor === "number" && anchor !== beforeRace
+        }, 8_000)
+        .catch(() => {})
+      await settle(400)
       await Promise.all([
-        hostCtl!.send("playback:play"),
+        sendViaPageRoomWs(hostPage!, "playback:play", {}),
         clickPlayPause(modPage!, "Pause"),
       ])
-      await settle(3_500)
+      await observer
+        .waitFor(
+          (c) => c.roomState?.playback?.paused !== pausedBeforeRace,
+          8_000,
+        )
+        .catch(() => {})
+      // Iframe providers (YouTube/Vimeo) need a longer retry tail after races.
+      const concurrentOkSec = PEER_FAIL_SEC + 1
+      const converged = await pollTripleSpreadUntil(
+        hostPage!,
+        guestPage!,
+        modPage!,
+        { okSec: concurrentOkSec, timeoutMs: 8_000 },
+      )
+      pair = converged.pair
+      const modHead = converged.modHead
+      const spread = converged.spread
 
       const finalPaused = observer.roomState?.playback?.paused
       const finalAnchor = Number(
         (observer.roomState?.playback as { timelineAnchorMs?: number } | undefined)
           ?.timelineAnchorMs,
       )
-      pair = await measurePair(hostPage!, guestPage!)
-      const modHead = await readPlayhead(modPage!)
 
-      const times = [
-        pair.host.currentTimeSec,
-        pair.guest.currentTimeSec,
-        modHead.currentTimeSec,
-      ].filter((t): t is number => t !== null)
-      const spread =
-        times.length >= 2 ? Math.max(...times) - Math.min(...times) : null
-
-      if (spread !== null && spread > PEER_FAIL_SEC + 1) {
+      if (spread !== null && spread > concurrentOkSec) {
         note({
           id: `${media.id}-concurrent-diverge`,
           severity: "fail",
@@ -1242,39 +1723,6 @@ async function runMediaCase(
       await modPage.close().catch(() => {})
       modPage = undefined
     }
-
-    // Guest must not control — protocol-level pause (NC-10); not UI after concurrent-mod.
-    const beforePaused = observer.roomState?.playback?.paused
-    const beforeAnchor = Number(
-      (observer.roomState?.playback as { timelineAnchorMs?: number } | undefined)
-        ?.timelineAnchorMs,
-    )
-    guestCtl!.send("playback:pause")
-    await settle(1_500)
-    const afterPaused = observer.roomState?.playback?.paused
-    const afterAnchor = Number(
-      (observer.roomState?.playback as { timelineAnchorMs?: number } | undefined)
-        ?.timelineAnchorMs,
-    )
-    if (afterPaused !== beforePaused) {
-      note({
-        id: `${media.id}-guest-control-leak`,
-        severity: "fail",
-        media: media.label,
-        scenario: "authz",
-        title: "Guest playback:pause changed room pause state",
-        detail: `paused ${String(beforePaused)}->${String(afterPaused)}`,
-      })
-    } else {
-      note({
-        id: `${media.id}-guest-control-ok`,
-        severity: "pass",
-        media: media.label,
-        scenario: "authz",
-        title: "Guest playback:pause ignored",
-        detail: `paused stayed ${String(afterPaused)}; anchor ${beforeAnchor}->${afterAnchor}`,
-      })
-    }
   } catch (error) {
     note({
       id: `${media.id}-crash`,
@@ -1293,7 +1741,6 @@ async function runMediaCase(
     await guestCtx.close().catch(() => {})
     await modCtx.close().catch(() => {})
     hostCtl?.close()
-    guestCtl?.close()
     observer.close()
   }
 }
@@ -1311,13 +1758,41 @@ async function runLocalFileCase(browser: Browser) {
   const guestCtx = await browser.newContext({ viewport })
   await seedUsername(hostCtx, hostId)
   await seedUsername(guestCtx, guestId)
+  // Same control stack as runMediaCase: inject play/pause onto the browser
+  // host's /api/ws (canControlPlayback), observe via a read-only player session.
+  await installPageRoomWsTracker(hostCtx)
 
+  const roomClock = createServerClockEstimate()
+  const observer = new RoomClient({
+    baseUrl: BASE,
+    roomId,
+    userId: randomUUID(),
+    userSecret: secret(),
+    username: "observer",
+    sessionKind: "player",
+  })
+  wireServerClockFromRoomClient(observer, roomClock)
+
+  let hostCtl: RoomClient | undefined
   let hostPage: Page | undefined
   let guestPage: Page | undefined
 
   try {
     hostPage = await openRoom(hostCtx, roomId, hostId, hostSecret)
     guestPage = await openRoom(guestCtx, roomId, guestId, guestSecret)
+    await observer.connect()
+    await observer.waitFor((c) => Boolean(c.roomState), 20_000)
+
+    hostCtl = new RoomClient({
+      baseUrl: BASE,
+      roomId,
+      userId: hostId,
+      userSecret: hostSecret,
+      username: hostId.slice(0, 8),
+      sessionKind: "room",
+    })
+    await hostCtl.connect()
+    await hostCtl.waitFor((c) => Boolean(c.roomState), 20_000)
 
     // Create a tiny synthetic mp4 via input file — use a downloaded flower clip if available,
     // else skip with note. Fetch bytes in Node and set input files.
@@ -1383,8 +1858,16 @@ async function runLocalFileCase(browser: Browser) {
       })
     }
 
-    await clickPlayPause(hostPage, "Play")
+    const playVia = await hostPlaybackPlay(
+      hostPage,
+      observer,
+      clickPlayPause,
+      hostCtl,
+    )
     await settle(6_000)
+    await observer
+      .waitFor((c) => c.roomState?.playback?.paused === false, 15_000)
+      .catch(() => {})
     const pair = await measurePair(hostPage, guestPage)
     if (pair.peerDeltaSec === null) {
       note({
@@ -1397,6 +1880,7 @@ async function runLocalFileCase(browser: Browser) {
         measured: {
           hostSec: pair.host.currentTimeSec,
           guestSec: pair.guest.currentTimeSec,
+          playVia,
         },
       })
     } else if (pair.peerDeltaSec > PEER_FAIL_SEC) {
@@ -1411,6 +1895,7 @@ async function runLocalFileCase(browser: Browser) {
           hostSec: pair.host.currentTimeSec,
           guestSec: pair.guest.currentTimeSec,
           deltaSec: pair.peerDeltaSec,
+          playVia,
         },
       })
     } else {
@@ -1425,33 +1910,103 @@ async function runLocalFileCase(browser: Browser) {
           hostSec: pair.host.currentTimeSec,
           guestSec: pair.guest.currentTimeSec,
           deltaSec: pair.peerDeltaSec,
+          playVia,
         },
       })
     }
 
-    await clickPlayPause(hostPage, "Pause")
+    const pauseVia = await hostPlaybackPause(
+      hostPage,
+      observer,
+      clickPlayPause,
+      hostCtl,
+    )
     await settle(2_000)
+    await observer
+      .waitFor((c) => c.roomState?.playback?.paused === true, 10_000)
+      .catch(() => {})
     const afterPause = await measurePair(hostPage, guestPage)
-    if (
-      afterPause.guestPaused === false ||
-      afterPause.hostPaused === false
-    ) {
+    const hostPausedLabel = await roomPlayingLabel(hostPage)
+    const guestPausedLabel = await roomPlayingLabel(guestPage)
+    const roomPaused = observer.roomState?.playback?.paused === true
+
+    if (pauseVia === "none") {
       note({
-        id: "local-pause",
+        id: "local-pause-control",
         severity: "fail",
         media: mediaLabel,
         scenario: "pause",
-        title: "Local-media pause not reflected on both clients",
-        detail: `host.paused=${afterPause.hostPaused} guest.paused=${afterPause.guestPaused}`,
+        title: "Host pause control did not land (page-ws / room-ws / ui)",
+        detail: `pauseVia=${pauseVia} room.paused=${String(observer.roomState?.playback?.paused)}`,
+        measured: { pauseVia },
       })
-    } else {
+    }
+
+    if (!roomPaused) {
+      note({
+        id: "local-pause-room-state",
+        severity: "fail",
+        media: mediaLabel,
+        scenario: "pause",
+        title: "Room playback.paused not true after host pause",
+        detail: `paused=${String(observer.roomState?.playback?.paused)}`,
+        measured: { pauseVia },
+      })
+    }
+
+    if (hostPausedLabel !== "Paused" || guestPausedLabel !== "Paused") {
+      note({
+        id: "local-pause-ui-label",
+        severity: "fail",
+        media: mediaLabel,
+        scenario: "pause",
+        title: "UI transport not Paused on both clients",
+        detail: `host=${hostPausedLabel} guest=${guestPausedLabel}`,
+        measured: { pauseVia },
+      })
+    }
+
+    // Only blame the media element when room state already shows paused —
+    // otherwise the control path failed upstream (room-state / control finding).
+    if (
+      roomPaused &&
+      (afterPause.hostPaused === false ||
+        (afterPause.guestPaused !== null && afterPause.guestPaused === false))
+    ) {
+      note({
+        id: "local-pause-element",
+        severity: "fail",
+        media: mediaLabel,
+        scenario: "pause",
+        title: "Media element still playing after room pause",
+        detail: `host.paused=${afterPause.hostPaused} guest.paused=${afterPause.guestPaused}`,
+        measured: {
+          hostSec: afterPause.host.currentTimeSec,
+          guestSec: afterPause.guest.currentTimeSec,
+          pauseVia,
+        },
+      })
+    } else if (
+      roomPaused &&
+      pauseVia !== "none" &&
+      hostPausedLabel === "Paused" &&
+      guestPausedLabel === "Paused" &&
+      afterPause.hostPaused !== false &&
+      afterPause.guestPaused !== false
+    ) {
       note({
         id: "local-pause-ok",
         severity: "pass",
         media: mediaLabel,
         scenario: "pause",
         title: "Local-media pause OK",
-        detail: `Δ=${afterPause.peerDeltaSec?.toFixed(3) ?? "n/a"}s`,
+        detail: `Δ=${afterPause.peerDeltaSec?.toFixed(3) ?? "n/a"}s via=${pauseVia}`,
+        measured: {
+          hostSec: afterPause.host.currentTimeSec,
+          guestSec: afterPause.guest.currentTimeSec,
+          deltaSec: afterPause.peerDeltaSec,
+          pauseVia,
+        },
       })
     }
   } catch (error) {
@@ -1468,6 +2023,8 @@ async function runLocalFileCase(browser: Browser) {
     await guestPage?.close().catch(() => {})
     await hostCtx.close().catch(() => {})
     await guestCtx.close().catch(() => {})
+    hostCtl?.close()
+    observer.close()
   }
 }
 

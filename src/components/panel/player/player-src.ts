@@ -6,6 +6,15 @@ import type { PlaylistItem, PlaylistMediaStream } from "@/contracts/types"
 /** Vidstack needs an explicit MIME when the URL has no file extension (blob:/proxy/local). */
 export type PlayerSrcInput = string | { src: string; type: string }
 
+/**
+ * Stable identity for a player src value — same URL+MIME → same key even when
+ * `{ src, type }` is a new object each render (playlist / room churn).
+ */
+export function playerSrcContentKey(src: PlayerSrcInput): string {
+  if (typeof src === "string") return src
+  return `${src.src}\0${src.type}`
+}
+
 export function normalizeHlsMime(
   mime: string | undefined,
 ): "application/x-mpegurl" | "application/vnd.apple.mpegurl" | undefined {

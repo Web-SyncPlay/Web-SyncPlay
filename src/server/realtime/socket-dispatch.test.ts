@@ -88,6 +88,31 @@ describe("handleSocketMessage", () => {
     ])
   })
 
+  test("nacks mutable envelopes that omit payload when requestId is present", async () => {
+    const { ws, sent } = createFakeWs()
+    const store = new InMemoryRoomStateStore(createRoomState())
+
+    await handleSocketMessage(
+      ws,
+      store,
+      Buffer.from(
+        JSON.stringify({
+          type: "playback:pause",
+          requestId: "pause-no-payload",
+        }),
+      ),
+      false,
+    )
+
+    expect(sent).toEqual([
+      {
+        type: "room:error",
+        requestId: "pause-no-payload",
+        payload: { code: "invalid_payload", type: "playback:pause" },
+      },
+    ])
+  })
+
   test("nacks mutations when joinCommitted is false", async () => {
     const { ws, sent } = createFakeWs()
     const store = new InMemoryRoomStateStore(createRoomState())

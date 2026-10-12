@@ -2,15 +2,39 @@ import { describe, expect, test } from "bun:test"
 import type { SyncablePlayer } from "./apply-playback-sync"
 import {
   ANCHOR_RETRY_DELAYS_MS,
+  CATCH_UP_STALL_POST_SEEK_GRACE_MS,
+  CATCH_UP_STALL_WINDOW_MS,
   createPlaybackSyncEngine,
   MAX_FORCE_SEEKS_PER_ANCHOR,
+  WATCHDOG_INTERVAL_MS,
   planPlaybackDriftCorrection,
   type EngineSyncState,
   type PlaybackSnapshot,
   type PlaybackSyncEngineHost,
   type PlaybackSyncScheduler,
 } from "./playback-sync-engine"
-import { DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC } from "./playback-sync"
+import { NATIVE_MIN_CONFIRM_MS } from "./native-provider-sync"
+import {
+  DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
+  FORCE_SEEK_LEAD_SEC,
+  resolveCatchUpPlaybackRate,
+} from "./playback-sync"
+
+function stubMediaEl(init: { currentTime?: number; paused?: boolean } = {}) {
+  return {
+    currentTime: init.currentTime ?? 0,
+    paused: init.paused ?? true,
+    muted: false,
+    playbackRate: 1,
+    pause() {
+      this.paused = true
+    },
+    play() {
+      this.paused = false
+      return Promise.resolve()
+    },
+  }
+}
 
 type FakeTimer = {
   id: number
@@ -134,6 +158,7 @@ function createHost(config: {
   let mediaReady = config.mediaReady ?? true
   let pending: EngineSyncState | null = null
   let lastApplied: number | null = null
+  let catchUpRate: number | null = null
   const applyFailures: EngineSyncState[] = []
 
   return {
@@ -157,6 +182,10 @@ function createHost(config: {
     getLastAppliedAnchorMs: () => lastApplied,
     setLastAppliedAnchorMs: (next) => {
       lastApplied = next
+    },
+    getCatchUpRate: () => catchUpRate,
+    setCatchUpRate: (next) => {
+      catchUpRate = next
     },
     isAuthorityPaused: () => config.authorityPaused ?? playback.paused,
     onApplyFailed: (syncState) => {
@@ -566,6 +595,47 @@ describe("PlaybackSyncEngine", () => {
       expect(playCalls).toBe(1)
     })
 
+    test("retries play nudge on the burst schedule until the element plays", () => {
+      const { scheduler, advance } = createFakeScheduler(1_000)
+      const player = createStickyPlayingPlayer(10)
+      player.unblockPause()
+      player.paused = true
+      let playCalls = 0
+      // Sticky: ignore play() until the 4th attempt (burst + verify may share ticks).
+      player.play = () => {
+        playCalls += 1
+        if (playCalls >= 4) {
+          player.paused = false
+        }
+      }
+      const playingState: EngineSyncState = { ...pausedState, paused: false }
+      const host = createHost({
+        player,
+        playback: { ...playingState, videoLoop: "off" },
+        authorityPaused: false,
+      })
+      const engine = createPlaybackSyncEngine(host, scheduler)
+      engine.start()
+
+      engine.applyRoomClock(player, playingState, 0)
+      expect(playCalls).toBe(1)
+      expect(player.paused).toBe(true)
+      expect(host.getPendingSync()).toEqual(playingState)
+      expect(engine.phase()).toBe("verifying")
+
+      advance(ANCHOR_RETRY_DELAYS_MS[0]!)
+      expect(playCalls).toBeGreaterThanOrEqual(2)
+      expect(player.paused).toBe(true)
+
+      advance(ANCHOR_RETRY_DELAYS_MS[2]!)
+      expect(player.paused).toBe(false)
+
+      // Burst stops once playing (remaining delay ticks no-op).
+      const callsWhenPlaying = playCalls
+      advance(ANCHOR_RETRY_DELAYS_MS[4]! - ANCHOR_RETRY_DELAYS_MS[2]!)
+      expect(playCalls).toBe(callsWhenPlaying)
+    })
+
     test("watchdog does not clear pending while paused room still plays", () => {
       const { scheduler, advance } = createFakeScheduler(1_000)
       const player = createStickyPlayingPlayer(10)
@@ -627,6 +697,40 @@ describe("PlaybackSyncEngine", () => {
       advance(10_000)
       expect(player.pauseCalls.length).toBe(callsAfterApply)
     })
+
+    test("wrapper paused + mediaEl playing still gets pause nudges (HLS lie)", () => {
+      const { scheduler, advance } = createFakeScheduler(1_000)
+      const mediaEl = stubMediaEl({ currentTime: 10, paused: false })
+      const player: SyncablePlayer = {
+        playbackRate: 1,
+        duration: 120,
+        paused: true, // declarative room binding already flipped the wrapper
+        currentTime: 10,
+        mediaEl,
+        pause() {
+          this.paused = true
+        },
+        play() {
+          this.paused = false
+        },
+      }
+      const host = createHost({
+        player,
+        playback: { ...pausedState, videoLoop: "off" },
+      })
+      const engine = createPlaybackSyncEngine(host, scheduler)
+      engine.start()
+
+      engine.applyRoomClock(player, pausedState, 0)
+      expect(mediaEl.paused).toBe(true)
+      expect(host.getPendingSync()).toBeNull()
+
+      // Late resume on the element only (wrapper still reports paused).
+      mediaEl.paused = false
+      host.setPendingSync(pausedState)
+      advance(1_000)
+      expect(mediaEl.paused).toBe(true)
+    })
   })
 
   describe("late-join / force-seek convergence", () => {
@@ -653,12 +757,22 @@ describe("PlaybackSyncEngine", () => {
         baseAtMs = config.now()
       }
       const mediaEl = {
+        paused: false,
+        muted: false,
+        playbackRate: 1,
         get currentTime() {
           return readSec()
         },
         set currentTime(value: number) {
           mediaSeeks.push(value)
           if (accept) write(value)
+        },
+        pause() {
+          this.paused = true
+        },
+        play() {
+          this.paused = false
+          return Promise.resolve()
         },
       }
       const player: SyncablePlayer & {
@@ -693,6 +807,60 @@ describe("PlaybackSyncEngine", () => {
       return player
     }
 
+    test("playing force-seek leads for HTML5 and native; paused does not", () => {
+      const sched = createFakeScheduler(10_000)
+      const html5 = createMeasuredPlayer({
+        now: () => sched.now,
+        startSec: 0,
+      })
+      const playing: EngineSyncState = {
+        paused: false,
+        playbackRate: 1,
+        timelineAnchorMs: 10_000,
+        serverNowMs: 10_000,
+        videoLoop: false,
+      }
+      const paused: EngineSyncState = { ...playing, paused: true }
+      const html5Host = createHost({
+        player: html5,
+        playback: { ...playing, videoLoop: "off" },
+      })
+      const html5Engine = createPlaybackSyncEngine(html5Host, sched.scheduler)
+      html5Engine.start()
+      html5Engine.applyRoomClock(html5, playing, 0)
+      expect(html5.mediaSeeks.at(-1)!).toBeCloseTo(10 + FORCE_SEEK_LEAD_SEC, 5)
+
+      html5.mediaEl!.currentTime = 0
+      html5Engine.applyRoomClock(html5, paused, 0)
+      expect(html5.mediaSeeks.at(-1)!).toBeCloseTo(10, 5)
+
+      const nativePlayer = createMeasuredPlayer({
+        now: () => sched.now,
+        startSec: 0,
+      })
+      nativePlayer.duration = 120
+      const nativeHost = createHost({
+        player: nativePlayer,
+        playback: { ...playing, videoLoop: "off" },
+      })
+      nativeHost.getSyncTuning = () => ({
+        nativeProvider: true,
+        retryDelaysMs: ANCHOR_RETRY_DELAYS_MS,
+        maxForceSeeksPerAnchor: MAX_FORCE_SEEKS_PER_ANCHOR,
+      })
+      const nativeEngine = createPlaybackSyncEngine(nativeHost, sched.scheduler)
+      nativeEngine.start()
+      nativeEngine.applyRoomClock(nativePlayer, playing, 0)
+      expect(nativePlayer.mediaSeeks.at(-1)!).toBeCloseTo(
+        10 + FORCE_SEEK_LEAD_SEC,
+        5,
+      )
+
+      nativePlayer.mediaEl!.currentTime = 0
+      nativeEngine.applyRoomClock(nativePlayer, paused, 0)
+      expect(nativePlayer.mediaSeeks.at(-1)!).toBeCloseTo(10, 5)
+    })
+
     test("first ready apply uses threshold 0 once (small late-join offset)", () => {
       const sched = createFakeScheduler(10_000)
       const player = createMeasuredPlayer({
@@ -714,17 +882,618 @@ describe("PlaybackSyncEngine", () => {
       engine.start()
 
       // 0.5s behind: within the default 0.8s threshold, yet the first ready
-      // apply must still snap to the authority clock.
+      // apply must still force-snap with playing seek lead.
       engine.applyRoomClock(player, state)
-      expect(player.mediaSeeks).toEqual([6])
-      expect(player.mediaEl!.currentTime).toBeCloseTo(6, 3)
+      expect(player.mediaSeeks).toEqual([6 + FORCE_SEEK_LEAD_SEC])
+      expect(player.mediaEl!.currentTime).toBeCloseTo(
+        6 + FORCE_SEEK_LEAD_SEC,
+        3,
+      )
 
-      // Second apply (undefined threshold) goes back to default 0.8s.
+      // After convergence, subsequent applies use the default 0.8s threshold
+      // and must not undo the intentional lead band.
       sched.advance(100)
-      player.mediaEl!.currentTime = 6.1 + 0.4 // mediaSeeks bookkeeping below
       const before = player.mediaSeeks.length
       engine.applyRoomClock(player, state)
       expect(player.mediaSeeks.length).toBe(before)
+    })
+
+    test("seek-while-paused keeps pending when HLS echoes then stays behind", () => {
+      const { scheduler, advance } = createFakeScheduler(1_000)
+      // Wrapper echoes the seek target immediately; media element stays put
+      // until unblock — matches false-live HLS seek-while-paused.
+      let mediaTime = 5
+      let accept = false
+      let wrapperTime = 5
+      const mediaEl = {
+        muted: false,
+        playbackRate: 1,
+        get currentTime() {
+          return mediaTime
+        },
+        set currentTime(value: number) {
+          if (accept) mediaTime = value
+        },
+        paused: true,
+        pause() {
+          this.paused = true
+        },
+        play() {
+          this.paused = false
+          return Promise.resolve()
+        },
+      }
+      const player: SyncablePlayer = {
+        playbackRate: 1,
+        duration: 5.05, // buffer-as-duration lie
+        seekableEnd: 5.01,
+        paused: true,
+        mediaEl,
+        get currentTime() {
+          return wrapperTime
+        },
+        set currentTime(value: number) {
+          wrapperTime = value // echo
+          if (accept) mediaTime = value
+        },
+        pause() {
+          this.paused = true
+        },
+        play() {
+          this.paused = false
+        },
+      }
+      const pausedSeek: EngineSyncState = {
+        paused: true,
+        playbackRate: 1,
+        timelineAnchorMs: 20_000,
+        serverNowMs: 1_000,
+        videoLoop: false,
+      }
+      const host = createHost({
+        player,
+        playback: { ...pausedSeek, videoLoop: "off" },
+      })
+      const engine = createPlaybackSyncEngine(host, scheduler)
+      engine.start()
+
+      engine.applyRoomClock(player, pausedSeek, 0)
+      // Same-tick wrapper echo must not clear pending — media still at 5.
+      expect(host.getPendingSync()).toEqual(pausedSeek)
+      expect(mediaTime).toBe(5)
+
+      accept = true
+      engine.onAuthorityAnchor(20_000)
+      advance(ANCHOR_RETRY_DELAYS_MS[0]!)
+      expect(mediaTime).toBeCloseTo(20, 3)
+      expect(host.getPendingSync()).toBeNull()
+    })
+
+    test("seek-while-paused escalate lands play-gated media seek", () => {
+      const { scheduler } = createFakeScheduler(1_000)
+      // Media only accepts currentTime while briefly playing (HLS paused no-op).
+      let mediaTime = 5
+      let playing = false
+      let wrapperTime = 5
+      let playCalls = 0
+      const mediaEl = {
+        muted: false,
+        playbackRate: 1,
+        get currentTime() {
+          return mediaTime
+        },
+        set currentTime(value: number) {
+          if (playing) mediaTime = value
+        },
+        get paused() {
+          return !playing
+        },
+        pause() {
+          playing = false
+        },
+        play() {
+          playing = true
+          playCalls += 1
+          return Promise.resolve()
+        },
+      }
+      const player: SyncablePlayer = {
+        playbackRate: 1,
+        duration: 5.05,
+        seekableEnd: 5.01,
+        paused: true,
+        mediaEl,
+        get currentTime() {
+          return wrapperTime
+        },
+        set currentTime(value: number) {
+          wrapperTime = value
+        },
+        pause() {
+          this.paused = true
+        },
+        play() {
+          this.paused = false
+        },
+      }
+      const pausedSeek: EngineSyncState = {
+        paused: true,
+        playbackRate: 1,
+        timelineAnchorMs: 20_000,
+        serverNowMs: 1_000,
+        videoLoop: false,
+      }
+      const host = createHost({
+        player,
+        playback: { ...pausedSeek, videoLoop: "off" },
+      })
+      const engine = createPlaybackSyncEngine(host, scheduler)
+      engine.start()
+
+      engine.applyRoomClock(player, pausedSeek, 0)
+      expect(playCalls).toBe(1)
+      expect(mediaTime).toBeCloseTo(20, 3)
+      expect(mediaEl.paused).toBe(true)
+      expect(host.getPendingSync()).toBeNull()
+    })
+
+    test("playing path does not escalate with muted play", () => {
+      const { scheduler } = createFakeScheduler(1_000)
+      let mediaTime = 5
+      let playCalls = 0
+      const mediaEl = {
+        muted: false,
+        playbackRate: 1,
+        get currentTime() {
+          return mediaTime
+        },
+        set currentTime(_value: number) {
+          // no-op while "playing" session still stuck
+        },
+        paused: false,
+        pause() {
+          this.paused = true
+        },
+        play() {
+          playCalls += 1
+          this.paused = false
+          return Promise.resolve()
+        },
+      }
+      const player: SyncablePlayer = {
+        playbackRate: 1,
+        duration: 120,
+        seekableEnd: 60,
+        paused: false,
+        mediaEl,
+        currentTime: 5,
+        pause() {
+          this.paused = true
+        },
+        play() {
+          this.paused = false
+        },
+      }
+      const playingSeek: EngineSyncState = {
+        paused: false,
+        playbackRate: 1,
+        timelineAnchorMs: 20_000,
+        serverNowMs: 1_000,
+        videoLoop: false,
+      }
+      const host = createHost({
+        player,
+        playback: { ...playingSeek, videoLoop: "off" },
+      })
+      const engine = createPlaybackSyncEngine(host, scheduler)
+      engine.start()
+
+      engine.applyRoomClock(player, playingSeek, 0)
+      expect(playCalls).toBe(0)
+      expect(host.getPendingSync()).toEqual(playingSeek)
+    })
+
+    test("late-join snap retries at threshold 0 until a no-op seek lands", () => {
+      const sched = createFakeScheduler(10_000)
+      const player = createMeasuredPlayer({
+        now: () => sched.now,
+        startSec: 0,
+        acceptSeeks: false,
+      })
+      const state: EngineSyncState = {
+        paused: false,
+        playbackRate: 1,
+        timelineAnchorMs: 19_000,
+        serverNowMs: 10_000,
+        videoLoop: false,
+      }
+      const host = createHost({
+        player,
+        playback: { ...state, videoLoop: "off" },
+      })
+      const engine = createPlaybackSyncEngine(host, sched.scheduler)
+      engine.start()
+
+      engine.applyRoomClock(player, state)
+      expect(player.mediaSeeks.length).toBe(1)
+      expect(host.getPendingSync()).toEqual(state)
+
+      // Still far behind: another authority apply must keep force-snapping
+      // (initial snap is not consumed until convergence).
+      engine.applyRoomClock(player, state)
+      expect(player.mediaSeeks.length).toBe(2)
+
+      player.setAccept(true)
+      engine.applyRoomClock(player, state)
+      expect(player.mediaEl!.currentTime).toBeCloseTo(
+        19 + FORCE_SEEK_LEAD_SEC,
+        3,
+      )
+      // Playing seek-confirm holds until a later sample shows playhead motion.
+      expect(host.getPendingSync()).toEqual(state)
+      sched.advance(ANCHOR_RETRY_DELAYS_MS[0]!)
+      expect(host.getPendingSync()).not.toBeNull()
+      sched.advance(ANCHOR_RETRY_DELAYS_MS[1]! - ANCHOR_RETRY_DELAYS_MS[0]!)
+      expect(host.getPendingSync()).toBeNull()
+    })
+
+    test("playing dual-echo keeps pending until playhead advances", () => {
+      const sched = createFakeScheduler(10_000)
+      // Both wrapper and mediaEl accept the seek (dual echo) — the HLS late-join
+      // failure mode where same-tick drift looks fine and pending was cleared.
+      let mediaTime = 0
+      let wrapperTime = 0
+      let frozen = true
+      let baseAtMs = 10_000
+      const mediaEl = {
+        muted: false,
+        playbackRate: 1,
+        paused: false,
+        get currentTime() {
+          if (frozen) return mediaTime
+          return mediaTime + (sched.now - baseAtMs) / 1000
+        },
+        set currentTime(value: number) {
+          mediaTime = value
+          baseAtMs = sched.now
+        },
+        pause() {
+          this.paused = true
+        },
+        play() {
+          this.paused = false
+          return Promise.resolve()
+        },
+      }
+      const player: SyncablePlayer = {
+        playbackRate: 1,
+        duration: 600,
+        paused: false,
+        mediaEl,
+        get currentTime() {
+          if (frozen) return wrapperTime
+          return wrapperTime + (sched.now - baseAtMs) / 1000
+        },
+        set currentTime(value: number) {
+          wrapperTime = value
+        },
+        pause() {
+          this.paused = true
+        },
+        play() {
+          this.paused = false
+        },
+      }
+      const state: EngineSyncState = {
+        paused: false,
+        playbackRate: 1,
+        timelineAnchorMs: 19_000,
+        serverNowMs: 10_000,
+        videoLoop: false,
+      }
+      const host = createHost({
+        player,
+        playback: { ...state, videoLoop: "off" },
+      })
+      const engine = createPlaybackSyncEngine(host, sched.scheduler)
+      engine.start()
+
+      engine.applyRoomClock(player, state, 0)
+      const ledTarget = 19 + FORCE_SEEK_LEAD_SEC
+      expect(mediaTime).toBeCloseTo(ledTarget, 3)
+      expect(wrapperTime).toBeCloseTo(ledTarget, 3)
+      expect(host.getPendingSync()).toEqual(state)
+
+      // Freeze playhead past the min-confirm window — still pending (stale).
+      sched.advance(ANCHOR_RETRY_DELAYS_MS[0]!)
+      expect(host.getPendingSync()).toEqual(state)
+
+      // Resume playhead motion: first verify records the near-target echo,
+      // the next tick sees advance ≥ stale epsilon and clears pending.
+      frozen = false
+      baseAtMs = sched.now
+      mediaTime = ledTarget
+      wrapperTime = ledTarget
+      sched.advance(ANCHOR_RETRY_DELAYS_MS[1]! - ANCHOR_RETRY_DELAYS_MS[0]!)
+      expect(host.getPendingSync()).toBeNull()
+      expect(mediaEl.currentTime).toBeGreaterThan(ledTarget)
+    })
+
+    test("playing dual-echo then lag with probe uses catch-up not hard seeks", () => {
+      const sched = createFakeScheduler(10_000)
+      let mediaTime = 0
+      let wrapperTime = 0
+      const seeks: number[] = []
+      const mediaEl = {
+        muted: false,
+        paused: false,
+        playbackRate: 1,
+        get currentTime() {
+          return mediaTime
+        },
+        set currentTime(value: number) {
+          mediaTime = value
+        },
+        pause() {
+          this.paused = true
+        },
+        play() {
+          this.paused = false
+          return Promise.resolve()
+        },
+      }
+      const player: SyncablePlayer = {
+        playbackRate: 1,
+        duration: 600,
+        paused: false,
+        mediaEl,
+        get currentTime() {
+          return wrapperTime
+        },
+        set currentTime(value: number) {
+          seeks.push(value)
+          wrapperTime = value
+        },
+        pause() {
+          this.paused = true
+        },
+        play() {
+          this.paused = false
+        },
+      }
+      const state: EngineSyncState = {
+        paused: false,
+        playbackRate: 1,
+        timelineAnchorMs: 19_000,
+        serverNowMs: 10_000,
+        videoLoop: false,
+      }
+      const host = createHost({
+        player,
+        playback: { ...state, videoLoop: "off" },
+      })
+      const engine = createPlaybackSyncEngine(host, sched.scheduler)
+      engine.start()
+
+      engine.applyRoomClock(player, state, 0)
+      expect(seeks.at(-1)!).toBeCloseTo(19 + FORCE_SEEK_LEAD_SEC, 5)
+      // Buffer stall eats the lead — playhead stuck at the authority clock.
+      mediaTime = 19
+      wrapperTime = 19
+      expect(host.getPendingSync()).toEqual(state)
+      const seeksAfterEcho = seeks.length
+
+      // First tick into the catch-up band (short of the stall window) arms the
+      // stall sample and prefers rate catch-up over another hard seek.
+      sched.advance(1_200)
+      const expectedRate = resolveCatchUpPlaybackRate(1, 1.2)
+      expect(expectedRate).not.toBeNull()
+      expect(player.playbackRate).toBeCloseTo(expectedRate!, 5)
+      expect(mediaEl.playbackRate).toBeCloseTo(expectedRate!, 5)
+      expect(seeks.length).toBe(seeksAfterEcho)
+      expect(host.getPendingSync()).toEqual(state)
+      expect(host.getCatchUpRate()).toBeCloseTo(expectedRate!, 5)
+
+      // Playhead creeping while still lagging: stall does not escalate.
+      mediaTime = 19.2
+      wrapperTime = 19.2
+      sched.advance(CATCH_UP_STALL_WINDOW_MS)
+      expect(seeks.length).toBe(seeksAfterEcho)
+      expect(host.getCatchUpRate()).not.toBeNull()
+    })
+
+    test("frozen playhead after seek does not escalate catch-up stall within post-seek grace", () => {
+      const sched = createFakeScheduler(10_000)
+      let mediaTime = 0
+      let wrapperTime = 0
+      const seeks: number[] = []
+      const mediaEl = {
+        muted: false,
+        paused: false,
+        playbackRate: 1,
+        get currentTime() {
+          return mediaTime
+        },
+        set currentTime(value: number) {
+          mediaTime = value
+        },
+        pause() {
+          this.paused = true
+        },
+        play() {
+          this.paused = false
+          return Promise.resolve()
+        },
+      }
+      const player: SyncablePlayer = {
+        playbackRate: 1,
+        duration: 600,
+        paused: false,
+        mediaEl,
+        get currentTime() {
+          return wrapperTime
+        },
+        set currentTime(value: number) {
+          seeks.push(value)
+          wrapperTime = value
+        },
+        pause() {
+          this.paused = true
+        },
+        play() {
+          this.paused = false
+        },
+      }
+      const state: EngineSyncState = {
+        paused: false,
+        playbackRate: 1,
+        timelineAnchorMs: 19_000,
+        serverNowMs: 10_000,
+        videoLoop: false,
+      }
+      const host = createHost({
+        player,
+        playback: { ...state, videoLoop: "off" },
+      })
+      const engine = createPlaybackSyncEngine(host, sched.scheduler)
+      engine.start()
+
+      engine.applyRoomClock(player, state, 0)
+      expect(seeks.at(-1)!).toBeCloseTo(19 + FORCE_SEEK_LEAD_SEC, 5)
+      mediaTime = 19
+      wrapperTime = 19
+      expect(host.getPendingSync()).toEqual(state)
+      const seeksAfterEcho = seeks.length
+
+      // Enter catch-up band; stall would arm here without post-seek grace.
+      sched.advance(1_200)
+      const expectedRate = resolveCatchUpPlaybackRate(1, 1.2)
+      expect(expectedRate).not.toBeNull()
+      expect(host.getCatchUpRate()).toBeCloseTo(expectedRate!, 5)
+      expect(seeks.length).toBe(seeksAfterEcho)
+
+      // Frozen past the stall window but still inside post-seek grace —
+      // must not escalate (HLS/SC post-seek buffer fill looks frozen).
+      sched.advance(CATCH_UP_STALL_WINDOW_MS)
+      expect(host.getCatchUpRate()).not.toBeNull()
+      expect(seeks.length).toBe(seeksAfterEcho)
+
+      sched.advance(
+        CATCH_UP_STALL_POST_SEEK_GRACE_MS -
+          1_200 -
+          CATCH_UP_STALL_WINDOW_MS -
+          1,
+      )
+      expect(host.getCatchUpRate()).not.toBeNull()
+      expect(seeks.length).toBe(seeksAfterEcho)
+    })
+
+    test("frozen playhead escalates catch-up stall after post-seek grace and stall window", () => {
+      const sched = createFakeScheduler(10_000)
+      let mediaTime = 0
+      let wrapperTime = 0
+      const seeks: number[] = []
+      const mediaEl = {
+        muted: false,
+        paused: false,
+        playbackRate: 1,
+        get currentTime() {
+          return mediaTime
+        },
+        set currentTime(value: number) {
+          mediaTime = value
+        },
+        pause() {
+          this.paused = true
+        },
+        play() {
+          this.paused = false
+          return Promise.resolve()
+        },
+      }
+      const player: SyncablePlayer = {
+        playbackRate: 1,
+        duration: 600,
+        paused: false,
+        mediaEl,
+        get currentTime() {
+          return wrapperTime
+        },
+        set currentTime(value: number) {
+          seeks.push(value)
+          wrapperTime = value
+        },
+        pause() {
+          this.paused = true
+        },
+        play() {
+          this.paused = false
+        },
+      }
+      const state: EngineSyncState = {
+        paused: false,
+        playbackRate: 1,
+        timelineAnchorMs: 19_000,
+        serverNowMs: 10_000,
+        videoLoop: false,
+      }
+      const host = createHost({
+        player,
+        playback: { ...state, videoLoop: "off" },
+      })
+      const engine = createPlaybackSyncEngine(host, sched.scheduler)
+      engine.start()
+
+      engine.applyRoomClock(player, state, 0)
+      expect(seeks.at(-1)!).toBeCloseTo(19 + FORCE_SEEK_LEAD_SEC, 5)
+      mediaTime = 19
+      wrapperTime = 19
+      expect(host.getPendingSync()).toEqual(state)
+      const seeksAfterEcho = seeks.length
+
+      // Frozen into the catch-up band, then creep through the rest of
+      // post-seek grace so lag stays ~1.2s (avoid large-drift force seeks).
+      sched.advance(1_200)
+      expect(host.getCatchUpRate()).not.toBeNull()
+      expect(seeks.length).toBe(seeksAfterEcho)
+
+      let elapsed = 1_200
+      while (elapsed < CATCH_UP_STALL_POST_SEEK_GRACE_MS) {
+        const expectedSec = 19 + (sched.now - 10_000) / 1000
+        mediaTime = expectedSec - 1.2
+        wrapperTime = mediaTime
+        const step = Math.min(200, CATCH_UP_STALL_POST_SEEK_GRACE_MS - elapsed)
+        sched.advance(step)
+        elapsed += step
+      }
+      {
+        const expectedSec = 19 + (sched.now - 10_000) / 1000
+        mediaTime = expectedSec - 1.2
+        wrapperTime = mediaTime
+      }
+      expect(host.getCatchUpRate()).not.toBeNull()
+      expect(seeks.length).toBe(seeksAfterEcho)
+
+      // Freeze; next watchdog arms the stall sample (grace just ended).
+      const frozenSec = mediaTime
+      const armAt =
+        Math.ceil(sched.now / WATCHDOG_INTERVAL_MS) * WATCHDOG_INTERVAL_MS
+      sched.advance(armAt > sched.now ? armAt - sched.now : WATCHDOG_INTERVAL_MS)
+      mediaTime = frozenSec
+      wrapperTime = frozenSec
+      expect(seeks.length).toBe(seeksAfterEcho)
+
+      // Following watchdog (≥ stall window later) escalates to threshold-0
+      // with playing seek lead.
+      sched.advance(WATCHDOG_INTERVAL_MS)
+      expect(host.getCatchUpRate()).toBeNull()
+      expect(player.playbackRate).toBe(1)
+      expect(seeks.length).toBeGreaterThan(seeksAfterEcho)
+      expect(seeks.at(-1)!).toBeCloseTo(
+        19 + (sched.now - 10_000) / 1000 + FORCE_SEEK_LEAD_SEC,
+        1,
+      )
+      expect(host.getPendingSync()).toEqual(state)
     })
 
     test("does not consume the snap while media is not ready", () => {
@@ -753,7 +1522,7 @@ describe("PlaybackSyncEngine", () => {
 
       host.setMediaReady(true)
       engine.applyRoomClock(player, state)
-      expect(player.mediaSeeks).toEqual([6])
+      expect(player.mediaSeeks).toEqual([6 + FORCE_SEEK_LEAD_SEC])
     })
 
     test("keeps pending until within 0.8s and re-arms retries after media ready", () => {
@@ -790,13 +1559,17 @@ describe("PlaybackSyncEngine", () => {
       expect(host.getPendingSync()).toEqual(state)
       expect(engine.phase()).toBe("verifying")
 
-      // Element starts accepting seeks; burst retry (re-armed) converges.
+      // Element starts accepting seeks; burst retry lands with playing lead,
+      // then a subsequent tick confirms once the playhead advances.
       player.setAccept(true)
       sched.advance(ANCHOR_RETRY_DELAYS_MS[0]!)
       const room = pendingExpectedSec(state, sched.now)
-      expect(
-        Math.abs(player.mediaEl!.currentTime - room),
-      ).toBeLessThanOrEqual(DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC)
+      expect(player.mediaEl!.currentTime).toBeCloseTo(
+        room + FORCE_SEEK_LEAD_SEC,
+        1,
+      )
+      expect(host.getPendingSync()).not.toBeNull()
+      sched.advance(ANCHOR_RETRY_DELAYS_MS[2]! - ANCHOR_RETRY_DELAYS_MS[0]!)
       expect(host.getPendingSync()).toBeNull()
       expect(engine.phase()).toBe("idle")
     })
@@ -852,8 +1625,9 @@ describe("PlaybackSyncEngine", () => {
       engine.start()
 
       engine.applyRoomClock(player, state, 0)
-      expect(player.seeks).toEqual([90])
-      expect(player.mediaSeeks).toEqual([90])
+      // Clock seek + muted play→seek→pause escalate (media still no-ops).
+      expect(player.seeks).toEqual([90, 90])
+      expect(player.mediaSeeks).toEqual([90, 90])
 
       engine.onAuthorityAnchor(state.timelineAnchorMs)
       for (const delay of ANCHOR_RETRY_DELAYS_MS) {

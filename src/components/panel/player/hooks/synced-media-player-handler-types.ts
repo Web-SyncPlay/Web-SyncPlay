@@ -59,7 +59,7 @@ export type SyncedMediaPlayerHandlerDeps = {
   commitSeek: (targetMs: number) => void
   setIsBuffering: (value: boolean) => void
   setPlaybackError: (value: MediaErrorDetail | undefined) => void
-  setMediaDurationMs: (value: number) => void
+  setMediaDurationMs: (value: number | ((prev: number) => number)) => void
   setForceLocalRelaySrc: (value: boolean) => void
   setPlayerRemountNonce: (updater: (n: number) => number) => void
 }

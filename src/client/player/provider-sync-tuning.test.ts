@@ -16,6 +16,7 @@ import {
   resolveProviderSyncTuning,
   type ProviderSyncTuning,
 } from "./provider-sync-tuning"
+import { FORCE_SEEK_LEAD_SEC } from "./playback-sync"
 
 describe("resolveProviderSyncTuning", () => {
   test.each([
@@ -131,6 +132,7 @@ describe("engine honours provider sync tuning", () => {
     const playback: PlaybackSnapshot = { ...pausedState, videoLoop: "off" }
     let pending: EngineSyncState | null = null
     let lastApplied: number | null = null
+    let catchUpRate: number | null = null
     return {
       getPlayer: () => player,
       isMediaReady: () => true,
@@ -142,6 +144,10 @@ describe("engine honours provider sync tuning", () => {
       getLastAppliedAnchorMs: () => lastApplied,
       setLastAppliedAnchorMs: (next) => {
         lastApplied = next
+      },
+      getCatchUpRate: () => catchUpRate,
+      setCatchUpRate: (next) => {
+        catchUpRate = next
       },
       isAuthorityPaused: () => true,
       getSyncTuning: () => tuning,
@@ -273,6 +279,7 @@ describe("native iframe pending / quiescence rules", () => {
     const playback: PlaybackSnapshot = { ...room, videoLoop: "off" }
     let pending: EngineSyncState | null = null
     let lastApplied: number | null = null
+    let catchUpRate: number | null = null
     const host: PlaybackSyncEngineHost = {
       getPlayer: () => config.player,
       isMediaReady: () => true,
@@ -284,6 +291,10 @@ describe("native iframe pending / quiescence rules", () => {
       getLastAppliedAnchorMs: () => lastApplied,
       setLastAppliedAnchorMs: (next) => {
         lastApplied = next
+      },
+      getCatchUpRate: () => catchUpRate,
+      setCatchUpRate: (next) => {
+        catchUpRate = next
       },
       isAuthorityPaused: () => room.paused,
       getSyncTuning: () => resolveProviderSyncTuning(config.url),
@@ -316,7 +327,9 @@ describe("native iframe pending / quiescence rules", () => {
     }
   }
 
-  test("HLS clears pending on an echoed seek; native keeps it until a later read", () => {
+  test("wrapper-only HLS echo clears; native keeps pending until a later read", () => {
+    // Without mediaEl, HLS cannot detect wrapper/media split-brain and treats
+    // a same-tick playhead jump as confirmed (prod HLS always wires mediaEl).
     for (const [url, expectKept] of [
       ["https://example.com/live.m3u8", false],
       ["https://youtu.be/abc", true],
@@ -330,11 +343,145 @@ describe("native iframe pending / quiescence rules", () => {
       expect(getPending() !== null).toBe(expectKept)
 
       if (expectKept) {
-        // Later verify tick sees the playhead moved toward the target.
+        // Seek may confirm on the first verify tick, but pause quiescence
+        // still needs ≥1500ms of stable playhead before pending clears.
         advance(IFRAME_RETRY_DELAYS_MS[0]!)
+        expect(getPending()).not.toBeNull()
+        advance(IFRAME_RETRY_DELAYS_MS[3]! - IFRAME_RETRY_DELAYS_MS[0]!)
         expect(getPending()).toBeNull()
       }
     }
+  })
+
+  test("HTML5 dual-echo playing room keeps pending until playhead advances", () => {
+    const { scheduler, advance } = createScheduler(0)
+    let mediaTime = 0
+    let wrapperTime = 0
+    const mediaEl = {
+      get currentTime() {
+        return mediaTime
+      },
+      set currentTime(value: number) {
+        mediaTime = value
+      },
+      paused: false,
+      muted: false,
+      playbackRate: 1,
+      pause() {
+        this.paused = true
+      },
+      play() {
+        this.paused = false
+        return Promise.resolve()
+      },
+    }
+    const player: SyncablePlayer = {
+      playbackRate: 1,
+      duration: 600,
+      paused: false,
+      mediaEl,
+      get currentTime() {
+        return wrapperTime
+      },
+      set currentTime(value: number) {
+        wrapperTime = value
+      },
+      pause() {
+        this.paused = true
+      },
+      play() {
+        this.paused = false
+      },
+    }
+    const playingRoom: EngineSyncState = {
+      paused: false,
+      playbackRate: 1,
+      timelineAnchorMs: ANCHOR_MS,
+      serverNowMs: 0,
+      videoLoop: false,
+    }
+    const { engine, getPending } = createHarness({
+      player,
+      url: "https://example.com/live.m3u8",
+      room: playingRoom,
+      scheduler,
+    })
+    engine.start()
+    engine.applyRoomClock(player, playingRoom, 0)
+    // HTML5 playing force-seek writes with seek lead.
+    expect(mediaTime).toBe(19 + FORCE_SEEK_LEAD_SEC)
+    expect(wrapperTime).toBe(19 + FORCE_SEEK_LEAD_SEC)
+    expect(getPending()).not.toBeNull()
+
+    // Frozen dual-echo: verify tick must not clear pending.
+    advance(ANCHOR_RETRY_DELAYS_MS[0]!)
+    expect(getPending()).not.toBeNull()
+  })
+
+  test("HLS keeps pending when wrapper echoes but mediaEl stays behind", () => {
+    const { scheduler, advance } = createScheduler(0)
+    let mediaTime = 5
+    let wrapperTime = 5
+    const mediaEl = {
+      get currentTime() {
+        return mediaTime
+      },
+      set currentTime(_value: number) {
+        // no-op until unblock — false-live HLS seek-while-paused
+      },
+      paused: true,
+      muted: false,
+      playbackRate: 1,
+      pause() {
+        this.paused = true
+      },
+      play() {
+        this.paused = false
+        return Promise.resolve()
+      },
+    }
+    const player: SyncablePlayer = {
+      playbackRate: 1,
+      duration: 5.05,
+      seekableEnd: 5.01,
+      paused: true,
+      mediaEl,
+      get currentTime() {
+        return wrapperTime
+      },
+      set currentTime(value: number) {
+        wrapperTime = value
+      },
+      pause() {
+        this.paused = true
+      },
+      play() {
+        this.paused = false
+      },
+    }
+    const { engine, getPending } = createHarness({
+      player,
+      url: "https://example.com/live.m3u8",
+      scheduler,
+    })
+    engine.start()
+    engine.applyRoomClock(player, pausedRoom)
+    expect(wrapperTime).toBe(19)
+    expect(mediaTime).toBe(5)
+    expect(getPending()).not.toBeNull()
+
+    // Unblock element; authority-anchor burst force-seeks to the room clock.
+    Object.defineProperty(mediaEl, "currentTime", {
+      get: () => mediaTime,
+      set: (value: number) => {
+        mediaTime = value
+      },
+      configurable: true,
+    })
+    engine.onAuthorityAnchor(pausedRoom.timelineAnchorMs)
+    advance(ANCHOR_RETRY_DELAYS_MS[0]!)
+    expect(mediaTime).toBeCloseTo(19, 3)
+    expect(getPending()).toBeNull()
   })
 
   test("no-op iframe seek never clears pending across the retry burst", () => {
@@ -490,10 +637,52 @@ describe("native iframe pending / quiescence rules", () => {
     expect(pauseCalls).toBeGreaterThan(callsAtStart)
     expect(getPending()).not.toBeNull()
 
-    advance(IFRAME_RETRY_DELAYS_MS.at(-1)! - 2_400)
-    // Provider finally honoured pause and then stayed stable.
+    // 4s burst accepts pause (≥ acceptPauseAtMs); next burst at 6s is the
+    // first ≥1500ms stable sample that can clear pending.
+    advance(4_000 - 2_400)
     expect(playingSinceMs).toBeNull()
+    expect(getPending()).not.toBeNull()
+    advance(2_000)
     expect(getPending()).toBeNull()
+  })
+
+  test("1Hz integer playhead keeps invoking pause while unsettled", () => {
+    const { scheduler, advance } = createScheduler(0)
+    // Vimeo-like: wrapper paused=true, currentTime only ticks once per second.
+    // Quiescence false-settle is covered in native-provider-sync tests; here we
+    // only assert the engine keeps calling pause() across short sample gaps.
+    let originMs = 0
+    let originSec = 10
+    let pauseCalls = 0
+    const player: SyncablePlayer = {
+      playbackRate: 1,
+      duration: 600,
+      paused: true,
+      get currentTime() {
+        return originSec + Math.floor((scheduler.nowMs() - originMs) / 1000)
+      },
+      set currentTime(value: number) {
+        originSec = value
+        originMs = scheduler.nowMs()
+      },
+      pause() {
+        pauseCalls += 1
+      },
+      play() {},
+    }
+    const { engine, getPending } = createHarness({
+      player,
+      url: "https://vimeo.com/12345",
+      scheduler,
+    })
+    engine.start()
+    engine.applyRoomClock(player, pausedRoom)
+
+    const callsAtStart = pauseCalls
+    advance(2_400)
+    // Burst ticks still nudge pause; 1Hz grain must not clear pending early.
+    expect(pauseCalls).toBeGreaterThan(callsAtStart)
+    expect(getPending()).not.toBeNull()
   })
 
   test("HLS paused room does not sample quiescence (clears on paused flag)", () => {

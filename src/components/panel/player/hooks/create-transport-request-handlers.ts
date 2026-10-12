@@ -19,6 +19,75 @@ type TransportRequestDeps = Pick<
   | "commitLiveEdgeSeek"
 >
 
+type Preventable = { preventDefault: () => void }
+
+function asPreventable(value: unknown): Preventable | null {
+  if (
+    value &&
+    typeof value === "object" &&
+    typeof (value as Preventable).preventDefault === "function"
+  ) {
+    return value as Preventable
+  }
+  return null
+}
+
+/**
+ * Vidstack React DOM callbacks pass `(detail, event)`. Void requests
+ * (`media-pause-request` / `media-play-request`) often have `detail: null`,
+ * so the first argument is not the event — calling `preventDefault` on it
+ * throws and skips the room send. Also accept nested `.event` / `.nativeEvent`.
+ */
+export function resolveMediaRequestEvent(
+  detailOrEvent: unknown,
+  maybeEvent?: Preventable,
+): Preventable | null {
+  const fromSecond = asPreventable(maybeEvent)
+  if (fromSecond) {
+    return fromSecond
+  }
+  const fromFirst = asPreventable(detailOrEvent)
+  if (fromFirst) {
+    return fromFirst
+  }
+  if (detailOrEvent && typeof detailOrEvent === "object") {
+    const nested = detailOrEvent as {
+      event?: unknown
+      nativeEvent?: unknown
+    }
+    return (
+      asPreventable(nested.event) ?? asPreventable(nested.nativeEvent) ?? null
+    )
+  }
+  return null
+}
+
+/** Prevent local Vidstack transport; never throw if the event shape is odd. */
+export function preventMediaRequestDefault(
+  detailOrEvent: unknown,
+  maybeEvent?: Preventable,
+): void {
+  try {
+    resolveMediaRequestEvent(detailOrEvent, maybeEvent)?.preventDefault()
+  } catch {
+    // Malformed event — room send still proceeds below.
+  }
+}
+
+/** Coerce Vidstack seek detail (seconds) from a number or event-shaped value. */
+export function coerceSeekTargetSec(detail: unknown): number {
+  if (typeof detail === "number") {
+    return detail
+  }
+  if (detail && typeof detail === "object") {
+    const nested = (detail as { detail?: unknown }).detail
+    if (typeof nested === "number") {
+      return nested
+    }
+  }
+  return Number(detail)
+}
+
 /** Gesture/request handlers that map Vidstack transport to room events. */
 export function createTransportRequestHandlers(deps: TransportRequestDeps) {
   const {
@@ -55,11 +124,14 @@ export function createTransportRequestHandlers(deps: TransportRequestDeps) {
       event.preventDefault()
       event.stopPropagation()
     },
-    onMediaPlayRequest: (event: { preventDefault: () => void }) => {
+    onMediaPlayRequest: (
+      detailOrEvent: unknown,
+      maybeEvent?: Preventable,
+    ) => {
       // Room playback owns transport. Never let Vidstack gestures/buttons
       // toggle the element locally — that races with onPause enforce and
       // causes click-pause → brief spinner → resume, then desync.
-      event.preventDefault()
+      preventMediaRequestDefault(detailOrEvent, maybeEvent)
       if (!canControlPlayback) {
         enforceServerPlaybackState()
         return
@@ -74,8 +146,11 @@ export function createTransportRequestHandlers(deps: TransportRequestDeps) {
         send("playback:play", { currentTimeMs: getCurrentTimeMs() })
       }
     },
-    onMediaPauseRequest: (event: { preventDefault: () => void }) => {
-      event.preventDefault()
+    onMediaPauseRequest: (
+      detailOrEvent: unknown,
+      maybeEvent?: Preventable,
+    ) => {
+      preventMediaRequestDefault(detailOrEvent, maybeEvent)
       if (!canControlPlayback) {
         enforceServerPlaybackState()
         return
@@ -96,7 +171,7 @@ export function createTransportRequestHandlers(deps: TransportRequestDeps) {
         enforceServerPlaybackState()
         return
       }
-      const targetSec = Number(detail)
+      const targetSec = coerceSeekTargetSec(detail)
       if (!Number.isFinite(targetSec)) {
         commitLiveEdgeSeek()
         return
@@ -113,7 +188,7 @@ export function createTransportRequestHandlers(deps: TransportRequestDeps) {
         enforceServerPlaybackState()
         return
       }
-      const targetSec = Number(detail)
+      const targetSec = coerceSeekTargetSec(detail)
       if (!Number.isFinite(targetSec)) {
         commitLiveEdgeSeek()
         return

@@ -171,6 +171,47 @@ describe("createTransportRequestHandlers", () => {
     expect(transportIntentRef.current?.paused).toBe(true)
   })
 
+  test("Vidstack (null, event) pause signature still preventDefaults and sends", () => {
+    // Void media-*-request events often arrive as detail=null; the real event
+    // is the second arg. Calling preventDefault on null must not abort the send.
+    const { handlers, sent } = createDeps({
+      paused: false,
+      elementPaused: false,
+    })
+    const preventDefault = mock(() => {})
+    handlers.onMediaPauseRequest(null, { preventDefault })
+    expect(preventDefault).toHaveBeenCalledTimes(1)
+    expect(sent).toEqual([
+      { type: "playback:pause", payload: { currentTimeMs: 12_500 } },
+    ])
+  })
+
+  test("Vidstack (null, event) play signature still preventDefaults and sends", () => {
+    const { handlers, sent } = createDeps({
+      paused: true,
+      elementPaused: true,
+    })
+    const preventDefault = mock(() => {})
+    handlers.onMediaPlayRequest(null, { preventDefault })
+    expect(preventDefault).toHaveBeenCalledTimes(1)
+    expect(sent).toEqual([
+      { type: "playback:play", payload: { currentTimeMs: 12_500 } },
+    ])
+  })
+
+  test("nested nativeEvent still preventDefaults", () => {
+    const { handlers, sent } = createDeps({
+      paused: false,
+      elementPaused: false,
+    })
+    const preventDefault = mock(() => {})
+    handlers.onMediaPauseRequest({ nativeEvent: { preventDefault } })
+    expect(preventDefault).toHaveBeenCalledTimes(1)
+    expect(sent).toEqual([
+      { type: "playback:pause", payload: { currentTimeMs: 12_500 } },
+    ])
+  })
+
   test("pause is skipped when room is paused and the element is paused", () => {
     const { handlers, sent, clearTransportNudge } = createDeps({
       paused: true,
@@ -241,6 +282,10 @@ describe("createTransportRequestHandlers", () => {
     const seek = createDeps()
     seek.handlers.onMediaSeekRequest(3.9)
     expect(seek.commitSeek).toHaveBeenCalledWith(3_900)
+
+    const nested = createDeps()
+    nested.handlers.onMediaSeekRequest({ detail: 12.5 })
+    expect(nested.commitSeek).toHaveBeenCalledWith(12_500)
 
     seek.handlers.onMediaLiveEdgeRequest()
     expect(seek.commitLiveEdgeSeek).toHaveBeenCalledTimes(1)

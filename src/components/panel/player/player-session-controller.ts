@@ -38,7 +38,7 @@ export type PlayerSessionActions = {
   commitSeek: (targetMs: number) => void
   setIsBuffering: (value: boolean) => void
   setPlaybackError: (value: MediaErrorDetail | undefined) => void
-  setMediaDurationMs: (value: number) => void
+  setMediaDurationMs: (value: number | ((prev: number) => number)) => void
   setForceLocalRelaySrc: (value: boolean) => void
   setPlayerRemountNonce: (updater: (n: number) => number) => void
   unmute: () => number
@@ -101,6 +101,8 @@ export type SyncedMediaPlayerViewModel = {
   videoLoop: LoopMode
   roomPaused: boolean
   roomPlaybackRate: number
+  /** Local catch-up overlay; bind as `catchUpRate ?? roomPlaybackRate`. */
+  catchUpRate: number | null
   userId: string
   send: TypedRoomEventSender
   canControlPlayback: boolean

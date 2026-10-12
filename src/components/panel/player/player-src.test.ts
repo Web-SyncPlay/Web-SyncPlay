@@ -4,8 +4,38 @@ import {
   formatMediaErrorDetail,
   mediaErrorCode,
   normalizeHlsMime,
+  playerSrcContentKey,
 } from "./player-src"
 import type { PlaylistItem, PlaylistMediaStream } from "@/contracts/types"
+
+describe("playerSrcContentKey", () => {
+  test("string src is the key", () => {
+    expect(playerSrcContentKey("https://cdn.example/a.mp4")).toBe(
+      "https://cdn.example/a.mp4",
+    )
+    expect(playerSrcContentKey("")).toBe("")
+  })
+
+  test("object src+type is stable across new instances", () => {
+    const a = { src: "https://cdn.example/a.m3u8", type: "application/x-mpegurl" }
+    const b = { src: "https://cdn.example/a.m3u8", type: "application/x-mpegurl" }
+    expect(a).not.toBe(b)
+    expect(playerSrcContentKey(a)).toBe(playerSrcContentKey(b))
+  })
+
+  test("type or url change yields a different key", () => {
+    const base = {
+      src: "https://cdn.example/a.m3u8",
+      type: "application/x-mpegurl",
+    }
+    expect(
+      playerSrcContentKey({ ...base, type: "application/vnd.apple.mpegurl" }),
+    ).not.toBe(playerSrcContentKey(base))
+    expect(
+      playerSrcContentKey({ ...base, src: "https://cdn.example/b.m3u8" }),
+    ).not.toBe(playerSrcContentKey(base))
+  })
+})
 
 describe("normalizeHlsMime", () => {
   test("normalizes apple and generic mpegurl types", () => {

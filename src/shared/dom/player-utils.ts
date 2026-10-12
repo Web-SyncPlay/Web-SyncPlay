@@ -14,21 +14,67 @@ export function readMediaSeekableEndSec(
   }
 }
 
+function queryMediaInRoot(
+  root: ParentNode | null | undefined,
+): HTMLMediaElement | null {
+  if (!root || !("querySelector" in root)) {
+    return null
+  }
+  return root.querySelector("video, audio") as HTMLMediaElement | null
+}
+
+function queryMediaInShadowTree(scope: ParentNode): HTMLMediaElement | null {
+  if (scope instanceof Element && scope.shadowRoot) {
+    const fromShadow = queryMediaInRoot(scope.shadowRoot)
+    if (fromShadow) {
+      return fromShadow
+    }
+  }
+
+  if (typeof scope.querySelectorAll !== "function") {
+    return null
+  }
+  for (const child of Array.from(scope.querySelectorAll("*"))) {
+    if (child instanceof Element && child.shadowRoot) {
+      const nested = queryMediaInRoot(child.shadowRoot)
+      if (nested) {
+        return nested
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * Find the Vidstack-backed `<video>` / `<audio>`.
+ *
+ * When an explicit `root` is passed (including `null` / missing `player.el`),
+ * search only that host + open shadow roots — never fall back to a document-
+ * wide `video,audio` query, which can latch an unrelated element during
+ * remounts. Omit `root` entirely only for legacy document-wide lookups.
+ */
 export function queryPlayerMediaElement(
   root?: ParentNode | null,
 ): HTMLMediaElement | null {
-  const scope = root ?? (typeof document !== "undefined" ? document : null)
-  if (!scope) {
+  const explicitRoot = arguments.length > 0
+  if (explicitRoot && root == null) {
     return null
   }
-  return (
-    (scope.querySelector("video, audio") as HTMLMediaElement | null) ??
-    (typeof document !== "undefined"
-      ? (document.querySelector(
-          "media-player video, media-player audio, [data-media-player] video, [data-media-player] audio, video, audio",
-        ) as HTMLMediaElement | null)
-      : null)
-  )
+
+  if (root) {
+    const direct = queryMediaInRoot(root)
+    if (direct) {
+      return direct
+    }
+    return queryMediaInShadowTree(root)
+  }
+
+  if (typeof document === "undefined") {
+    return null
+  }
+  return document.querySelector(
+    "media-player video, media-player audio, [data-media-player] video, [data-media-player] audio, video, audio",
+  ) as HTMLMediaElement | null
 }
 
 /** Prefer the underlying media element playhead when the wrapper lags. */

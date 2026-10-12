@@ -37,6 +37,44 @@ describe("readPlayerPlayheadSec", () => {
   })
 })
 
+describe("queryPlayerMediaElement", () => {
+  test("finds media inside an open shadow root", async () => {
+    const { queryPlayerMediaElement } = await import("./player-utils")
+    if (typeof document === "undefined") {
+      return
+    }
+    const host = document.createElement("div")
+    const shadow = host.attachShadow({ mode: "open" })
+    const video = document.createElement("video")
+    shadow.appendChild(video)
+    document.body.appendChild(host)
+    try {
+      expect(queryPlayerMediaElement(host)).toBe(video)
+    } finally {
+      host.remove()
+    }
+  })
+
+  test("does not latch document media when an empty host is passed", async () => {
+    const { queryPlayerMediaElement } = await import("./player-utils")
+    if (typeof document === "undefined") {
+      return
+    }
+    const orphan = document.createElement("video")
+    document.body.appendChild(orphan)
+    const emptyHost = document.createElement("div")
+    document.body.appendChild(emptyHost)
+    try {
+      expect(queryPlayerMediaElement(emptyHost)).toBeNull()
+      expect(queryPlayerMediaElement(null)).toBeNull()
+      expect(queryPlayerMediaElement(undefined)).toBeNull()
+    } finally {
+      orphan.remove()
+      emptyHost.remove()
+    }
+  })
+})
+
 describe("readPlayerSeekableEndSec", () => {
   test("uses player store seekableEnd when media is unavailable", () => {
     expect(
