@@ -143,8 +143,13 @@ export function NativePlaylistMetadataProbeHost(props: {
         className="size-px"
         onPlay={() => {
           const player = playerRef.current
-          if (player && !player.paused) {
-            void player.pause()
+          if (!player) return
+          try {
+            if (!player.paused) {
+              void Promise.resolve(player.pause()).catch(() => {})
+            }
+          } catch {
+            // Provider may already be tearing down.
           }
         }}
         onTitleChange={(detail) => {

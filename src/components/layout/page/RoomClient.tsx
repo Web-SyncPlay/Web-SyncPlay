@@ -129,7 +129,12 @@ function RoomClientReady(props: {
               "lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]",
           )}
         >
-          <PlayerPanel {...panelProps} className="min-h-0 w-full" />
+          <PlayerPanel
+            {...panelProps}
+            className="min-h-0 w-full"
+            // Playlist rail already has add controls — avoid a duplicate form.
+            showEmptyAddControls={!(railOpen && railTab === "playlist")}
+          />
           {railOpen ? (
             <SidePanel
               panelProps={panelProps}

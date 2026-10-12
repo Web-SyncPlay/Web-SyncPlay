@@ -108,13 +108,18 @@ jobs:
         env:
           E2E_BASE_URL: http://127.0.0.1:3000
 
+      - name: Browser UI e2e
+        run: bun run test:e2e:ui
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3000
+
       - name: Stop app
         if: always()
         run: |
           if [ -n "${APP_PID:-}" ]; then
             kill "$APP_PID" || true
           fi
-          pkill -f "next start" || true
+          pkill -f "start-standalone|standalone/server.js" || true
 
   # Advisory only: workspace typescript → @typescript/typescript6 (IDE). Does not gate PRs/Docker.
   # CI truth remains `bun run typecheck` (TS7 via @typescript/native) in the Test job above.

@@ -13,7 +13,7 @@
     "dev": "NEXT_TELEMETRY_DISABLED=1 next dev",
     "prebuild": "bun scripts/prepare-static-assets.ts",
     "build": "NEXT_TELEMETRY_DISABLED=1 next build --webpack",
-    "start": "NEXT_TELEMETRY_DISABLED=1 next start",
+    "start": "bun scripts/start-standalone.ts",
     "lint": "eslint",
     "typecheck": "bunx --package @typescript/native tsc -p tsconfig.json --noEmit",
     "test": "bun test",
@@ -24,7 +24,10 @@
     "test:e2e:ws": "bun scripts/e2e-ws-concurrent.ts",
     "test:e2e:password": "bun scripts/e2e-password-join.ts",
     "test:e2e:local-media": "bun scripts/e2e-local-media-relay.ts",
+    "test:e2e:ui": "bun scripts/e2e-ui.ts",
     "test:a11y": "bun scripts/a11y-wcag.ts",
+    "test:e2e:all": "bun run test:a11y && bun run test:e2e && bun run test:e2e:ws && bun run test:e2e:password && bun run test:e2e:local-media && bun run test:e2e:ui",
+    "test:full": "bun run test:unit && bun run test:integration && bun run test:e2e:all",
     "format": "prettier --write ."
   },
   "allowScripts": {

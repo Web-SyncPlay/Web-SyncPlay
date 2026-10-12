@@ -7,7 +7,9 @@ import { getRoomUrl } from "@/client/realtime/control-url"
 import { isClientControlAuthorized } from "@/shared/permissions-utils"
 import { resolveCatalogDurationMs } from "@/shared/playlist-duration"
 import { ControlPanel } from "../../panel/control/ControlPanel"
+import { NativePlaylistMetadataProbeHost } from "../../panel/playlist/NativePlaylistMetadataProbeHost"
 import { bindSeekPreview } from "../../panel/player/playback-control/bind-seek-preview"
+import { useIgnoreProviderDestroyedRejections } from "../../panel/player/hooks/use-ignore-provider-destroyed-rejections"
 import { getPlaybackPermissionsState } from "../../panel/player/playback-control/use-playback-permissions-state"
 import { usePlaybackTimelineController } from "../../panel/player/playback-control/use-playback-timeline-controller"
 import { SidePanel } from "../SidePanel"
@@ -45,6 +47,7 @@ function ControlClientReady(props: {
     panelProps: basePanelProps,
   } = model
 
+  useIgnoreProviderDestroyedRejections()
   const { railTab, setRailTab } = useRoomRail()
   const canControlBySession = isClientControlAuthorized(sessionCapabilities)
   const myRole = roomState.participants[userId]?.role
@@ -82,6 +85,11 @@ function ControlClientReady(props: {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <NativePlaylistMetadataProbeHost
+        playlist={roomState.playlist}
+        userId={userId}
+        send={send}
+      />
       <SiteNavbar
         roomId={roomId}
         paused={roomState.playback.paused}

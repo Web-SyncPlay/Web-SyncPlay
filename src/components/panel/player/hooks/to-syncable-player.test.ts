@@ -159,4 +159,28 @@ describe("toSyncablePlayer transport", () => {
     expect(syncable.paused).toBe(true)
     expect(syncable.currentTime).toBe(12)
   })
+
+  test("paused survives Vidstack provider-destroyed throws", () => {
+    const player = {
+      get paused(): boolean {
+        throw new Error("provider destroyed")
+      },
+      currentTime: 0,
+      duration: 60,
+      playbackRate: 1,
+      el: { querySelector: () => null },
+      pause() {
+        throw new Error("provider destroyed")
+      },
+      play() {
+        throw new Error("provider destroyed")
+      },
+    }
+
+    const syncable = toSyncablePlayer(player as never)
+    expect(syncable.paused).toBe(true)
+    expect(syncable.currentTime).toBe(0)
+    expect(() => syncable.pause()).not.toThrow()
+    expect(() => syncable.play()).not.toThrow()
+  })
 })

@@ -4,6 +4,7 @@ import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import { useEffect, type RefObject } from "react"
 import { useLatestRef } from "@/hooks/use-latest-ref"
+import { readPlayerPausedSafe } from "./to-syncable-player"
 
 /**
  * Emits participant:update ticks when pause/loading/error change, time drifts,
@@ -45,7 +46,7 @@ export function usePlayerPresenceHeartbeat(config: {
     const HEARTBEAT_MS = 2_000
     const TIME_DIRTY_MS = 750
     let lastSent = {
-      paused: Boolean(player.paused),
+      paused: readPlayerPausedSafe(player),
       currentTimeMs: readCurrentTimeMs(),
       loading: isBuffering,
       // Send null (not undefined) so JSON keeps the key and the server can clear.
@@ -55,7 +56,7 @@ export function usePlayerPresenceHeartbeat(config: {
 
     const timer = window.setInterval(() => {
       const next = {
-        paused: Boolean(player.paused),
+        paused: readPlayerPausedSafe(player),
         currentTimeMs: readCurrentTimeMs(),
         loading: isBuffering,
         error: playbackErrorLabel ?? participantStatusErrorRef.current ?? null,

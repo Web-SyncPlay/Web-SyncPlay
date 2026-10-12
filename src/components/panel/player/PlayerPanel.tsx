@@ -7,6 +7,7 @@ import { memo } from "react"
 import { cn } from "@/components/lib/utils"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { RoomPanelProps } from "../../layout/page/types"
+import { useIgnoreProviderDestroyedRejections } from "./hooks/use-ignore-provider-destroyed-rejections"
 import { usePlayerSession } from "./hooks/use-player-session"
 import { bindSeekPreview } from "./playback-control/bind-seek-preview"
 import { NativePlaylistMetadataProbeHost } from "../playlist/NativePlaylistMetadataProbeHost"
@@ -29,6 +30,11 @@ type PlayerPanelShellProps = {
   send: TypedRoomEventSender
   capabilities: RoomPanelProps["capabilities"]
   className?: string
+  /**
+   * When the playlist rail already exposes add controls, hide the duplicate
+   * empty-state add form in the player.
+   */
+  showEmptyAddControls?: boolean
 }
 
 /**
@@ -42,7 +48,8 @@ export function PlayerPanel({
   userId,
   capabilities,
   className,
-}: RoomPanelProps & { className?: string }) {
+  showEmptyAddControls = true,
+}: RoomPanelProps & { className?: string; showEmptyAddControls?: boolean }) {
   const slice = selectPlayerShellSlice(roomState, userId)
   return (
     <PlayerPanelShell
@@ -52,6 +59,7 @@ export function PlayerPanel({
       send={send}
       capabilities={capabilities}
       className={className}
+      showEmptyAddControls={showEmptyAddControls}
     />
   )
 }
@@ -64,7 +72,9 @@ const PlayerPanelShell = memo(
     userId,
     capabilities,
     className,
+    showEmptyAddControls = true,
   }: PlayerPanelShellProps) {
+    useIgnoreProviderDestroyedRejections()
     const session = usePlayerSession({
       slice,
       userId,
@@ -125,6 +135,8 @@ const PlayerPanelShell = memo(
             canControlPlayback={canControlPlayback}
             roomId={roomId}
             userId={userId}
+            showAddControls={showEmptyAddControls}
+            waitingForMedia={slice.playlist.length > 0}
           />
         )}
         {isOtherUserSeeking && (
@@ -167,5 +179,6 @@ const PlayerPanelShell = memo(
     prev.send === next.send &&
     prev.capabilities === next.capabilities &&
     prev.className === next.className &&
+    prev.showEmptyAddControls === next.showEmptyAddControls &&
     playerShellSlicesEqual(prev.slice, next.slice),
 )

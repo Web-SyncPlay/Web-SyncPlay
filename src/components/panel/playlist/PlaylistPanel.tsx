@@ -16,7 +16,6 @@ import { isSortable } from "@dnd-kit/react/sortable"
 import { Loader2 } from "lucide-react"
 import { memo } from "react"
 import type { RoomPanelProps } from "../../layout/page/types"
-import { NativePlaylistMetadataProbeHost } from "./NativePlaylistMetadataProbeHost"
 import { PlaylistAddMediaControls } from "./PlaylistAddMediaControls"
 import { PlaylistItemRow } from "./PlaylistItemRow"
 import {
@@ -108,11 +107,6 @@ const PlaylistPanelShell = memo(
 
     return (
       <>
-        <NativePlaylistMetadataProbeHost
-          playlist={playlist}
-          userId={userId}
-          send={send}
-        />
         <CardHeader className="shrink-0 gap-3">
           {!hideTitle ? <CardTitle>Playlist</CardTitle> : null}
           {canManagePlaylist ? (

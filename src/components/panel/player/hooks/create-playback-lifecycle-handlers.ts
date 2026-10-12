@@ -3,6 +3,7 @@ import {
 } from "@/client/player/pending-sync"
 import { SEEK_ACK_MATCH_THRESHOLD_MS } from "../playback-control/use-playback-timeline-controller"
 import type { SyncedMediaPlayerHandlerDeps } from "./synced-media-player-handler-types"
+import { readPlayerPausedSafe } from "./to-syncable-player"
 import { isTransportIntentInFlight } from "./transport-intent"
 
 type PlaybackLifecycleDeps = Pick<
@@ -131,7 +132,7 @@ export function createPlaybackLifecycleHandlers(deps: PlaybackLifecycleDeps) {
           SEEK_ACK_MATCH_THRESHOLD_MS
           ? {
               ...pending,
-              paused: Boolean(player.paused),
+              paused: readPlayerPausedSafe(player),
               timelineAnchorMs: awaitingSeekTargetMs,
               serverNowMs: Date.now(),
             }

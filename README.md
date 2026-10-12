@@ -59,9 +59,12 @@ Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
 | `bun run test:unit`                                                                             | Unit tests (no live app; prefer this locally)               |
 | `bun run test:integration`                                                                      | Needs Valkey / `VALKEY_URL`                                 |
 | `bun run test`                                                                                  | Full `bun test` suite (includes integration → needs Valkey) |
-| `bun run test:a11y` / `test:e2e` / `test:e2e:ws` / `test:e2e:password` / `test:e2e:local-media` | Need a healthy app (`bun run start` or `dev`)               |
+| `bun run test:a11y` / `test:e2e` / `test:e2e:ws` / `test:e2e:password` / `test:e2e:local-media` / `test:e2e:ui` | Need a healthy app (`bun run start` or `dev`) |
+| `bun run test:e2e:all`                                                                          | All a11y + e2e scripts (needs healthy app)                  |
+| `bun run test:full`                                                                             | Unit + integration + `test:e2e:all` (Valkey + healthy app)  |
 | `bun run test:fuzz`                                                                             | Optional Valkey property suite (not in CI)                  |
 | `bun run check:local-media-sw`                                                                  | Verify committed SW artifact matches source                 |
+| `bun run start`                                                                                 | Production standalone runner (`node .next/standalone/…`)    |
 
 Local Bun may skip the mediasoup native worker; the Docker image runs the in-process SFU.
 
