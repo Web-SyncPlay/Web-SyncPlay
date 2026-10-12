@@ -122,51 +122,23 @@ export function usePlayerMediaSource(config: {
       : null
   })()
 
-  // Depend on primitives that affect buildPlayerSrc (not whole item/stream
-  // object identity). Retain the previous PlayerSrcInput when the content key
-  // is unchanged so Vidstack does not see a fresh `{ src, type }` each tick.
-  const streamKind = activeStream?.kind
-  const streamType = activeStream?.type
-  const streamProtocol = activeStream?.protocol
-  const defaultStreamId = current?.defaultStreamId
-  const catalogDefaultType = current?.mediaStreams?.find(
-    (s) => s.id === current.defaultStreamId,
-  )?.type
-  const catalogIsDefaultType = current?.mediaStreams?.find(
-    (s) => s.isDefault,
-  )?.type
-  const catalogFirstType = current?.mediaStreams?.[0]?.type
-
-  const playerSrcPrevRef = useRef<PlayerSrcInput>("")
-  const currentRef = useRef(current)
-  const activeStreamRef = useRef(activeStream)
-  currentRef.current = current
-  activeStreamRef.current = activeStream
-
-  const playerSrc: PlayerSrcInput = useMemo(() => {
-    const next = buildPlayerSrc(
-      activePlaybackSrc,
-      currentRef.current,
-      activeStreamRef.current,
-      localMimeHint ?? activeStreamRef.current?.type,
-    )
-    const prev = playerSrcPrevRef.current
-    if (playerSrcContentKey(next) === playerSrcContentKey(prev)) {
-      return prev
-    }
-    playerSrcPrevRef.current = next
-    return next
-  }, [
+  // Build every render (cheap), then memoize by content key so Vidstack keeps
+  // the same `{ src, type }` identity across playlist/room object churn.
+  // Do not read/write refs during render — react-hooks/refs forbids that.
+  const builtPlayerSrc = buildPlayerSrc(
     activePlaybackSrc,
-    catalogDefaultType,
-    catalogFirstType,
-    catalogIsDefaultType,
-    defaultStreamId,
-    localMimeHint,
-    streamKind,
-    streamProtocol,
-    streamType,
-  ])
+    current,
+    activeStream,
+    localMimeHint ?? activeStream?.type,
+  )
+  const playerSrcKey = playerSrcContentKey(builtPlayerSrc)
+  const playerSrc: PlayerSrcInput = useMemo(
+    () => builtPlayerSrc,
+    // Identity is gated on URL+MIME only; `builtPlayerSrc` is captured when
+    // the key changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- content-key identity
+    [playerSrcKey],
+  )
 
   const playbackUrlForOrigin =
     typeof playerSrc === "string" ? playerSrc : playerSrc.src

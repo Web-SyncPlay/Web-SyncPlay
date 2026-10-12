@@ -254,8 +254,10 @@ export function createPlaybackSyncEngine(
     })
 
   /** Seek-confirm probe: native iframes always; HTML5 only while playing. */
-  const useSeekConfirm = (syncState: EngineSyncState, nativeMode: boolean) =>
-    nativeMode || !syncState.paused
+  const shouldSeekConfirm = (
+    syncState: EngineSyncState,
+    nativeMode: boolean,
+  ) => nativeMode || !syncState.paused
 
   const clearCatchUpRate = (player?: SyncablePlayer | null) => {
     if (host.getCatchUpRate() === null) {
@@ -561,7 +563,7 @@ export function createPlaybackSyncEngine(
       // wait for motion confirmation. Verify/watchdog still force-seeks when
       // drift grows past the threshold during rebuffer.
       if (
-        useSeekConfirm(syncState, nativeMode) &&
+        shouldSeekConfirm(syncState, nativeMode) &&
         native.hasSeekProbe() &&
         driftThresholdSec === undefined &&
         effectiveThresholdSec === 0 &&
@@ -623,7 +625,7 @@ export function createPlaybackSyncEngine(
 
       let seekConfirmPending = false
       const targetSec = result.targetSec
-      const seekConfirm = useSeekConfirm(syncState, nativeMode)
+      const seekConfirm = shouldSeekConfirm(syncState, nativeMode)
       if (result.seekAttempted) {
         // Force-seek / stall-escalate / late-join snap: arm post-seek grace
         // so catch-up stall cannot immediately re-seek into sticky lag.
@@ -953,7 +955,7 @@ export function createPlaybackSyncEngine(
     const pauseUnconverged = reconcilePausedTransport(player)
     const playUnconverged = reconcilePlayingTransport(player)
     const seekConfirmHold =
-      useSeekConfirm(syncState, nativeMode) &&
+      shouldSeekConfirm(syncState, nativeMode) &&
       seekConfirmShouldHold(player, syncState, driftSec)
     return {
       driftSec,

@@ -1039,7 +1039,7 @@ describe("PlaybackSyncEngine", () => {
 
     test("playing path does not escalate with muted play", () => {
       const { scheduler } = createFakeScheduler(1_000)
-      let mediaTime = 5
+      const mediaTime = 5
       let playCalls = 0
       const mediaEl = {
         muted: false,
