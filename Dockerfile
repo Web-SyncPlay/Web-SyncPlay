@@ -9,9 +9,13 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY package.json bun.lock ./
 # Skip mediasoup postinstall here: Alpine cannot run the glibc worker binary.
 # The mediasoup stage installs against Node/bookworm instead.
-RUN bun install --frozen-lockfile --ignore-scripts
+# Hoisted linker keeps a Node-resolvable node_modules tree for Next standalone NFT
+# (Bun's default isolated layout can omit runtime externals like ws).
+RUN bun install --frozen-lockfile --ignore-scripts --linker=hoisted
 COPY . .
-RUN SKIP_ENV_VALIDATION=true bun run build
+RUN SKIP_ENV_VALIDATION=true bun run build \
+    && mkdir -p /opt/runtime-deps \
+    && cp -aL node_modules/ws /opt/runtime-deps/ws
 
 # Install mediasoup on glibc Node. Prefer official prebuilt workers (no compilers).
 # Use a committed lockfile so npm ci pins by integrity hash (OpenSSF Scorecard).
@@ -100,6 +104,11 @@ RUN mkdir -p .next && chown node:node .next
 
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+
+# ws is a serverExternalPackage (webpack leaves import("ws")). Bun + Next NFT can
+# omit it from standalone; copy a dereferenced tree so /api/ws resolves at runtime.
+COPY --from=builder --chown=node:node /opt/runtime-deps/ws ./node_modules/ws
+RUN test -f node_modules/ws/package.json && node -e "require('ws')"
 
 # Merge glibc mediasoup (+ its deps) into the standalone node_modules tree.
 COPY --from=mediasoup --chown=node:node /opt/mediasoup/node_modules/. ./node_modules/
