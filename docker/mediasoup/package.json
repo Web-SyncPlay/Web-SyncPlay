@@ -2,6 +2,6 @@
   "name": "web-syncplay-mediasoup-stage",
   "private": true,
   "dependencies": {
-    "mediasoup": "3.28.0"
+    "mediasoup": "3.29.0"
   }
 }

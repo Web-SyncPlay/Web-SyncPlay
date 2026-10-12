@@ -2,7 +2,7 @@
 
 # Build with Bun; run with Node so mediasoup's native worker can spawn reliably.
 # Pin base images by digest for supply-chain integrity (OpenSSF Scorecard).
-FROM oven/bun:1.4.2-alpine@sha256:d888c0ae6c86d7866ff10c5aafdd9077b36aee6455b33dd270fb93c0dd5cef6f AS builder
+FROM oven/bun:1.4.3-alpine@sha256:629e17411f1f129dbec3af78d5af9c9f2a937435c80349437206c6b0b7422373 AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 
@@ -15,7 +15,7 @@ RUN SKIP_ENV_VALIDATION=true bun run build
 
 # Install mediasoup on glibc Node. Prefer official prebuilt workers (no compilers).
 # Use a committed lockfile so npm ci pins by integrity hash (OpenSSF Scorecard).
-FROM node:26-bookworm-slim@sha256:3ffc19ea878019d9e9ae8971732ad4a03cda44f167107173174b60ed7c65bed3 AS mediasoup
+FROM node:26-bookworm-slim@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567 AS mediasoup
 WORKDIR /opt/mediasoup
 
 # mediasoup version must stay in sync with bun.lock / package.json and
@@ -51,7 +51,7 @@ RUN apt-get update \
     && rm -f /opt/mediasoup/.npmrc \
     && rm -rf /root/.npm /tmp/*
 
-FROM node:26-bookworm-slim@sha256:3ffc19ea878019d9e9ae8971732ad4a03cda44f167107173174b60ed7c65bed3 AS runner
+FROM node:26-bookworm-slim@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567 AS runner
 WORKDIR /app
 
 ARG TARGETARCH
