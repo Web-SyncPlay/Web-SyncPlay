@@ -12,6 +12,9 @@ const config: NextConfig = {
   reactCompiler: true,
   // Native C++ worker — keep out of the webpack/turbopack bundle.
   serverExternalPackages: ["mediasoup"],
+  // Production builds use `next build --webpack` (see package.json): Turbopack
+  // fails on @ffmpeg/ffmpeg's `new Worker(new URL(dynamic, import.meta.url))`
+  // used by local-media ABR packaging.
   experimental: {
     turbopackFileSystemCacheForDev: true,
   },

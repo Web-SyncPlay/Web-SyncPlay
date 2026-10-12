@@ -12,7 +12,7 @@
     "check:local-media-sw": "bun scripts/build-local-media-sw.ts --verify",
     "dev": "NEXT_TELEMETRY_DISABLED=1 next dev",
     "prebuild": "bun scripts/prepare-static-assets.ts",
-    "build": "NEXT_TELEMETRY_DISABLED=1 next build",
+    "build": "NEXT_TELEMETRY_DISABLED=1 next build --webpack",
     "start": "NEXT_TELEMETRY_DISABLED=1 next start",
     "lint": "eslint",
     "typecheck": "bunx --package @typescript/native tsc -p tsconfig.json --noEmit",
