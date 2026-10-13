@@ -64,7 +64,11 @@ export type SyncedMediaPlayerHandlerDeps = {
   setPlaybackUnlocked: (value: boolean) => void
   /** Transient suppress of Vidstack buffering chrome after play/canplay. */
   setSuppressBufferingUi: (value: boolean) => void
-  setPlaybackError: (value: MediaErrorDetail | undefined) => void
+  setPlaybackError: (
+    value: MediaErrorDetail | undefined,
+    /** Item that produced the error; omit when clearing. */
+    forItemId?: string | null,
+  ) => void
   setMediaDurationMs: (value: number | ((prev: number) => number)) => void
   setForceLocalRelaySrc: (value: boolean) => void
   setPlayerRemountNonce: (updater: (n: number) => number) => void

@@ -5,6 +5,7 @@ export type YtDlpFailureClassification =
   | "network"
   | "timeout"
   | "binary_missing"
+  | "unsupported"
   | "unknown"
 
 const NOT_LIVE_PATTERNS = [
@@ -38,6 +39,16 @@ const NETWORK_PATTERNS = [
   /HTTP Error 403/i,
 ]
 
+const UNSUPPORTED_PATTERNS = [
+  /Unsupported URL/i,
+  /No suitable extractor/i,
+  /Unsupported URL scheme/i,
+]
+
+/** Shared copy for sites yt-dlp cannot extract (landing check + room ingest). */
+export const UNSUPPORTED_MEDIA_URL_MESSAGE =
+  "This site isn’t supported for extraction. Use a direct media link (mp4/m3u8) or a supported host such as YouTube or Vimeo."
+
 export function classifyYtDlpStderr(stderr: string): {
   classification: YtDlpFailureClassification
   userMessage: string
@@ -67,6 +78,12 @@ export function classifyYtDlpStderr(stderr: string): {
     return {
       classification: "login_required",
       userMessage: "This content may require login or permissions.",
+    }
+  }
+  if (UNSUPPORTED_PATTERNS.some((re) => re.test(text))) {
+    return {
+      classification: "unsupported",
+      userMessage: UNSUPPORTED_MEDIA_URL_MESSAGE,
     }
   }
   if (NETWORK_PATTERNS.some((re) => re.test(text))) {

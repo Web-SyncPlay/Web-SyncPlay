@@ -114,16 +114,27 @@ describe("playlist-ops", () => {
 
   test("applyPlaylistItemError advances and can clear", () => {
     const state = createRoomState({ currentIndex: 0 })
+    state.playback.paused = false
     const errored = applyPlaylistItemError(state, "item-a", "decode failed")
     expect(errored?.cleared).toBe(false)
     expect(state.playlist[0]?.ingestStatus).toBe("error")
     expect(state.currentIndex).toBe(1)
-    expect(state.playback.paused).toBe(true)
+    // Keep play intent so the next item can autoplay.
+    expect(state.playback.paused).toBe(false)
 
     const cleared = applyPlaylistItemError(state, "item-a", null)
     expect(cleared?.cleared).toBe(true)
     expect(state.playlist[0]?.ingestStatus).toBe("ready")
     expect(state.playlist[0]?.ingestError).toBeUndefined()
+  })
+
+  test("applyPlaylistItemError ignores duplicate reports without re-advancing", () => {
+    const state = createRoomState({ currentIndex: 0 })
+    applyPlaylistItemError(state, "item-a", "decode failed")
+    expect(state.currentIndex).toBe(1)
+    applyPlaylistItemError(state, "item-a", "decode failed again")
+    expect(state.currentIndex).toBe(1)
+    expect(state.playlist[0]?.ingestError).toBe("decode failed")
   })
 
   test("canRetryRemotePlaylistItem gates local and blocked items", () => {

@@ -10,6 +10,7 @@ import type { RoomPanelProps } from "../../layout/page/types"
 import { NativePlaylistMetadataProbeHost } from "../playlist/NativePlaylistMetadataProbeHost"
 import { PlayerEmptyState } from "./PlayerEmptyState"
 import { PlayerErrorRecoveryOverlay } from "./PlayerErrorRecoveryOverlay"
+import { PlayerIngestStatusView } from "./PlayerIngestStatusView"
 import { PlayerPanelGlobalStyles } from "./PlayerPanelGlobalStyles"
 import { RemoteSeekOverlay } from "./RemoteSeekOverlay"
 import { SyncedMediaPlayer } from "./SyncedMediaPlayer"
@@ -103,6 +104,12 @@ const PlayerPanelShell = memo(
       timeline,
     } = session
 
+    const currentItem = slice.currentItem
+    const ingestPending =
+      currentItem &&
+      (currentItem.ingestStatus === "resolving" ||
+        currentItem.ingestStatus === "error")
+
     return (
       <div
         className={cn(
@@ -125,6 +132,17 @@ const PlayerPanelShell = memo(
         )}
         {activePlaybackSrc ? (
           <SyncedMediaPlayer controller={controller} viewModel={viewModel} />
+        ) : ingestPending && currentItem ? (
+          <PlayerIngestStatusView
+            item={currentItem}
+            canControlPlayback={canControlPlayback}
+            onRetry={
+              canControlPlayback
+                ? () =>
+                    send("playlist:retry", { itemId: currentItem.id })
+                : undefined
+            }
+          />
         ) : (
           <PlayerEmptyState
             send={send}

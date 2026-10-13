@@ -108,7 +108,8 @@ export function applyPlaylistRemove(
 
 /**
  * Client-reported ingest error / clear. When reporting an error on the current
- * item and more remain, advances to the next index and pauses.
+ * item and more remain, advances to the next index while keeping play/pause
+ * intent so a working neighbor can autoplay without a manual play press.
  */
 export function applyPlaylistItemError(
   state: RoomState,
@@ -129,6 +130,11 @@ export function applyPlaylistItemError(
     return { item, cleared: true }
   }
 
+  // Already failed — do not re-advance / reset the timeline on duplicate reports.
+  if (item.ingestStatus === "error" && item.ingestError) {
+    return { item, cleared: false }
+  }
+
   item.ingestStatus = "error"
   item.ingestError = error
 
@@ -136,7 +142,7 @@ export function applyPlaylistItemError(
     const nextIndex = Math.min(state.playlist.length - 1, index + 1)
     if (nextIndex !== index) {
       state.currentIndex = nextIndex
-      resetPlaybackTimeline(state, Date.now(), { pause: true })
+      resetPlaybackTimeline(state)
     }
   }
 

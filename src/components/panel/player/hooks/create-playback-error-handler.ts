@@ -73,7 +73,7 @@ export function createPlaybackErrorHandler(deps: PlaybackErrorDeps) {
         return
       }
 
-      setPlaybackError(detail)
+      const erroredItemId = current?.id ?? null
 
       const usesProxyPath =
         activePlaybackSrc.includes("/api/media/proxy/") ||
@@ -107,6 +107,29 @@ export function createPlaybackErrorHandler(deps: PlaybackErrorDeps) {
         return localMediaErrorMessage("relay_failed")
       })()
 
+      const remoteUrlUserMessage = (() => {
+        if (current?.sourceKind !== "remote_url") return null
+        if (current.ingestError?.trim()) {
+          return current.ingestError.trim()
+        }
+        // MEDIA_ERR_SRC_NOT_SUPPORTED / failed resource — often a page URL
+        // or non-stream host that slipped past resolve.
+        if (errorCode === 4) {
+          const playingSourcePage =
+            Boolean(activePlaybackSrc) &&
+            Boolean(current.sourceUrl) &&
+            activePlaybackSrc === current.sourceUrl
+          if (playingSourcePage) {
+            return "This URL is a web page, not a playable media stream. Use a direct media link or a supported host."
+          }
+          return "Could not load this media. The stream may be missing, blocked, or in an unsupported format."
+        }
+        return null
+      })()
+
+      const userMessage =
+        localFileUserMessage ?? remoteUrlUserMessage ?? message
+
       if (
         current &&
         canControlPlayback &&
@@ -124,14 +147,22 @@ export function createPlaybackErrorHandler(deps: PlaybackErrorDeps) {
         return
       }
 
+      // Prefer the user-facing copy on the recovery overlay (not raw MediaError 4).
+      setPlaybackError(
+        userMessage === message
+          ? detail
+          : ({ ...(detail as object), message: userMessage } as MediaErrorDetail),
+        erroredItemId,
+      )
+
       if (
         current &&
         canControlPlayback &&
         current.ingestStatus !== "resolving" &&
+        current.ingestStatus !== "error" &&
         reportedItemErrorRef.current !== current.id
       ) {
         reportedItemErrorRef.current = current.id
-        const userMessage = localFileUserMessage ?? message
         toast.error(userMessage)
         send("playlist:item:error", {
           itemId: current.id,
@@ -141,7 +172,7 @@ export function createPlaybackErrorHandler(deps: PlaybackErrorDeps) {
       console.error("[player] playback error", {
         detail,
         message,
-        userMessage: localFileUserMessage ?? message,
+        userMessage,
         sourceKind: current?.sourceKind,
         source: activePlaybackSrc,
         playerSrc,

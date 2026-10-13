@@ -91,15 +91,54 @@ describe("createPlaybackErrorHandler", () => {
     toastError.mockClear()
   })
 
-  test("clears buffering markers then records the error", () => {
-    const deps = createDeps()
-    const detail = { code: 4, message: "decode failed" } as never
+  test("clears buffering markers then records a user-facing error", () => {
+    const deps = createDeps({
+      activePlaybackSrc: "https://example.com/a.mp4",
+      current: {
+        id: "item-1",
+        name: "Remote",
+        sourceKind: "remote_url",
+        playbackMode: "direct",
+        sourceUrl: "https://example.com/page",
+        playableUrl: "https://example.com/a.mp4",
+        createdBy: "owner",
+        createdAt: 1,
+      },
+    })
+    const detail = { code: 4, message: "Failed to load resource." } as never
     deps.onError(detail)
 
     expect(deps.setIsBuffering).toHaveBeenCalledWith(false)
     expect(deps.bufferingSinceRef.current).toBeNull()
     expect(deps.participantStatusErrorRef.current).toBeNull()
-    expect(deps.setPlaybackError).toHaveBeenCalledWith(detail)
+    expect(deps.setPlaybackError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("Could not load this media"),
+      }),
+      "item-1",
+    )
+  })
+
+  test("maps MediaError 4 on the raw page URL to a clear message", () => {
+    const page =
+      "https://www.lookmovie2.to/movies/play/18259538-avatar-aang-the-last-airbender-2026"
+    const deps = createDeps({
+      activePlaybackSrc: page,
+      current: {
+        id: "item-lm",
+        name: page,
+        sourceKind: "remote_url",
+        playbackMode: "direct",
+        sourceUrl: page,
+        playableUrl: page,
+        createdBy: "owner",
+        createdAt: 1,
+      },
+    })
+    deps.onError({ code: 4, message: "Failed to load resource." } as never)
+    expect(toastError).toHaveBeenCalledWith(
+      expect.stringContaining("web page, not a playable media stream"),
+    )
   })
 
   test("host local blob failure falls back to relay once", () => {

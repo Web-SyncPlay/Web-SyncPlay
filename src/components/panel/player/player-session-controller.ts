@@ -36,7 +36,10 @@ export type PlayerSessionActions = {
   setIsBuffering: (value: boolean) => void
   setPlaybackUnlocked: (value: boolean) => void
   setSuppressBufferingUi: (value: boolean) => void
-  setPlaybackError: (value: MediaErrorDetail | undefined) => void
+  setPlaybackError: (
+    value: MediaErrorDetail | undefined,
+    forItemId?: string | null,
+  ) => void
   setMediaDurationMs: (value: number | ((prev: number) => number)) => void
   setForceLocalRelaySrc: (value: boolean) => void
   setPlayerRemountNonce: (updater: (n: number) => number) => void
@@ -195,7 +198,8 @@ export function createPlayerSessionController(
       actionsRef.current.setPlaybackUnlocked(value),
     setSuppressBufferingUi: (value) =>
       actionsRef.current.setSuppressBufferingUi(value),
-    setPlaybackError: (value) => actionsRef.current.setPlaybackError(value),
+    setPlaybackError: (value, forItemId) =>
+      actionsRef.current.setPlaybackError(value, forItemId),
     setMediaDurationMs: (value) => actionsRef.current.setMediaDurationMs(value),
     setForceLocalRelaySrc: (value) =>
       actionsRef.current.setForceLocalRelaySrc(value),

@@ -31,6 +31,14 @@ test("classifies network / 403", () => {
   expect(result.classification).toBe("network")
 })
 
+test("classifies unsupported site URLs", () => {
+  const result = classifyYtDlpStderr(
+    "ERROR: Unsupported URL: https://www.lookmovie2.to/movies/play/18259538-avatar",
+  )
+  expect(result.classification).toBe("unsupported")
+  expect(result.userMessage).toContain("isn’t supported for extraction")
+})
+
 test("unknown stderr falls back to first-line snippet", () => {
   const result = classifyYtDlpStderr(
     "ERROR: mysterious extractor failure\nmore detail",

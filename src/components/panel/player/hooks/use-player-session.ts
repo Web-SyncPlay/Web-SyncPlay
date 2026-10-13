@@ -8,6 +8,7 @@ import {
 } from "@/shared/playlist-duration"
 import type { MediaErrorDetail } from "@vidstack/react"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { toast } from "sonner"
 import type { RoomPanelProps } from "../../../layout/page/types"
 import { usePlaybackTimelineController } from "../playback-control/use-playback-timeline-controller"
 import type { PlayerShellSlice } from "../player-room-selectors"
@@ -103,12 +104,34 @@ export function usePlayerSession({
   const [playbackError, setPlaybackError] = useState<
     MediaErrorDetail | undefined
   >(undefined)
+  /** Only show the recovery overlay while still on the item that failed. */
+  const [playbackErrorItemId, setPlaybackErrorItemId] = useState<
+    string | null
+  >(null)
   const [playerRemountNonce, setPlayerRemountNonce] = useState(0)
+
+  const setPlaybackErrorBound = (
+    value: MediaErrorDetail | undefined,
+    forItemId?: string | null,
+  ) => {
+    setPlaybackError(value)
+    // Prefer the reporting item id so a late error from a previous item
+    // cannot attach to the newly selected media.
+    setPlaybackErrorItemId(
+      value ? (forItemId ?? currentItemId ?? null) : null,
+    )
+  }
 
   useEffect(() => {
     // Session bag holds mutable refs; clearing on item change is intentional.
     // eslint-disable-next-line react-hooks/immutability -- ref.current write
     controller.reportedDurationItemIdRef.current = null
+    // eslint-disable-next-line react-hooks/immutability -- ref.current write
+    controller.reportedItemErrorRef.current = null
+    // Drop sticky MediaError UI immediately so the next item can unlock/play
+    // without the recovery overlay stealing the first paint.
+    setPlaybackError(undefined)
+    setPlaybackErrorItemId(null)
     queueMicrotask(() => {
       setMediaDurationMs(0)
       // Hold play until the new item's canplay force-snap finishes.
@@ -117,10 +140,42 @@ export function usePlayerSession({
     })
   }, [controller, currentItemId])
 
-  const playbackErrorLabel = useMemo(
-    () => (playbackError ? formatMediaErrorDetail(playbackError) : undefined),
-    [playbackError],
-  )
+  const toastedIngestErrorItemIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!current || current.ingestStatus !== "error") {
+      if (
+        current?.ingestStatus === "ready" ||
+        current?.ingestStatus === "resolving"
+      ) {
+        toastedIngestErrorItemIdRef.current = null
+      }
+      return
+    }
+    const message = current.ingestError?.trim()
+    if (!message || toastedIngestErrorItemIdRef.current === current.id) {
+      return
+    }
+    toastedIngestErrorItemIdRef.current = current.id
+    toast.error(message)
+  }, [current])
+
+  const playbackErrorLabel = useMemo(() => {
+    if (!playbackError || !playbackErrorItemId) return undefined
+    if (playbackErrorItemId !== currentItemId) return undefined
+    // Ingest chrome owns unresolved/failed items — don't stack recovery controls.
+    if (
+      current?.ingestStatus === "resolving" ||
+      current?.ingestStatus === "error"
+    ) {
+      return undefined
+    }
+    return formatMediaErrorDetail(playbackError)
+  }, [
+    playbackError,
+    playbackErrorItemId,
+    currentItemId,
+    current?.ingestStatus,
+  ])
 
   const media = usePlayerMediaPipeline({
     current,
@@ -140,7 +195,8 @@ export function usePlayerSession({
     catalogDurationMs,
   })
 
-  const canControlPlayback = canControlByRole && capabilities.canControlPlayback
+  const canControlPlayback =
+    canControlByRole && capabilities.canControlPlayback
 
   const chrome = usePlayerChromeUi({
     controller,
@@ -218,7 +274,7 @@ export function usePlayerSession({
     setIsBuffering,
     setPlaybackUnlocked,
     setSuppressBufferingUi,
-    setPlaybackError,
+    setPlaybackError: setPlaybackErrorBound,
     setMediaDurationMs,
     setForceLocalRelaySrc: media.setForceLocalRelaySrc,
     setPlayerRemountNonce,

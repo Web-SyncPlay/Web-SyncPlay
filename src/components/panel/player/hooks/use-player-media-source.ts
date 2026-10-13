@@ -7,14 +7,21 @@ import {
 import { localMediaIdFromSrc } from "@/client/local-media/local-media-resolve"
 import { withLocalMediaViewerToken } from "@/client/local-media/local-media-viewer-token"
 import { inferMediaViewType } from "@/client/player/playback-sync"
-import type { PlaylistItem, ViewerMediaItemPreference } from "@/contracts/types"
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
+import type { PlaylistItem, ViewerMediaItemPreference } from "@/contracts/types"
+import type { IngestStatus } from "@/contracts/types"
 import {
   buildPlayerSrc,
   isSameOriginPlaybackUrl,
-  playerSrcContentKey,
   type PlayerSrcInput,
 } from "../player-src"
+
+/** True while resolve is in flight or failed — do not load `playableUrl` (page URL). */
+export function shouldDeferPlaybackSrc(
+  ingestStatus: IngestStatus | undefined,
+): boolean {
+  return ingestStatus === "resolving" || ingestStatus === "error"
+}
 
 /**
  * Resolve active stream, playback URL (blob vs relay), MIME hint, and Vidstack src.
@@ -37,7 +44,7 @@ export function usePlayerMediaSource(config: {
       setForceLocalRelaySrc(false)
     })
     localBlobFallbackAttemptedRef.current = null
-  }, [current?.id, localBlobFallbackAttemptedRef])
+  }, [current?.id])
 
   const activeStream = useMemo(() => {
     if (!current) {
@@ -63,8 +70,9 @@ export function usePlayerMediaSource(config: {
       return ""
     }
 
-    // Avoid loading the unresolved page URL (MediaError 4) while yt-dlp runs.
-    if (current.ingestStatus === "resolving") {
+    // Avoid loading the unresolved page URL (MediaError 4) while yt-dlp runs
+    // or after resolve failed (playableUrl still points at the page).
+    if (shouldDeferPlaybackSrc(current.ingestStatus)) {
       return ""
     }
 
@@ -115,31 +123,22 @@ export function usePlayerMediaSource(config: {
       // Prefer mime for whichever File we are playing (parent or ABR child).
       const streamSrc = activeStream?.src ?? ""
       const id = localMediaIdFromSrc(streamSrc) ?? current.localMediaId
-      return (
-        getLocalMediaMimeType(id) ?? getLocalMediaMimeType(current.localMediaId)
-      )
+      return getLocalMediaMimeType(id) ?? getLocalMediaMimeType(current.localMediaId)
     }
     return current.localMediaId
       ? getLocalMediaMimeType(current.localMediaId)
       : null
   })()
 
-  // Build every render (cheap), then memoize by content key so Vidstack keeps
-  // the same `{ src, type }` identity across playlist/room object churn.
-  // Do not read/write refs during render — react-hooks/refs forbids that.
-  const builtPlayerSrc = buildPlayerSrc(
-    activePlaybackSrc,
-    current,
-    activeStream,
-    localMimeHint ?? activeStream?.type,
-  )
-  const playerSrcKey = playerSrcContentKey(builtPlayerSrc)
   const playerSrc: PlayerSrcInput = useMemo(
-    () => builtPlayerSrc,
-    // Identity is gated on URL+MIME only; `builtPlayerSrc` is captured when
-    // the key changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- content-key identity
-    [playerSrcKey],
+    () =>
+      buildPlayerSrc(
+        activePlaybackSrc,
+        current,
+        activeStream,
+        localMimeHint ?? activeStream?.type,
+      ),
+    [activePlaybackSrc, activeStream, current, localMimeHint],
   )
 
   const playbackUrlForOrigin =
