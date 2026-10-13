@@ -79,30 +79,30 @@ export function ControlPanel(props: {
     />
   )
 
+  // < lg: 3-row cluster (prev/next, play, ±10s). lg+: one 5-button row
+  // (prev, play, next, -10s, +10s) sharing the scrubber line.
   const transport = (
-    <>
-      <div className="grid grid-cols-2 gap-2">
-        <Button
-          variant="outline"
-          className={touchButtonClass}
-          disabled={controlsDisabled}
-          aria-label="Previous item"
-          onClick={() => onSelectAdjacent("previous")}
-        >
-          <SkipBack className="size-4" />
-        </Button>
-        <Button
-          variant="outline"
-          className={touchButtonClass}
-          disabled={controlsDisabled}
-          aria-label="Next item"
-          onClick={() => onSelectAdjacent("next")}
-        >
-          <SkipForward className="size-4" />
-        </Button>
-      </div>
+    <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
       <Button
-        className={cn("w-full", touchButtonClass)}
+        variant="outline"
+        className={touchButtonClass}
+        disabled={controlsDisabled}
+        aria-label="Previous item"
+        onClick={() => onSelectAdjacent("previous")}
+      >
+        <SkipBack className="size-4" />
+      </Button>
+      <Button
+        variant="outline"
+        className={cn(touchButtonClass, "lg:order-3")}
+        disabled={controlsDisabled}
+        aria-label="Next item"
+        onClick={() => onSelectAdjacent("next")}
+      >
+        <SkipForward className="size-4" />
+      </Button>
+      <Button
+        className={cn("col-span-2 lg:order-2 lg:col-span-1", touchButtonClass)}
         disabled={controlsDisabled}
         onClick={() => {
           if (paused) {
@@ -114,25 +114,23 @@ export function ControlPanel(props: {
       >
         {paused ? "Play" : "Pause"}
       </Button>
-      <div className="grid grid-cols-2 gap-2">
-        <Button
-          variant="outline"
-          className={touchButtonClass}
-          disabled={controlsDisabled}
-          onClick={() => onStepBy(-10_000)}
-        >
-          -10s
-        </Button>
-        <Button
-          variant="outline"
-          className={touchButtonClass}
-          disabled={controlsDisabled}
-          onClick={() => onStepBy(10_000)}
-        >
-          +10s
-        </Button>
-      </div>
-    </>
+      <Button
+        variant="outline"
+        className={cn(touchButtonClass, "lg:order-4")}
+        disabled={controlsDisabled}
+        onClick={() => onStepBy(-10_000)}
+      >
+        -10s
+      </Button>
+      <Button
+        variant="outline"
+        className={cn(touchButtonClass, "lg:order-5")}
+        disabled={controlsDisabled}
+        onClick={() => onStepBy(10_000)}
+      >
+        +10s
+      </Button>
+    </div>
   )
 
   const controls = (

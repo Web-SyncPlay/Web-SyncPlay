@@ -4,7 +4,7 @@ import { cn } from "@/components/lib/utils"
 import { slider04ClassName } from "@/components/shadcn-space/slider/slider-04-classes"
 import { Slider } from "@/components/ui/slider"
 import { formatClockMs } from "@/shared/time-format"
-import { useState, type ReactNode } from "react"
+import { cloneElement, isValidElement, useState, type ReactNode } from "react"
 
 function getSliderTargetMs(values: number | readonly number[]): number {
   if (Array.isArray(values)) {
@@ -54,10 +54,16 @@ export function SeekScrubber(props: {
   const durationLabel = durationKnown ? formatClockMs(totalDurationMs) : "--:--"
   const clocksLabel = `${formatClockMs(clampedMs)} / ${durationLabel}`
 
-  const clocks = (
-    <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
-      {clocksLabel}
-    </span>
+  const titleRow = (rowClassName: string) => (
+    <div className={cn("flex items-center gap-2", rowClassName)}>
+      <p className="min-w-0 flex-1 truncate text-base font-semibold tracking-tight text-foreground">
+        {currentName ?? "No media selected"}
+      </p>
+      {isValidElement(trailing) ? cloneElement(trailing) : trailing}
+      <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+        {clocksLabel}
+      </span>
+    </div>
   )
 
   const slider = (
@@ -67,7 +73,9 @@ export function SeekScrubber(props: {
       value={value}
       className={cn(
         slider04ClassName,
-        transport ? "h-10 sm:h-full sm:min-h-10" : undefined,
+        transport
+          ? "h-10 sm:h-full sm:min-h-10 lg:h-10 lg:min-h-10 lg:flex-none"
+          : undefined,
       )}
       aria-label="Seek playback position"
       aria-valuetext={
@@ -98,30 +106,34 @@ export function SeekScrubber(props: {
     />
   )
 
+  if (!transport) {
+    return (
+      <div className={cn("w-full", className)}>
+        {titleRow("mb-2")}
+        {slider}
+      </div>
+    )
+  }
+
   return (
     <div className={cn("w-full", className)}>
-      <div className="mb-2 flex items-center gap-2">
-        <p className="min-w-0 flex-1 truncate text-base font-semibold tracking-tight text-foreground">
-          {currentName ?? "No media selected"}
-        </p>
-        {trailing}
-        <span className="hidden sm:inline">{clocks}</span>
-      </div>
+      {/* lg+: title stays above the shared transport + scrubber row */}
+      {titleRow("mb-2 hidden lg:flex")}
 
-      {transport ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-3">
-          <div className="flex w-full shrink-0 flex-col gap-2 sm:w-40">
-            {transport}
-          </div>
-          <div className="flex min-h-0 min-w-0 flex-1 items-stretch">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-3">
+        <div className="w-full shrink-0 sm:w-40 lg:w-max">{transport}</div>
+
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+          {/* sm–lg: title + clocks share the scrubber column */}
+          {titleRow("hidden sm:flex lg:hidden")}
+          <div className="flex min-h-0 min-w-0 flex-1 items-stretch lg:items-center">
             {slider}
           </div>
         </div>
-      ) : (
-        slider
-      )}
+      </div>
 
-      <div className="mt-2 sm:hidden">{clocks}</div>
+      {/* < sm: title + clocks share a truncated bottom row */}
+      {titleRow("mt-2 sm:hidden")}
     </div>
   )
 }
