@@ -84,7 +84,10 @@ export type RoomSnapshotPayload = z.infer<typeof roomSnapshotPayloadSchema>
 export type ClientRoomState = RoomSnapshotPayload
 
 /** Server/persisted room state (may include password hash/salt). */
-export type RoomState = Omit<RoomSnapshotPayload, "roomSecurity"> & {
+export type RoomState = Omit<
+  RoomSnapshotPayload,
+  "roomSecurity" | "serverWallNowMs"
+> & {
   roomSecurity: RoomSecurityState
 }
 

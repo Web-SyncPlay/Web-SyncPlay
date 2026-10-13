@@ -27,9 +27,7 @@ describe("looksLikeJellyfinEmbyPlaybackUrl / isJellyfinEmbyHlsUrl", () => {
     expect(
       looksLikeJellyfinEmbyPlaybackUrl("https://cdn.example/video.m3u8"),
     ).toBe(false)
-    expect(
-      isJellyfinEmbyHlsUrl("https://youtube.com/watch?v=abc"),
-    ).toBe(false)
+    expect(isJellyfinEmbyHlsUrl("https://youtube.com/watch?v=abc")).toBe(false)
   })
 })
 
@@ -57,9 +55,9 @@ describe("isUnsupportedMpegTsProgressiveUrl", () => {
         "https://jf.example/Videos/id/main.m3u8?api_key=k",
       ),
     ).toBe(false)
-    expect(
-      isUnsupportedMpegTsProgressiveUrl("https://cdn.example/a.mp4"),
-    ).toBe(false)
+    expect(isUnsupportedMpegTsProgressiveUrl("https://cdn.example/a.mp4")).toBe(
+      false,
+    )
   })
 })
 

@@ -1,11 +1,19 @@
+import {
+  playlistAddLocalSchema,
+  playlistAddUrlSchema,
+  playlistItemDurationSchema,
+  playlistItemErrorSchema,
+  playlistItemTitleSchema,
+  playlistRemoveSchema,
+  playlistRenameSchema,
+  playlistReorderSchema,
+  playlistRetrySchema,
+  playlistSelectSchema,
+} from "@/contracts/schemas"
 import { env } from "@/env"
-import { isProgressiveMediaMime } from "@/shared/media-mime"
 import { appendActionLog } from "@/server/log"
 import { createLocalMediaEntry } from "@/server/media/local-media-store"
-import {
-  resolvePlaylistItem,
-  reresolveRemotePlaylistItem,
-} from "@/server/realtime/services/playlist-resolve"
+import { canControlFromConnectionContext } from "@/server/realtime/services/permissions"
 import {
   applyPlaylistItemDuration,
   applyPlaylistItemError,
@@ -19,28 +27,20 @@ import {
   canRetryRemotePlaylistItem,
   isPlaylistAtLimit,
 } from "@/server/realtime/services/playlist-ops"
-import { canControlFromConnectionContext } from "@/server/realtime/services/permissions"
-import { consumeRateLimit } from "@/server/security/rate-limit"
 import {
-  playlistAddLocalSchema,
-  playlistAddUrlSchema,
-  playlistItemDurationSchema,
-  playlistItemErrorSchema,
-  playlistItemTitleSchema,
-  playlistRemoveSchema,
-  playlistRenameSchema,
-  playlistReorderSchema,
-  playlistRetrySchema,
-  playlistSelectSchema,
-} from "@/contracts/schemas"
+  reresolveRemotePlaylistItem,
+  resolvePlaylistItem,
+} from "@/server/realtime/services/playlist-resolve"
+import { consumeRateLimit } from "@/server/security/rate-limit"
+import { isProgressiveMediaMime } from "@/shared/media-mime"
 import { randomUUID } from "node:crypto"
 import {
   connectionAuthFromContext,
   mutateControlledRoomMessage,
 } from "./mutate-controlled"
 import { mutateRoomMessage } from "./mutate-room"
-import { parseOrNack } from "./parse-or-nack"
 import { sendMutationNack } from "./mutation-nack"
+import { parseOrNack } from "./parse-or-nack"
 import type { RoomMessageContext, RoomMessageHandler } from "./types"
 
 const RESOLVE_RATE_LIMIT = { limit: 10, windowMs: 60_000 } as const
@@ -238,11 +238,7 @@ export const handlePlaylistItemError: RoomMessageHandler = async (
     ctx,
     data,
     (state, participant) => {
-      const result = applyPlaylistItemError(
-        state,
-        parsed.itemId,
-        parsed.error,
-      )
+      const result = applyPlaylistItemError(state, parsed.itemId, parsed.error)
       if (!result) return false
       if (result.cleared) return true
 

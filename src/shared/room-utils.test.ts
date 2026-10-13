@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import {
-  isPlayerEmbedPath,
-  isRoomEmbedPath,
-  parseRoomId,
-} from "./room-utils"
+import { isPlayerEmbedPath, isRoomEmbedPath, parseRoomId } from "./room-utils"
 
 describe("parseRoomId", () => {
   test("accepts bare ids, paths, and URLs", () => {

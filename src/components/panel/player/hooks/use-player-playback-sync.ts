@@ -1,37 +1,29 @@
 "use client"
 
-import { localMediaErrorMessage } from "@/shared/local-media/local-media-errors"
-import type { TypedRoomEventSender } from "@/contracts/room-events"
-import {
-  queryPlayerMediaElement,
-  readMediaSeekableEndSec,
-} from "@/shared/dom/player-utils"
-import { isNativeProviderUrl, resolveLiveEdgeSec } from "@/shared/player-utils"
-import type { MediaPlayerInstance } from "@vidstack/react"
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  type RefObject,
-} from "react"
-import { toast } from "sonner"
-import { useLatestRef } from "@/hooks/use-latest-ref"
-import type { ClientRoomState, PlaylistItem } from "@/contracts/types"
 import {
   pendingSyncFromPlayback,
   type PendingSyncState,
 } from "@/client/player/pending-sync"
 import { resolveProviderSyncTuning } from "@/client/player/provider-sync-tuning"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
+import type { ClientRoomState, PlaylistItem } from "@/contracts/types"
+import { useLatestRef } from "@/hooks/use-latest-ref"
+import {
+  queryPlayerMediaElement,
+  readMediaSeekableEndSec,
+} from "@/shared/dom/player-utils"
+import { localMediaErrorMessage } from "@/shared/local-media/local-media-errors"
+import { isNativeProviderUrl, resolveLiveEdgeSec } from "@/shared/player-utils"
+import type { MediaPlayerInstance } from "@vidstack/react"
+import { useCallback, useEffect, useRef, type RefObject } from "react"
+import { toast } from "sonner"
+import { SEEK_ACK_MATCH_THRESHOLD_MS } from "../playback-control/use-playback-timeline-controller"
+import { playerSrcContentKey, type PlayerSrcInput } from "../player-src"
+import { readSyncPlayheadSec } from "./to-syncable-player"
 import { useApplyRoomClock } from "./use-apply-room-clock"
 import { usePlaybackDriftCorrection } from "./use-playback-drift-correction"
 import { usePlaybackSyncEngine } from "./use-playback-sync-engine"
 import { usePlayerPresenceHeartbeat } from "./use-player-presence-heartbeat"
-import { readSyncPlayheadSec } from "./to-syncable-player"
-import { SEEK_ACK_MATCH_THRESHOLD_MS } from "../playback-control/use-playback-timeline-controller"
-import {
-  playerSrcContentKey,
-  type PlayerSrcInput,
-} from "../player-src"
 
 /**
  * Room-clock application, drift correction, and live-edge seek.
@@ -120,8 +112,7 @@ export function usePlayerPlaybackSync(config: {
 
   // Content key — not object identity — so playlist/room churn with the same
   // URL+MIME does not clear isMediaReady without a real media reload.
-  const mediaSourceKey =
-    playerSrcContentKey(playerSrc) || activePlaybackSrc
+  const mediaSourceKey = playerSrcContentKey(playerSrc) || activePlaybackSrc
 
   const syncEngine = usePlaybackSyncEngine({
     playerRef,
@@ -208,8 +199,7 @@ export function usePlayerPlaybackSync(config: {
 
   usePlaybackDriftCorrection({
     engine: syncEngine,
-    holdLocalSeek:
-      awaitingSeekTargetMs !== null || seekPhase === "previewing",
+    holdLocalSeek: awaitingSeekTargetMs !== null || seekPhase === "previewing",
     timelineAnchorMs,
   })
 
@@ -225,8 +215,7 @@ export function usePlayerPlaybackSync(config: {
     // Authority play → pause edge: HLS / local HTTP relay often ignores the
     // first pause() and sits under the 0.8s drift threshold, so force-snap
     // (threshold 0) and re-arm the pause nudge burst from a clean slate.
-    const pausedEdge =
-      prevRoomPausedRef.current === false && playback.paused
+    const pausedEdge = prevRoomPausedRef.current === false && playback.paused
 
     const syncState = pendingSyncFromPlayback(playback)
     const shouldHoldForLocalSeek =
@@ -340,12 +329,7 @@ export function usePlayerPlaybackSync(config: {
       // Room commit below remains the authority.
     }
     commitSeek(Math.floor(edgeSec * 1000))
-  }, [
-    canControlPlayback,
-    commitSeek,
-    enforceServerPlaybackState,
-    playerRef,
-  ])
+  }, [canControlPlayback, commitSeek, enforceServerPlaybackState, playerRef])
 
   // Vidstack's LiveButton no-ops when its store thinks `liveEdge` is already
   // true (common with Infinity seekableEnd / DVR lag). Capture the click so

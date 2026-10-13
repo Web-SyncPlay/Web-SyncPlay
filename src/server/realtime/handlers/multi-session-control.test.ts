@@ -1,5 +1,3 @@
-import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
-import { createHash } from "node:crypto"
 import {
   createTestBroadcastBus,
   setRoomBroadcastBusForTests,
@@ -18,6 +16,8 @@ import {
   removeSocket,
   setSocketClientIp,
 } from "@/server/ws/registry"
+import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+import { createHash } from "node:crypto"
 
 const identityHashes = new Map<string, string>()
 

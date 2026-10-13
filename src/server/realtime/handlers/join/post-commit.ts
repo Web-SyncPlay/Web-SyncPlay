@@ -1,11 +1,12 @@
+import type { RoomState, SessionKind } from "@/contracts/types"
+import type { RoomStateStorePort } from "@/server/ports"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
   clearPrune,
   schedulePrune,
 } from "@/server/realtime/services/participants"
-import { scheduleResolvingPlaylistItems } from "@/server/realtime/services/room"
 import type { SessionCapabilities } from "@/server/realtime/services/permissions"
-import type { RoomStateStorePort } from "@/server/ports"
+import { scheduleResolvingPlaylistItems } from "@/server/realtime/services/room"
 import {
   addSocket,
   getSocketClientIp,
@@ -15,7 +16,6 @@ import {
   setSocketJoinCommitted,
   setSocketPresenceTracked,
 } from "@/server/ws/registry"
-import type { RoomState, SessionKind } from "@/contracts/types"
 import { WebSocket } from "ws"
 import { abortJoinAfterCommit } from "./abort"
 import {
@@ -151,9 +151,8 @@ export async function postCommitJoinSideEffects(
   if (input.sessionCapabilities) {
     let viewerToken: string | undefined
     try {
-      const { mintViewerCapabilityToken } = await import(
-        "@/server/media/viewer-capability-token"
-      )
+      const { mintViewerCapabilityToken } =
+        await import("@/server/media/viewer-capability-token")
       const minted = await mintViewerCapabilityToken({
         roomId: input.roomId,
         userId: input.userId,

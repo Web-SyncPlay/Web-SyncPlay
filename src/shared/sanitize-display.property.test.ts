@@ -1,16 +1,16 @@
-import { expect, test } from "bun:test"
-import fc from "fast-check"
+import {
+  participantUpdateSchema,
+  playlistRenameSchema,
+  roomJoinSchema,
+} from "@/contracts/schemas"
 import {
   isHttpOrHttpsUrl,
   sanitizeErrorMessage,
   sanitizeMediaTitle,
   sanitizeUsername,
 } from "@/shared/sanitize-display"
-import {
-  participantUpdateSchema,
-  playlistRenameSchema,
-  roomJoinSchema,
-} from "@/contracts/schemas"
+import { expect, test } from "bun:test"
+import fc from "fast-check"
 
 const xssPackages = [
   "<script>alert(1)</script>",

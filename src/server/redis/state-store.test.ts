@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, mock, test } from "bun:test"
+import type { PresencePatch } from "@/contracts/types"
 import { keys } from "@/server/redis/keys"
 import { createRoomState } from "@/shared/test-utils/room-fixtures"
-import type { PresencePatch } from "@/contracts/types"
+import { afterEach, describe, expect, mock, test } from "bun:test"
 
 afterEach(() => {
   mock.restore()
@@ -58,7 +58,9 @@ describe("RoomStateStore.updateRoom", () => {
     const store = new RoomStateStore()
 
     await expect(
-      store.updateRoom("room-watch", () => createRoomState({ roomId: "room-watch" })),
+      store.updateRoom("room-watch", () =>
+        createRoomState({ roomId: "room-watch" }),
+      ),
     ).rejects.toThrow("updateRoom: WATCH retry exhausted")
 
     expect(watchCalls).toBe(12)
@@ -215,10 +217,7 @@ describe("RoomStateStore presence read vs reconcile", () => {
       ["live", JSON.stringify({ [nodeId]: 1 })],
       ["stale", JSON.stringify({ [deadNode]: 1 })],
       ["legacy", "2"],
-      [
-        "mixed",
-        JSON.stringify({ [nodeId]: 1, [deadNode]: 2 }),
-      ],
+      ["mixed", JSON.stringify({ [nodeId]: 1, [deadNode]: 2 })],
     ])
     let hSetCalls = 0
     let hDelCalls = 0
@@ -232,10 +231,7 @@ describe("RoomStateStore presence read vs reconcile", () => {
     mock.module("@/server/redis/client", () => ({
       getCommandClient: async () => ({
         hGetAll: async () => Object.fromEntries(hash),
-        hSet: async (
-          _key: string,
-          fields: Record<string, string>,
-        ) => {
+        hSet: async (_key: string, fields: Record<string, string>) => {
           hSetCalls += 1
           for (const [uid, encoded] of Object.entries(fields)) {
             hash.set(uid, encoded)

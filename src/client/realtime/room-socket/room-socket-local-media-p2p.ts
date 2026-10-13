@@ -15,9 +15,8 @@ export function createLocalMediaWebrtcSignalHandler() {
     if (!payload) return
     void import("@/client/local-media/local-media-webrtc").then(
       async ({ handleLocalMediaWebrtcSignalFromPeer }) => {
-        const { getLocalMediaFile } = await import(
-          "@/client/local-media/local-media-provider"
-        )
+        const { getLocalMediaFile } =
+          await import("@/client/local-media/local-media-provider")
         await handleLocalMediaWebrtcSignalFromPeer({
           localMediaId: payload.localMediaId,
           fromUserId: payload.fromUserId,

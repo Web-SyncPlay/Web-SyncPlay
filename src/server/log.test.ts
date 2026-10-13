@@ -1,7 +1,7 @@
-import { describe, expect, test } from "bun:test"
 import { appendActionLog, pruneActionLog } from "@/server/log"
 import { createRoomState } from "@/server/realtime/test-utils/fixtures"
 import { roomActionLogMaxAgeMs } from "@/shared/room-lifecycle"
+import { describe, expect, test } from "bun:test"
 
 describe("action log TTL", () => {
   test("pruneActionLog drops entries older than room TTL", () => {

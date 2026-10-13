@@ -1,8 +1,8 @@
-import { describe, expect, test } from "bun:test"
 import {
   LOCAL_MEDIA_BLOCK_REQUEST_ID_LENGTH,
   LOCAL_MEDIA_MAX_BLOCK_BYTES,
 } from "@/shared/local-media/local-media-block-protocol"
+import { describe, expect, test } from "bun:test"
 import {
   createRangeResponder,
   fetchLocalMediaRangeBytes,

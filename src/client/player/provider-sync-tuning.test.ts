@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import type { SyncablePlayer } from "./apply-playback-sync"
+import { FORCE_SEEK_LEAD_SEC } from "./playback-sync"
 import {
   ANCHOR_RETRY_DELAYS_MS,
   createPlaybackSyncEngine,
@@ -16,7 +17,6 @@ import {
   resolveProviderSyncTuning,
   type ProviderSyncTuning,
 } from "./provider-sync-tuning"
-import { FORCE_SEEK_LEAD_SEC } from "./playback-sync"
 
 describe("resolveProviderSyncTuning", () => {
   test.each([
@@ -66,8 +66,7 @@ describe("engine honours provider sync tuning", () => {
   function createScheduler(startMs = 1_000) {
     let now = startMs
     let nextId = 1
-    const timers: { id: number; due: number; ms: number; fn: () => void }[] =
-      []
+    const timers: { id: number; due: number; ms: number; fn: () => void }[] = []
     const scheduler: PlaybackSyncScheduler = {
       nowMs: () => now,
       setTimeout: (fn, ms) => {
@@ -225,8 +224,7 @@ describe("native iframe pending / quiescence rules", () => {
   function createScheduler(startMs = 0) {
     let now = startMs
     let nextId = 1
-    const timers: { id: number; due: number; ms: number; fn: () => void }[] =
-      []
+    const timers: { id: number; due: number; ms: number; fn: () => void }[] = []
     const scheduler: PlaybackSyncScheduler = {
       nowMs: () => now,
       setTimeout: (fn, ms) => {

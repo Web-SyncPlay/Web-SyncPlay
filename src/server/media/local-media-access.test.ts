@@ -130,9 +130,8 @@ describe("resolveServeableLocalMedia", () => {
 
     // Use the real mint/validate path so this file never stubs
     // viewer-capability-token (partial mocks leak across Bun test files).
-    const { mintViewerCapabilityToken } = await import(
-      "./viewer-capability-token"
-    )
+    const { mintViewerCapabilityToken } =
+      await import("./viewer-capability-token")
     const { token } = await mintViewerCapabilityToken({
       roomId: "room-1",
       userId: "user-1",
@@ -155,9 +154,8 @@ describe("resolveServeableLocalMedia", () => {
   })
 
   test("viewerAuthFromLocalMediaRequest reads vt, uid, and client IP", async () => {
-    const { viewerAuthFromLocalMediaRequest } = await import(
-      "./local-media-access"
-    )
+    const { viewerAuthFromLocalMediaRequest } =
+      await import("./local-media-access")
     const request = new Request(
       "https://app.test/api/media/local/m1?vt=tok&uid=u1",
       { headers: { "x-forwarded-for": "203.0.113.9, 10.0.0.1" } },

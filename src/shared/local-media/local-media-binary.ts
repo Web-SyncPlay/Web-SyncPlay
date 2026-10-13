@@ -52,8 +52,7 @@ export function encodeLocalMediaChunkFrame(
 export function decodeLocalMediaChunkFrame(
   input: Uint8Array | ArrayBuffer,
 ): LocalMediaBinaryChunk | null {
-  const bytes =
-    input instanceof Uint8Array ? input : new Uint8Array(input)
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input)
   if (bytes.byteLength < 7) {
     return null
   }
@@ -69,9 +68,7 @@ export function decodeLocalMediaChunkFrame(
     return null
   }
 
-  const requestId = textDecoder.decode(
-    bytes.subarray(6, 6 + requestIdLength),
-  )
+  const requestId = textDecoder.decode(bytes.subarray(6, 6 + requestIdLength))
   const flags = bytes[6 + requestIdLength]!
   const rest = bytes.subarray(headerLen)
   const ok = (flags & LMC_FLAG_OK) !== 0
@@ -91,8 +88,7 @@ export function decodeLocalMediaChunkFrame(
 export function isLocalMediaChunkFrame(
   input: Uint8Array | ArrayBuffer,
 ): boolean {
-  const bytes =
-    input instanceof Uint8Array ? input : new Uint8Array(input)
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input)
   if (bytes.byteLength < 4) return false
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   return view.getUint32(0, true) === LMC_MAGIC

@@ -16,7 +16,9 @@ const RESULTS: ResultRow[] = []
 
 function record(name: string, ok: boolean, detail?: string) {
   RESULTS.push({ name, ok, detail })
-  console.log(`[${ok ? "PASS" : "FAIL"}] ${name}${detail ? ` — ${detail}` : ""}`)
+  console.log(
+    `[${ok ? "PASS" : "FAIL"}] ${name}${detail ? ` — ${detail}` : ""}`,
+  )
 }
 
 function wait(ms: number) {
@@ -111,7 +113,10 @@ class RoomClient {
       }
       const ws = new WebSocket(WS_URL)
       this.ws = ws
-      const timer = setTimeout(() => reject(new Error("ws connect timeout")), 15_000)
+      const timer = setTimeout(
+        () => reject(new Error("ws connect timeout")),
+        15_000,
+      )
       ws.on("open", () => {
         clearTimeout(timer)
         this.send("room:join", {
@@ -291,10 +296,14 @@ async function main() {
     )
     if (seedItem) {
       await host.waitFor((c) => {
-        const item = c.roomState?.playlist?.find((entry) => entry.id === seedItem.id)
+        const item = c.roomState?.playlist?.find(
+          (entry) => entry.id === seedItem.id,
+        )
         return item && item.ingestStatus !== "resolving"
       }, 45_000)
-      const settled = host.roomState.playlist.find((entry) => entry.id === seedItem.id)
+      const settled = host.roomState.playlist.find(
+        (entry) => entry.id === seedItem.id,
+      )
       record(
         "seed media resolves past resolving",
         settled?.ingestStatus === "ready",
@@ -417,7 +426,11 @@ async function main() {
       (c) => (c.roomState?.playlist?.length ?? 0) > beforeCount,
       15_000,
     )
-    record("playlist add visible on host", true, `count=${host.roomState.playlist.length}`)
+    record(
+      "playlist add visible on host",
+      true,
+      `count=${host.roomState.playlist.length}`,
+    )
 
     await guest.waitFor(
       (c) => (c.roomState?.playlist?.length ?? 0) > beforeCount,
@@ -429,7 +442,11 @@ async function main() {
     )
 
     const added = host.roomState.playlist[host.roomState.playlist.length - 1]
-    record("new item initially resolving or ready", ["resolving", "ready", "error"].includes(added.ingestStatus), added.ingestStatus)
+    record(
+      "new item initially resolving or ready",
+      ["resolving", "ready", "error"].includes(added.ingestStatus),
+      added.ingestStatus,
+    )
 
     await host.waitFor((c) => {
       const item = c.roomState.playlist.find((p) => p.id === added.id)
@@ -514,7 +531,11 @@ async function main() {
         ]?.streamId === streamId,
       )
     } else {
-      record("viewer prefs tests skipped (resolve failed)", false, resolved?.ingestError)
+      record(
+        "viewer prefs tests skipped (resolve failed)",
+        false,
+        resolved?.ingestError,
+      )
     }
 
     // Playback control from host
@@ -568,7 +589,11 @@ async function main() {
     control.close()
     controlBad.close()
   } catch (error) {
-    record("suite crashed", false, error instanceof Error ? error.message : String(error))
+    record(
+      "suite crashed",
+      false,
+      error instanceof Error ? error.message : String(error),
+    )
   } finally {
     host.close()
     guest.close()

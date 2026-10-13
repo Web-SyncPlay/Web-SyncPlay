@@ -1,9 +1,9 @@
-import { afterEach, expect, test } from "bun:test"
 import {
   acaoAllowsBrowserPlayback,
   probeCorsPlayback,
   probeUpstreamPlayback,
 } from "@/server/media/cors/cors-probe"
+import { afterEach, expect, test } from "bun:test"
 
 const originalFetch = globalThis.fetch
 
@@ -13,9 +13,9 @@ afterEach(() => {
 
 test("ACAO must be * or exact origin", () => {
   expect(acaoAllowsBrowserPlayback("*")).toBe(true)
-  expect(
-    acaoAllowsBrowserPlayback("https://playback.web-syncplay.local"),
-  ).toBe(true)
+  expect(acaoAllowsBrowserPlayback("https://playback.web-syncplay.local")).toBe(
+    true,
+  )
   expect(acaoAllowsBrowserPlayback("https://evil.example")).toBe(false)
   expect(acaoAllowsBrowserPlayback("null")).toBe(false)
   expect(acaoAllowsBrowserPlayback(null)).toBe(false)
@@ -95,9 +95,9 @@ test("403 with ACAO * is unreachable, not playable-direct", async () => {
   await expect(
     probeUpstreamPlayback("https://cdn.example/denied.mp4"),
   ).resolves.toBe("unreachable")
-  await expect(probeCorsPlayback("https://cdn.example/denied.mp4")).resolves.toBe(
-    false,
-  )
+  await expect(
+    probeCorsPlayback("https://cdn.example/denied.mp4"),
+  ).resolves.toBe(false)
 })
 
 test("200 without ACAO is blocked (relay candidate)", async () => {

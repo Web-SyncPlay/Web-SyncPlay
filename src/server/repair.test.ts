@@ -1,16 +1,14 @@
-import { expect, test } from "bun:test"
+import type { RoomState } from "@/contracts/types"
 import { createDefaultRoomSecurity } from "@/server/realtime/services/room-security"
+import { createRoomState } from "@/server/realtime/test-utils/fixtures"
 import {
   createDefaultPlayback,
   repairCleanupAndCheckRoomState,
   repairPlaylistState,
 } from "@/server/repair"
-import { createRoomState } from "@/server/realtime/test-utils/fixtures"
-import type { RoomState } from "@/contracts/types"
+import { expect, test } from "bun:test"
 
-function minimalRoomState(
-  playlist: RoomState["playlist"],
-): RoomState {
+function minimalRoomState(playlist: RoomState["playlist"]): RoomState {
   return {
     roomId: "room-1",
     ownerId: "owner-1",
@@ -47,7 +45,7 @@ test("repairPlaylistState migrates selected stream ids to defaults and strips le
     },
   ])
   // Legacy Redis payloads may still carry pre-default* aliases.
-  const legacyItem = state.playlist[0]! as typeof state.playlist[0] & {
+  const legacyItem = state.playlist[0]! as (typeof state.playlist)[0] & {
     selectedStreamId?: string
     selectedTextTrackId?: string
   }
@@ -55,7 +53,7 @@ test("repairPlaylistState migrates selected stream ids to defaults and strips le
   legacyItem.selectedTextTrackId = "track-old"
 
   const findings = repairPlaylistState(state)
-  const item = state.playlist[0]! as typeof state.playlist[0] & {
+  const item = state.playlist[0]! as (typeof state.playlist)[0] & {
     selectedStreamId?: string
     selectedTextTrackId?: string
   }
@@ -72,18 +70,15 @@ test("repairCleanupAndCheckRoomState strips legacy history and shuffle", () => {
   const state = createRoomState()
   const legacy = state as typeof state & { history?: unknown }
   legacy.history = []
-  ;(
-    state.playback as typeof state.playback & { shuffle?: unknown }
-  ).shuffle = true
+  ;(state.playback as typeof state.playback & { shuffle?: unknown }).shuffle =
+    true
 
   const findings = repairCleanupAndCheckRoomState(state)
 
   expect(findings).toContain("legacy-history-stripped")
   expect(findings).toContain("legacy-shuffle-stripped")
   expect(legacy.history).toBeUndefined()
-  expect(
-    (state.playback as { shuffle?: unknown }).shuffle,
-  ).toBeUndefined()
+  expect((state.playback as { shuffle?: unknown }).shuffle).toBeUndefined()
 })
 
 test("repairCleanupAndCheckRoomState reconstructs missing playback object", () => {

@@ -1,11 +1,11 @@
 "use client"
 
+import { cn } from "@/components/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { formatClockMs } from "@/shared/time-format"
-import { cn } from "@/components/lib/utils"
 import { SkipBack, SkipForward } from "lucide-react"
 
 function getSliderTargetMs(values: number | readonly number[]): number {
@@ -22,7 +22,9 @@ function ControlHints(props: {
   return (
     <>
       {props.authorizationHint ? (
-        <p className="text-xs text-muted-foreground">{props.authorizationHint}</p>
+        <p className="text-xs text-muted-foreground">
+          {props.authorizationHint}
+        </p>
       ) : null}
       {props.disabledHint ? (
         <p className="text-xs text-muted-foreground">{props.disabledHint}</p>
@@ -79,9 +81,7 @@ export function ControlPanel(props: {
   const currentSeek = durationKnown
     ? [Math.min(elapsedMs, totalDurationMs)]
     : [0]
-  const durationLabel = durationKnown
-    ? formatClockMs(totalDurationMs)
-    : "--:--"
+  const durationLabel = durationKnown ? formatClockMs(totalDurationMs) : "--:--"
   const viewOnlyBadge = !canControl ? (
     <Badge variant={controlsDisabled ? "outline" : "secondary"}>
       View-only
@@ -156,9 +156,7 @@ export function ControlPanel(props: {
         className="touch-manipulation py-2"
         aria-label="Seek playback position"
         aria-valuetext={
-          durationKnown
-            ? undefined
-            : "Duration unknown; scrubbing unavailable"
+          durationKnown ? undefined : "Duration unknown; scrubbing unavailable"
         }
         onValueChange={(values) => {
           if (scrubDisabled) {

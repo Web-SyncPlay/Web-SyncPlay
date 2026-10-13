@@ -1,7 +1,7 @@
-import { createHash, timingSafeEqual } from "node:crypto"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
 import { roomStateTtlSeconds } from "@/shared/room-lifecycle"
+import { createHash, timingSafeEqual } from "node:crypto"
 
 const IDENTITY_SECRET_HASH_PREFIX = "h1:"
 

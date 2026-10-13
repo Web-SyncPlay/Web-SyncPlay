@@ -200,7 +200,8 @@ async function runMediaQuerySmoke(browser: Browser) {
     await ws.connect()
     await ws.waitFor((c) => c.roomState && c.capabilities, 15_000)
     const hasSeed = (ws.roomState?.playlist ?? []).some(
-      (item) => item.sourceUrl === MEDIA_URL || item.sourceUrl?.includes("flower"),
+      (item) =>
+        item.sourceUrl === MEDIA_URL || item.sourceUrl?.includes("flower"),
     )
     record(
       "ws create with initialMediaUrl seeds playlist",

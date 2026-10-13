@@ -108,7 +108,9 @@ async function readPlayhead(page: Page): Promise<Playhead> {
         tag: "media-player",
       }
     }
-    const media = document.querySelector("video, audio") as HTMLMediaElement | null
+    const media = document.querySelector(
+      "video, audio",
+    ) as HTMLMediaElement | null
     if (media && Number.isFinite(media.currentTime)) {
       return {
         source: "media" as const,
@@ -126,7 +128,8 @@ async function readPlayhead(page: Page): Promise<Playhead> {
       const parts = self[2]!.split(":").map(Number)
       let sec = 0
       if (parts.length === 2) sec = parts[0]! * 60 + parts[1]!
-      else if (parts.length === 3) sec = parts[0]! * 3600 + parts[1]! * 60 + parts[2]!
+      else if (parts.length === 3)
+        sec = parts[0]! * 3600 + parts[1]! * 60 + parts[2]!
       return {
         source: "player" as const,
         currentTimeSec: sec,
@@ -145,8 +148,14 @@ async function readPlayhead(page: Page): Promise<Playhead> {
   })
 }
 
-async function readPresenceClocks(page: Page): Promise<
-  Array<{ label: string; state: "Playing" | "Paused" | "Unknown"; clock: string }>
+async function readPresenceClocks(
+  page: Page,
+): Promise<
+  Array<{
+    label: string
+    state: "Playing" | "Paused" | "Unknown"
+    clock: string
+  }>
 > {
   return page.evaluate(() => {
     const text = document.body.innerText
@@ -175,7 +184,9 @@ function parseClockToSec(clock: string): number | null {
   return null
 }
 
-async function roomPlayingLabel(page: Page): Promise<"Playing" | "Paused" | "Unknown"> {
+async function roomPlayingLabel(
+  page: Page,
+): Promise<"Playing" | "Paused" | "Unknown"> {
   // Prefer self presence line — room header chip can be ambiguous with playlist text.
   const text = await page.locator("body").innerText()
   const self = text.match(/You\n[^\n]+\n(Playing|Paused) at/)
@@ -198,7 +209,12 @@ async function clickPlayPause(page: Page, want: "Play" | "Pause") {
   const inPlayer = root.getByRole("button", {
     name: new RegExp(`^${want}$`, "i"),
   })
-  if (await inPlayer.first().isVisible().catch(() => false)) {
+  if (
+    await inPlayer
+      .first()
+      .isVisible()
+      .catch(() => false)
+  ) {
     await inPlayer.first().click()
     return true
   }
@@ -208,7 +224,10 @@ async function clickPlayPause(page: Page, want: "Play" | "Pause") {
       : 'button[aria-label="Pause"], media-play-button',
   )
   if ((await alt.count()) > 0) {
-    await alt.first().click({ force: true }).catch(() => {})
+    await alt
+      .first()
+      .click({ force: true })
+      .catch(() => {})
     return true
   }
   const pageBtn = page.getByRole("button", { name: want, exact: true }).first()
@@ -222,14 +241,15 @@ async function clickPlayPause(page: Page, want: "Play" | "Pause") {
 async function seekViaKeyboard(page: Page, targetSec: number) {
   // Focus player and use arrow seeks is unreliable; set currentTime via DOM when possible.
   const ok = await page.evaluate((sec) => {
-    const media = document.querySelector("video, audio") as HTMLMediaElement | null
+    const media = document.querySelector(
+      "video, audio",
+    ) as HTMLMediaElement | null
     if (media) {
       media.currentTime = sec
       return true
     }
     const player = document.querySelector("media-player") as
-      | (HTMLElement & { currentTime?: number })
-      | null
+      (HTMLElement & { currentTime?: number }) | null
     if (player) {
       player.currentTime = sec
       return true
@@ -252,7 +272,9 @@ async function seekViaRoomControl(page: Page, targetSec: number) {
         const player = document.querySelector("media-player") as {
           duration?: number
         } | null
-        const media = document.querySelector("video, audio") as HTMLMediaElement | null
+        const media = document.querySelector(
+          "video, audio",
+        ) as HTMLMediaElement | null
         return Number(player?.duration || media?.duration || 0)
       })
       const ratio =
@@ -267,20 +289,40 @@ async function seekViaRoomControl(page: Page, targetSec: number) {
 }
 
 async function ensurePlaylistPanel(page: Page) {
-  const input = page.getByPlaceholder("Media URL").or(page.getByLabel("Media URL"))
-  if (await input.first().isVisible().catch(() => false)) return
+  const input = page
+    .getByPlaceholder("Media URL")
+    .or(page.getByLabel("Media URL"))
+  if (
+    await input
+      .first()
+      .isVisible()
+      .catch(() => false)
+  )
+    return
   // Side panel may be collapsed; open it without toggling an already-open Playlist tab.
   const showPanel = page.getByRole("button", { name: /Show panel|Open panel/i })
-  if (await showPanel.first().isVisible().catch(() => false)) {
+  if (
+    await showPanel
+      .first()
+      .isVisible()
+      .catch(() => false)
+  ) {
     await showPanel.first().click()
   }
-  await page.getByRole("button", { name: /^Playlist$/i }).first().click().catch(() => {})
+  await page
+    .getByRole("button", { name: /^Playlist$/i })
+    .first()
+    .click()
+    .catch(() => {})
   await input.first().waitFor({ state: "visible", timeout: 20_000 })
 }
 
 async function addMediaUrl(page: Page, url: string) {
   await ensurePlaylistPanel(page)
-  const input = page.getByPlaceholder("Media URL").or(page.getByLabel("Media URL")).first()
+  const input = page
+    .getByPlaceholder("Media URL")
+    .or(page.getByLabel("Media URL"))
+    .first()
   await input.click()
   await input.fill(url)
   const add = page
@@ -322,7 +364,10 @@ async function selectPlaylistItem(
   // Title click renames — must use the per-row "Play this item" control.
   let row = playlistRowAtIndex(page, opts.index)
   if ((await row.count()) === 0 && opts.name) {
-    row = page.locator("div.w-full.min-w-0").filter({ hasText: opts.name }).first()
+    row = page
+      .locator("div.w-full.min-w-0")
+      .filter({ hasText: opts.name })
+      .first()
   }
   if ((await row.count()) === 0) return false
 
@@ -376,7 +421,10 @@ async function waitForCurrentIndex(
   timeoutMs = 20_000,
 ): Promise<boolean> {
   try {
-    await observer.waitFor((c) => c.roomState?.currentIndex === index, timeoutMs)
+    await observer.waitFor(
+      (c) => c.roomState?.currentIndex === index,
+      timeoutMs,
+    )
     return true
   } catch {
     return observer.roomState?.currentIndex === index
@@ -387,9 +435,14 @@ async function promoteToModerator(ownerPage: Page, guestUserId: string) {
   const label = guestUserId.slice(0, 8)
   await ownerPage.getByText(label).first().waitFor({ timeout: 15_000 })
   // Scope role toggle to the target user's card (not the first guest in the list).
-  const card = ownerPage.locator("div").filter({ hasText: label }).filter({
-    has: ownerPage.getByRole("button", { name: /Role guest, click to toggle/i }),
-  })
+  const card = ownerPage
+    .locator("div")
+    .filter({ hasText: label })
+    .filter({
+      has: ownerPage.getByRole("button", {
+        name: /Role guest, click to toggle/i,
+      }),
+    })
   const badge = card
     .getByRole("button", { name: /Role guest, click to toggle/i })
     .first()
@@ -573,18 +626,14 @@ async function openRoom(
 ) {
   const page = await context.newPage()
   page.setDefaultTimeout(25_000)
-  await page.goto(
-    `${BASE}/room/${roomId}${identityHash(userId, userSecret)}`,
-    { waitUntil: "domcontentloaded" },
-  )
+  await page.goto(`${BASE}/room/${roomId}${identityHash(userId, userSecret)}`, {
+    waitUntil: "domcontentloaded",
+  })
   await waitForConnected(page)
   return page
 }
 
-async function runMediaCase(
-  browser: Browser,
-  media: MediaCase,
-): Promise<void> {
+async function runMediaCase(browser: Browser, media: MediaCase): Promise<void> {
   const roomId = `sync-${media.id}-${Date.now().toString(36)}`
   const hostId = randomUUID()
   const guestId = randomUUID()
@@ -812,7 +861,9 @@ async function runMediaCase(
       playSeekTarget = Math.min(
         wanted,
         maxSafe,
-        playDurationSec != null ? Math.max(0.2, playDurationSec * 0.25) : wanted,
+        playDurationSec != null
+          ? Math.max(0.2, playDurationSec * 0.25)
+          : wanted,
       )
       await hostPlaybackSeek(
         hostPage,
@@ -918,7 +969,10 @@ async function runMediaCase(
     {
       let hostTransport = await roomPlayingLabel(hostPage)
       let guestTransport = await roomPlayingLabel(guestPage)
-      while (hostTransport !== guestTransport && Date.now() < postPlayDeadline) {
+      while (
+        hostTransport !== guestTransport &&
+        Date.now() < postPlayDeadline
+      ) {
         const waitMs = Math.min(400, postPlayDeadline - Date.now())
         if (waitMs <= 0) break
         await settle(waitMs)
@@ -962,7 +1016,8 @@ async function runMediaCase(
     if (pair.peerDeltaSec === null) {
       note({
         id: `${media.id}-play-no-playhead`,
-        severity: media.kind === "youtube" || media.kind === "vimeo" ? "warn" : "fail",
+        severity:
+          media.kind === "youtube" || media.kind === "vimeo" ? "warn" : "fail",
         media: media.label,
         scenario: "play",
         title: "Could not read playhead(s) after play",
@@ -1061,7 +1116,11 @@ async function runMediaCase(
           scenario: "play",
           title: "Guest playhead vs room clock",
           detail: `guestDrift=${guestDrift.toFixed(3)}s expected≈${expected.toFixed(2)}s (serverNowEstimateMs)`,
-          measured: { guestDrift, expected, guestSec: pair.guest.currentTimeSec },
+          measured: {
+            guestDrift,
+            expected,
+            guestSec: pair.guest.currentTimeSec,
+          },
         })
       }
     }
@@ -1119,7 +1178,10 @@ async function runMediaCase(
           guestSec: pair.guest.currentTimeSec,
         },
       })
-    } else if (pair.peerDeltaSec !== null && pair.peerDeltaSec > PEER_FAIL_SEC) {
+    } else if (
+      pair.peerDeltaSec !== null &&
+      pair.peerDeltaSec > PEER_FAIL_SEC
+    ) {
       note({
         id: `${media.id}-pause-peer-lag`,
         severity: "fail",
@@ -1194,7 +1256,8 @@ async function runMediaCase(
     if (pair.peerDeltaSec === null) {
       note({
         id: `${media.id}-seek-no-playhead`,
-        severity: media.kind === "youtube" || media.kind === "vimeo" ? "warn" : "fail",
+        severity:
+          media.kind === "youtube" || media.kind === "vimeo" ? "warn" : "fail",
         media: media.label,
         scenario: "seek",
         title: "Could not read playheads after seek",
@@ -1263,11 +1326,10 @@ async function runMediaCase(
     await settle(4_000)
     const lateHead = await readPlayhead(latePage)
     const hostHead = await readPlayhead(hostPage)
-    if (
-      lateHead.currentTimeSec !== null &&
-      hostHead.currentTimeSec !== null
-    ) {
-      const lateDelta = Math.abs(lateHead.currentTimeSec - hostHead.currentTimeSec)
+    if (lateHead.currentTimeSec !== null && hostHead.currentTimeSec !== null) {
+      const lateDelta = Math.abs(
+        lateHead.currentTimeSec - hostHead.currentTimeSec,
+      )
       if (lateDelta > PEER_FAIL_SEC) {
         note({
           id: `${media.id}-latejoin-paused`,
@@ -1290,7 +1352,10 @@ async function runMediaCase(
           scenario: "late-join-paused",
           title: "Late joiner matches paused clock",
           detail: `Δ=${lateDelta.toFixed(3)}s`,
-          measured: { lateSec: lateHead.currentTimeSec, hostSec: hostHead.currentTimeSec },
+          measured: {
+            lateSec: lateHead.currentTimeSec,
+            hostSec: hostHead.currentTimeSec,
+          },
         })
       }
     } else {
@@ -1520,8 +1585,7 @@ async function runMediaCase(
         const beforeAnchor = Number(
           (
             observer.roomState?.playback as
-              | { timelineAnchorMs?: number }
-              | undefined
+              { timelineAnchorMs?: number } | undefined
           )?.timelineAnchorMs,
         )
         authzCtl.lastError = null
@@ -1565,8 +1629,7 @@ async function runMediaCase(
         const afterAnchor = Number(
           (
             observer.roomState?.playback as
-              | { timelineAnchorMs?: number }
-              | undefined
+              { timelineAnchorMs?: number } | undefined
           )?.timelineAnchorMs,
         )
         if (afterPaused !== beforePaused) {
@@ -1635,8 +1698,10 @@ async function runMediaCase(
 
       // Race: host via page-owned WS (has control) + mod via UI seek/play-pause.
       const beforeRace = Number(
-        (observer.roomState?.playback as { timelineAnchorMs?: number } | undefined)
-          ?.timelineAnchorMs,
+        (
+          observer.roomState?.playback as
+            { timelineAnchorMs?: number } | undefined
+        )?.timelineAnchorMs,
       )
       const pausedBeforeRace = observer.roomState?.playback?.paused
       await Promise.all([
@@ -1676,8 +1741,10 @@ async function runMediaCase(
 
       const finalPaused = observer.roomState?.playback?.paused
       const finalAnchor = Number(
-        (observer.roomState?.playback as { timelineAnchorMs?: number } | undefined)
-          ?.timelineAnchorMs,
+        (
+          observer.roomState?.playback as
+            { timelineAnchorMs?: number } | undefined
+        )?.timelineAnchorMs,
       )
 
       if (spread !== null && spread > concurrentOkSec) {
@@ -1716,7 +1783,6 @@ async function runMediaCase(
           },
         })
       }
-
     }
 
     if (modPage) {
@@ -2140,7 +2206,8 @@ async function main() {
       pass: passes.length,
       warn: warns.length,
       fail: fails.length,
-      inconclusive: FINDINGS.filter((f) => f.severity === "inconclusive").length,
+      inconclusive: FINDINGS.filter((f) => f.severity === "inconclusive")
+        .length,
       total: FINDINGS.length,
     },
     findings: FINDINGS,

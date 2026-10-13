@@ -1,9 +1,9 @@
 "use client"
 
+import { cn } from "@/components/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { parseRoomId, randomRoomId } from "@/shared/room-utils"
-import { cn } from "@/components/lib/utils"
 import { ArrowRight, Dice5, Play } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -17,8 +17,7 @@ function RoomEntry(props: {
   onSubmit: (event?: FormEvent) => void
   className?: string
 }) {
-  const { roomInput, onRoomInputChange, onShuffle, onSubmit, className } =
-    props
+  const { roomInput, onRoomInputChange, onShuffle, onSubmit, className } = props
   const ready = Boolean(parseRoomId(roomInput))
 
   return (

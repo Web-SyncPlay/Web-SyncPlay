@@ -1,3 +1,7 @@
+import {
+  createPlaylistItem,
+  createRoomState,
+} from "@/server/realtime/test-utils/fixtures"
 import { describe, expect, test } from "bun:test"
 import {
   applyPlaylistItemDuration,
@@ -13,10 +17,6 @@ import {
   isPlaylistAtLimit,
   isPlaylistItemNamePlaceholder,
 } from "./playlist-ops"
-import {
-  createPlaylistItem,
-  createRoomState,
-} from "@/server/realtime/test-utils/fixtures"
 
 describe("playlist-ops", () => {
   test("applyPlaylistSelect rejects OOB and resets timeline", () => {
@@ -58,10 +58,7 @@ describe("playlist-ops", () => {
     const state = createRoomState({ currentIndex: 1 })
     const result = applyPlaylistRemove(state, "item-b")
     expect(result?.removed.id).toBe("item-b")
-    expect(state.playlist.map((item) => item.id)).toEqual([
-      "item-a",
-      "item-c",
-    ])
+    expect(state.playlist.map((item) => item.id)).toEqual(["item-a", "item-c"])
     expect(state.currentIndex).toBe(1)
 
     const empty = createRoomState({
@@ -192,9 +189,9 @@ describe("playlist-ops", () => {
     const item = state.playlist[0]
     expect(item?.durationSeconds).toBeUndefined()
 
-    expect(applyPlaylistItemDuration(state, "item-a", 125.4)?.durationSeconds).toBe(
-      125,
-    )
+    expect(
+      applyPlaylistItemDuration(state, "item-a", 125.4)?.durationSeconds,
+    ).toBe(125)
     expect(state.playlist[0]?.durationSeconds).toBe(125)
 
     // First finite value wins.

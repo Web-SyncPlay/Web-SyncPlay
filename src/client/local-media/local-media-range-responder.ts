@@ -6,11 +6,11 @@
  * {@link planLocalMediaDeliveryAttempts}.
  */
 
+import { readLocalMediaRange } from "@/client/local-media/local-media-file-read"
 import {
   LOCAL_MEDIA_BLOCK_REQUEST_ID_LENGTH,
   LOCAL_MEDIA_MAX_BLOCK_BYTES,
 } from "@/shared/local-media/local-media-block-protocol"
-import { readLocalMediaRange } from "@/client/local-media/local-media-file-read"
 
 export type RangeResponderErrorCode =
   | "provider_unavailable"
@@ -240,7 +240,10 @@ async function readWithTimeout(
 ): Promise<Uint8Array<ArrayBuffer>> {
   if (timeoutMs == null || timeoutMs <= 0) {
     if (signal) {
-      return awaitPromiseWithAbort(readLocalMediaRange(file, start, end), signal)
+      return awaitPromiseWithAbort(
+        readLocalMediaRange(file, start, end),
+        signal,
+      )
     }
     return readLocalMediaRange(file, start, end)
   }

@@ -1,4 +1,3 @@
-import { describe, expect, test } from "bun:test"
 import {
   getLocalMediaSfuPort,
   getMediaMaintenancePort,
@@ -17,6 +16,7 @@ import {
   createRoomState,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
+import { describe, expect, test } from "bun:test"
 
 describe("RoomStateStorePort interface", () => {
   test("in-memory adapter fulfills get/update/delete/list/presence", async () => {
@@ -52,9 +52,7 @@ describe("RoomStateStorePort interface", () => {
     )
     await store.reconcilePresenceRefs("room-1")
 
-    await store.setDailyDefaults([
-      { title: "t", url: "https://example.com/t" },
-    ])
+    await store.setDailyDefaults([{ title: "t", url: "https://example.com/t" }])
     expect(await store.getDailyDefaults()).toEqual([
       { title: "t", url: "https://example.com/t" },
     ])

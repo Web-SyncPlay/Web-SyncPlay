@@ -159,8 +159,7 @@ export function findStoredVideoQualityIndex(
     return "auto"
   }
   const matchIndex = qualities.findIndex(
-    (quality) =>
-      quality.id === stored || videoQualityLabel(quality) === stored,
+    (quality) => quality.id === stored || videoQualityLabel(quality) === stored,
   )
   return matchIndex >= 0 ? matchIndex : -1
 }

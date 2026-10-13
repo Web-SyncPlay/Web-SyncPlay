@@ -35,7 +35,8 @@ export const IFRAME_RETRY_DELAYS_MS = [
 ] as const
 
 export const IFRAME_PAUSE_RETRY_DELAYS_MS = [
-  100, ...IFRAME_RETRY_DELAYS_MS,
+  100,
+  ...IFRAME_RETRY_DELAYS_MS,
 ] as const
 
 /** Iframe seeks are slower to land; allow a couple more hard seeks. */

@@ -133,18 +133,12 @@ export async function listAbandonedResolves(): Promise<AbandonedResolve[]> {
         mutated = true
         continue
       }
-      const leaseKey = keys.mediaYtDlpResolveLease(
-        parsed.roomId,
-        parsed.itemId,
-      )
+      const leaseKey = keys.mediaYtDlpResolveLease(parsed.roomId, parsed.itemId)
       const raw = await client.get(leaseKey)
       if (raw) continue
 
       // Lease expired — claim so only one reclaimer proceeds.
-      const claimKey = keys.mediaYtDlpResolveClaim(
-        parsed.roomId,
-        parsed.itemId,
-      )
+      const claimKey = keys.mediaYtDlpResolveClaim(parsed.roomId, parsed.itemId)
       const claimed = await client.set(claimKey, "1", { NX: true, EX: 30 })
       if (claimed !== "OK") continue
 

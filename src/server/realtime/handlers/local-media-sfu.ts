@@ -1,14 +1,4 @@
 /** Local-media SFU signaling (process-local; see `LocalMediaSfuPort` / README). */
-import { getLocalMediaEntry } from "@/server/media/local-media-store"
-import {
-  onMediasoupWorkerDied,
-} from "@/server/media/local-media-sfu-port"
-import { getLocalMediaSfuPort } from "@/server/ports"
-import type {
-  RoomMessageContext,
-  RoomMessageHandler,
-} from "@/server/realtime/handlers/types"
-import { getAllSockets, getSocketsForRoom } from "@/server/ws/registry"
 import {
   localMediaSfuCapabilitiesSchema,
   localMediaSfuConnectTransportSchema,
@@ -17,6 +7,14 @@ import {
   localMediaSfuProduceDataSchema,
 } from "@/contracts/schemas"
 import type { WsEnvelope } from "@/contracts/types"
+import { onMediasoupWorkerDied } from "@/server/media/local-media-sfu-port"
+import { getLocalMediaEntry } from "@/server/media/local-media-store"
+import { getLocalMediaSfuPort } from "@/server/ports"
+import type {
+  RoomMessageContext,
+  RoomMessageHandler,
+} from "@/server/realtime/handlers/types"
+import { getAllSockets, getSocketsForRoom } from "@/server/ws/registry"
 import type { types as MsTypes } from "mediasoup"
 import { randomUUID } from "node:crypto"
 import type { WebSocket } from "ws"
@@ -111,9 +109,7 @@ onMediasoupWorkerDied(() => {
 })
 
 /** @internal Test helper — avoids mock.module preload races in the full suite. */
-export function broadcastSfuUnavailableForTests(
-  reason = "sfu_worker_died",
-) {
+export function broadcastSfuUnavailableForTests(reason = "sfu_worker_died") {
   broadcastSfuUnavailable(reason)
 }
 
@@ -193,9 +189,7 @@ export const handleLocalMediaSfuCreateTransport: RoomMessageHandler = async (
     const transport = await sfu.createTransport(ctx.roomId, {
       userId: ctx.userId,
       direction: parsed.direction,
-      ...(parsed.localMediaId
-        ? { localMediaId: parsed.localMediaId }
-        : {}),
+      ...(parsed.localMediaId ? { localMediaId: parsed.localMediaId } : {}),
     })
     // Close raced the await — do not leak an owned transport after disconnect.
     if (ctx.ws.readyState !== ctx.ws.OPEN) {

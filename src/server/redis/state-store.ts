@@ -1,26 +1,23 @@
+import type { PresencePatch, RoomState } from "@/contracts/types"
 import { env } from "@/env"
-import {
-  dailyDefaultsForRead,
-  hydrateMissingDailyDefaultTitles,
-} from "@/server/redis/daily-defaults"
-import { getAppNodeId } from "@/server/node-id"
 import { listAliveAppNodeIds } from "@/server/node-heartbeat"
+import { getAppNodeId } from "@/server/node-id"
 import {
   getRoomPublishPort,
   type DailyDefaultVideo,
   type RoomStateStorePort,
 } from "@/server/ports"
-import type { PresencePatch, RoomState } from "@/contracts/types"
+import {
+  dailyDefaultsForRead,
+  hydrateMissingDailyDefaultTitles,
+} from "@/server/redis/daily-defaults"
 import {
   roomStateTtlSeconds,
   TOUCH_WS_PRESENCE_MIN_INTERVAL_MS,
 } from "@/server/redis/ttl-policy"
 import { getCommandClient } from "./client"
 import { keys } from "./keys"
-import {
-  PRESENCE_BUMP_SCRIPT,
-  PRESENCE_MERGE_SCRIPT,
-} from "./presence-lua"
+import { PRESENCE_BUMP_SCRIPT, PRESENCE_MERGE_SCRIPT } from "./presence-lua"
 import {
   encodePresenceNodeCounts,
   parsePresenceNodeCounts,

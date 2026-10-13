@@ -1,6 +1,6 @@
-import { afterEach, expect, mock, test } from "bun:test"
-import { setRoomBroadcastBusForTests } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type { RoomState } from "@/contracts/types"
+import { setRoomBroadcastBusForTests } from "@/server/realtime/broadcast/room-broadcast-bus"
+import { afterEach, expect, mock, test } from "bun:test"
 
 afterEach(() => {
   mock.restore()
@@ -196,7 +196,11 @@ test("cleanup marks everyone offline when WS presence is empty (crash ghosts)", 
   const state = createState()
   let deleted = false
   let deletedDuringMutate = false
-  const track = { readCalls: [] as number[], reconcileCalls: [] as number[], duringMutate: false }
+  const track = {
+    readCalls: [] as number[],
+    reconcileCalls: [] as number[],
+    duringMutate: false,
+  }
 
   const fakeStore = createCleanupStore({
     state,
@@ -260,9 +264,8 @@ test("cleanup migrates legacy room fields without waiting for join", async () =>
   const state = createState()
   const legacy = state as RoomState & { history?: unknown }
   legacy.history = [{ at: 1 }]
-  ;(
-    state.playback as typeof state.playback & { shuffle?: unknown }
-  ).shuffle = true
+  ;(state.playback as typeof state.playback & { shuffle?: unknown }).shuffle =
+    true
 
   await cleanup(
     createCleanupStore({
@@ -272,9 +275,7 @@ test("cleanup migrates legacy room fields without waiting for join", async () =>
   )
 
   expect(legacy.history).toBeUndefined()
-  expect(
-    (state.playback as { shuffle?: unknown }).shuffle,
-  ).toBeUndefined()
+  expect((state.playback as { shuffle?: unknown }).shuffle).toBeUndefined()
 })
 
 test("cleanup fetches and reconciles presence before updateRoom, not inside mutate", async () => {

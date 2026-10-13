@@ -1,7 +1,7 @@
+import { invalidateLocalMediaBlockCache } from "@/server/media/local-media-block-cache"
 import { getAppNodeId } from "@/server/node-id"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
-import { invalidateLocalMediaBlockCache } from "@/server/media/local-media-block-cache"
 import {
   roomActionLogMaxAgeMs,
   roomStateTtlSeconds,
@@ -126,7 +126,8 @@ function normalizeEntry(entry: LocalMediaEntry): LocalMediaEntry {
     ...entry,
     providerReady: entry.providerReady === true,
     providerNodeId:
-      typeof entry.providerNodeId === "string" && entry.providerNodeId.length > 0
+      typeof entry.providerNodeId === "string" &&
+      entry.providerNodeId.length > 0
         ? entry.providerNodeId
         : undefined,
     abrParentId:

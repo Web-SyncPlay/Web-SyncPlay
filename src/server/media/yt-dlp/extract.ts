@@ -12,8 +12,8 @@ import {
 import { recordYtDlpMetric } from "@/server/media/yt-dlp/metrics"
 import { parseYtDlpDumpJson } from "@/server/media/yt-dlp/parse-dump"
 import { derivedYtDlpDumpArgs } from "@/server/media/yt-dlp/policy"
-import { runYtDlp } from "@/server/media/yt-dlp/runner"
 import type { YtDlpRunFailureKind } from "@/server/media/yt-dlp/runner"
+import { runYtDlp } from "@/server/media/yt-dlp/runner"
 import {
   emptyYtDlpCatalog,
   type YtDlpExtractFailure,

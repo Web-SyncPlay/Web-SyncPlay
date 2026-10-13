@@ -150,27 +150,26 @@ export function consumeSessionIdentityFromHash(): Promise<ConsumedSessionIdentit
     return Promise.resolve(consumedFromHash)
   }
 
-  const run: Promise<ConsumedSessionIdentity> = consumeSessionIdentityFromHashOnce(
-    rawHash,
-  ).then(
-    (result) => {
-      if (consumeInFlight === run) {
-        consumeInFlight = null
-        consumeInFlightHash = null
-        if (isValidIdentityValue(result.userId ?? null)) {
-          consumedFromHash = result
+  const run: Promise<ConsumedSessionIdentity> =
+    consumeSessionIdentityFromHashOnce(rawHash).then(
+      (result) => {
+        if (consumeInFlight === run) {
+          consumeInFlight = null
+          consumeInFlightHash = null
+          if (isValidIdentityValue(result.userId ?? null)) {
+            consumedFromHash = result
+          }
         }
-      }
-      return result
-    },
-    (error: unknown) => {
-      if (consumeInFlight === run) {
-        consumeInFlight = null
-        consumeInFlightHash = null
-      }
-      throw error
-    },
-  )
+        return result
+      },
+      (error: unknown) => {
+        if (consumeInFlight === run) {
+          consumeInFlight = null
+          consumeInFlightHash = null
+        }
+        throw error
+      },
+    )
   consumeInFlight = run
   consumeInFlightHash = rawHash
   return run
@@ -199,9 +198,7 @@ async function consumeSessionIdentityFromHashOnce(
   return {
     userId: hashUserId,
     userSecret: hashSecret,
-    ...(isValidIdentityValue(controlToken ?? null)
-      ? { controlToken }
-      : {}),
+    ...(isValidIdentityValue(controlToken ?? null) ? { controlToken } : {}),
   }
 }
 
@@ -257,7 +254,10 @@ function parsePersistedControlToken(
       token?: unknown
       expiresAt?: unknown
     }
-    if (typeof parsed.token !== "string" || !isValidIdentityValue(parsed.token)) {
+    if (
+      typeof parsed.token !== "string" ||
+      !isValidIdentityValue(parsed.token)
+    ) {
       return undefined
     }
     const record: PersistedControlToken = { token: parsed.token }

@@ -1,3 +1,4 @@
+import type { RoomState } from "@/contracts/types"
 import { describe, expect, test } from "bun:test"
 import {
   getActiveRangeResponder,
@@ -8,7 +9,6 @@ import {
   selectConnectedViewerUserIds,
   selectLazyWebrtcInviteMediaId,
 } from "./local-media-runtime"
-import type { RoomState } from "@/contracts/types"
 
 describe("createLocalMediaRuntime", () => {
   test("installs and clears the active RangeResponder on close", () => {

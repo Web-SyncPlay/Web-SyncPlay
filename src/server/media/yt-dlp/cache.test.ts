@@ -1,9 +1,9 @@
-import { expect, test } from "bun:test"
 import { parseCachedExtract } from "@/server/media/yt-dlp/cache"
 import type {
   YtDlpExtractFailure,
   YtDlpExtractSuccess,
 } from "@/server/media/yt-dlp/types"
+import { expect, test } from "bun:test"
 
 const success = (): YtDlpExtractSuccess => ({
   ok: true,
@@ -73,7 +73,9 @@ test("keeps failure envelopes regardless of age", () => {
 
 test("rejects corrupt cache payloads", () => {
   expect(parseCachedExtract("{not-json")).toBeNull()
-  expect(parseCachedExtract(JSON.stringify({ v: 1, extractedAt: 1 }))).toBeNull()
+  expect(
+    parseCachedExtract(JSON.stringify({ v: 1, extractedAt: 1 })),
+  ).toBeNull()
 })
 
 test("rejects legacy bare extract results without envelope", () => {

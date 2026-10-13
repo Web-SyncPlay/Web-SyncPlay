@@ -1,13 +1,9 @@
-import { describe, expect, test } from "bun:test"
-import {
-  applyResolvedMediaToItem,
-} from "@/server/realtime/services/playlist-resolve"
 import type { ResolvedMedia } from "@/server/media/media-resolve-port"
+import { applyResolvedMediaToItem } from "@/server/realtime/services/playlist-resolve"
 import { createPlaylistItem } from "@/server/realtime/test-utils/fixtures"
+import { describe, expect, test } from "bun:test"
 
-function sampleResolved(
-  overrides?: Partial<ResolvedMedia>,
-): ResolvedMedia {
+function sampleResolved(overrides?: Partial<ResolvedMedia>): ResolvedMedia {
   return {
     playableUrl: "https://cdn.example/a.mp4",
     sourceUrl: "https://example.com/a",

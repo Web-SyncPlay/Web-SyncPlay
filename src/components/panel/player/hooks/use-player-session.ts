@@ -1,28 +1,28 @@
 "use client"
 
-import type { MediaErrorDetail } from "@vidstack/react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
 import { useLatestRef } from "@/hooks/use-latest-ref"
 import {
   resolveCatalogDurationMs,
   resolveEffectiveDurationMs,
 } from "@/shared/playlist-duration"
-import type { TypedRoomEventSender } from "@/contracts/room-events"
+import type { MediaErrorDetail } from "@vidstack/react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { RoomPanelProps } from "../../../layout/page/types"
-import { usePlayerChromeUi } from "./use-player-chrome-ui"
-import { usePlayerMediaPipeline } from "./use-player-media-pipeline"
-import { usePlayerPermissions } from "./use-player-permissions"
-import { usePlayerSessionController } from "./use-player-session-controller"
-import { usePlayerPlaybackSync } from "./use-player-playback-sync"
-import { usePlaylistNavigation } from "./use-playlist-navigation"
 import { usePlaybackTimelineController } from "../playback-control/use-playback-timeline-controller"
-import { formatMediaErrorDetail } from "../player-src"
+import type { PlayerShellSlice } from "../player-room-selectors"
 import {
   syncPlayerSessionActions,
   type PlayerSessionController,
   type SyncedMediaPlayerViewModel,
 } from "../player-session-controller"
-import type { PlayerShellSlice } from "../player-room-selectors"
+import { formatMediaErrorDetail } from "../player-src"
+import { usePlayerChromeUi } from "./use-player-chrome-ui"
+import { usePlayerMediaPipeline } from "./use-player-media-pipeline"
+import { usePlayerPermissions } from "./use-player-permissions"
+import { usePlayerPlaybackSync } from "./use-player-playback-sync"
+import { usePlayerSessionController } from "./use-player-session-controller"
+import { usePlaylistNavigation } from "./use-playlist-navigation"
 
 export type UsePlayerSessionArgs = {
   slice: PlayerShellSlice
@@ -49,7 +49,9 @@ export type PlayerSessionUi = {
   totalDurationMs: number | null
   playbackPaused: boolean
   currentName: string | undefined
-  handlePlaylistStep: ReturnType<typeof usePlaylistNavigation>["handlePlaylistStep"]
+  handlePlaylistStep: ReturnType<
+    typeof usePlaylistNavigation
+  >["handlePlaylistStep"]
   timeline: ReturnType<typeof usePlaybackTimelineController>
 }
 
@@ -133,8 +135,7 @@ export function usePlayerSession({
     catalogDurationMs,
   })
 
-  const canControlPlayback =
-    canControlByRole && capabilities.canControlPlayback
+  const canControlPlayback = canControlByRole && capabilities.canControlPlayback
 
   const chrome = usePlayerChromeUi({
     controller,
@@ -155,8 +156,7 @@ export function usePlayerSession({
     canControlPlayback,
   })
 
-  const controlsDisabled =
-    !canControlPlayback || chrome.isOtherUserSeeking
+  const controlsDisabled = !canControlPlayback || chrome.isOtherUserSeeking
   const timeline = usePlaybackTimelineController({
     roomState: navRoomState,
     send,

@@ -1,8 +1,5 @@
 import { env } from "@/env"
-import {
-  RELEASE_SCRIPT,
-  RENEW_SCRIPT,
-} from "@/server/media/yt-dlp/lease-lua"
+import { RELEASE_SCRIPT, RENEW_SCRIPT } from "@/server/media/yt-dlp/lease-lua"
 import { recordYtDlpMetric } from "@/server/media/yt-dlp/metrics"
 import {
   derivedExtractFailoverWaitMs,

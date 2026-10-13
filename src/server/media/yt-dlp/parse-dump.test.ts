@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test"
 import { parseYtDlpDumpJson } from "@/server/media/yt-dlp/parse-dump"
+import { expect, test } from "bun:test"
 
 test("parses manifest Auto stream and combined formats", () => {
   const result = parseYtDlpDumpJson(
@@ -30,7 +30,9 @@ test("parses manifest Auto stream and combined formats", () => {
         },
       ],
       subtitles: {
-        en: [{ url: "https://cdn.example/en.vtt", ext: "vtt", name: "English" }],
+        en: [
+          { url: "https://cdn.example/en.vtt", ext: "vtt", name: "English" },
+        ],
       },
     }),
   )

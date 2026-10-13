@@ -1,4 +1,11 @@
 import {
+  localMediaAbrPublishSchema,
+  localMediaChunkSchema,
+  localMediaReadySchema,
+  localMediaWebrtcSignalSchema,
+} from "@/contracts/schemas"
+import type { PlaylistMediaStream } from "@/contracts/types"
+import {
   resolveLocalMediaChunk,
   type LocalMediaChunkPayload,
 } from "@/server/media/local-media-relay"
@@ -11,13 +18,6 @@ import {
 } from "@/server/media/local-media-store"
 import { mutateRoomMessage } from "@/server/realtime/handlers/mutate-room"
 import type { RoomMessageHandler } from "@/server/realtime/handlers/types"
-import type { PlaylistMediaStream } from "@/contracts/types"
-import {
-  localMediaAbrPublishSchema,
-  localMediaChunkSchema,
-  localMediaReadySchema,
-  localMediaWebrtcSignalSchema,
-} from "@/contracts/schemas"
 import { randomUUID } from "node:crypto"
 import { parseOrNack } from "./parse-or-nack"
 import { parseOrWarn } from "./parse-or-warn"
@@ -172,9 +172,8 @@ export const handleLocalMediaWebrtcSignal: RoomMessageHandler = async (
   if (!parsed) return
   if (parsed.targetUserId === ctx.userId) return
 
-  const { getRoomBroadcastBus } = await import(
-    "@/server/realtime/broadcast/room-broadcast-bus"
-  )
+  const { getRoomBroadcastBus } =
+    await import("@/server/realtime/broadcast/room-broadcast-bus")
   await getRoomBroadcastBus().publishUserEphemeral(
     ctx.roomId,
     parsed.targetUserId,

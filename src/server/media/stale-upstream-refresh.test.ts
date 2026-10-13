@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test"
 import { isStaleUpstreamStatus } from "@/server/media/stale-upstream-refresh"
+import { expect, test } from "bun:test"
 
 test("treats 401/403 as stale upstream", () => {
   expect(isStaleUpstreamStatus(401)).toBe(true)

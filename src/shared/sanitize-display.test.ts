@@ -1,10 +1,10 @@
-import { describe, expect, test } from "bun:test"
 import {
   isHttpOrHttpsUrl,
   sanitizeErrorMessage,
   sanitizeMediaTitle,
   sanitizeUsername,
 } from "@/shared/sanitize-display"
+import { describe, expect, test } from "bun:test"
 
 describe("sanitizeUsername", () => {
   test("accepts plain names", () => {
@@ -14,7 +14,7 @@ describe("sanitizeUsername", () => {
 
   test("rejects HTML-packaged XSS payloads", () => {
     expect(sanitizeUsername("<script>alert(1)</script>")).toBeNull()
-    expect(sanitizeUsername('<img src=x onerror=alert(1)>')).toBeNull()
+    expect(sanitizeUsername("<img src=x onerror=alert(1)>")).toBeNull()
     expect(sanitizeUsername('"><svg/onload=alert(1)>')).toBeNull()
   })
 
@@ -32,7 +32,9 @@ describe("sanitizeUsername", () => {
 describe("sanitizeMediaTitle", () => {
   test("strips markup delimiters but keeps text", () => {
     expect(sanitizeMediaTitle("Song <Live>")).toBe("Song Live")
-    expect(sanitizeMediaTitle('<script>x</script> track')).toBe("scriptx/script track")
+    expect(sanitizeMediaTitle("<script>x</script> track")).toBe(
+      "scriptx/script track",
+    )
   })
 
   test("caps length", () => {

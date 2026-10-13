@@ -1,10 +1,9 @@
-import { ensureMediasoupRuntime } from "@/server/media/mediasoup-runtime"
-import {
-  ensureRelaySubscriber,
-} from "@/server/media/local-media-relay"
-import { ensureLocalMediaReannounceSubscriber } from "@/server/media/local-media-reannounce"
-import { startLocalMediaNodeHeartbeat } from "@/server/media/local-media-node-registry"
 import { ensureBackgroundMaintenance } from "@/server/maintenance"
+import { startLocalMediaNodeHeartbeat } from "@/server/media/local-media-node-registry"
+import { ensureLocalMediaReannounceSubscriber } from "@/server/media/local-media-reannounce"
+import { ensureRelaySubscriber } from "@/server/media/local-media-relay"
+import { ensureMediasoupRuntime } from "@/server/media/mediasoup-runtime"
+import type { RoomStateStorePort } from "@/server/ports"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { handleSocketDisconnect } from "@/server/realtime/services/disconnect"
 import { wireRealtimePorts } from "@/server/realtime/wire-ports"
@@ -14,7 +13,6 @@ import { removeSocket } from "@/server/ws/registry"
 import { attachWebSocketTransport } from "@/server/ws/transport"
 import type { Server as HttpServer } from "node:http"
 import type { WebSocket } from "ws"
-import type { RoomStateStorePort } from "@/server/ports"
 import { handleSocketMessage } from "./socket-dispatch"
 
 /** Cap pending async handlers per socket so floods cannot grow unbounded. */

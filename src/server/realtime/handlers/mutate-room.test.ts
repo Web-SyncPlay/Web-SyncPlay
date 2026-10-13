@@ -1,4 +1,3 @@
-import { afterEach, describe, expect, mock, test } from "bun:test"
 import { getAppNodeId } from "@/server/node-id"
 import {
   createTestBroadcastBus,
@@ -9,6 +8,7 @@ import {
   createRoomState,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
+import { afterEach, describe, expect, mock, test } from "bun:test"
 
 afterEach(() => {
   mock.restore()
@@ -32,10 +32,7 @@ function roomWithOfflineGuest() {
   })
   const store = new InMemoryRoomStateStore(state)
   // Guest is "connected" in room state but has no WS presence → disconnecting.
-  store.presence.set(
-    "room-1",
-    new Map([["owner", { [getAppNodeId()]: 1 }]]),
-  )
+  store.presence.set("room-1", new Map([["owner", { [getAppNodeId()]: 1 }]]))
   return store
 }
 
@@ -91,12 +88,7 @@ describe("mutateRoomMessage presence prune scheduling", () => {
     const store = roomWithOfflineGuest()
     createTestBroadcastBus(store)
 
-    const result = await mutateRoomMessage(
-      store,
-      "room-1",
-      "owner",
-      () => true,
-    )
+    const result = await mutateRoomMessage(store, "room-1", "owner", () => true)
 
     expect(result).not.toBeNull()
     expect(pruneSetCalls).toBe(1)
@@ -141,12 +133,7 @@ describe("mutateRoomMessage presence prune scheduling", () => {
       }
     }
 
-    const result = await mutateRoomMessage(
-      store,
-      "room-1",
-      "owner",
-      () => true,
-    )
+    const result = await mutateRoomMessage(store, "room-1", "owner", () => true)
     expect(result).not.toBeNull()
   })
 })

@@ -17,9 +17,7 @@ function copyForStatus(
   if (status === "rate_limited") {
     return {
       title: "Too many join attempts",
-      description:
-        message ??
-        "Too many join attempts. Try again in a moment.",
+      description: message ?? "Too many join attempts. Try again in a moment.",
       blocked: true,
     }
   }
@@ -54,11 +52,7 @@ export function SocketStatus({
     <Empty>
       <EmptyHeader>
         <EmptyMedia variant="icon">
-          {copy.blocked ? (
-            <CircleAlert aria-hidden="true" />
-          ) : (
-            <Spinner />
-          )}
+          {copy.blocked ? <CircleAlert aria-hidden="true" /> : <Spinner />}
         </EmptyMedia>
         <EmptyTitle>{copy.title}</EmptyTitle>
         <EmptyDescription>{copy.description}</EmptyDescription>

@@ -1,6 +1,6 @@
-import type { WsEnvelope } from "@/contracts/types"
 import type { LocalMediaRuntime } from "@/client/local-media/local-media-runtime"
 import { localMediaReadPayloadSchema } from "@/contracts/s2c"
+import type { WsEnvelope } from "@/contracts/types"
 import { parseOrWarn } from "@/shared/parse-or-warn"
 
 /**
@@ -20,15 +20,12 @@ export function createLocalMediaReadHandler(
     const { requestId, localMediaId, start, end } = payload
 
     void (async () => {
-      const { getLocalMediaFile } = await import(
-        "@/client/local-media/local-media-provider"
-      )
-      const { encodeLocalMediaChunkFrame } = await import(
-        "@/shared/local-media/local-media-binary"
-      )
-      const { resolveRangeResponder } = await import(
-        "@/client/local-media/local-media-range-responder"
-      )
+      const { getLocalMediaFile } =
+        await import("@/client/local-media/local-media-provider")
+      const { encodeLocalMediaChunkFrame } =
+        await import("@/shared/local-media/local-media-binary")
+      const { resolveRangeResponder } =
+        await import("@/client/local-media/local-media-range-responder")
 
       // Stay silent when this tab does not hold the File so another
       // session for the same user can still answer the range request.
@@ -36,7 +33,8 @@ export function createLocalMediaReadHandler(
         return
       }
 
-      const responder = runtime?.rangeResponder ?? resolveRangeResponder(getLocalMediaFile)
+      const responder =
+        runtime?.rangeResponder ?? resolveRangeResponder(getLocalMediaFile)
       const result = await responder.serve({
         localMediaId,
         start,
@@ -61,7 +59,8 @@ export function createLocalMediaReadHandler(
             payload: {
               requestId,
               ok: false,
-              error: result.error === "read_failed" ? "read_failed" : result.error,
+              error:
+                result.error === "read_failed" ? "read_failed" : result.error,
             },
           }),
         )

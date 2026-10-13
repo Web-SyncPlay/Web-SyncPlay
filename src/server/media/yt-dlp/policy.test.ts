@@ -1,4 +1,3 @@
-import { expect, test } from "bun:test"
 import {
   derivedExtractFailoverWaitMs,
   derivedLockHeartbeatTtlSeconds,
@@ -8,6 +7,7 @@ import {
   PLAYBACK_MAX_HEIGHT,
   YTDLP_CACHE_RETENTION_SECONDS,
 } from "@/server/media/yt-dlp/policy"
+import { expect, test } from "bun:test"
 
 test("stream URL max age is derived from cache retention", () => {
   expect(YTDLP_CACHE_RETENTION_SECONDS).toBe(1800)

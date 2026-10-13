@@ -18,7 +18,9 @@ export type {
  * MediaPlayer event handlers for SyncedMediaPlayer.
  * Memoized so Vidstack does not re-subscribe every render.
  */
-export function useSyncedMediaPlayerHandlers(deps: SyncedMediaPlayerHandlerDeps) {
+export function useSyncedMediaPlayerHandlers(
+  deps: SyncedMediaPlayerHandlerDeps,
+) {
   return useMemo(
     () => ({
       ...createTransportRequestHandlers(deps),

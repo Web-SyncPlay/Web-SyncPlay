@@ -1,10 +1,7 @@
 import { localMediaErrorMessage } from "@/shared/local-media/local-media-errors"
 import type { MediaErrorDetail } from "@vidstack/react"
 import { toast } from "sonner"
-import {
-  formatMediaErrorDetail,
-  mediaErrorCode,
-} from "../player-src"
+import { formatMediaErrorDetail, mediaErrorCode } from "../player-src"
 import type { SyncedMediaPlayerHandlerDeps } from "./synced-media-player-handler-types"
 
 type PlaybackErrorDeps = Pick<

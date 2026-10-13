@@ -1,9 +1,8 @@
-import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+import { getAppNodeId } from "@/server/node-id"
 import {
   createTestBroadcastBus,
   setRoomBroadcastBusForTests,
 } from "@/server/realtime/broadcast/room-broadcast-bus"
-import { getAppNodeId } from "@/server/node-id"
 import {
   createFakeWs,
   createParticipant,
@@ -11,11 +10,8 @@ import {
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
 import { totalPresenceRefs } from "@/server/redis/presence-ref"
-import {
-  addSocket,
-  getSocketMeta,
-  removeSocket,
-} from "@/server/ws/registry"
+import { addSocket, getSocketMeta, removeSocket } from "@/server/ws/registry"
+import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
 
 mock.module("@/server/redis/client", () => ({
   getCommandClient: async () => ({
@@ -96,10 +92,7 @@ describe("abortJoinAfterCommit", () => {
       }),
     )
     // Commit wrote connected:true but this join never got a presence ref.
-    store.presence.set(
-      "room-1",
-      new Map([["owner", { [getAppNodeId()]: 1 }]]),
-    )
+    store.presence.set("room-1", new Map([["owner", { [getAppNodeId()]: 1 }]]))
     createTestBroadcastBus(store)
     const { ws, sent } = createFakeWs()
 
@@ -118,11 +111,13 @@ describe("abortJoinAfterCommit", () => {
       payload: { reason: "connection_closed" },
     })
     expect(store.peek("room-1")?.participants.guest?.connected).toBe(false)
-    expect(store.peek("room-1")?.participants.guest?.disconnectedAt).toBeDefined()
     expect(
-      store.peek("room-1")?.actionLog.some(
-        (e) => e.action === "participant:disconnected",
-      ),
+      store.peek("room-1")?.participants.guest?.disconnectedAt,
+    ).toBeDefined()
+    expect(
+      store
+        .peek("room-1")
+        ?.actionLog.some((e) => e.action === "participant:disconnected"),
     ).toBe(true)
   })
 
@@ -140,10 +135,7 @@ describe("abortJoinAfterCommit", () => {
       }),
     )
     // Constructor seeds connected users; isolate a single ref for this join.
-    store.presence.set(
-      "room-1",
-      new Map([["guest", { [getAppNodeId()]: 1 }]]),
-    )
+    store.presence.set("room-1", new Map([["guest", { [getAppNodeId()]: 1 }]]))
     expect(
       totalPresenceRefs(store.presence.get("room-1")?.get("guest") ?? {}),
     ).toBe(1)
@@ -186,10 +178,7 @@ describe("abortJoinAfterCommit", () => {
         },
       }),
     )
-    store.presence.set(
-      "room-1",
-      new Map([["owner", { [getAppNodeId()]: 1 }]]),
-    )
+    store.presence.set("room-1", new Map([["owner", { [getAppNodeId()]: 1 }]]))
     createTestBroadcastBus(store)
     const { ws } = createFakeWs()
 
@@ -253,12 +242,7 @@ describe("abortJoinAfterCommit", () => {
     )
     store.presence.set(
       "room-1",
-      new Map([
-        [
-          "guest",
-          { [otherNodeId]: 1, [getAppNodeId()]: 1 },
-        ],
-      ]),
+      new Map([["guest", { [otherNodeId]: 1, [getAppNodeId()]: 1 }]]),
     )
     store.aliveNodeIds = new Set([getAppNodeId(), otherNodeId])
     createTestBroadcastBus(store)

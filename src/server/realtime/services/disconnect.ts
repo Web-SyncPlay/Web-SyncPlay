@@ -1,18 +1,15 @@
+import type { RoomState } from "@/contracts/types"
 import { appendActionLog } from "@/server/log"
 import {
   clearLocalMediaProviderReadyForOwner,
   deleteLocalMediaEntriesForOwner,
 } from "@/server/media/local-media-store"
-import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type { RoomStateStorePort } from "@/server/ports"
+import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { clearConnectionLocalPlaybackReport } from "@/server/realtime/services/local-playback-report-lifecycle"
 import { publishUserOfflinePresence } from "@/server/realtime/services/offline-presence"
-import type { RoomState } from "@/contracts/types"
 import { transferOwnershipIfNeeded } from "./ownership"
-import {
-  clearAllRoomPrunes,
-  schedulePrune,
-} from "./participants"
+import { clearAllRoomPrunes, schedulePrune } from "./participants"
 import { bumpRoomRevisions, nextMonotonicMs } from "./timeline"
 
 export type DisconnectSocketMeta = {
@@ -58,7 +55,10 @@ export async function destroyRoom(
     const state = await store.get(roomId)
     await deleteLocalMediaForRoomOwners(state, roomId)
   } catch (error) {
-    console.warn("[disconnect] local media cleanup before destroy failed", error)
+    console.warn(
+      "[disconnect] local media cleanup before destroy failed",
+      error,
+    )
   }
   try {
     const { getLocalMediaSfuPort } = await import("@/server/ports")
@@ -206,9 +206,8 @@ export async function handleSocketDisconnect(
     // Any providing socket closed: File may be gone until a tab re-announces.
     await clearLocalMediaProviderReadyForOwner(meta.roomId, meta.userId)
     try {
-      const { publishLocalMediaReannounce } = await import(
-        "@/server/media/local-media-reannounce"
-      )
+      const { publishLocalMediaReannounce } =
+        await import("@/server/media/local-media-reannounce")
       await publishLocalMediaReannounce(meta.roomId, meta.userId)
     } catch (error) {
       console.warn("[disconnect] local-media reannounce failed", error)
@@ -224,9 +223,8 @@ export async function handleSocketDisconnect(
 
   // Last socket for this user — drop local-media viewer capability (S4).
   try {
-    const { invalidateViewerCapabilityToken } = await import(
-      "@/server/media/viewer-capability-token"
-    )
+    const { invalidateViewerCapabilityToken } =
+      await import("@/server/media/viewer-capability-token")
     await invalidateViewerCapabilityToken({
       roomId: meta.roomId,
       userId: meta.userId,

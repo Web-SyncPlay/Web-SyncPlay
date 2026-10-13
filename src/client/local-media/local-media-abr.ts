@@ -98,7 +98,11 @@ function probeVideoFile(file: File): Promise<ProbeResult | null> {
   })
 }
 
-function estimateBandwidth(height: number, sizeBytes: number, durationSec: number) {
+function estimateBandwidth(
+  height: number,
+  sizeBytes: number,
+  durationSec: number,
+) {
   if (durationSec > 0 && sizeBytes > 0) {
     const fromSize = Math.round((sizeBytes * 8) / durationSec)
     if (fromSize > 0) return fromSize
@@ -113,7 +117,12 @@ function estimateBandwidth(height: number, sizeBytes: number, durationSec: numbe
 type Packaged = {
   durationSec: number
   sourceHeight: number
-  lowers: Array<{ height: number; file: File; bandwidth: number; label: string }>
+  lowers: Array<{
+    height: number
+    file: File
+    bandwidth: number
+    label: string
+  }>
 }
 
 let ffmpegQueue: Promise<unknown> = Promise.resolve()
@@ -263,9 +272,7 @@ export async function runLocalMediaAbrPublish(input: {
         height: packaged.sourceHeight,
         bandwidth: sourceBandwidth,
         label:
-          packaged.sourceHeight >= 100
-            ? `${packaged.sourceHeight}p`
-            : "Source",
+          packaged.sourceHeight >= 100 ? `${packaged.sourceHeight}p` : "Source",
         mimeType,
         sizeBytes: file.size,
         name,

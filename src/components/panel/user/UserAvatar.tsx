@@ -1,5 +1,8 @@
 "use client"
 
+import { cn } from "@/components/lib/utils"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
+import type { ParticipantState } from "@/contracts/types"
 import {
   avatarDataUri,
   avatarStyleLabel,
@@ -8,9 +11,6 @@ import {
   resolveStyle,
   type AvatarStyleId,
 } from "@/shared/avatar"
-import type { TypedRoomEventSender } from "@/contracts/room-events"
-import { cn } from "@/components/lib/utils"
-import type { ParticipantState } from "@/contracts/types"
 import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar"
 import {
@@ -22,11 +22,7 @@ import {
 } from "../../ui/dropdown-menu"
 import { ItemMedia } from "../../ui/item"
 import { Spinner } from "../../ui/spinner"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "../../ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip"
 
 function AvatarFace({
   user,
@@ -95,8 +91,7 @@ export function UserAvatar({
   const [pendingStyle, setPendingStyle] = useState<AvatarStyleId | null>(null)
 
   const displayStyle = pendingStyle ?? confirmedStyle
-  const isPending =
-    pendingStyle !== null && confirmedStyle !== pendingStyle
+  const isPending = pendingStyle !== null && confirmedStyle !== pendingStyle
 
   const face = isSelf ? (
     <DropdownMenu>

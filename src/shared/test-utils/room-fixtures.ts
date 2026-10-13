@@ -83,7 +83,11 @@ export function createRoomState(overrides: Partial<RoomState> = {}): RoomState {
         id: "item-c",
         name: "C",
         mediaStreams: [
-          { id: "stream-1", src: "https://example.com/c.m3u8", isDefault: true },
+          {
+            id: "stream-1",
+            src: "https://example.com/c.m3u8",
+            isDefault: true,
+          },
         ],
         textTracks: [
           { id: "track-1", src: "https://example.com/c.vtt", label: "EN" },

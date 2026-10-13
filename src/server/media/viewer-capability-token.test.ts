@@ -1,17 +1,13 @@
-import { afterEach, describe, expect, mock, test } from "bun:test"
-import { createHash } from "node:crypto"
 import { keys } from "@/server/redis/keys"
 import { roomStateTtlSeconds } from "@/shared/room-lifecycle"
+import { afterEach, describe, expect, mock, test } from "bun:test"
+import { createHash } from "node:crypto"
 
 type KvStore = Map<string, { value: string; ex?: number }>
 
 function createRedisMock(store: KvStore) {
   return {
-    set: async (
-      key: string,
-      value: string,
-      opts?: { EX?: number },
-    ) => {
+    set: async (key: string, value: string, opts?: { EX?: number }) => {
       store.set(key, { value, ex: opts?.EX })
       return "OK"
     },
@@ -83,10 +79,8 @@ describe("viewer-capability-token", () => {
     const store: KvStore = new Map()
     mockRedisClient(store)
 
-    const {
-      mintViewerCapabilityToken,
-      validateViewerCapabilityToken,
-    } = await import("./viewer-capability-token")
+    const { mintViewerCapabilityToken, validateViewerCapabilityToken } =
+      await import("./viewer-capability-token")
 
     const { token } = await mintViewerCapabilityToken({
       roomId: "room-1",

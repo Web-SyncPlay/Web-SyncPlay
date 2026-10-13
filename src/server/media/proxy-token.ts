@@ -1,7 +1,7 @@
-import { randomUUID } from "node:crypto"
 import { MEDIA_FETCH_UA } from "@/server/media/media-ua"
 import { sha256HexUrl } from "@/server/media/url-hash"
 import { assertPublicHttpUrlResolved } from "@/server/security/url-safety"
+import { randomUUID } from "node:crypto"
 import { getCommandClient } from "../redis/client"
 import { keys } from "../redis/keys"
 /**
@@ -22,9 +22,7 @@ export type ProxyTokenPayload = {
 /** Default UA stamped on relay mints when callers omit one. */
 export const PROXY_DEFAULT_UA = MEDIA_FETCH_UA
 
-function parseProxyTokenPayload(
-  raw: string,
-): ProxyTokenPayload | null {
+function parseProxyTokenPayload(raw: string): ProxyTokenPayload | null {
   try {
     const parsed = JSON.parse(raw) as Partial<ProxyTokenPayload>
     if (typeof parsed.url !== "string") return null
@@ -145,7 +143,9 @@ export async function refreshProxyTokenTtl(token: string): Promise<void> {
   }
 }
 
-export async function roomStillExists(roomId: string | undefined): Promise<boolean> {
+export async function roomStillExists(
+  roomId: string | undefined,
+): Promise<boolean> {
   if (!roomId) return true
   const client = await getCommandClient()
   const exists = await client.exists(keys.roomState(roomId))

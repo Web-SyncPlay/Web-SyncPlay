@@ -1,10 +1,6 @@
 "use client"
 
-import {
-  applyRoomControl,
-  applyRoomSnapshot,
-  type PresenceBatchCoalescer,
-} from "@/client/realtime/room-state-merge"
+import type { createControlTokenReminter } from "@/client/realtime/control-token-client"
 import {
   createDefaultSessionCapabilities,
   isTerminalJoinRejection,
@@ -16,21 +12,31 @@ import {
   type JoinStatus,
   type SessionCapabilities,
 } from "@/client/realtime/room-join-client"
-import type { createControlTokenReminter } from "@/client/realtime/control-token-client"
+import {
+  applyRoomControl,
+  applyRoomSnapshot,
+  type PresenceBatchCoalescer,
+} from "@/client/realtime/room-state-merge"
+import { persistUsername } from "@/client/realtime/session-identity"
 import { serverEventSchemas } from "@/contracts/s2c"
-
-type ControlTokenReminter = ReturnType<typeof createControlTokenReminter>
 import type {
   ClientRoomState,
-  RoomSnapshotPayload,
   SessionKind,
   WsEnvelope,
 } from "@/contracts/types"
 import { parseOrWarn } from "@/shared/parse-or-warn"
-import { observeServerNowMs } from "@/shared/server-clock"
-import { persistUsername } from "@/client/realtime/session-identity"
+import { getLastRttMs, observeServerNowMs } from "@/shared/server-clock"
 import type { Dispatch, MutableRefObject, SetStateAction } from "react"
 import type { RoomSocketLocalMediaSession } from "./room-socket-local-media"
+
+type ControlTokenReminter = ReturnType<typeof createControlTokenReminter>
+
+/** Observe a true send-time wall stamp (never `playback.serverNowMs`). */
+function observeWallClock(serverWallNowMs: number | undefined): void {
+  if (typeof serverWallNowMs === "number" && Number.isFinite(serverWallNowMs)) {
+    observeServerNowMs(serverWallNowMs, Date.now(), getLastRttMs() || undefined)
+  }
+}
 
 /** Dispatcher only needs boot + active envelope routing from the lifecycle facade. */
 export type RoomSocketLocalMediaHandlers = Pick<
@@ -94,7 +100,14 @@ export function dispatchRoomSocketEnvelope(
       "[room-socket]",
     )
     if (!payload) return
+    // Fresh server wall time at presence publish — primary high-frequency clock sample.
+    observeWallClock(payload.serverNowMs)
     options.presenceCoalescer.enqueue(payload)
+    return
+  }
+
+  if (envelope.type === "session:clock") {
+    handleSessionClock(envelope)
     return
   }
 
@@ -136,9 +149,8 @@ function handleSnapshot(
   options.setPauseAutoReconnect(false)
   options.clearStateTimeout()
   options.setJoinError(null)
-  if (payload.playback && typeof payload.playback.serverNowMs === "number") {
-    observeServerNowMs(payload.playback.serverNowMs)
-  }
+  // Wall clock only — never feed frozen playback.serverNowMs into the offset.
+  observeWallClock(payload.serverWallNowMs)
   const selfParticipant = payload.participants[options.identity.userId]
   if (selfParticipant?.username) {
     options.usernameRef.current = selfParticipant.username
@@ -154,6 +166,17 @@ function handleSnapshot(
   }
 }
 
+function handleSessionClock(envelope: WsEnvelope<string, unknown>) {
+  const payload = parseOrWarn(
+    serverEventSchemas["session:clock"],
+    envelope.payload,
+    envelope.type,
+    "[room-socket]",
+  )
+  if (!payload) return
+  observeServerNowMs(payload.serverNowMs, Date.now(), payload.rttMs)
+}
+
 function handleControl(
   options: RoomSocketDispatcherOptions,
   envelope: WsEnvelope<string, unknown>,
@@ -166,9 +189,8 @@ function handleControl(
     "[room-socket]",
   )
   if (!payload) return
-  if (payload.playback && typeof payload.playback.serverNowMs === "number") {
-    observeServerNowMs(payload.playback.serverNowMs)
-  }
+  // Wall clock only — never feed frozen playback.serverNowMs into the offset.
+  observeWallClock(payload.serverWallNowMs)
   if (!options.hasReceivedStateRef.current) return
   options.setPauseAutoReconnect(false)
   options.clearStateTimeout()

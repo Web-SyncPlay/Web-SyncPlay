@@ -1,6 +1,6 @@
 import { extractMetadata } from "@/server/media/yt-dlp"
-import { isNativeProviderUrl } from "@/shared/player-utils"
 import type { DailyDefaultVideo } from "@/server/ports"
+import { isNativeProviderUrl } from "@/shared/player-utils"
 
 /** Read path: never blocks on yt-dlp; missing titles fall back to the URL. */
 export function dailyDefaultsForRead(

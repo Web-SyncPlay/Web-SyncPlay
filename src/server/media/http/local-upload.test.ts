@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test"
 import { handleLocalMediaUploadDisabled } from "@/server/media/http/local-upload"
+import { describe, expect, test } from "bun:test"
 
 describe("media http local-upload façade", () => {
   test("returns 410 relay-only", async () => {

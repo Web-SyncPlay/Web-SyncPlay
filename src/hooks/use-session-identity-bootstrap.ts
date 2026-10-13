@@ -8,8 +8,8 @@ import {
   persistUsername,
   stripIdentityHashFromUrl,
 } from "@/client/realtime/session-identity"
-import { getRandomName } from "@/shared/room-utils"
 import type { SessionKind } from "@/contracts/types"
+import { getRandomName } from "@/shared/room-utils"
 import { useEffect, useRef, useState, type MutableRefObject } from "react"
 
 export type SessionIdentity = {

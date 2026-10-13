@@ -1,3 +1,7 @@
+import {
+  installShutdownOnce,
+  registerShutdownHandler,
+} from "@/server/lifecycle"
 import { getAppNodeId } from "@/server/node-id"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
@@ -5,10 +9,6 @@ import {
   APP_NODE_ALIVE_TTL_SECONDS,
   APP_NODE_HEARTBEAT_INTERVAL_MS,
 } from "@/server/redis/ttl-policy"
-import {
-  installShutdownOnce,
-  registerShutdownHandler,
-} from "@/server/lifecycle"
 
 export { APP_NODE_ALIVE_TTL_SECONDS }
 

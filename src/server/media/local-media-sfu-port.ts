@@ -1,4 +1,3 @@
-import { getAppNodeId } from "@/server/node-id"
 import {
   closeLocalMediaSfuDataProducer,
   ensureMediasoupRuntime,
@@ -20,6 +19,7 @@ import {
   type MediasoupDataProducerAppData,
   type MediasoupTransportAppData,
 } from "@/server/media/mediasoup-runtime"
+import { getAppNodeId } from "@/server/node-id"
 import type { types as MsTypes } from "mediasoup"
 
 /**
@@ -55,10 +55,7 @@ export interface LocalMediaSfuPort {
     protocol?: string
     appData?: MediasoupDataProducerAppData
   }): Promise<{ id: string }>
-  consumeData(input: {
-    transportId: string
-    dataProducerId: string
-  }): Promise<{
+  consumeData(input: { transportId: string; dataProducerId: string }): Promise<{
     id: string
     dataProducerId: string
     sctpStreamParameters: MsTypes.SctpStreamParameters | undefined
@@ -72,7 +69,9 @@ export interface LocalMediaSfuPort {
     dataProducerId: string,
   ): MediasoupDataProducerAppData | null
   getProviderProducer(localMediaId: string): LocalMediaSfuProducer | null
-  listProviderProducers(): Array<LocalMediaSfuProducer & { localMediaId: string }>
+  listProviderProducers(): Array<
+    LocalMediaSfuProducer & { localMediaId: string }
+  >
   listRequestProducers(localMediaId: string): LocalMediaSfuProducer[]
   closeDataProducer(producerId: string): void
   /** Drop process-local SFU state for a destroyed room. */

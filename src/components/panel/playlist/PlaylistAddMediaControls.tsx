@@ -1,16 +1,16 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   canUseFileSystemAccess,
   persistLocalMediaHandle,
   pickLocalMediaFileWithFsa,
 } from "@/client/local-media/local-media-handles"
-import { queueNativePlaylistMetadataProbe } from "@/client/player/native-playlist-metadata-probe"
-import { resolvePlayableMimeType } from "@/shared/media-mime"
 import { registerLocalMediaFile } from "@/client/local-media/local-media-provider"
+import { queueNativePlaylistMetadataProbe } from "@/client/player/native-playlist-metadata-probe"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
+import { resolvePlayableMimeType } from "@/shared/media-mime"
 import { useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 
@@ -47,10 +47,7 @@ export function PlaylistAddMediaControls(props: {
     toast.success("Added URL, resolving metadata in background")
   }
 
-  const shareLocalFile = async (
-    file: File,
-    handle?: FileSystemFileHandle,
-  ) => {
+  const shareLocalFile = async (file: File, handle?: FileSystemFileHandle) => {
     if (!canManagePlaylist) return
 
     const mimeType = resolvePlayableMimeType(file.type, file.name)

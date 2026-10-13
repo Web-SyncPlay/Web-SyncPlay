@@ -1,21 +1,25 @@
 "use client"
 
-import type { ClientEventPayloadMap, TypedRoomEventSender } from "@/contracts/room-events"
+import { createControlTokenReminter } from "@/client/realtime/control-token-client"
 import {
   createDefaultSessionCapabilities,
   type JoinStatus,
   type SessionCapabilities,
 } from "@/client/realtime/room-join-client"
-import { createControlTokenReminter } from "@/client/realtime/control-token-client"
+import { createRoomSocketConnection } from "@/client/realtime/room-socket/room-socket-connection"
+import type {
+  ClientEventPayloadMap,
+  TypedRoomEventSender,
+} from "@/contracts/room-events"
 import type { ClientRoomState, SessionKind } from "@/contracts/types"
 import { useCallback, useEffect, useRef, useState } from "react"
-import {
-  createRoomSocketConnection,
-} from "@/client/realtime/room-socket/room-socket-connection"
 import { useLatestRef } from "./use-latest-ref"
 import { useSessionIdentityBootstrap } from "./use-session-identity-bootstrap"
 
-export type { JoinStatus, SessionCapabilities } from "@/client/realtime/room-join-client"
+export type {
+  JoinStatus,
+  SessionCapabilities,
+} from "@/client/realtime/room-join-client"
 
 export function useRoomSocket(
   roomId: string,

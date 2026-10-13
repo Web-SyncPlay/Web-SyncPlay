@@ -1,7 +1,3 @@
-import {
-  setRoomPublishPort,
-  type RoomStateStorePort,
-} from "@/server/ports"
 import type {
   AdmissionChangedPayload,
   PresencePatch,
@@ -9,13 +5,14 @@ import type {
   RoomSnapshotPayload,
   RoomState,
 } from "@/contracts/types"
+import { setRoomPublishPort, type RoomStateStorePort } from "@/server/ports"
 import type { WebSocket } from "ws"
-import type { RoomBroadcastEnvelope } from "./channels"
 import {
   fanOutFromPubSub as fanOutFromPubSubImpl,
   fanOutUserEphemeral as fanOutUserEphemeralImpl,
   sendToSocket as sendToSocketImpl,
 } from "./bus-fanout"
+import type { RoomBroadcastEnvelope } from "./channels"
 import {
   publishAdmissionChangedEnvelope,
   publishControlEnvelope,
@@ -23,19 +20,15 @@ import {
   type PublishCapture,
 } from "./control-publisher"
 import { BROADCAST_NODE_ID } from "./node-id"
+import { flushPresenceBatch, mergePresenceDirty } from "./presence-publisher"
 import {
   clearPresenceSeqFallback,
   resetPresenceSeqFallbackForTests,
 } from "./presence-seq"
-import {
-  flushPresenceBatch,
-  mergePresenceDirty,
-} from "./presence-publisher"
 import { buildSanitizedSnapshot } from "./snapshot-build"
 import { flushSnapshotPublish } from "./snapshot-publisher"
 
-export { BROADCAST_NODE_ID }
-export { resetPresenceSeqFallbackForTests }
+export { BROADCAST_NODE_ID, resetPresenceSeqFallbackForTests }
 
 const PRESENCE_BATCH_INTERVAL_MS = 250
 const SNAPSHOT_COALESCE_MS = 100
@@ -185,10 +178,7 @@ export class RoomBroadcastBus {
   }
 
   /** Same wire path as publishControl; named for seek-preview / non-persisted control. */
-  async publishControlEphemeral(
-    roomId: string,
-    payload: RoomControlPayload,
-  ) {
+  async publishControlEphemeral(roomId: string, payload: RoomControlPayload) {
     await this.publishControl(roomId, payload)
   }
 
@@ -238,9 +228,14 @@ export class RoomBroadcastBus {
   markPresenceDirty(roomId: string, userId: string, patch: PresencePatch) {
     const dirty = this.ensure(roomId)
     mergePresenceDirty(dirty.presence, userId, patch)
-    this.scheduleOnce(dirty, "presenceTimer", PRESENCE_BATCH_INTERVAL_MS, () => {
-      void this.flushPresence(roomId)
-    })
+    this.scheduleOnce(
+      dirty,
+      "presenceTimer",
+      PRESENCE_BATCH_INTERVAL_MS,
+      () => {
+        void this.flushPresence(roomId)
+      },
+    )
   }
 
   markSnapshotDirty(roomId: string) {
@@ -317,6 +312,8 @@ export class RoomBroadcastBus {
       },
       currentIndex: state.currentIndex,
       updatedAt: state.updatedAt,
+      // Fresh wall clock at publish — distinct from playback.serverNowMs.
+      serverWallNowMs: Date.now(),
     }
   }
 }

@@ -2,6 +2,7 @@
  * mediasoup SFU viewer path: consume blocks and request ranges.
  */
 
+import { getLocalMediaFile } from "@/client/local-media/local-media-provider"
 import {
   encodeLocalMediaBlockRequest,
   isLocalMediaBlockMeta,
@@ -10,7 +11,6 @@ import {
   parseLocalMediaBlockJson,
   parseLocalMediaSfuReadyAck,
 } from "@/shared/local-media/local-media-block-protocol"
-import { getLocalMediaFile } from "@/client/local-media/local-media-provider"
 import type { types as MsTypes } from "mediasoup-client"
 import {
   call,
@@ -242,7 +242,10 @@ function readyViewerSlot(
 /** True only when a viewer slot has completed the provider ready handshake. */
 export function isLocalMediaSfuViewerReady(localMediaId: string): boolean {
   const session = getActiveSession()
-  if (!session || !shouldActAsSfuViewer(Boolean(getLocalMediaFile(localMediaId)))) {
+  if (
+    !session ||
+    !shouldActAsSfuViewer(Boolean(getLocalMediaFile(localMediaId)))
+  ) {
     return false
   }
   return readyViewerSlot(session, localMediaId) != null

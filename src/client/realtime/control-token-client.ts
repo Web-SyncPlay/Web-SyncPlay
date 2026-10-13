@@ -1,10 +1,10 @@
-import { canMutateByRole } from "@/shared/permissions-utils"
 import {
   loadPersistedControlToken,
   loadPersistedControlTokenRecord,
   persistControlToken,
 } from "@/client/realtime/session-identity"
 import type { RoomRole, SessionKind } from "@/contracts/types"
+import { canMutateByRole } from "@/shared/permissions-utils"
 
 /** Remint this long before expiry (capped by remaining lifetime). */
 export const CONTROL_TOKEN_REMINT_SKEW_MS = 60_000
@@ -83,7 +83,8 @@ export async function mintRoomControlToken(input: {
       return null
     }
     const expiresAt =
-      typeof payload.expiresAt === "number" && Number.isFinite(payload.expiresAt)
+      typeof payload.expiresAt === "number" &&
+      Number.isFinite(payload.expiresAt)
         ? payload.expiresAt
         : undefined
     persistControlToken(input.roomId, payload.token, expiresAt)
@@ -200,10 +201,7 @@ export function createControlTokenRefreshScheduler(options?: {
   setTimer?: (fn: () => void, ms: number) => number
   clearTimer?: (id: number) => void
 }): {
-  arm: (
-    credentials: ControlTokenRefreshCredentials,
-    expiresAt?: number,
-  ) => void
+  arm: (credentials: ControlTokenRefreshCredentials, expiresAt?: number) => void
   disarm: () => void
   /** Re-arm from sessionStorage when an expiry is known. */
   armFromStorage: (credentials: ControlTokenRefreshCredentials) => void
@@ -213,8 +211,7 @@ export function createControlTokenRefreshScheduler(options?: {
   const setTimer =
     options?.setTimer ??
     ((fn, ms) => window.setTimeout(fn, ms) as unknown as number)
-  const clearTimer =
-    options?.clearTimer ?? ((id) => window.clearTimeout(id))
+  const clearTimer = options?.clearTimer ?? ((id) => window.clearTimeout(id))
 
   let timerId: number | undefined
   let armedCredentials: ControlTokenRefreshCredentials | null = null

@@ -2,11 +2,36 @@ import { describe, expect, test } from "bun:test"
 import {
   CATCH_UP_RATE_MAX_FACTOR,
   CATCH_UP_RATE_MIN_FACTOR,
+  DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
+  FORCE_SEEK_LEAD_SEC,
   computeExpectedPlaybackTimeSec,
   measurePlaybackDriftSec,
   resolveCatchUpPlaybackRate,
+  resolvePlaybackDriftThresholdSec,
   resolveSeekCeilingSec,
 } from "./playback-sync"
+
+describe("resolvePlaybackDriftThresholdSec", () => {
+  test("floors at the default soft threshold", () => {
+    expect(resolvePlaybackDriftThresholdSec(0)).toBe(
+      DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
+    )
+    expect(resolvePlaybackDriftThresholdSec(100)).toBe(
+      DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
+    )
+  })
+
+  test("grows with half-RTT once latency exceeds the floor", () => {
+    // halfRtt 0.6s + 0.25 = 0.85 > 0.8
+    expect(resolvePlaybackDriftThresholdSec(1_200)).toBeCloseTo(0.85, 5)
+    // halfRtt 1s + 0.25 = 1.25
+    expect(resolvePlaybackDriftThresholdSec(2_000)).toBeCloseTo(1.25, 5)
+  })
+
+  test("FORCE_SEEK_LEAD_SEC is disabled", () => {
+    expect(FORCE_SEEK_LEAD_SEC).toBe(0)
+  })
+})
 
 describe("resolveSeekCeilingSec", () => {
   test("uses the larger of duration and seekableEnd (VOD buffer < duration)", () => {

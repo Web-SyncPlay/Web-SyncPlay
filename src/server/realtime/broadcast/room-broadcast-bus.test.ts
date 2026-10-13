@@ -1,4 +1,3 @@
-import { afterEach, describe, expect, mock, test } from "bun:test"
 import {
   createTestBroadcastBus,
   resetPresenceSeqFallbackForTests,
@@ -9,8 +8,9 @@ import {
   createRoomState,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
-import { addSocket, removeSocket } from "@/server/ws/registry"
 import { keys } from "@/server/redis/keys"
+import { addSocket, removeSocket } from "@/server/ws/registry"
+import { afterEach, describe, expect, mock, test } from "bun:test"
 
 describe("RoomBroadcastBus", () => {
   afterEach(() => {
@@ -80,9 +80,8 @@ describe("RoomBroadcastBus", () => {
       }),
     }))
 
-    const { RoomBroadcastBus } = await import(
-      "@/server/realtime/broadcast/room-broadcast-bus"
-    )
+    const { RoomBroadcastBus } =
+      await import("@/server/realtime/broadcast/room-broadcast-bus")
     const store = new InMemoryRoomStateStore(createRoomState())
     // Two buses = two origins; neither uses captureOnly so both hit Redis INCR.
     const nodeA = new RoomBroadcastBus()
@@ -114,10 +113,16 @@ describe("RoomBroadcastBus", () => {
 
     const revsA = nodeA.captured
       .filter((c) => c.envelope.type === "presence:batch")
-      .map((c) => (c.envelope.payload as { presenceRevision: number }).presenceRevision)
+      .map(
+        (c) =>
+          (c.envelope.payload as { presenceRevision: number }).presenceRevision,
+      )
     const revsB = nodeB.captured
       .filter((c) => c.envelope.type === "presence:batch")
-      .map((c) => (c.envelope.payload as { presenceRevision: number }).presenceRevision)
+      .map(
+        (c) =>
+          (c.envelope.payload as { presenceRevision: number }).presenceRevision,
+      )
     expect(revsA).toEqual([1, 3])
     expect(revsB).toEqual([2])
     // Independent local counters would collide at 1; shared seq stays strictly increasing.

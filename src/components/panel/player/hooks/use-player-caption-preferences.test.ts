@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test"
 import type { PlaylistTextTrack } from "@/contracts/types"
+import { describe, expect, test } from "bun:test"
 import {
   applyCaptionPreferenceToTracks,
   matchCatalogTextTrackId,
@@ -116,9 +116,9 @@ describe("applyCaptionPreferenceToTracks", () => {
 
   test("skips when preferredId is unset", () => {
     const tracks = [{ id: "en", mode: "showing" }]
-    expect(
-      applyCaptionPreferenceToTracks(tracks, catalog, undefined),
-    ).toBe(false)
+    expect(applyCaptionPreferenceToTracks(tracks, catalog, undefined)).toBe(
+      false,
+    )
     expect(tracks[0]?.mode).toBe("showing")
   })
 })

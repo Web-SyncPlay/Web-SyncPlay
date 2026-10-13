@@ -1,11 +1,11 @@
-import { expect, test } from "bun:test"
 import { applyPresenceBatches } from "@/client/realtime/room-state-merge"
+import type { RoomState } from "@/contracts/types"
 import {
   createParticipant,
   createPlaylistItem,
   createRoomState,
 } from "@/shared/test-utils/room-fixtures"
-import type { RoomState } from "@/contracts/types"
+import { expect, test } from "bun:test"
 import {
   playerShellSlicesEqual,
   selectOwnerConnected,
@@ -47,7 +47,11 @@ test("ownerConnected flips only when the local-file owner connect bit changes", 
     playlist: [localItem],
     currentIndex: 0,
     participants: {
-      owner: createParticipant({ userId: "owner", role: "owner", connected: false }),
+      owner: createParticipant({
+        userId: "owner",
+        role: "owner",
+        connected: false,
+      }),
       guest: createParticipant({ userId: "guest" }),
       mod: createParticipant({ userId: "mod", role: "moderator" }),
     },

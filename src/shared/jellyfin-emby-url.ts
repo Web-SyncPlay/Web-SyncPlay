@@ -19,7 +19,10 @@ export function looksLikeJellyfinEmbyPlaybackUrl(rawUrl: string): boolean {
     if (/\.(m3u8)(\/|$)/i.test(path)) return true
     if (/\/(main|master|live)\.m3u8$/i.test(path)) return true
     if (/\/stream(\.[a-z0-9]+)?$/i.test(path)) return true
-    if (url.searchParams.has("MediaSourceId") || url.searchParams.has("mediaSourceId")) {
+    if (
+      url.searchParams.has("MediaSourceId") ||
+      url.searchParams.has("mediaSourceId")
+    ) {
       return true
     }
     if (url.searchParams.has("api_key") || url.searchParams.has("ApiKey")) {

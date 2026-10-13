@@ -1,24 +1,25 @@
 import { describe, expect, test } from "bun:test"
 import type { SyncablePlayer } from "./apply-playback-sync"
 import {
+  DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
+  FORCE_SEEK_LEAD_SEC,
+  resolveCatchUpPlaybackRate,
+} from "./playback-sync"
+import {
   ANCHOR_RETRY_DELAYS_MS,
   CATCH_UP_STALL_POST_SEEK_GRACE_MS,
   CATCH_UP_STALL_WINDOW_MS,
   createPlaybackSyncEngine,
   MAX_FORCE_SEEKS_PER_ANCHOR,
-  WATCHDOG_INTERVAL_MS,
   planPlaybackDriftCorrection,
+  resetAnchorBudget,
+  tryConsumeAnchorBudget,
+  WATCHDOG_INTERVAL_MS,
   type EngineSyncState,
   type PlaybackSnapshot,
   type PlaybackSyncEngineHost,
   type PlaybackSyncScheduler,
 } from "./playback-sync-engine"
-import { NATIVE_MIN_CONFIRM_MS } from "./native-provider-sync"
-import {
-  DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
-  FORCE_SEEK_LEAD_SEC,
-  resolveCatchUpPlaybackRate,
-} from "./playback-sync"
 
 function stubMediaEl(init: { currentTime?: number; paused?: boolean } = {}) {
   return {
@@ -100,7 +101,14 @@ function createFakeScheduler(startMs = 1_000) {
     }
   }
 
-  return { scheduler, advance, get now() { return now }, timers }
+  return {
+    scheduler,
+    advance,
+    get now() {
+      return now
+    },
+    timers,
+  }
 }
 
 function createHlsNoopPlayer(initialTime = 0): SyncablePlayer & {
@@ -434,9 +442,7 @@ describe("PlaybackSyncEngine", () => {
     engine.reset()
     expect(engine.phase()).toBe("idle")
     // Transport nudge timeout cleared; watchdog interval remains until dispose.
-    expect(
-      timers.filter((t) => t.kind === "timeout").length,
-    ).toBe(0)
+    expect(timers.filter((t) => t.kind === "timeout").length).toBe(0)
   })
 
   describe("authoritative pause (HLS / local HTTP)", () => {
@@ -749,9 +755,7 @@ describe("PlaybackSyncEngine", () => {
       const seeks: number[] = []
       const mediaSeeks: number[] = []
       const readSec = () =>
-        player.paused
-          ? baseSec
-          : baseSec + (config.now() - baseAtMs) / 1000
+        player.paused ? baseSec : baseSec + (config.now() - baseAtMs) / 1000
       const write = (value: number) => {
         baseSec = value
         baseAtMs = config.now()
@@ -807,7 +811,7 @@ describe("PlaybackSyncEngine", () => {
       return player
     }
 
-    test("playing force-seek leads for HTML5 and native; paused does not", () => {
+    test("playing force-seek snaps to expected (no lead); paused snaps to anchor", () => {
       const sched = createFakeScheduler(10_000)
       const html5 = createMeasuredPlayer({
         now: () => sched.now,
@@ -1478,7 +1482,9 @@ describe("PlaybackSyncEngine", () => {
       const frozenSec = mediaTime
       const armAt =
         Math.ceil(sched.now / WATCHDOG_INTERVAL_MS) * WATCHDOG_INTERVAL_MS
-      sched.advance(armAt > sched.now ? armAt - sched.now : WATCHDOG_INTERVAL_MS)
+      sched.advance(
+        armAt > sched.now ? armAt - sched.now : WATCHDOG_INTERVAL_MS,
+      )
       mediaTime = frozenSec
       wrapperTime = frozenSec
       expect(seeks.length).toBe(seeksAfterEcho)
@@ -1646,9 +1652,56 @@ describe("PlaybackSyncEngine", () => {
   })
 })
 
+describe("force-seek anchor budget", () => {
+  test("resetAnchorBudget preserves count for the same anchor", () => {
+    const spent = { anchorMs: 20_000, count: MAX_FORCE_SEEKS_PER_ANCHOR }
+    expect(resetAnchorBudget(spent, 20_000)).toEqual(spent)
+    expect(resetAnchorBudget(spent, 30_000)).toEqual({
+      anchorMs: 30_000,
+      count: 0,
+    })
+  })
+
+  test("tryConsumeAnchorBudget refuses past max and same-anchor re-arm cannot refill", () => {
+    let budget = { anchorMs: 20_000, count: 0 }
+    for (let i = 0; i < MAX_FORCE_SEEKS_PER_ANCHOR; i++) {
+      const step = tryConsumeAnchorBudget(
+        budget,
+        20_000,
+        MAX_FORCE_SEEKS_PER_ANCHOR,
+      )
+      expect(step.consumed).toBe(true)
+      budget = step.budget
+    }
+    expect(budget.count).toBe(MAX_FORCE_SEEKS_PER_ANCHOR)
+
+    // Simulate scheduleAnchorVerifyBurst re-arm (must use resetAnchorBudget).
+    budget = resetAnchorBudget(budget, 20_000)
+    const refused = tryConsumeAnchorBudget(
+      budget,
+      20_000,
+      MAX_FORCE_SEEKS_PER_ANCHOR,
+    )
+    expect(refused.consumed).toBe(false)
+    expect(refused.budget.count).toBe(MAX_FORCE_SEEKS_PER_ANCHOR)
+
+    // A new authority anchor refills.
+    budget = resetAnchorBudget(budget, 40_000)
+    const fresh = tryConsumeAnchorBudget(
+      budget,
+      40_000,
+      MAX_FORCE_SEEKS_PER_ANCHOR,
+    )
+    expect(fresh.consumed).toBe(true)
+    expect(fresh.budget.count).toBe(1)
+  })
+})
+
 function pendingExpectedSec(state: EngineSyncState, nowMs: number): number {
   return (
     state.timelineAnchorMs / 1000 +
-    (state.paused ? 0 : ((nowMs - state.serverNowMs) / 1000) * state.playbackRate)
+    (state.paused
+      ? 0
+      : ((nowMs - state.serverNowMs) / 1000) * state.playbackRate)
   )
 }

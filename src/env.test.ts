@@ -1,9 +1,9 @@
-import { describe, expect, test } from "bun:test"
-import { z } from "zod"
 import {
   LOCAL_MEDIA_INTERNAL_PAIR_MESSAGE,
   refineLocalMediaInternalEnvPair,
 } from "@/env"
+import { describe, expect, test } from "bun:test"
+import { z } from "zod"
 
 const pairSchema = z
   .object({
@@ -33,9 +33,11 @@ describe("local-media internal env pair", () => {
     })
     expect(result.success).toBe(false)
     if (result.success) return
-    expect(result.error.issues.some((i) => i.message === LOCAL_MEDIA_INTERNAL_PAIR_MESSAGE)).toBe(
-      true,
-    )
+    expect(
+      result.error.issues.some(
+        (i) => i.message === LOCAL_MEDIA_INTERNAL_PAIR_MESSAGE,
+      ),
+    ).toBe(true)
   })
 
   test("rejects only LOCAL_MEDIA_INTERNAL_SECRET", () => {
@@ -44,8 +46,10 @@ describe("local-media internal env pair", () => {
     })
     expect(result.success).toBe(false)
     if (result.success) return
-    expect(result.error.issues.some((i) => i.message === LOCAL_MEDIA_INTERNAL_PAIR_MESSAGE)).toBe(
-      true,
-    )
+    expect(
+      result.error.issues.some(
+        (i) => i.message === LOCAL_MEDIA_INTERNAL_PAIR_MESSAGE,
+      ),
+    ).toBe(true)
   })
 })

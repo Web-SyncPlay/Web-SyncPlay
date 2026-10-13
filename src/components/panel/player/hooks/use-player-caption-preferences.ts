@@ -1,14 +1,14 @@
 "use client"
 
 import type { TypedRoomEventSender } from "@/contracts/room-events"
-import type { MediaPlayerInstance } from "@vidstack/react"
-import { useEffect, type RefObject } from "react"
-import { useLatestRef } from "@/hooks/use-latest-ref"
 import type {
   PlaylistItem,
   PlaylistTextTrack,
   ViewerMediaItemPreference,
 } from "@/contracts/types"
+import { useLatestRef } from "@/hooks/use-latest-ref"
+import type { MediaPlayerInstance } from "@vidstack/react"
+import { useEffect, type RefObject } from "react"
 
 type TrackLike = {
   id?: string
@@ -183,9 +183,7 @@ export function usePlayerCaptionPreferences(options: {
       const showing = tracks.find((track) => track.mode === "showing")
       const prefs = viewerPrefsRef.current
       const currentId =
-        prefs?.textTrackId === null
-          ? null
-          : (prefs?.textTrackId ?? undefined)
+        prefs?.textTrackId === null ? null : (prefs?.textTrackId ?? undefined)
 
       const nextId = resolveCaptionPreferencePublish({
         catalog: catalogRef.current,
@@ -212,9 +210,7 @@ export function usePlayerCaptionPreferences(options: {
     const applyStoredPreference = (instance: MediaPlayerInstance) => {
       const prefs = viewerPrefsRef.current
       const preferredId =
-        prefs?.textTrackId === null
-          ? null
-          : (prefs?.textTrackId ?? undefined)
+        prefs?.textTrackId === null ? null : (prefs?.textTrackId ?? undefined)
       if (preferredId === undefined) {
         endSuppressSoon(100)
         return

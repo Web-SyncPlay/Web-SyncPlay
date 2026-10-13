@@ -1,10 +1,10 @@
+import { viewerMediaPreferencesSchema } from "@/contracts/schemas"
 import {
   VIEWER_MEDIA_BY_ITEM_LIMIT,
   type PlaylistItem,
   type ViewerMediaItemPreference,
   type ViewerMediaPreferences,
 } from "@/contracts/types"
-import { viewerMediaPreferencesSchema } from "@/contracts/schemas"
 import type { z } from "zod"
 import { mutateRoomMessage } from "./mutate-room"
 import { parseOrNack } from "./parse-or-nack"
@@ -95,11 +95,7 @@ export const handleViewerMediaPreferences: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  const parsed = parseOrNack(
-    viewerMediaPreferencesSchema,
-    ctx.ws,
-    data,
-  )
+  const parsed = parseOrNack(viewerMediaPreferencesSchema, ctx.ws, data)
   if (!parsed) return
 
   await mutateRoomMessage(

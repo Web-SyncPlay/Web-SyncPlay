@@ -36,4 +36,3 @@ describe("redis keys", () => {
     expect(keys.appNodeAliveScanPattern()).toBe("app:node:*:alive")
   })
 })
-

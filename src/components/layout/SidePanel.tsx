@@ -1,11 +1,11 @@
 "use client"
 
+import { cn } from "@/components/lib/utils"
 import { LogPanel } from "@/components/panel/log/LogPanel"
 import { PlaylistPanel } from "@/components/panel/playlist/PlaylistPanel"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import type { RoomRailTab } from "@/hooks/use-room-rail"
-import { cn } from "@/components/lib/utils"
 import { useState } from "react"
 import type { RoomPanelProps } from "./page/types"
 
@@ -50,10 +50,7 @@ export function SidePanel({
 
   return (
     <Card
-      className={cn(
-        "size-full min-h-0 overflow-hidden rounded-lg",
-        className,
-      )}
+      className={cn("size-full min-h-0 overflow-hidden rounded-lg", className)}
     >
       {hideTabBar ? null : (
         <div className="flex shrink-0 items-center px-4 pt-3">

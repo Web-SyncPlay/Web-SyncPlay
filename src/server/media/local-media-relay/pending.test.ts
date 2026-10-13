@@ -1,4 +1,3 @@
-import { afterEach, describe, expect, test } from "bun:test"
 import {
   createPending,
   pendingMap,
@@ -6,6 +5,7 @@ import {
   settlePending,
 } from "@/server/media/local-media-relay/pending"
 import { LocalMediaRelayError } from "@/server/media/local-media-relay/types"
+import { afterEach, describe, expect, test } from "bun:test"
 
 afterEach(() => {
   for (const [requestId, pending] of pendingMap()) {
@@ -34,9 +34,9 @@ describe("settlePending / createPending", () => {
   })
 
   test("returns false when no pending entry exists", () => {
-    expect(
-      settlePending("missing", { requestId: "missing", ok: false }),
-    ).toBe(false)
+    expect(settlePending("missing", { requestId: "missing", ok: false })).toBe(
+      false,
+    )
   })
 
   test("rejects on timeout with provider_timeout", async () => {

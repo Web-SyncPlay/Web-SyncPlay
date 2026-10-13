@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test"
 import type { RoomState } from "@/contracts/types"
+import { expect, test } from "bun:test"
 import { transferOwnershipIfNeeded } from "./ownership"
 
 function createState(): RoomState {

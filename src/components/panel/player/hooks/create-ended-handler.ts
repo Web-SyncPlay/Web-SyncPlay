@@ -34,7 +34,10 @@ export function resolveEndedPauseCurrentTimeMs(deps: {
   playerRef: EndedHandlerDeps["playerRef"]
   nowMs?: number
 }): number {
-  const playheadMs = Math.max(0, Math.floor(Number(deps.getCurrentTimeMs()) || 0))
+  const playheadMs = Math.max(
+    0,
+    Math.floor(Number(deps.getCurrentTimeMs()) || 0),
+  )
 
   const catalogSec = Number(deps.current?.durationSeconds)
   const playerDuration = Number(deps.playerRef.current?.duration)

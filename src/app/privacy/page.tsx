@@ -57,9 +57,7 @@ export default function PrivacyPage() {
             Room data: playlist metadata/URLs, playback state, roles, optional
             join password, short in-room activity log
           </li>
-          <li>
-            Connection data (e.g. IP) via normal HTTP/WebSocket handling
-          </li>
+          <li>Connection data (e.g. IP) via normal HTTP/WebSocket handling</li>
           <li>Player preferences in localStorage (volume)</li>
           <li>
             Short-lived rate-limit counters (~60 seconds) for DDoS/abuse

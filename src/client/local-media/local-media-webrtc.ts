@@ -4,6 +4,8 @@
  * Signaling uses room WS `local-media:webrtc:signal`. HTTP remains fallback.
  */
 
+import { getLocalMediaFile } from "@/client/local-media/local-media-provider"
+import { resolveRangeResponder } from "@/client/local-media/local-media-range-responder"
 import {
   encodeLocalMediaBlockMetaError,
   encodeLocalMediaBlockMetaOk,
@@ -13,8 +15,6 @@ import {
   LOCAL_MEDIA_BLOCK_CHANNEL_LABEL,
   parseLocalMediaBlockJson,
 } from "@/shared/local-media/local-media-block-protocol"
-import { getLocalMediaFile } from "@/client/local-media/local-media-provider"
-import { resolveRangeResponder } from "@/client/local-media/local-media-range-responder"
 import { PUBLIC_STUN_ICE_SERVERS } from "@/shared/webrtc-ice-servers"
 
 type SignalPayload = {

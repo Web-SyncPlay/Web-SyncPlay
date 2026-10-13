@@ -76,8 +76,7 @@ async function loadAuthorizedProxy(
   token: string,
   mode: "json" | "empty",
 ): Promise<
-  | { ok: true; payload: ProxyTokenPayload }
-  | { ok: false; response: Response }
+  { ok: true; payload: ProxyTokenPayload } | { ok: false; response: Response }
 > {
   const limited = await authorizeProxyRequest(request, token)
   if (limited) {
@@ -137,10 +136,7 @@ function passthroughHeaders(response: Response, range: string | null) {
     "cache-control",
     range ? "private, no-store" : "private, max-age=60, no-transform",
   )
-  headers.set(
-    "accept-ranges",
-    response.headers.get("accept-ranges") ?? "bytes",
-  )
+  headers.set("accept-ranges", response.headers.get("accept-ranges") ?? "bytes")
   for (const key of [
     "content-length",
     "content-range",
@@ -224,9 +220,7 @@ export async function handleMediaProxyGet(
 
   const contentType = response.headers.get("content-type") ?? ""
   const tryRewrite =
-    response.status === 200 &&
-    !range &&
-    playlistTargetHint(target, contentType)
+    response.status === 200 && !range && playlistTargetHint(target, contentType)
 
   if (tryRewrite) {
     const rewritten = await getOrComputeHlsRewrite({

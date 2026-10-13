@@ -1,4 +1,3 @@
-import { describe, expect, test } from "bun:test"
 import {
   canControlPlayback,
   canControlPlaylist,
@@ -7,6 +6,7 @@ import {
   isClientControlAuthorized,
   isOwner,
 } from "@/shared/permissions-utils"
+import { describe, expect, test } from "bun:test"
 
 describe("permissions-utils (client gates)", () => {
   test("role helpers", () => {

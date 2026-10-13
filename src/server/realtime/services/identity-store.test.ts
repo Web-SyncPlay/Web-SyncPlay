@@ -33,10 +33,8 @@ describe("identity-store", () => {
       getCommandClient: async () => createRedisMock(store),
     }))
 
-    const {
-      claimOrVerifyIdentitySecret,
-      matchIdentitySecret,
-    } = await import("@/server/realtime/services/identity-store")
+    const { claimOrVerifyIdentitySecret, matchIdentitySecret } =
+      await import("@/server/realtime/services/identity-store")
 
     const claimed = await claimOrVerifyIdentitySecret({
       roomId: "room-1",
@@ -78,9 +76,8 @@ describe("identity-store", () => {
       getCommandClient: async () => redis,
     }))
 
-    const { claimOrVerifyIdentitySecret } = await import(
-      "@/server/realtime/services/identity-store"
-    )
+    const { claimOrVerifyIdentitySecret } =
+      await import("@/server/realtime/services/identity-store")
 
     const first = await claimOrVerifyIdentitySecret({
       roomId: "room-1",
@@ -124,9 +121,8 @@ describe("identity-store", () => {
       getCommandClient: async () => redis,
     }))
 
-    const { claimOrVerifyIdentitySecret } = await import(
-      "@/server/realtime/services/identity-store"
-    )
+    const { claimOrVerifyIdentitySecret } =
+      await import("@/server/realtime/services/identity-store")
 
     await claimOrVerifyIdentitySecret({
       roomId: "room-1",
@@ -150,9 +146,8 @@ describe("identity-store", () => {
       getCommandClient: async () => createRedisMock(store),
     }))
 
-    const { claimOrVerifyIdentitySecret } = await import(
-      "@/server/realtime/services/identity-store"
-    )
+    const { claimOrVerifyIdentitySecret } =
+      await import("@/server/realtime/services/identity-store")
 
     const ok = await claimOrVerifyIdentitySecret({
       roomId: "room-1",
@@ -170,9 +165,8 @@ describe("identity-store", () => {
       getCommandClient: async () => createRedisMock(store),
     }))
 
-    const { matchIdentitySecret } = await import(
-      "@/server/realtime/services/identity-store"
-    )
+    const { matchIdentitySecret } =
+      await import("@/server/realtime/services/identity-store")
 
     const ok = await matchIdentitySecret({
       roomId: "room-1",

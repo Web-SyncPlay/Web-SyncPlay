@@ -1,9 +1,9 @@
-import { describe, expect, test } from "bun:test"
 import {
   guessMimeTypeFromFilename,
   isProgressiveMediaMime,
   resolvePlayableMimeType,
 } from "@/shared/media-mime"
+import { describe, expect, test } from "bun:test"
 
 describe("media-mime", () => {
   test("guesses common extensions", () => {

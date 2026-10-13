@@ -10,10 +10,7 @@ import {
   LOCAL_MEDIA_VIEWER_USER_PARAM,
 } from "@/shared/local-media/local-media-viewer-token"
 
-export {
-  LOCAL_MEDIA_VIEWER_TOKEN_PARAM,
-  LOCAL_MEDIA_VIEWER_USER_PARAM,
-}
+export { LOCAL_MEDIA_VIEWER_TOKEN_PARAM, LOCAL_MEDIA_VIEWER_USER_PARAM }
 
 const STORAGE_KEY = "wsp.localMediaViewerToken"
 
@@ -50,16 +47,19 @@ function parseStored(raw: string | null): StoredViewerToken | null {
   }
 }
 
-function syncViewerTokenToServiceWorker(record: StoredViewerToken | null): void {
-  if (typeof navigator === "undefined" || !navigator.serviceWorker?.controller) {
+function syncViewerTokenToServiceWorker(
+  record: StoredViewerToken | null,
+): void {
+  if (
+    typeof navigator === "undefined" ||
+    !navigator.serviceWorker?.controller
+  ) {
     return
   }
   try {
     navigator.serviceWorker.controller.postMessage({
       type: "local-media-sw-viewer-capability",
-      record: record
-        ? { token: record.token, userId: record.userId }
-        : null,
+      record: record ? { token: record.token, userId: record.userId } : null,
     })
   } catch {
     // ignore

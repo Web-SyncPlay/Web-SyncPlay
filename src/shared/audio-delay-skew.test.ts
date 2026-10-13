@@ -100,9 +100,7 @@ describe("processSkewQuantum", () => {
       outputFrameCount: 6,
     })
     // First two content frames dropped; remaining content then silence pad.
-    expect(result.output.map((frame) => frame.left)).toEqual([
-      3, 4, 5, 6, 0, 0,
-    ])
+    expect(result.output.map((frame) => frame.left)).toEqual([3, 4, 5, 6, 0, 0])
     expect(result.samplesToDrop).toBe(0)
     expect(result.pending).toEqual([])
   })

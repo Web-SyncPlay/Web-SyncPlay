@@ -1,5 +1,7 @@
-import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
+import type { RoomState } from "@/contracts/types"
+import type { RoomStateStorePort } from "@/server/ports"
 import type { RoomPublishHint } from "@/server/realtime/broadcast/channels"
+import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
   clearPrune,
   reconcileParticipantsConnectivity,
@@ -7,8 +9,6 @@ import {
 } from "@/server/realtime/services/participants"
 import { applyRoomStateRepair } from "@/server/realtime/services/room-state-repair"
 import { markCurrentMedia } from "@/server/realtime/services/timeline"
-import type { RoomStateStorePort } from "@/server/ports"
-import type { RoomState } from "@/contracts/types"
 
 function bumpsStructuralRevision(hint: RoomPublishHint): boolean {
   return (

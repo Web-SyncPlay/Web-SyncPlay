@@ -1,10 +1,3 @@
-import { appendActionLog } from "@/server/log"
-import {
-  commitPlaybackSeek,
-  nextMonotonicMs,
-  reanchorPlaybackAtNow,
-  resolveCurrentTimelineMs,
-} from "@/server/realtime/services/timeline"
 import {
   playbackLoopModeSchema,
   playbackRateSchema,
@@ -12,6 +5,13 @@ import {
   playbackSetPausedSchema,
 } from "@/contracts/schemas"
 import type { LoopMode } from "@/contracts/types"
+import { appendActionLog } from "@/server/log"
+import {
+  commitPlaybackSeek,
+  nextMonotonicMs,
+  reanchorPlaybackAtNow,
+  resolveCurrentTimelineMs,
+} from "@/server/realtime/services/timeline"
 import { mutateControlledRoomMessage } from "./mutate-controlled"
 import { parseOrNack } from "./parse-or-nack"
 import type { RoomMessageHandler } from "./types"
@@ -51,10 +51,12 @@ async function setPlaybackPausedState(
     data,
     (state, participant) => {
       const nowMs = Date.now()
+      // Always reanchor from the server timeline projection. Client
+      // `currentTimeMs` is advisory/logging only — trusting local playheads
+      // (post force-seek lead / buffer skew) rewrote authority and fanned
+      // out cross-peer seek storms under high RTT.
       const projectedMs = resolveCurrentTimelineMs(state, nowMs)
-      const nextAnchorMs = Number(payload.currentTimeMs ?? projectedMs)
-      // Keep ephemeral seekPreview — only authoritative seeks clear it.
-      state.playback.timelineAnchorMs = Math.max(0, nextAnchorMs)
+      state.playback.timelineAnchorMs = Math.max(0, projectedMs)
       state.playback.paused = paused
       state.playback.serverNowMs = nextMonotonicMs(
         state.playback.serverNowMs,
@@ -65,7 +67,12 @@ async function setPlaybackPausedState(
         actorUserId: ctx.userId,
         actorUsername: participant.username,
         action: paused ? "playback:pause" : "playback:unpause",
-        payload: { atMs: state.playback.timelineAnchorMs },
+        payload: {
+          atMs: state.playback.timelineAnchorMs,
+          ...(typeof payload.currentTimeMs === "number"
+            ? { clientCurrentTimeMs: payload.currentTimeMs }
+            : {}),
+        },
       })
       return true
     },

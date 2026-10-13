@@ -26,9 +26,9 @@ describe("local-media-range", () => {
     expect(
       resolveBytesRangeAgainstLength({ start: 500, end: 600 }, 100),
     ).toEqual({ invalid: true })
-    expect(
-      resolveBytesRangeAgainstLength({ start: 10, end: 5 }, 100),
-    ).toEqual({ invalid: true })
+    expect(resolveBytesRangeAgainstLength({ start: 10, end: 5 }, 100)).toEqual({
+      invalid: true,
+    })
   })
 
   test("parseLocalMediaRangeHeader matches HTTP helper semantics", () => {

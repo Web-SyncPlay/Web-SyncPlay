@@ -1,21 +1,18 @@
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type {
-  MediaErrorDetail,
-  MediaPlayerInstance,
-} from "@vidstack/react"
-import type { MutableRefObject, ReactNode, RefObject } from "react"
-import type {
   ClientRoomState,
   LoopMode,
   PlaylistItem,
   PlaylistMediaStream,
   ViewerMediaItemPreference,
 } from "@/contracts/types"
-import type { PlayerSrcInput } from "./player-src"
-import type { PendingSyncState } from "./hooks/use-buffering-watchdog"
+import type { MediaErrorDetail, MediaPlayerInstance } from "@vidstack/react"
+import type { MutableRefObject, ReactNode, RefObject } from "react"
 import type { TransportIntent } from "./hooks/transport-intent"
+import type { PendingSyncState } from "./hooks/use-buffering-watchdog"
 import type { PlaylistNavSnapshot } from "./hooks/use-synced-media-player-handlers"
 import type { LocalSeekPhase } from "./playback-control/use-playback-timeline-controller"
+import type { PlayerSrcInput } from "./player-src"
 
 /**
  * Mutable action implementations looked up by stable controller wrappers.

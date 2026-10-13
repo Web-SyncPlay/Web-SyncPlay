@@ -1,14 +1,10 @@
 "use client"
 
-import { createRoomSocketLocalMediaSession } from "@/client/realtime/room-socket/room-socket-local-media"
+import { clearLocalMediaViewerToken } from "@/client/local-media/local-media-viewer-token"
 import {
   createControlTokenRefreshScheduler,
   createControlTokenReminter,
 } from "@/client/realtime/control-token-client"
-import {
-  applyPresenceBatches,
-  createPresenceBatchCoalescer,
-} from "@/client/realtime/room-state-merge"
 import {
   buildRoomJoinEnvelope,
   createDefaultSessionCapabilities,
@@ -18,14 +14,23 @@ import {
   type SessionCapabilities,
 } from "@/client/realtime/room-join-client"
 import { dispatchRoomSocketEnvelope } from "@/client/realtime/room-socket/room-socket-dispatcher"
+import { createRoomSocketLocalMediaSession } from "@/client/realtime/room-socket/room-socket-local-media"
+import {
+  applyPresenceBatches,
+  createPresenceBatchCoalescer,
+} from "@/client/realtime/room-state-merge"
+import { loadPersistedControlToken } from "@/client/realtime/session-identity"
 import type {
   ClientRoomState,
   SessionKind,
   WsEnvelope,
 } from "@/contracts/types"
-import { clearLocalMediaViewerToken } from "@/client/local-media/local-media-viewer-token"
-import { loadPersistedControlToken } from "@/client/realtime/session-identity"
-import { startTransition, type Dispatch, type MutableRefObject, type SetStateAction } from "react"
+import {
+  startTransition,
+  type Dispatch,
+  type MutableRefObject,
+  type SetStateAction,
+} from "react"
 
 export { createControlTokenReminter }
 
@@ -91,7 +96,8 @@ export function createRoomSocketConnection(
   let clearReconnectTimers: (() => void) | null = null
 
   const fetchWsInit = options.fetchWsInit ?? defaultFetchWsInit
-  const createWebSocket = options.createWebSocket ?? ((url) => new WebSocket(url))
+  const createWebSocket =
+    options.createWebSocket ?? ((url) => new WebSocket(url))
   const wsOrigin = options.wsOrigin ?? defaultWsOrigin()
 
   /** Proactive remint before expiry; reconnect so join uses the new `ct`. */
@@ -241,9 +247,7 @@ export function createRoomSocketConnection(
       syncControlTokenFromStorage()
 
       joinAttempts += 1
-      options.setStatus(
-        options.getJoinPassword() ? "joining" : "connecting",
-      )
+      options.setStatus(options.getJoinPassword() ? "joining" : "connecting")
       options.setJoinError(null)
       try {
         ws.send(
@@ -270,7 +274,10 @@ export function createRoomSocketConnection(
       }
 
       scheduleStateTimeout()
-      if (joinAttempts < MAX_JOIN_ATTEMPTS && !options.hasReceivedStateRef.current) {
+      if (
+        joinAttempts < MAX_JOIN_ATTEMPTS &&
+        !options.hasReceivedStateRef.current
+      ) {
         joinRetryTimer = window.setTimeout(sendJoin, DEFAULT_JOIN_RETRY_MS)
       }
     }

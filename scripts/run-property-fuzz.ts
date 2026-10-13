@@ -20,9 +20,8 @@ const ROUNDS = argValue("--rounds", 8)
 const BASE = "https://cdn.example.com/live/master.m3u8"
 
 const fc = (await import("fast-check")).default
-const { assertPublicHttpUrl } = await import(
-  "../src/server/security/url-safety.ts"
-)
+const { assertPublicHttpUrl } =
+  await import("../src/server/security/url-safety.ts")
 const {
   collectM3u8ReferencedUrls,
   rewriteM3u8BodyWithProxyMap,
@@ -34,9 +33,8 @@ const {
   sanitizeMediaTitle,
   sanitizeUsername,
 } = await import("../src/shared/sanitize-display.ts")
-const { roomJoinSchema, participantUpdateSchema } = await import(
-  "../src/contracts/schemas.ts"
-)
+const { roomJoinSchema, participantUpdateSchema } =
+  await import("../src/contracts/schemas.ts")
 
 const privateIpv4 = fc
   .oneof(

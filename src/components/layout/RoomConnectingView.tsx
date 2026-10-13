@@ -1,8 +1,8 @@
 "use client"
 
+import type { JoinStatus } from "@/client/realtime/room-join-client"
 import { RoomJoinPasswordPrompt } from "@/components/dialog/RoomJoinPasswordPrompt"
 import { MediaUrlUnsupportedView } from "@/components/layout/page/MediaUrlUnsupportedView"
-import type { JoinStatus } from "@/client/realtime/room-join-client"
 import { SiteNavbar } from "./SiteNavbar"
 import { SocketStatus } from "./SocketStatus"
 
@@ -41,7 +41,5 @@ export function RoomConnectingView(props: {
     )
   }
 
-  return (
-    <SocketStatus status={props.status} message={props.joinError} />
-  )
+  return <SocketStatus status={props.status} message={props.joinError} />
 }

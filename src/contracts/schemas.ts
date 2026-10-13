@@ -42,10 +42,13 @@ const mediaTitleSchema = z
 const shortLabelSchema = z
   .string()
   .max(64)
-  .refine((value) => {
-    const next = sanitizeMediaTitle(value)
-    return next !== null && next.length <= 64
-  }, { message: "invalid_label" })
+  .refine(
+    (value) => {
+      const next = sanitizeMediaTitle(value)
+      return next !== null && next.length <= 64
+    },
+    { message: "invalid_label" },
+  )
   .transform((value) => sanitizeMediaTitle(value)!.slice(0, 64))
 
 /** Client-reported errors shown in UI / action log. */
@@ -161,7 +164,11 @@ export const playlistAddLocalSchema = z.object({
   mimeType: z.string().min(1).max(128),
   sizeBytes: sizeBytesSchema,
   /** Optional early probe from the provider browser (before ABR publish). */
-  durationSeconds: z.number().positive().max(60 * 60 * 24).optional(),
+  durationSeconds: z
+    .number()
+    .positive()
+    .max(60 * 60 * 24)
+    .optional(),
 })
 
 export const localMediaChunkSchema = z.object({
@@ -178,7 +185,10 @@ export const localMediaReadySchema = z.object({
 
 export const localMediaAbrPublishSchema = z.object({
   parentLocalMediaId: localMediaIdSchema,
-  durationSec: z.number().positive().max(60 * 60 * 24),
+  durationSec: z
+    .number()
+    .positive()
+    .max(60 * 60 * 24),
   variants: z
     .array(
       z.object({
@@ -270,7 +280,10 @@ export const playlistItemErrorSchema = z.object({
 /** Player-observed VOD duration write-back into the playlist catalog. */
 export const playlistItemDurationSchema = z.object({
   itemId: itemIdSchema,
-  durationSeconds: z.number().positive().max(60 * 60 * 24),
+  durationSeconds: z
+    .number()
+    .positive()
+    .max(60 * 60 * 24),
 })
 
 /**

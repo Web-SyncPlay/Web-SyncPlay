@@ -71,7 +71,8 @@ export async function deletePersistedLocalMediaHandle(
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE, "readwrite")
       tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error ?? new Error("indexedDB delete failed"))
+      tx.onerror = () =>
+        reject(tx.error ?? new Error("indexedDB delete failed"))
       tx.objectStore(STORE).delete(localMediaId)
     })
     db.close()
@@ -92,7 +93,10 @@ async function ensurePermission(
   if (typeof withPerm.queryPermission === "function") {
     let state = await withPerm.queryPermission(opts)
     if (state === "granted") return true
-    if (state === "prompt" && typeof withPerm.requestPermission === "function") {
+    if (
+      state === "prompt" &&
+      typeof withPerm.requestPermission === "function"
+    ) {
       state = await withPerm.requestPermission(opts)
       return state === "granted"
     }

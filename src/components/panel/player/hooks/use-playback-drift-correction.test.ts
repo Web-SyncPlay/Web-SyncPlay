@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { planPlaybackDriftCorrection } from "./use-playback-drift-correction"
 import type { PendingSyncState } from "./use-buffering-watchdog"
+import { planPlaybackDriftCorrection } from "./use-playback-drift-correction"
 
 const playback = {
   paused: false,

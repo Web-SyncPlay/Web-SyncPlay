@@ -19,7 +19,9 @@ const sw = self as unknown as {
     matchAll: (opts: {
       type: string
       includeUncontrolled: boolean
-    }) => Promise<Array<{ postMessage: (msg: unknown, transfer?: Transferable[]) => void }>>
+    }) => Promise<
+      Array<{ postMessage: (msg: unknown, transfer?: Transferable[]) => void }>
+    >
   }
   addEventListener: (
     type: string,
@@ -62,8 +64,7 @@ sw.addEventListener("message", (event) => {
   if (!data || data.type !== "local-media-sw-viewer-capability") return
   const token = data.record?.token?.trim()
   const userId = data.record?.userId?.trim()
-  viewerCapability =
-    token && userId ? { token, userId } : null
+  viewerCapability = token && userId ? { token, userId } : null
 })
 
 /** Ensure `vt` / `uid` are present on local-media HTTP fallback URLs. */
@@ -158,9 +159,7 @@ sw.addEventListener("fetch", (event) => {
   const request = event.request
   event.respondWith(
     (async () => {
-      const range = parseRawBytesRangeHeader(
-        request.headers.get("range"),
-      )
+      const range = parseRawBytesRangeHeader(request.headers.get("range"))
       if (!range) {
         return fetch(withViewerCapabilityOnRequest(request))
       }

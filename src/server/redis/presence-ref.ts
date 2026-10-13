@@ -6,7 +6,9 @@
 
 export type PresenceNodeCounts = Record<string, number>
 
-export function parsePresenceNodeCounts(raw: string | null | undefined): PresenceNodeCounts {
+export function parsePresenceNodeCounts(
+  raw: string | null | undefined,
+): PresenceNodeCounts {
   if (raw == null || raw === "") return {}
 
   const asInt = Number.parseInt(raw, 10)
@@ -24,7 +26,8 @@ export function parsePresenceNodeCounts(raw: string | null | undefined): Presenc
     for (const [nodeId, value] of Object.entries(
       parsed as Record<string, unknown>,
     )) {
-      const n = typeof value === "number" ? value : Number.parseInt(String(value), 10)
+      const n =
+        typeof value === "number" ? value : Number.parseInt(String(value), 10)
       if (Number.isFinite(n) && n > 0 && nodeId.length > 0) {
         out[nodeId] = Math.floor(n)
       }
@@ -35,7 +38,9 @@ export function parsePresenceNodeCounts(raw: string | null | undefined): Presenc
   }
 }
 
-export function encodePresenceNodeCounts(counts: PresenceNodeCounts): string | null {
+export function encodePresenceNodeCounts(
+  counts: PresenceNodeCounts,
+): string | null {
   const cleaned: PresenceNodeCounts = {}
   for (const [nodeId, n] of Object.entries(counts)) {
     if (Number.isFinite(n) && n > 0 && nodeId.length > 0) {

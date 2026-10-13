@@ -1,4 +1,16 @@
 import {
+  clearLocalMediaViewerToken,
+  loadLocalMediaViewerToken,
+  persistLocalMediaViewerToken,
+} from "@/client/local-media/local-media-viewer-token"
+import { createControlTokenReminter } from "@/client/realtime/control-token-client"
+import {
+  RATE_LIMITED_RECONNECT_MS,
+  type JoinStatus,
+  type SessionCapabilities,
+} from "@/client/realtime/room-join-client"
+import type { RoomState } from "@/contracts/types"
+import {
   afterEach,
   beforeEach,
   describe,
@@ -7,18 +19,6 @@ import {
   mock,
   test,
 } from "bun:test"
-import { createControlTokenReminter } from "@/client/realtime/control-token-client"
-import {
-  RATE_LIMITED_RECONNECT_MS,
-  type JoinStatus,
-  type SessionCapabilities,
-} from "@/client/realtime/room-join-client"
-import {
-  clearLocalMediaViewerToken,
-  loadLocalMediaViewerToken,
-  persistLocalMediaViewerToken,
-} from "@/client/local-media/local-media-viewer-token"
-import type { RoomState } from "@/contracts/types"
 import { createRoomSocketConnection } from "./room-socket-connection"
 
 mock.module("@/client/realtime/room-socket/room-socket-local-media", () => ({
@@ -118,10 +118,16 @@ function createConnectionHarness(input?: {
       roomStateRef.current = roomState
     },
     setStatus: (value) => {
-      statuses.push(typeof value === "function" ? value(statuses.at(-1) ?? "connecting") : value)
+      statuses.push(
+        typeof value === "function"
+          ? value(statuses.at(-1) ?? "connecting")
+          : value,
+      )
     },
     setJoinError: (value) => {
-      joinErrors.push(typeof value === "function" ? value(joinErrors.at(-1) ?? null) : value)
+      joinErrors.push(
+        typeof value === "function" ? value(joinErrors.at(-1) ?? null) : value,
+      )
     },
     setSessionCapabilities: (value) => {
       sessionCapabilities =
@@ -193,6 +199,7 @@ describe("createRoomSocketConnection", () => {
         generation: 1,
         currentIndex: 0,
         updatedAt: Date.now(),
+        serverWallNowMs: Date.now(),
         playback: {
           paused: false,
           playbackRate: 1,
@@ -443,10 +450,10 @@ describe("createRoomSocketConnection", () => {
     const fetchMock = mock(() =>
       Promise.resolve(Response.json({ token: "fresh-token" })),
     )
-    ;(globalThis as { fetch?: typeof fetch }).fetch = fetchMock as unknown as typeof fetch
-    ;(globalThis as { window?: Window & typeof globalThis }).window = Object.assign(
-      globalThis as Window & typeof globalThis,
-      {
+    ;(globalThis as { fetch?: typeof fetch }).fetch =
+      fetchMock as unknown as typeof fetch
+    ;(globalThis as { window?: Window & typeof globalThis }).window =
+      Object.assign(globalThis as Window & typeof globalThis, {
         sessionStorage: {
           getItem: () => null,
           setItem: () => undefined,
@@ -457,8 +464,7 @@ describe("createRoomSocketConnection", () => {
           setItem: () => undefined,
           removeItem: () => undefined,
         },
-      },
-    )
+      })
 
     const harness = createConnectionHarness({ sessionKind: "control" })
     await harness.connection.connect()

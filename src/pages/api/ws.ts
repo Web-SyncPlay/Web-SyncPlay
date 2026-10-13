@@ -24,8 +24,7 @@ export default async function handler(
   }
 
   const server = (socket as unknown as { server?: HttpServer }).server as
-    | SocketServerWithRealtime
-    | undefined
+    SocketServerWithRealtime | undefined
   if (!server) {
     res.status(500).json({ ok: false, error: "Server unavailable" })
     return

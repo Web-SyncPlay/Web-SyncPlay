@@ -1,5 +1,3 @@
-import { describe, expect, test } from "bun:test"
-import { roomMessageHandlers } from "@/server/realtime/handlers"
 import {
   roomMessageSchemas,
   type ClientEventType,
@@ -14,14 +12,14 @@ import {
   viewerMediaPreferencesStateSchema,
 } from "@/contracts/s2c"
 import {
+  localMediaAbrPublishSchema,
+  localMediaReadySchema,
   participantRoleUpdateSchema,
   participantUpdateSchema,
   playbackLoopModeSchema,
   playbackRateSchema,
   playbackSeekSchema,
   playbackSetPausedSchema,
-  localMediaReadySchema,
-  localMediaAbrPublishSchema,
   playlistAddLocalSchema,
   playlistAddUrlSchema,
   playlistItemDurationSchema,
@@ -32,15 +30,17 @@ import {
   playlistReorderSchema,
   playlistRetrySchema,
   playlistSelectSchema,
+  roomDefaultRoleSetSchema,
   roomErrorCodeSchema,
   roomJoinSchema,
   roomPasswordClearSchema,
   roomPasswordSetSchema,
-  roomDefaultRoleSetSchema,
   seekPreviewSchema,
   viewerMediaPreferencesSchema,
   wsEnvelopeSchema,
 } from "@/contracts/schemas"
+import { roomMessageHandlers } from "@/server/realtime/handlers"
+import { describe, expect, test } from "bun:test"
 
 const roomMessageEventTypes = Object.keys(
   roomMessageSchemas,
@@ -195,9 +195,9 @@ describe("playlist payload interfaces", () => {
   })
 
   test("remove requires itemId", () => {
-    expect(
-      playlistRemoveSchema.safeParse({ itemId: "item-a" }).success,
-    ).toBe(true)
+    expect(playlistRemoveSchema.safeParse({ itemId: "item-a" }).success).toBe(
+      true,
+    )
     expect(playlistRemoveSchema.safeParse({ itemId: "" }).success).toBe(false)
   })
 
@@ -324,9 +324,9 @@ describe("playlist payload interfaces", () => {
 
 describe("participant / room / viewer interfaces", () => {
   test("participant update field bounds", () => {
-    expect(
-      participantUpdateSchema.safeParse({ username: "Ada" }).success,
-    ).toBe(true)
+    expect(participantUpdateSchema.safeParse({ username: "Ada" }).success).toBe(
+      true,
+    )
     expect(
       participantUpdateSchema.safeParse({ username: "x".repeat(65) }).success,
     ).toBe(false)
@@ -343,7 +343,7 @@ describe("participant / room / viewer interfaces", () => {
     ).toBe(false)
     expect(
       participantUpdateSchema.safeParse({
-        error: '<img src=x onerror=alert(1)>',
+        error: "<img src=x onerror=alert(1)>",
       }).success,
     ).toBe(false)
     expect(
@@ -381,9 +381,9 @@ describe("participant / room / viewer interfaces", () => {
   })
 
   test("room password set/clear", () => {
-    expect(roomPasswordSetSchema.safeParse({ password: "secret" }).success).toBe(
-      true,
-    )
+    expect(
+      roomPasswordSetSchema.safeParse({ password: "secret" }).success,
+    ).toBe(true)
     expect(roomPasswordSetSchema.safeParse({ password: "" }).success).toBe(
       false,
     )
@@ -541,6 +541,49 @@ describe("S2C playlist / participant domain schemas", () => {
   test("room snapshot schema is registered for snapshot and legacy state", () => {
     expect(serverEventSchemas["room:snapshot"]).toBe(roomSnapshotPayloadSchema)
     expect(serverEventSchemas["room:state"]).toBe(roomSnapshotPayloadSchema)
+  })
+
+  test("room:control requires serverWallNowMs distinct from playback.serverNowMs", () => {
+    const playback = {
+      paused: true,
+      playbackRate: 1,
+      timelineAnchorMs: 0,
+      serverNowMs: 1_000,
+      videoLoop: "off" as const,
+      playlistLoop: "off" as const,
+    }
+    expect(
+      serverEventSchemas["room:control"].safeParse({
+        generation: 1,
+        currentIndex: 0,
+        updatedAt: 2_000,
+        playback,
+      }).success,
+    ).toBe(false)
+    expect(
+      serverEventSchemas["room:control"].safeParse({
+        generation: 1,
+        currentIndex: 0,
+        updatedAt: 2_000,
+        serverWallNowMs: 2_000,
+        playback,
+      }).success,
+    ).toBe(true)
+  })
+
+  test("session:clock carries serverNowMs and rttMs", () => {
+    expect(
+      serverEventSchemas["session:clock"].safeParse({
+        serverNowMs: 1_000,
+        rttMs: 40,
+      }).success,
+    ).toBe(true)
+    expect(
+      serverEventSchemas["session:clock"].safeParse({
+        serverNowMs: 1_000,
+        rttMs: -1,
+      }).success,
+    ).toBe(false)
   })
 })
 

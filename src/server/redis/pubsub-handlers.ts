@@ -7,13 +7,12 @@ type RoomPublishFanOut = Pick<RoomPublishPort, "fanOutFromPubSub">
 type UserEphemeralFanOut = Pick<RoomPublishPort, "fanOutUserEphemeral">
 
 export type PubSubDeliverResult =
-  | "delivered"
-  | "bad_channel"
-  | "bad_payload"
-  | "bad_type"
-  | "skipped_echo"
+  "delivered" | "bad_channel" | "bad_payload" | "bad_type" | "skipped_echo"
 
-const ROOM_CHANNEL_ALLOWED_TYPES: Record<RoomPubSubKind, ReadonlySet<string>> = {
+const ROOM_CHANNEL_ALLOWED_TYPES: Record<
+  RoomPubSubKind,
+  ReadonlySet<string>
+> = {
   control: new Set(["room:control", "room:admission:changed"]),
   presence: new Set(["presence:batch"]),
   snapshot: new Set(["room:snapshot", "room:state"]),

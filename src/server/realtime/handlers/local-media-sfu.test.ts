@@ -1,9 +1,6 @@
-import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
-import { getAppNodeId } from "@/server/node-id"
 import type { LocalMediaSfuPort } from "@/server/media/local-media-sfu-port"
-import {
-  setLocalMediaSfuPort,
-} from "@/server/ports"
+import { getAppNodeId } from "@/server/node-id"
+import { setLocalMediaSfuPort } from "@/server/ports"
 import {
   createFakeWs,
   createHandlerContext,
@@ -12,6 +9,15 @@ import {
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
 import { addSocket, removeSocket } from "@/server/ws/registry"
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  test,
+} from "bun:test"
 
 const closedProducerIds: string[] = []
 let produceShouldListThrow = false

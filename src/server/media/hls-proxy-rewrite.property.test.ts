@@ -1,5 +1,3 @@
-import { expect, test } from "bun:test"
-import fc from "fast-check"
 import {
   collectM3u8ReferencedUrls,
   playlistTargetHint,
@@ -7,6 +5,8 @@ import {
   shouldAttemptPlaylistRewrite,
 } from "@/server/media/hls-proxy-rewrite"
 import { sha256HexUrl, sha256HexUrlPrefix } from "@/server/media/url-hash"
+import { expect, test } from "bun:test"
+import fc from "fast-check"
 
 const baseUrl = "https://cdn.example.com/live/master.m3u8"
 
@@ -56,11 +56,7 @@ test("empty proxy map is a line-ending-normalized identity rewrite", () => {
   fc.assert(
     fc.property(fc.string({ maxLength: 300 }), (body) => {
       const normalized = body.split(/\r?\n/).join("\n")
-      const rewritten = rewriteM3u8BodyWithProxyMap(
-        body,
-        baseUrl,
-        new Map(),
-      )
+      const rewritten = rewriteM3u8BodyWithProxyMap(body, baseUrl, new Map())
       expect(rewritten).toBe(normalized)
     }),
     { numRuns: 80 },
@@ -98,7 +94,10 @@ test("shouldAttemptPlaylistRewrite detects content-type or #EXTM3U", () => {
       fc.string({ maxLength: 120 }),
       (noiseCt, noiseBody) => {
         expect(
-          shouldAttemptPlaylistRewrite("application/vnd.apple.mpegurl", noiseBody),
+          shouldAttemptPlaylistRewrite(
+            "application/vnd.apple.mpegurl",
+            noiseBody,
+          ),
         ).toBe(true)
         expect(shouldAttemptPlaylistRewrite("audio/m3u8", noiseBody)).toBe(true)
         expect(
@@ -112,14 +111,20 @@ test("shouldAttemptPlaylistRewrite detects content-type or #EXTM3U", () => {
 
 test("playlistTargetHint treats mpegurl and opaque cdn types as playlists", () => {
   expect(
-    playlistTargetHint("https://cdn.example/x", "application/vnd.apple.mpegurl"),
+    playlistTargetHint(
+      "https://cdn.example/x",
+      "application/vnd.apple.mpegurl",
+    ),
   ).toBe(true)
   expect(playlistTargetHint("https://cdn.example/live.m3u8", "")).toBe(true)
   expect(
     playlistTargetHint("https://cdn.example/seg", "application/octet-stream"),
   ).toBe(true)
   expect(
-    playlistTargetHint("https://cdn.example/seg.ts", "application/octet-stream"),
+    playlistTargetHint(
+      "https://cdn.example/seg.ts",
+      "application/octet-stream",
+    ),
   ).toBe(false)
 })
 

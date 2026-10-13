@@ -1,12 +1,12 @@
 "use client"
 
-import { LOCAL_MEDIA_MAX_BLOCK_BYTES } from "@/shared/local-media/local-media-block-protocol"
 import {
   nextDeliveryModeAfterFailure,
   pickFirstReadyDeliveryMode,
   planLocalMediaDeliveryAttempts,
   type LocalMediaDeliveryMode,
 } from "@/client/local-media/local-media-sfu-transitions"
+import { LOCAL_MEDIA_MAX_BLOCK_BYTES } from "@/shared/local-media/local-media-block-protocol"
 
 /** Register the local-media Service Worker that prefers WebRTC ranges. */
 export async function registerLocalMediaServiceWorker(): Promise<void> {
@@ -83,9 +83,7 @@ export function attachLocalMediaServiceWorkerBridge(
         let source: "sfu" | "webrtc" = "sfu"
 
         const sfuMod =
-          input.fetchViaSfu &&
-          input.isSfuViewerReady &&
-          input.warmSfuViewer
+          input.fetchViaSfu && input.isSfuViewerReady && input.warmSfuViewer
             ? null
             : await import("@/client/local-media/local-media-sfu")
 
@@ -116,9 +114,8 @@ export function attachLocalMediaServiceWorkerBridge(
               source = "webrtc"
               const fetchViaWebrtc =
                 input.fetchViaWebrtc ??
-                (
-                  await import("@/client/local-media/local-media-webrtc")
-                ).fetchLocalMediaRangeViaWebrtc
+                (await import("@/client/local-media/local-media-webrtc"))
+                  .fetchLocalMediaRangeViaWebrtc
               bytes = await fetchViaWebrtc({
                 localMediaId: mediaId,
                 providerUserId: providerUserId!,

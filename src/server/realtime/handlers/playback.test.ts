@@ -1,5 +1,4 @@
-﻿import { afterEach, describe, expect, test } from "bun:test"
-import {
+﻿import {
   createTestBroadcastBus,
   setRoomBroadcastBusForTests,
 } from "@/server/realtime/broadcast/room-broadcast-bus"
@@ -19,6 +18,7 @@ import {
   envelope,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
+import { afterEach, describe, expect, test } from "bun:test"
 
 describe("playback handler interfaces", () => {
   afterEach(() => {
@@ -61,10 +61,34 @@ describe("playback handler interfaces", () => {
       envelope("playback:play", { currentTimeMs: 5_000 }),
     )
     expect(store.peek("room-1")?.playback.paused).toBe(false)
-    expect(store.peek("room-1")?.playback.timelineAnchorMs).toBe(5_000)
+    // Client currentTimeMs is ignored — anchor comes from server projection.
+    expect(store.peek("room-1")?.playback.timelineAnchorMs).toBe(0)
 
     await handlePlaybackPause(ownerCtx, envelope("playback:pause", {}))
     expect(store.peek("room-1")?.playback.paused).toBe(true)
+  })
+
+  test("play/pause ignores skewed client currentTimeMs for the timeline", async () => {
+    const initial = createRoomState()
+    initial.playback.paused = false
+    initial.playback.timelineAnchorMs = 10_000
+    initial.playback.serverNowMs = Date.now()
+    const store = new InMemoryRoomStateStore(initial)
+    createTestBroadcastBus(store)
+    const ownerCtx = createHandlerContext({ store, userId: "owner" })
+
+    await handlePlaybackPause(
+      ownerCtx,
+      envelope("playback:pause", { currentTimeMs: 99_000 }),
+    )
+    const after = store.peek("room-1")
+    expect(after?.playback.paused).toBe(true)
+    // Projected ~10s, not the client's 99s local playhead.
+    expect(after?.playback.timelineAnchorMs).toBeGreaterThanOrEqual(10_000)
+    expect(after?.playback.timelineAnchorMs).toBeLessThan(12_000)
+    expect(after?.actionLog.at(-1)?.payload).toMatchObject({
+      clientCurrentTimeMs: 99_000,
+    })
   })
 
   test("guest playback:pause never changes playing room state (NC-10)", async () => {

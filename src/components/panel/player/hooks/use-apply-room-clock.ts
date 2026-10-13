@@ -3,8 +3,8 @@
 import type { PlaybackSyncEngine } from "@/client/player/playback-sync-engine"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import { useCallback, type RefObject } from "react"
-import type { PendingSyncState } from "./use-buffering-watchdog"
 import { toSyncablePlayer } from "./to-syncable-player"
+import type { PendingSyncState } from "./use-buffering-watchdog"
 
 /**
  * Thin React adapter: the only UI-facing entry for `engine.applyRoomClock`.

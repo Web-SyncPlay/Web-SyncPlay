@@ -1,4 +1,3 @@
-import { describe, expect, test } from "bun:test"
 import {
   applyPresenceBatch,
   applyPresenceBatches,
@@ -6,13 +5,15 @@ import {
   applyRoomSnapshot,
   createPresenceBatchCoalescer,
 } from "@/client/realtime/room-state-merge"
-import { createRoomState } from "@/shared/test-utils/room-fixtures"
 import type { PresenceBatchPayload } from "@/contracts/types"
+import { createRoomState } from "@/shared/test-utils/room-fixtures"
+import { describe, expect, test } from "bun:test"
 
 describe("room-state-merge", () => {
   test("control ignores older generation", () => {
     const prev = createRoomState({ generation: 5 })
     const next = applyRoomControl(prev, {
+      serverWallNowMs: Date.now(),
       generation: 4,
       currentIndex: 2,
       updatedAt: Date.now(),
@@ -67,6 +68,7 @@ describe("room-state-merge", () => {
   test("late snapshot does not rewind newer control playback", () => {
     const base = createRoomState({ generation: 1 })
     const afterControl = applyRoomControl(base, {
+      serverWallNowMs: Date.now(),
       generation: 3,
       currentIndex: 1,
       updatedAt: Date.now(),
@@ -104,6 +106,7 @@ describe("room-state-merge", () => {
       },
     })
     const next = applyRoomControl(prev, {
+      serverWallNowMs: Date.now(),
       generation: 2,
       currentIndex: 0,
       updatedAt: Date.now(),
@@ -129,6 +132,7 @@ describe("room-state-merge", () => {
       },
     })
     const next = applyRoomControl(prev, {
+      serverWallNowMs: Date.now(),
       generation: 2,
       currentIndex: 1,
       updatedAt: Date.now(),
@@ -153,6 +157,7 @@ describe("room-state-merge", () => {
       },
     })
     const next = applyRoomControl(prev, {
+      serverWallNowMs: Date.now(),
       generation: 2,
       currentIndex: 0,
       updatedAt: Date.now(),
@@ -385,6 +390,7 @@ describe("room-state-merge", () => {
 
     const prev = createRoomState({ generation: 1 })
     const next = applyRoomControl(prev, {
+      serverWallNowMs: Date.now(),
       generation: 2,
       currentIndex: 0,
       updatedAt: Date.now(),

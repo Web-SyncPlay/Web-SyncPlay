@@ -1,14 +1,14 @@
 "use client"
 
+import {
+  attachLocalAudioDelayGraph,
+  type LocalAudioDelayGraph,
+} from "@/client/player/local-audio-delay-graph"
 import { clampAudioDelayMs } from "@/shared/audio-delay"
 import {
   persistAudioDelayMs,
   readAudioDelayMsFromStorage,
 } from "@/shared/dom/audio-delay-storage"
-import {
-  attachLocalAudioDelayGraph,
-  type LocalAudioDelayGraph,
-} from "@/client/player/local-audio-delay-graph"
 import { queryPlayerMediaElement } from "@/shared/dom/player-utils"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import { useEffect, useRef, useState, type RefObject } from "react"

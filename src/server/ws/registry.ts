@@ -90,9 +90,7 @@ export function setSocketClientIp(ws: WebSocket, clientIp: string) {
 /** Best-effort IP for rate keys; falls back to `"unknown"`. */
 export function getSocketClientIp(ws: WebSocket): string {
   const { earlyClientIps } = getRegistrySlot()
-  return (
-    getSocketMeta(ws)?.clientIp ?? earlyClientIps.get(ws) ?? "unknown"
-  )
+  return getSocketMeta(ws)?.clientIp ?? earlyClientIps.get(ws) ?? "unknown"
 }
 
 export function addSocket(
@@ -131,10 +129,7 @@ export function addSocket(
     sessionKind: meta.sessionKind,
     canControlPlayback:
       meta.canControlPlayback ?? previousMeta?.canControlPlayback ?? false,
-    clientIp:
-      meta.clientIp ??
-      previousMeta?.clientIp ??
-      earlyClientIps.get(ws),
+    clientIp: meta.clientIp ?? previousMeta?.clientIp ?? earlyClientIps.get(ws),
   })
 }
 

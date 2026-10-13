@@ -1,16 +1,14 @@
-import { describe, expect, test } from "bun:test"
 import { hostRequiresMediaRelay } from "@/server/media/stream/requires-relay"
 import { buildStreamPlan } from "@/server/media/stream/stream-plan"
+import { describe, expect, test } from "bun:test"
 
 describe("hostRequiresMediaRelay", () => {
   test("matches SoundCloud page and CDN hosts", () => {
-    expect(hostRequiresMediaRelay("https://soundcloud.com/forss/flickermood")).toBe(
-      true,
-    )
     expect(
-      hostRequiresMediaRelay(
-        "https://cf-hls-media.sndcdn.com/playlist/x.m3u8",
-      ),
+      hostRequiresMediaRelay("https://soundcloud.com/forss/flickermood"),
+    ).toBe(true)
+    expect(
+      hostRequiresMediaRelay("https://cf-hls-media.sndcdn.com/playlist/x.m3u8"),
     ).toBe(true)
     expect(
       hostRequiresMediaRelay(

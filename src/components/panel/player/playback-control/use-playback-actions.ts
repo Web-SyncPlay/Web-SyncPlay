@@ -29,13 +29,16 @@ export function createPlaybackActions(config: PlaybackControlContext) {
     if (seekPreviewTimer) {
       return
     }
-    seekPreviewTimer = setTimeout(() => {
-      seekPreviewTimer = null
-      if (pendingSeekPreviewMs === null) {
-        return
-      }
-      flushSeekPreview(pendingSeekPreviewMs, true)
-    }, minIntervalMs - (now - lastSeekPreviewAt))
+    seekPreviewTimer = setTimeout(
+      () => {
+        seekPreviewTimer = null
+        if (pendingSeekPreviewMs === null) {
+          return
+        }
+        flushSeekPreview(pendingSeekPreviewMs, true)
+      },
+      minIntervalMs - (now - lastSeekPreviewAt),
+    )
   }
 
   return {

@@ -55,7 +55,9 @@ export function localMediaErrorFromMessage(
   return "relay_failed"
 }
 
-export function httpStatusForLocalMediaError(code: LocalMediaErrorCode): number {
+export function httpStatusForLocalMediaError(
+  code: LocalMediaErrorCode,
+): number {
   switch (code) {
     case "not_found":
       return 404

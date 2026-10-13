@@ -1,4 +1,7 @@
-import type { SfuResult, SfuSendRequest } from "@/client/local-media/local-media-sfu"
+import type {
+  SfuResult,
+  SfuSendRequest,
+} from "@/client/local-media/local-media-sfu"
 import {
   decideSfuProducerWireAction,
   isSfuSessionGenerationCurrent,
@@ -56,8 +59,9 @@ export function createLocalMediaSfuSession(input: {
       pendingSfuProvide.add(localMediaId)
       return
     }
-    void import("@/client/local-media/local-media-sfu").then(({ ensureLocalMediaSfuProvider }) =>
-      ensureLocalMediaSfuProvider(localMediaId, sendSfuRequest),
+    void import("@/client/local-media/local-media-sfu").then(
+      ({ ensureLocalMediaSfuProvider }) =>
+        ensureLocalMediaSfuProvider(localMediaId, sendSfuRequest),
     )
   }
 
@@ -93,7 +97,8 @@ export function createLocalMediaSfuSession(input: {
 
     void (async () => {
       const sfu = await import("@/client/local-media/local-media-sfu")
-      const { getLocalMediaFile } = await import("@/client/local-media/local-media-provider")
+      const { getLocalMediaFile } =
+        await import("@/client/local-media/local-media-provider")
       if (!isSfuSessionGenerationCurrent(sessionGeneration, workGeneration)) {
         return
       }
@@ -140,8 +145,8 @@ export function createLocalMediaSfuSession(input: {
   const handleSfuUnavailable = () => {
     markSfuUnavailable()
     flushSfuPending("sfu_unavailable")
-    void import("@/client/local-media/local-media-sfu").then(({ closeLocalMediaSfu }) =>
-      closeLocalMediaSfu(sendSfuRequest),
+    void import("@/client/local-media/local-media-sfu").then(
+      ({ closeLocalMediaSfu }) => closeLocalMediaSfu(sendSfuRequest),
     )
   }
 

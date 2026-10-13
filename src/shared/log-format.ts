@@ -1,5 +1,5 @@
-import { formatClockMs } from "@/shared/time-format"
 import type { ActionLogEntry, RoomState } from "@/contracts/types"
+import { formatClockMs } from "@/shared/time-format"
 
 /** Actions shown in the room UI log (subset of server-tracked types). */
 export const visibleActionTypes = [
@@ -42,10 +42,7 @@ export const actionLabelByType: Record<VisibleActionType, string> = {
 
 const visibleActionTypeSet = new Set<string>(visibleActionTypes)
 
-function payloadString(
-  value: unknown,
-  fallback: string,
-): string {
+function payloadString(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback
 }
 

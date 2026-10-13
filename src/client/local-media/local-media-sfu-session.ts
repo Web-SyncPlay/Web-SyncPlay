@@ -210,8 +210,7 @@ export function getTransport(
                 session.requestProducers.set(
                   localMediaId,
                   (result.requestProducers as
-                    | Array<{ dataProducerId: string }>
-                    | undefined) ?? [],
+                    Array<{ dataProducerId: string }> | undefined) ?? [],
                 )
               }
               callback({ id: result.id as string })

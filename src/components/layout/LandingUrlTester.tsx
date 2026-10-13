@@ -1,10 +1,10 @@
 "use client"
 
+import { cn } from "@/components/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { randomRoomId } from "@/shared/room-utils"
 import { formatDurationSeconds } from "@/shared/time-format"
-import { cn } from "@/components/lib/utils"
 import { CheckCircle2, Loader2, Play, Search, XCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, type FormEvent } from "react"
@@ -168,9 +168,7 @@ export function LandingUrlTester(): React.JSX.Element {
                   )}
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <p className="text-sm font-medium tracking-tight">
-                      {result.playable
-                        ? "Playable & syncable"
-                        : "Not playable"}
+                      {result.playable ? "Playable & syncable" : "Not playable"}
                     </p>
                     <p className="text-xs text-muted-foreground sm:text-sm">
                       {result.message}

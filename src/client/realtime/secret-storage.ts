@@ -29,7 +29,8 @@ function base64ToBytes(value: string): Uint8Array {
 function openKeyDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(KEY_DB_NAME, 1)
-    request.onerror = () => reject(request.error ?? new Error("indexedDB open failed"))
+    request.onerror = () =>
+      reject(request.error ?? new Error("indexedDB open failed"))
     request.onupgradeneeded = () => {
       const db = request.result
       if (!db.objectStoreNames.contains(KEY_STORE_NAME)) {
@@ -50,7 +51,8 @@ async function readKeyFromIndexedDb(): Promise<CryptoKey | null> {
       const tx = db.transaction(KEY_STORE_NAME, "readonly")
       const store = tx.objectStore(KEY_STORE_NAME)
       const request = store.get(KEY_RECORD_ID)
-      request.onerror = () => reject(request.error ?? new Error("indexedDB read failed"))
+      request.onerror = () =>
+        reject(request.error ?? new Error("indexedDB read failed"))
       request.onsuccess = () => {
         const value = request.result
         resolve(value instanceof CryptoKey ? value : null)
@@ -72,12 +74,14 @@ async function writeKeyToIndexedDb(key: CryptoKey): Promise<void> {
       const tx = db.transaction(KEY_STORE_NAME, "readwrite")
       const store = tx.objectStore(KEY_STORE_NAME)
       const request = store.put(key, KEY_RECORD_ID)
-      request.onerror = () => reject(request.error ?? new Error("indexedDB write failed"))
+      request.onerror = () =>
+        reject(request.error ?? new Error("indexedDB write failed"))
       tx.oncomplete = () => {
         db.close()
         resolve()
       }
-      tx.onerror = () => reject(tx.error ?? new Error("indexedDB transaction failed"))
+      tx.onerror = () =>
+        reject(tx.error ?? new Error("indexedDB transaction failed"))
     })
   } catch {
     // Fall through to localStorage key material below.
@@ -112,17 +116,21 @@ async function writeKeyToFallbackStorage(key: CryptoKey): Promise<void> {
   }
   try {
     const extractable = await crypto.subtle.exportKey("jwk", key)
-    window.localStorage.setItem(KEY_FALLBACK_STORAGE_KEY, JSON.stringify(extractable))
+    window.localStorage.setItem(
+      KEY_FALLBACK_STORAGE_KEY,
+      JSON.stringify(extractable),
+    )
   } catch {
     // Ignore quota / private-mode failures.
   }
 }
 
 async function generateAesKey(extractable: boolean): Promise<CryptoKey> {
-  return crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, extractable, [
-    "encrypt",
-    "decrypt",
-  ])
+  return crypto.subtle.generateKey(
+    { name: "AES-GCM", length: 256 },
+    extractable,
+    ["encrypt", "decrypt"],
+  )
 }
 
 async function getOrCreateAesKey(): Promise<CryptoKey> {

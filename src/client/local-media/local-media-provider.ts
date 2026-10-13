@@ -6,9 +6,9 @@
  * range reads. Blob object URLs are only for the provider's own player.
  */
 
-import { resolvePlayableMimeType } from "@/shared/media-mime"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { ClientRoomState } from "@/contracts/types"
+import { resolvePlayableMimeType } from "@/shared/media-mime"
 
 type LocalMediaRecord = {
   file: File

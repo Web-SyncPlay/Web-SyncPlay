@@ -179,7 +179,7 @@ test("keeps progressive MP4s with omitted acodec and exposes audio description",
   )
   expect(result.mediaStreams.some((s) => s.id === "main-1080")).toBe(true)
   expect(result.mediaStreams.some((s) => s.id === "main-720")).toBe(true)
-  expect(
-    result.mediaStreams.filter((s) => s.kind === "adaptive"),
-  ).toHaveLength(1)
+  expect(result.mediaStreams.filter((s) => s.kind === "adaptive")).toHaveLength(
+    1,
+  )
 })

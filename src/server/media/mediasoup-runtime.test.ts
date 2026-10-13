@@ -57,51 +57,54 @@ describe("mediasoup-runtime", () => {
     expect(runtimeModule.getMediasoupTransportAppData(transport.id)).toBeNull()
   })
 
-  sfuTest("closeLocalMediaSfuDataProducer only closes one producer", async () => {
-    const roomKey = `test-room-${crypto.randomUUID()}`
-    await runtimeModule.mediasoupCreateRouter(roomKey)
-    const transport = await runtimeModule.mediasoupCreateTransport(roomKey, {
-      direction: "send",
-    })
-    const mediaId = crypto.randomUUID()
-    const provider = await runtimeModule.mediasoupProduceData({
-      transportId: transport.id,
-      sctpStreamParameters: { streamId: 0, ordered: true },
-      appData: {
-        localMediaId: mediaId,
-        roomId: roomKey,
-        ownerUserId: "owner",
-        role: "provider",
-      },
-    })
-    const request = await runtimeModule.mediasoupProduceData({
-      transportId: transport.id,
-      sctpStreamParameters: { streamId: 1, ordered: true },
-      appData: {
-        localMediaId: mediaId,
-        roomId: roomKey,
-        ownerUserId: "owner",
-        role: "requests",
-      },
-    })
+  sfuTest(
+    "closeLocalMediaSfuDataProducer only closes one producer",
+    async () => {
+      const roomKey = `test-room-${crypto.randomUUID()}`
+      await runtimeModule.mediasoupCreateRouter(roomKey)
+      const transport = await runtimeModule.mediasoupCreateTransport(roomKey, {
+        direction: "send",
+      })
+      const mediaId = crypto.randomUUID()
+      const provider = await runtimeModule.mediasoupProduceData({
+        transportId: transport.id,
+        sctpStreamParameters: { streamId: 0, ordered: true },
+        appData: {
+          localMediaId: mediaId,
+          roomId: roomKey,
+          ownerUserId: "owner",
+          role: "provider",
+        },
+      })
+      const request = await runtimeModule.mediasoupProduceData({
+        transportId: transport.id,
+        sctpStreamParameters: { streamId: 1, ordered: true },
+        appData: {
+          localMediaId: mediaId,
+          roomId: roomKey,
+          ownerUserId: "owner",
+          role: "requests",
+        },
+      })
 
-    expect(runtimeModule.getLocalMediaSfuProducer(mediaId)?.dataProducerId).toBe(
-      provider.id,
-    )
-    expect(runtimeModule.listLocalMediaSfuRequestProducers(mediaId)).toHaveLength(
-      1,
-    )
+      expect(
+        runtimeModule.getLocalMediaSfuProducer(mediaId)?.dataProducerId,
+      ).toBe(provider.id)
+      expect(
+        runtimeModule.listLocalMediaSfuRequestProducers(mediaId),
+      ).toHaveLength(1)
 
-    runtimeModule.closeLocalMediaSfuDataProducer(provider.id)
+      runtimeModule.closeLocalMediaSfuDataProducer(provider.id)
 
-    expect(runtimeModule.getLocalMediaSfuProducer(mediaId)).toBeNull()
-    expect(runtimeModule.listLocalMediaSfuRequestProducers(mediaId)).toEqual([
-      expect.objectContaining({ dataProducerId: request.id }),
-    ])
+      expect(runtimeModule.getLocalMediaSfuProducer(mediaId)).toBeNull()
+      expect(runtimeModule.listLocalMediaSfuRequestProducers(mediaId)).toEqual([
+        expect.objectContaining({ dataProducerId: request.id }),
+      ])
 
-    runtimeModule.clearLocalMediaSfuProducer(mediaId)
-    runtimeModule.mediasoupCloseTransport(transport.id)
-  })
+      runtimeModule.clearLocalMediaSfuProducer(mediaId)
+      runtimeModule.mediasoupCloseTransport(transport.id)
+    },
+  )
 
   sfuTest("mediasoupCloseRoom removes the router for that room", async () => {
     const roomKey = `test-room-${crypto.randomUUID()}`

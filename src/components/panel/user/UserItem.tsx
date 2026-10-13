@@ -1,15 +1,17 @@
-import { useInlineEdit } from "@/hooks/use-inline-edit"
-import type { TypedRoomEventSender } from "@/contracts/room-events"
-import { formatClockMs, formatRelativeLastSeen } from "@/shared/time-format"
 import { cn } from "@/components/lib/utils"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { ParticipantState } from "@/contracts/types"
+import { useInlineEdit } from "@/hooks/use-inline-edit"
+import { formatClockMs, formatRelativeLastSeen } from "@/shared/time-format"
 import { Badge } from "../../ui/badge"
 import { Input } from "../../ui/input"
 import { Item, ItemActions, ItemContent } from "../../ui/item"
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip"
 import { UserAvatar } from "./UserAvatar"
 
-function playbackStatusLabel(playback: ParticipantState["localPlayback"]): string {
+function playbackStatusLabel(
+  playback: ParticipantState["localPlayback"],
+): string {
   if (playback.error) return "Error"
   if (playback.loading) return "Loading"
   return "Ready"
@@ -167,7 +169,8 @@ export function UserItem({
                     variant={playbackBadgeVariant(user)}
                     className="h-5 shrink-0 px-1.5 text-[10px]"
                   >
-                    {connectionLabel} · {playbackStatusLabel(user.localPlayback)}
+                    {connectionLabel} ·{" "}
+                    {playbackStatusLabel(user.localPlayback)}
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent>

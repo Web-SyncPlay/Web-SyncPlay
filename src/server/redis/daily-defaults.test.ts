@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, mock, test } from "bun:test"
 import { dailyDefaultsForRead } from "@/server/redis/daily-defaults"
+import { afterEach, describe, expect, mock, test } from "bun:test"
 
 afterEach(() => {
   mock.restore()
@@ -8,7 +8,9 @@ afterEach(() => {
 describe("dailyDefaultsForRead", () => {
   test("returns titled entries unchanged", () => {
     expect(
-      dailyDefaultsForRead([{ title: "  My Video  ", url: "https://x.test/v" }]),
+      dailyDefaultsForRead([
+        { title: "  My Video  ", url: "https://x.test/v" },
+      ]),
     ).toEqual([{ title: "My Video", url: "https://x.test/v" }])
   })
 
@@ -30,9 +32,8 @@ describe("hydrateMissingDailyDefaultTitles", () => {
       extractMetadata: extract,
     }))
 
-    const { hydrateMissingDailyDefaultTitles: hydrate } = await import(
-      "@/server/redis/daily-defaults"
-    )
+    const { hydrateMissingDailyDefaultTitles: hydrate } =
+      await import("@/server/redis/daily-defaults")
 
     const { videos, hydratedCount } = await hydrate([
       { title: "Keep", url: "https://x.test/a" },

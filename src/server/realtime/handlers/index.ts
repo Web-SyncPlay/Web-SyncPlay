@@ -1,3 +1,4 @@
+import type { ClientEventType } from "@/contracts/room-events"
 import * as localMedia from "./local-media"
 import * as localMediaSfu from "./local-media-sfu"
 import * as participant from "./participant"
@@ -5,9 +6,8 @@ import * as playback from "./playback"
 import * as playlist from "./playlist"
 import * as roomSecurity from "./room-security"
 import * as seekPreview from "./seek-preview"
-import * as viewerMedia from "./viewer-media"
-import type { ClientEventType } from "@/contracts/room-events"
 import type { RoomMessageHandler } from "./types"
+import * as viewerMedia from "./viewer-media"
 
 /**
  * Typed registry: every {@link ClientEventType} must have a handler.

@@ -1,6 +1,6 @@
 import type { SyncedMediaPlayerHandlerDeps } from "./synced-media-player-handler-types"
-import { markTransportIntent } from "./transport-intent"
 import { readPlayerLivePlaying } from "./to-syncable-player"
+import { markTransportIntent } from "./transport-intent"
 
 type TransportRequestDeps = Pick<
   SyncedMediaPlayerHandlerDeps,
@@ -124,10 +124,7 @@ export function createTransportRequestHandlers(deps: TransportRequestDeps) {
       event.preventDefault()
       event.stopPropagation()
     },
-    onMediaPlayRequest: (
-      detailOrEvent: unknown,
-      maybeEvent?: Preventable,
-    ) => {
+    onMediaPlayRequest: (detailOrEvent: unknown, maybeEvent?: Preventable) => {
       // Room playback owns transport. Never let Vidstack gestures/buttons
       // toggle the element locally — that races with onPause enforce and
       // causes click-pause → brief spinner → resume, then desync.
@@ -146,10 +143,7 @@ export function createTransportRequestHandlers(deps: TransportRequestDeps) {
         send("playback:play", { currentTimeMs: getCurrentTimeMs() })
       }
     },
-    onMediaPauseRequest: (
-      detailOrEvent: unknown,
-      maybeEvent?: Preventable,
-    ) => {
+    onMediaPauseRequest: (detailOrEvent: unknown, maybeEvent?: Preventable) => {
       preventMediaRequestDefault(detailOrEvent, maybeEvent)
       if (!canControlPlayback) {
         enforceServerPlaybackState()

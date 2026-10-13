@@ -74,11 +74,7 @@ function isPrivateOrLocalIpv4(ip: string): boolean {
 
 function isPrivateOrLocalIp(ip: string): boolean {
   const normalized = ip.toLowerCase()
-  if (
-    normalized === "::1" ||
-    normalized === "::" ||
-    normalized === "0.0.0.0"
-  ) {
+  if (normalized === "::1" || normalized === "::" || normalized === "0.0.0.0") {
     return true
   }
 
@@ -114,8 +110,7 @@ export function isPrivateOrLoopbackHttpUrl(rawUrl: string): boolean {
 }
 
 export type UrlSafetyResult =
-  | { ok: true; url: URL }
-  | { ok: false; reason: string }
+  { ok: true; url: URL } | { ok: false; reason: string }
 
 /**
  * Rejects non-http(s) and private/link-local/metadata targets (SSRF guard).
@@ -142,9 +137,7 @@ export function assertPublicHttpUrl(raw: string): UrlSafetyResult {
     return { ok: false, reason: "blocked_hostname" }
   }
 
-  if (
-    BLOCKED_HOSTNAME_SUFFIXES.some((suffix) => hostname.endsWith(suffix))
-  ) {
+  if (BLOCKED_HOSTNAME_SUFFIXES.some((suffix) => hostname.endsWith(suffix))) {
     return { ok: false, reason: "blocked_hostname" }
   }
 

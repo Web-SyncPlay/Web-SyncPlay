@@ -1,9 +1,6 @@
 "use client"
 
-import {
-  getPlayerEmbedUrl,
-  getRoomUrl,
-} from "@/client/realtime/control-url"
+import { getPlayerEmbedUrl, getRoomUrl } from "@/client/realtime/control-url"
 import type { SessionKind } from "@/contracts/types"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useControlEmbedUrl } from "./use-control-embed-url"

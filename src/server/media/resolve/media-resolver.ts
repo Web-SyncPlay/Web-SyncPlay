@@ -1,3 +1,4 @@
+import type { PlaylistMediaStream, PlaylistTextTrack } from "@/contracts/types"
 import { probeUpstreamPlayback } from "@/server/media/cors/cors-probe"
 import {
   UNSUPPORTED_MPEG_TS_PROGRESSIVE_MESSAGE,
@@ -11,7 +12,6 @@ import { applyRelayToResolvedUrls } from "@/server/media/resolve/relay-urls"
 import { buildStreamPlan } from "@/server/media/stream/stream-plan"
 import { emptyYtDlpCatalog } from "@/server/media/yt-dlp/types"
 import { assertPublicHttpUrlResolved } from "@/server/security/url-safety"
-import type { PlaylistMediaStream, PlaylistTextTrack } from "@/contracts/types"
 
 export type ResolveFailureReason =
   | "metadata_failed"

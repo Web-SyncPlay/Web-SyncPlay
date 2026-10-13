@@ -1,11 +1,8 @@
-import { DEFAULT_AVATAR_STYLE, resolveStyle } from "@/shared/avatar"
-import { clearConnectionLocalPlaybackReport } from "@/server/realtime/services/local-playback-report-lifecycle"
-import {
-  getSocketMeta,
-  setSocketPresenceTracked,
-} from "@/server/ws/registry"
 import { roomJoinSchema } from "@/contracts/schemas"
 import type { SessionKind } from "@/contracts/types"
+import { clearConnectionLocalPlaybackReport } from "@/server/realtime/services/local-playback-report-lifecycle"
+import { getSocketMeta, setSocketPresenceTracked } from "@/server/ws/registry"
+import { DEFAULT_AVATAR_STYLE, resolveStyle } from "@/shared/avatar"
 import { randomUUID } from "node:crypto"
 import { admitJoin } from "./join/admit"
 import { authorizeJoinSession } from "./join/authorize-session"

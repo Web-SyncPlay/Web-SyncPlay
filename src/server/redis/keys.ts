@@ -9,7 +9,8 @@ const LOCAL_MEDIA_PREFIX = "media:local:"
 const LOCAL_MEDIA_OWNER_INDEX_PREFIX = "media:local:room:"
 const CONTROL_TOKEN_PREFIX = "control:token:"
 
-type RoomTypedChannelSuffix = ":control" | ":presence" | ":snapshot" | ":state" | ":channel"
+type RoomTypedChannelSuffix =
+  ":control" | ":presence" | ":snapshot" | ":state" | ":channel"
 
 /** Extract roomId from `room:{id}{suffix}`; empty string if the key does not match. */
 function parseRoomPrefixedKey(

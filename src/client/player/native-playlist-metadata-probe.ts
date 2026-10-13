@@ -1,5 +1,5 @@
-import { isNativeProviderUrl } from "@/shared/player-utils"
 import type { PlaylistItem } from "@/contracts/types"
+import { isNativeProviderUrl } from "@/shared/player-utils"
 
 /** Session-local: item ids already probed (or in flight) in this tab. */
 const probedItemIds = new Set<string>()
@@ -22,10 +22,7 @@ export function isPlaylistItemNamePlaceholder(
 }
 
 export function playlistItemNeedsNativeMetadata(
-  item: Pick<
-    PlaylistItem,
-    "sourceUrl" | "name" | "durationSeconds" | "isLive"
-  >,
+  item: Pick<PlaylistItem, "sourceUrl" | "name" | "durationSeconds" | "isLive">,
 ): { needsTitle: boolean; needsDuration: boolean } {
   if (!isNativeProviderUrl(item.sourceUrl)) {
     return { needsTitle: false, needsDuration: false }
@@ -33,8 +30,7 @@ export function playlistItemNeedsNativeMetadata(
   const needsTitle = isPlaylistItemNamePlaceholder(item)
   const catalogSec = Number(item.durationSeconds)
   const needsDuration =
-    item.isLive !== true &&
-    !(Number.isFinite(catalogSec) && catalogSec > 0)
+    item.isLive !== true && !(Number.isFinite(catalogSec) && catalogSec > 0)
   return { needsTitle, needsDuration }
 }
 

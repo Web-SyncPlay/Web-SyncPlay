@@ -1,6 +1,7 @@
 "use client"
 
 import type { RoomRole } from "@/contracts/types"
+import type { useRoomSession } from "@/hooks/use-room-session"
 import {
   canControlPlayback,
   canMutateFromClientSession,
@@ -8,7 +9,6 @@ import {
 import { resolveCurrentPlaylistItem } from "@/shared/playlist-current"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import type { useRoomSession } from "@/hooks/use-room-session"
 import type { RoomPanelProps } from "./types"
 
 type RoomSession = ReturnType<typeof useRoomSession>
@@ -119,7 +119,6 @@ export function useRoomPanelModel(input: {
     canMutateFromThisSession,
     current: resolveCurrentPlaylistItem(roomState),
     canManageRoomSecurity:
-      roomState.ownerId === userId &&
-      sessionCapabilities.canManageRoomSecurity,
+      roomState.ownerId === userId && sessionCapabilities.canManageRoomSecurity,
   }
 }

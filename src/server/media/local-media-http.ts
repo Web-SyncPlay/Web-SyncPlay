@@ -71,10 +71,7 @@ export function createLocalMediaRangeHttpResponse(input: {
 
   if (rangeInfo) {
     headers.set("content-length", String(chunkLength))
-    headers.set(
-      "content-range",
-      `bytes ${start}-${end}/${entry.sizeBytes}`,
-    )
+    headers.set("content-range", `bytes ${start}-${end}/${entry.sizeBytes}`)
   } else {
     headers.set("content-length", String(entry.sizeBytes))
   }

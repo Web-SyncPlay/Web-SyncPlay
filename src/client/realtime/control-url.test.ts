@@ -45,7 +45,8 @@ describe("control-url", () => {
     const fetchMock = mock(() =>
       Promise.resolve(new Response(null, { status: 403 })),
     )
-    ;(globalThis as { fetch?: typeof fetch }).fetch = fetchMock as unknown as typeof fetch
+    ;(globalThis as { fetch?: typeof fetch }).fetch =
+      fetchMock as unknown as typeof fetch
 
     expect(
       await requestControlToken({
@@ -65,11 +66,10 @@ describe("control-url", () => {
 
   test("mintControlEmbedUrl returns hashed URL with token on success", async () => {
     const fetchMock = mock(() =>
-      Promise.resolve(
-        Response.json({ token: "minted-tok", expiresAt: 1 }),
-      ),
+      Promise.resolve(Response.json({ token: "minted-tok", expiresAt: 1 })),
     )
-    ;(globalThis as { fetch?: typeof fetch }).fetch = fetchMock as unknown as typeof fetch
+    ;(globalThis as { fetch?: typeof fetch }).fetch =
+      fetchMock as unknown as typeof fetch
     ;(globalThis as { window?: unknown }).window = {
       location: { origin: "https://example.test" },
       sessionStorage: {

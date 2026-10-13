@@ -1,10 +1,10 @@
+import type { ActionLogEntry } from "@/contracts/types"
 import { describe, expect, test } from "bun:test"
 import {
   getActionLogDetails,
   getFilteredLogs,
   visibleActionTypes,
 } from "./log-format"
-import type { ActionLogEntry } from "@/contracts/types"
 
 function entry(
   partial: Partial<ActionLogEntry> & Pick<ActionLogEntry, "action">,

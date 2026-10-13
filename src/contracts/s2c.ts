@@ -168,6 +168,11 @@ export const roomControlPayloadSchema = z.object({
   playback: playbackStateSchema,
   currentIndex: z.number().int().nonnegative(),
   updatedAt: z.number(),
+  /**
+   * Server wall time at publish (not the playback timeline stamp).
+   * Clients must sync clocks from this — never from `playback.serverNowMs`.
+   */
+  serverWallNowMs: z.number(),
 })
 
 export const presenceBatchPayloadSchema = z.object({
@@ -189,6 +194,21 @@ export const roomSnapshotPayloadSchema = z.object({
   generation: z.number().int().nonnegative(),
   structuralRevision: z.number().int().nonnegative(),
   presenceRevision: z.number().int().nonnegative().optional(),
+  /**
+   * Server wall time at publish — distinct from `playback.serverNowMs`.
+   * Optional on the wire type so persisted `RoomState` fixtures stay valid;
+   * publishers always stamp it before send.
+   */
+  serverWallNowMs: z.number().optional(),
+})
+
+/**
+ * Per-socket clock sample from WS ping/pong: fresh server wall time plus
+ * measured RTT so the client can apply classic NTP half-RTT correction.
+ */
+export const sessionClockPayloadSchema = z.object({
+  serverNowMs: z.number(),
+  rttMs: z.number().nonnegative(),
 })
 
 export const admissionChangedPayloadSchema = z.object({
@@ -198,11 +218,10 @@ export const admissionChangedPayloadSchema = z.object({
 })
 
 /** Capabilities plus optional local-media viewer token mint. */
-export const sessionCapabilitiesPayloadSchema = sessionCapabilitiesSchema.extend(
-  {
+export const sessionCapabilitiesPayloadSchema =
+  sessionCapabilitiesSchema.extend({
     viewerToken: z.string().min(1).optional(),
-  },
-)
+  })
 
 export const roomJoinRejectedPayloadSchema = z.object({
   reason: roomJoinRejectedReasonSchema,
@@ -268,6 +287,7 @@ export const serverEventSchemas = {
   "room:state": roomSnapshotPayloadSchema,
   "room:admission:changed": admissionChangedPayloadSchema,
   "session:capabilities": sessionCapabilitiesPayloadSchema,
+  "session:clock": sessionClockPayloadSchema,
   "room:join:rejected": roomJoinRejectedPayloadSchema,
   "room:error": roomErrorPayloadSchema,
   "local-media:sfu:result": localMediaSfuResultPayloadSchema,

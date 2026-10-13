@@ -26,13 +26,13 @@ export function commitPlaybackSeek(
   targetMs: number,
   nowMs = Date.now(),
 ): { fromMs: number; toMs: number } {
-  const fromMs = Math.max(
-    0,
-    Math.floor(resolveCurrentTimelineMs(state, nowMs)),
-  )
+  const fromMs = Math.max(0, Math.floor(resolveCurrentTimelineMs(state, nowMs)))
   const toMs = Math.max(0, targetMs)
   state.playback.timelineAnchorMs = toMs
-  state.playback.serverNowMs = nextMonotonicMs(state.playback.serverNowMs, nowMs)
+  state.playback.serverNowMs = nextMonotonicMs(
+    state.playback.serverNowMs,
+    nowMs,
+  )
   state.playback.seekPreview = undefined
   return { fromMs, toMs }
 }
@@ -43,7 +43,10 @@ export function commitPlaybackSeek(
  */
 export function reanchorPlaybackAtNow(state: RoomState, nowMs = Date.now()) {
   state.playback.timelineAnchorMs = resolveCurrentTimelineMs(state, nowMs)
-  state.playback.serverNowMs = nextMonotonicMs(state.playback.serverNowMs, nowMs)
+  state.playback.serverNowMs = nextMonotonicMs(
+    state.playback.serverNowMs,
+    nowMs,
+  )
 }
 
 /**
@@ -56,7 +59,10 @@ export function resetPlaybackTimeline(
   options?: { pause?: boolean },
 ) {
   state.playback.timelineAnchorMs = 0
-  state.playback.serverNowMs = nextMonotonicMs(state.playback.serverNowMs, nowMs)
+  state.playback.serverNowMs = nextMonotonicMs(
+    state.playback.serverNowMs,
+    nowMs,
+  )
   if (options?.pause) {
     state.playback.paused = true
   }

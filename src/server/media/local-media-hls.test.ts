@@ -1,8 +1,8 @@
-import { describe, expect, test } from "bun:test"
 import {
   buildLocalMediaMasterPlaylist,
   buildLocalMediaVariantPlaylist,
 } from "@/server/media/local-media-hls"
+import { describe, expect, test } from "bun:test"
 
 describe("local-media HLS builders", () => {
   test("single-variant fallback master points at parent media playlist", () => {
@@ -40,13 +40,15 @@ describe("local-media HLS builders", () => {
         },
       ],
     })
-    const idx1080 = body.indexOf("NAME=\"Source\"")
-    const idx720 = body.indexOf("NAME=\"720p\"")
-    const idx480 = body.indexOf("NAME=\"480p\"")
+    const idx1080 = body.indexOf('NAME="Source"')
+    const idx720 = body.indexOf('NAME="720p"')
+    const idx480 = body.indexOf('NAME="480p"')
     expect(idx1080).toBeGreaterThan(-1)
     expect(idx720).toBeGreaterThan(idx1080)
     expect(idx480).toBeGreaterThan(idx720)
-    expect(body).toContain(`/api/media/local/${parent}/hls/00000000-0000-4000-8000-0000000000cc`)
+    expect(body).toContain(
+      `/api/media/local/${parent}/hls/00000000-0000-4000-8000-0000000000cc`,
+    )
   })
 
   test("variant playlist is single-segment VOD", () => {
@@ -82,4 +84,3 @@ describe("local-media HLS builders", () => {
     )
   })
 })
-

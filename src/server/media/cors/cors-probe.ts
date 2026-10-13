@@ -15,10 +15,7 @@ import { MEDIA_FETCH_UA } from "@/server/media/media-ua"
 const PROBE_ORIGIN = "https://playback.web-syncplay.local"
 const PROBE_TIMEOUT_MS = 4_000
 
-export type UpstreamPlaybackProbe =
-  | "allowed"
-  | "blocked"
-  | "unreachable"
+export type UpstreamPlaybackProbe = "allowed" | "blocked" | "unreachable"
 
 export function acaoAllowsBrowserPlayback(
   allowOrigin: string | null,

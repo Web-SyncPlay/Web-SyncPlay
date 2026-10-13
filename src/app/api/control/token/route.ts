@@ -1,4 +1,4 @@
-import { canMutateByRole } from "@/shared/permissions-utils"
+import type { RoomRole } from "@/contracts/types"
 import { mintControlToken } from "@/server/realtime/services/control-token"
 import { matchIdentitySecret } from "@/server/realtime/services/identity-store"
 import { getRoomStateStore } from "@/server/redis/state-store"
@@ -6,7 +6,7 @@ import {
   clientIpFromRequest,
   consumeRateLimit,
 } from "@/server/security/rate-limit"
-import type { RoomRole } from "@/contracts/types"
+import { canMutateByRole } from "@/shared/permissions-utils"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 

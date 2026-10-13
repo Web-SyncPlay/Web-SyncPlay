@@ -1,5 +1,3 @@
-import { canMutateByRole, isOwner } from "@/shared/permissions-utils"
-import { normalizeRole } from "@/shared/room-utils"
 import type {
   ParticipantState,
   RoomRole,
@@ -7,6 +5,8 @@ import type {
   SessionCapabilities,
   SessionKind,
 } from "@/contracts/types"
+import { canMutateByRole, isOwner } from "@/shared/permissions-utils"
+import { normalizeRole } from "@/shared/room-utils"
 
 /** Re-export from contracts — single type home is `@/contracts/types`. */
 export type { SessionCapabilities }

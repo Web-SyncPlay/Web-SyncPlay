@@ -3,11 +3,11 @@ import {
   registerShutdownHandler,
 } from "@/server/lifecycle"
 import { clientIpFromUpgradeRequest } from "@/server/security/rate-limit"
-import { setSocketClientIp } from "@/server/ws/registry"
 import {
   WS_HEARTBEAT_INTERVAL_MS,
   WS_HEARTBEAT_TIMEOUT_MS,
 } from "@/server/ws/heartbeat"
+import { setSocketClientIp } from "@/server/ws/registry"
 import type { Server as HttpServer, IncomingMessage } from "node:http"
 import type { Socket } from "node:net"
 import { WebSocketServer, type WebSocket } from "ws"
@@ -27,6 +27,8 @@ type WsTransportSlot = {
   heartbeat?: ReturnType<typeof setInterval>
   onConnection?: (ws: WebSocket, req: IncomingMessage) => void
   lastPongAt: WeakMap<WebSocket, number>
+  /** When the last WS ping frame was sent (for RTT on pong). */
+  lastPingAt: WeakMap<WebSocket, number>
 }
 
 function getTransportSlot(): WsTransportSlot {
@@ -35,8 +37,26 @@ function getTransportSlot(): WsTransportSlot {
   }
   g.__webSyncPlayWsTransport ??= {
     lastPongAt: new WeakMap(),
+    lastPingAt: new WeakMap(),
   }
-  return g.__webSyncPlayWsTransport
+  const slot = g.__webSyncPlayWsTransport
+  slot.lastPingAt ??= new WeakMap()
+  return slot
+}
+
+/** Notify the client of measured RTT + fresh server wall time (clock sync). */
+function sendSessionClock(ws: WebSocket, rttMs: number, serverNowMs: number) {
+  if (ws.readyState !== ws.OPEN) return
+  try {
+    ws.send(
+      JSON.stringify({
+        type: "session:clock",
+        payload: { serverNowMs, rttMs },
+      }),
+    )
+  } catch {
+    // Socket may be closing; next heartbeat will retry.
+  }
 }
 
 let shutdownRegistered = false
@@ -135,6 +155,7 @@ export function attachWebSocketTransport(
         ws.terminate()
         continue
       }
+      slot.lastPingAt.set(ws, nowMs)
       ws.ping()
     }
   }, WS_HEARTBEAT_INTERVAL_MS)
@@ -147,10 +168,17 @@ export function attachWebSocketTransport(
     slot.lastPongAt.set(ws, Date.now())
     setSocketClientIp(ws, clientIpFromUpgradeRequest(req))
     ws.on("pong", () => {
-      slot.lastPongAt.set(ws, Date.now())
+      const nowMs = Date.now()
+      slot.lastPongAt.set(ws, nowMs)
+      const pingAt = slot.lastPingAt.get(ws)
+      if (pingAt !== undefined) {
+        const rttMs = Math.max(0, nowMs - pingAt)
+        sendSessionClock(ws, rttMs, nowMs)
+      }
     })
     ws.on("close", () => {
       slot.lastPongAt.delete(ws)
+      slot.lastPingAt.delete(ws)
     })
     slot.onConnection?.(ws, req)
   })

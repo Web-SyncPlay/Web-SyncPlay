@@ -95,8 +95,7 @@ export function isHlsWrapperMediaEcho(input: {
   referenceSec: number
   thresholdSec?: number
 }): boolean {
-  const threshold =
-    input.thresholdSec ?? DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC
+  const threshold = input.thresholdSec ?? DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC
   // Reject null/undefined before Number() — `Number(null) === 0` would
   // false-positive as a mediaEl stuck at 0 while the wrapper echoes.
   if (input.mediaSec == null || input.wrapperSec == null) {

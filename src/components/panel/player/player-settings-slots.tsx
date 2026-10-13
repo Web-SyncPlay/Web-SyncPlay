@@ -2,9 +2,7 @@
 
 import type { PlaylistMediaStream } from "@/contracts/types"
 import { useMediaState } from "@vidstack/react"
-import {
-  useDefaultLayoutContext,
-} from "@vidstack/react/player/layouts/default"
+import { useDefaultLayoutContext } from "@vidstack/react/player/layouts/default"
 import type { ReactNode } from "react"
 import { PlayerAudioDelayMenuSection } from "./PlayerAudioDelayMenuSection"
 import { PlayerSourceMenu } from "./PlayerSourceMenu"

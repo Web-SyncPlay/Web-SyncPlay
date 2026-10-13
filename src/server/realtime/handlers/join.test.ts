@@ -1,6 +1,5 @@
-import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
-import { createHash } from "node:crypto"
 import type { ParticipantState } from "@/contracts/types"
+import { getAppNodeId } from "@/server/node-id"
 import {
   createTestBroadcastBus,
   setRoomBroadcastBusForTests,
@@ -12,13 +11,14 @@ import {
   envelope,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
-import { getAppNodeId } from "@/server/node-id"
 import { totalPresenceRefs } from "@/server/redis/presence-ref"
 import {
   getSocketMeta,
   removeSocket,
   setSocketClientIp,
 } from "@/server/ws/registry"
+import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+import { createHash } from "node:crypto"
 
 let roomLimitAllowed = true
 let ipLimitAllowed = true
@@ -266,13 +266,15 @@ describe("handleRoomJoin", () => {
 
     expect(getSocketMeta(ws)?.presenceTracked).toBe(true)
     expect(getSocketMeta(ws)?.joinCommitted).toBe(true)
-    expect(totalPresenceRefs(store.presence.get("room-1")?.get("guest") ?? {})).toBe(
-      1,
-    )
+    expect(
+      totalPresenceRefs(store.presence.get("room-1")?.get("guest") ?? {}),
+    ).toBe(1)
     expect((await store.getWsPresenceUserIds("room-1")).has("guest")).toBe(true)
     expect(identityHashes.get("guest")?.startsWith("h1:")).toBe(true)
     expect(
-      sent.some((m) => (m as { type?: string }).type === "session:capabilities"),
+      sent.some(
+        (m) => (m as { type?: string }).type === "session:capabilities",
+      ),
     ).toBe(true)
     expect(
       sent.some((m) => (m as { type?: string }).type === "room:join:rejected"),
@@ -344,10 +346,7 @@ describe("handleRoomJoin", () => {
         },
       }),
     )
-    store.presence.set(
-      "room-1",
-      new Map([["owner", { [getAppNodeId()]: 1 }]]),
-    )
+    store.presence.set("room-1", new Map([["owner", { [getAppNodeId()]: 1 }]]))
     createTestBroadcastBus(store)
     const { ws, sent } = createFakeWs()
     setSocketClientIp(ws, "192.0.2.56")
@@ -373,11 +372,13 @@ describe("handleRoomJoin", () => {
     expect(getSocketMeta(ws)).toBeUndefined()
     expect(store.presence.get("room-1")?.has("guest")).toBe(false)
     expect(store.peek("room-1")?.participants.guest?.connected).toBe(false)
-    expect(store.peek("room-1")?.participants.guest?.disconnectedAt).toBeDefined()
     expect(
-      store.peek("room-1")?.actionLog.some(
-        (e) => e.action === "participant:disconnected",
-      ),
+      store.peek("room-1")?.participants.guest?.disconnectedAt,
+    ).toBeDefined()
+    expect(
+      store
+        .peek("room-1")
+        ?.actionLog.some((e) => e.action === "participant:disconnected"),
     ).toBe(true)
   })
 
@@ -400,10 +401,7 @@ describe("handleRoomJoin", () => {
       }),
     )
     // Same user already present on another tab/node.
-    store.presence.set(
-      "room-1",
-      new Map([["guest", { [otherNodeId]: 1 }]]),
-    )
+    store.presence.set("room-1", new Map([["guest", { [otherNodeId]: 1 }]]))
     store.aliveNodeIds = new Set([getAppNodeId(), otherNodeId])
     createTestBroadcastBus(store)
     const { ws, sent } = createFakeWs()
@@ -462,10 +460,7 @@ describe("handleRoomJoin", () => {
       }),
     )
     // Mod already has a live presence ref so reconcile keeps them connected.
-    store.presence.set(
-      "room-1",
-      new Map([["mod", { [getAppNodeId()]: 1 }]]),
-    )
+    store.presence.set("room-1", new Map([["mod", { [getAppNodeId()]: 1 }]]))
     createTestBroadcastBus(store)
     const { ws } = createFakeWs()
 

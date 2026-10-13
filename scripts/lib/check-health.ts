@@ -12,7 +12,6 @@ export async function checkHealth(baseUrl: string): Promise<{
     string,
     unknown
   >
-  const ok =
-    healthRes.ok && health.ok === true && health.valkey === true
+  const ok = healthRes.ok && health.ok === true && health.valkey === true
   return { ok, health, status: healthRes.status }
 }

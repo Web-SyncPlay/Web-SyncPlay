@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test"
 import type { PlaylistItem } from "@/contracts/types"
+import { beforeEach, describe, expect, mock, test } from "bun:test"
 
 const toastError = mock((_message: string) => {})
 
@@ -7,19 +7,20 @@ mock.module("sonner", () => ({
   toast: { error: toastError },
 }))
 
-const { createPlaybackErrorHandler } = await import(
-  "./create-playback-error-handler"
-)
+const { createPlaybackErrorHandler } =
+  await import("./create-playback-error-handler")
 
-function createDeps(overrides: {
-  current?: PlaylistItem | null
-  activePlaybackSrc?: string
-  canControlPlayback?: boolean
-  userId?: string
-  reportedItemErrorRef?: { current: string | null }
-  proxyRenewAttemptedRef?: { current: string | null }
-  localBlobFallbackAttemptedRef?: { current: string | null }
-} = {}) {
+function createDeps(
+  overrides: {
+    current?: PlaylistItem | null
+    activePlaybackSrc?: string
+    canControlPlayback?: boolean
+    userId?: string
+    reportedItemErrorRef?: { current: string | null }
+    proxyRenewAttemptedRef?: { current: string | null }
+    localBlobFallbackAttemptedRef?: { current: string | null }
+  } = {},
+) {
   const sent: Array<{ type: string; payload: unknown }> = []
   const setIsBuffering = mock((_v: boolean) => {})
   const setPlaybackError = mock((_v: unknown) => {})
@@ -53,10 +54,12 @@ function createDeps(overrides: {
     bufferingSinceRef,
     participantStatusErrorRef,
     reportedItemErrorRef: overrides.reportedItemErrorRef ?? { current: null },
-    proxyRenewAttemptedRef:
-      overrides.proxyRenewAttemptedRef ?? { current: null },
-    localBlobFallbackAttemptedRef:
-      overrides.localBlobFallbackAttemptedRef ?? { current: null },
+    proxyRenewAttemptedRef: overrides.proxyRenewAttemptedRef ?? {
+      current: null,
+    },
+    localBlobFallbackAttemptedRef: overrides.localBlobFallbackAttemptedRef ?? {
+      current: null,
+    },
     setIsBuffering,
     setPlaybackError,
     setForceLocalRelaySrc,
@@ -151,7 +154,8 @@ describe("createPlaybackErrorHandler", () => {
         createdBy: "other-host",
         createdAt: 1,
       },
-      activePlaybackSrc: "/api/media/local/00000000-0000-4000-8000-000000000001",
+      activePlaybackSrc:
+        "/api/media/local/00000000-0000-4000-8000-000000000001",
       canControlPlayback: true,
     })
 

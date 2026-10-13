@@ -1,26 +1,20 @@
 import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  test,
-} from "bun:test"
-import { encodeLocalMediaChunkFrame } from "@/shared/local-media/local-media-binary"
-import {
   createPending,
   pendingMap,
 } from "@/server/media/local-media-relay/pending"
-import {
-  addSocket,
-  removeSocket,
-  setSocketJoinCommitted,
-} from "@/server/ws/registry"
-import { resetTokenBucketsForTests } from "@/server/security/rate-limit"
 import {
   createFakeWs,
   createRoomState,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
+import { resetTokenBucketsForTests } from "@/server/security/rate-limit"
+import {
+  addSocket,
+  removeSocket,
+  setSocketJoinCommitted,
+} from "@/server/ws/registry"
+import { encodeLocalMediaChunkFrame } from "@/shared/local-media/local-media-binary"
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { handleSocketMessage } from "./socket-dispatch"
 
 describe("handleSocketMessage", () => {

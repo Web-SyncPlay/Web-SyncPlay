@@ -23,9 +23,7 @@ export function canSetJoinCommitted(options: {
   openState: number
   hasSocketMeta: boolean
 }): boolean {
-  return (
-    options.readyState === options.openState && options.hasSocketMeta
-  )
+  return options.readyState === options.openState && options.hasSocketMeta
 }
 
 /** Action-log join only for first presence or a reconnect from disconnected. */

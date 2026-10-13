@@ -1,8 +1,11 @@
-import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
-import { canControlFromConnectionContext } from "@/server/realtime/services/permissions"
 import { seekPreviewSchema } from "@/contracts/schemas"
 import type { PlaybackState } from "@/contracts/types"
-import { getSocketMeta, setSocketCanControlPlayback } from "@/server/ws/registry"
+import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
+import { canControlFromConnectionContext } from "@/server/realtime/services/permissions"
+import {
+  getSocketMeta,
+  setSocketCanControlPlayback,
+} from "@/server/ws/registry"
 import { connectionAuthFromContext } from "./mutate-controlled"
 import { parseOrWarn } from "./parse-or-warn"
 import type { RoomMessageHandler } from "./types"
@@ -61,6 +64,7 @@ export const handleSeekPreview: RoomMessageHandler = async (ctx, data) => {
       generation,
       currentIndex,
       updatedAt: Date.now(),
+      serverWallNowMs: Date.now(),
       playback,
     })
   }
@@ -70,6 +74,7 @@ export const handleSeekPreview: RoomMessageHandler = async (ctx, data) => {
     generation,
     currentIndex,
     updatedAt: nowMs,
+    serverWallNowMs: nowMs,
     playback: {
       ...playback,
       seekPreview: {

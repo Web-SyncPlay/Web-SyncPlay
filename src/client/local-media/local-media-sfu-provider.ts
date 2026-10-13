@@ -2,6 +2,8 @@
  * mediasoup SFU provider path: publish blocks and answer viewer requests.
  */
 
+import { getLocalMediaFile } from "@/client/local-media/local-media-provider"
+import { resolveRangeResponder } from "@/client/local-media/local-media-range-responder"
 import {
   encodeLocalMediaBlockMetaError,
   encodeLocalMediaBlockMetaOk,
@@ -11,8 +13,6 @@ import {
   LOCAL_MEDIA_MAX_FRAME_PAYLOAD,
   parseLocalMediaBlockJson,
 } from "@/shared/local-media/local-media-block-protocol"
-import { getLocalMediaFile } from "@/client/local-media/local-media-provider"
-import { resolveRangeResponder } from "@/client/local-media/local-media-range-responder"
 import type { types as MsTypes } from "mediasoup-client"
 import {
   BUFFER_HIGH_WATER,
@@ -54,7 +54,10 @@ async function serveBlockRequest(
   })
   if (!result.ok) {
     producer.send(
-      encodeLocalMediaBlockMetaError(result.requestId ?? msg.requestId, result.error),
+      encodeLocalMediaBlockMetaError(
+        result.requestId ?? msg.requestId,
+        result.error,
+      ),
     )
     return
   }

@@ -1,4 +1,3 @@
-import { afterEach, describe, expect, test } from "bun:test"
 import { getAppNodeId } from "@/server/node-id"
 import {
   createTestBroadcastBus,
@@ -13,6 +12,7 @@ import {
   createRoomState,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
+import { afterEach, describe, expect, test } from "bun:test"
 
 describe("disconnect lifecycle", () => {
   afterEach(() => {

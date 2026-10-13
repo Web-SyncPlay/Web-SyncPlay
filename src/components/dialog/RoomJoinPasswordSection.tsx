@@ -1,5 +1,6 @@
 "use client"
 
+import { cn } from "@/components/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import {
   Field,
@@ -15,10 +16,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { useInlineEdit } from "@/hooks/use-inline-edit"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
-import { cn } from "@/components/lib/utils"
 import type { PublicRoomSecurityState } from "@/contracts/types"
+import { useInlineEdit } from "@/hooks/use-inline-edit"
 import {
   Copy,
   Dices,

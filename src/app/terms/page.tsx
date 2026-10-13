@@ -80,9 +80,9 @@ export default function TermsPage() {
         <h2>Liability</h2>
         <p>
           Within the limits of applicable law, we are not liable for downtime,
-          sync issues, or third-party media chosen by users. Mandatory
-          liability (e.g. intent, gross negligence, injury to life/body/health)
-          remains unaffected.
+          sync issues, or third-party media chosen by users. Mandatory liability
+          (e.g. intent, gross negligence, injury to life/body/health) remains
+          unaffected.
         </p>
       </section>
     </LegalPage>

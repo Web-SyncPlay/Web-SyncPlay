@@ -115,7 +115,9 @@ export function parseCachedExtract(raw: string): YtDlpExtractResult | null {
   return null
 }
 
-function freshnessFilter(envelope: YtDlpCacheEnvelope): YtDlpExtractResult | null {
+function freshnessFilter(
+  envelope: YtDlpCacheEnvelope,
+): YtDlpExtractResult | null {
   const { result, extractedAt } = envelope
   if (!result.ok) return result
 
@@ -154,7 +156,10 @@ export async function readExtractCache(
   }
 }
 
-export async function writeExtractCache(url: string, result: YtDlpExtractResult) {
+export async function writeExtractCache(
+  url: string,
+  result: YtDlpExtractResult,
+) {
   if (YTDLP_CACHE_RETENTION_SECONDS <= 0) return
   // Retention is a product constant; success EX is capped by derived
   // stream-URL max age. Failures stay short-lived.

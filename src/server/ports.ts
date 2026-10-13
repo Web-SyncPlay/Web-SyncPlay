@@ -1,8 +1,8 @@
+import type { PresencePatch, RoomState } from "@/contracts/types"
 import type { LocalMediaSfuPort } from "@/server/media/local-media-sfu-port"
 import { createLocalMediaSfuPort } from "@/server/media/local-media-sfu-port"
 import type { MediaResolvePort } from "@/server/media/media-resolve-port"
 import { createMediaResolvePort } from "@/server/media/media-resolve-port"
-import type { PresencePatch, RoomState } from "@/contracts/types"
 
 /** Playlist / landing default media entry persisted under `defaults:daily-top-10`. */
 export type DailyDefaultVideo = { title: string; url: string }
@@ -49,10 +49,7 @@ export interface RoomStateStorePort {
     patch: PresencePatch,
   ): Promise<void>
   /** HGET — prefer over {@link getPresenceDataAll} on hot paths. */
-  getPresenceData(
-    roomId: string,
-    userId: string,
-  ): Promise<PresencePatch | null>
+  getPresenceData(roomId: string, userId: string): Promise<PresencePatch | null>
   getPresenceDataAll(roomId: string): Promise<Record<string, PresencePatch>>
   clearPresenceData(roomId: string): Promise<void>
 }

@@ -1,21 +1,18 @@
 "use client"
 
+import { cn } from "@/components/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { cn } from "@/components/lib/utils"
 import type { LoopMode } from "@/contracts/types"
 import { Repeat, Repeat1, RepeatOff } from "lucide-react"
 
 const LOOP_CYCLE: LoopMode[] = ["off", "once", "always"]
 
-const LOOP_META: Record<
-  LoopMode,
-  { label: string; Icon: typeof Repeat }
-> = {
+const LOOP_META: Record<LoopMode, { label: string; Icon: typeof Repeat }> = {
   off: { label: "Loop off", Icon: RepeatOff },
   once: { label: "Loop one", Icon: Repeat1 },
   always: { label: "Loop", Icon: Repeat },

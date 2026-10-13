@@ -1,10 +1,7 @@
-import { describe, expect, mock, test } from "bun:test"
 import { createRoomState } from "@/shared/test-utils/room-fixtures"
+import { describe, expect, mock, test } from "bun:test"
 import { createPlaybackLifecycleHandlers } from "./create-playback-lifecycle-handlers"
-import {
-  markTransportIntent,
-  type TransportIntent,
-} from "./transport-intent"
+import { markTransportIntent, type TransportIntent } from "./transport-intent"
 
 function createDeps(config: { roomPaused: boolean }) {
   const enforceServerPlaybackState = mock(() => {})

@@ -65,7 +65,11 @@ export async function getOrComputeHlsRewrite(params: {
   const pending = inflight.get(key)
   if (pending) {
     const shared = await pending
-    return { body: shared.body, contentType: shared.contentType, cacheHit: true }
+    return {
+      body: shared.body,
+      contentType: shared.contentType,
+      cacheHit: true,
+    }
   }
 
   const work = (async () => {

@@ -1,4 +1,3 @@
-import { resolveCurrentPlaylistItem } from "@/shared/playlist-current"
 import type {
   ClientRoomState,
   PlaybackState,
@@ -6,6 +5,7 @@ import type {
   RoomRole,
   ViewerMediaItemPreference,
 } from "@/contracts/types"
+import { resolveCurrentPlaylistItem } from "@/shared/playlist-current"
 
 /** Playback slice — referentially stable across presence-only merges. */
 export function selectPlayback(roomState: ClientRoomState): PlaybackState {

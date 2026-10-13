@@ -1,9 +1,9 @@
+import type { LocalMediaRuntime } from "@/client/local-media/local-media-runtime"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { ClientRoomState, RoomSnapshotPayload } from "@/contracts/types"
 import type { MutableRefObject } from "react"
-import type { LocalMediaRuntime } from "@/client/local-media/local-media-runtime"
-import type { LocalMediaSfuSession } from "./room-socket-local-media-sfu"
 import type { SendEnvelope } from "./room-socket-local-media-send"
+import type { LocalMediaSfuSession } from "./room-socket-local-media-sfu"
 
 function aborted(signal: AbortSignal | undefined): boolean {
   return Boolean(signal?.aborted)
@@ -24,23 +24,14 @@ export function createLocalMediaBootstrap(input: {
   sfu: LocalMediaSfuSession
   runtime: LocalMediaRuntime
 }) {
-  const {
-    ws,
-    roomId,
-    userId,
-    roomStateRef,
-    sendEnvelope,
-    sfu,
-    runtime,
-  } = input
+  const { ws, roomId, userId, roomStateRef, sendEnvelope, sfu, runtime } = input
 
   const handleReannounce = (signal?: AbortSignal) => {
     void (async () => {
       const { announceLocalMediaProviderReady, registerLocalMediaFile } =
         await import("@/client/local-media/local-media-provider")
-      const { restoreLocalMediaHandles } = await import(
-        "@/client/local-media/local-media-handles"
-      )
+      const { restoreLocalMediaHandles } =
+        await import("@/client/local-media/local-media-handles")
       if (aborted(signal) || ws.readyState !== WebSocket.OPEN) return
       await restoreLocalMediaHandles({
         roomId,
@@ -123,12 +114,10 @@ export function createLocalMediaBootstrap(input: {
         registerLocalMediaFile,
         listLocalMediaIds,
       } = await import("@/client/local-media/local-media-provider")
-      const { restoreLocalMediaHandles } = await import(
-        "@/client/local-media/local-media-handles"
-      )
-      const {
-        registerLocalMediaServiceWorker,
-      } = await import("@/client/local-media/local-media-sw")
+      const { restoreLocalMediaHandles } =
+        await import("@/client/local-media/local-media-handles")
+      const { registerLocalMediaServiceWorker } =
+        await import("@/client/local-media/local-media-sw")
       const { resolveLocalMediaProviderUserId, resolveLocalMediaMeta } =
         await import("@/client/local-media/local-media-resolve")
 
@@ -168,12 +157,10 @@ export function createLocalMediaBootstrap(input: {
         sendEnvelope(type, eventPayload as Record<string, unknown>)
       }
       void (async () => {
-        const { runLocalMediaAbrPublish } = await import(
-          "@/client/local-media/local-media-abr"
-        )
-        const { getLocalMediaFile, getLocalMediaMimeType } = await import(
-          "@/client/local-media/local-media-provider"
-        )
+        const { runLocalMediaAbrPublish } =
+          await import("@/client/local-media/local-media-abr")
+        const { getLocalMediaFile, getLocalMediaMimeType } =
+          await import("@/client/local-media/local-media-provider")
         for (const item of payload.playlist) {
           if (aborted(signal)) return
           if (item.sourceKind !== "local_file") continue
@@ -183,9 +170,7 @@ export function createLocalMediaBootstrap(input: {
           const file = getLocalMediaFile(parentId)
           if (!file) continue
           const mime =
-            getLocalMediaMimeType(parentId) ??
-            item.localMimeType ??
-            "video/mp4"
+            getLocalMediaMimeType(parentId) ?? item.localMimeType ?? "video/mp4"
           void runLocalMediaAbrPublish({
             parentLocalMediaId: parentId,
             file,

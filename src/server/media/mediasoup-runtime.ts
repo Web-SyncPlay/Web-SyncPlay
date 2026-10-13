@@ -350,8 +350,7 @@ export function notifyMediasoupWorkerDiedForTests() {
 export function getMediasoupTransportAppData(
   transportId: string,
 ): MediasoupTransportAppData | null {
-  const appData =
-    g.__webSyncPlayMediasoup?.transports.get(transportId)?.appData
+  const appData = g.__webSyncPlayMediasoup?.transports.get(transportId)?.appData
   if (!appData || typeof appData.roomKey !== "string") return null
   return appData as MediasoupTransportAppData
 }
@@ -419,9 +418,7 @@ export function mediasoupCloseRoom(roomKey: string) {
       clearLocalMediaSfuProducer(mediaId)
     }
   }
-  for (const [mediaId, byProducer] of [
-    ...runtime.localMediaRequestProducers,
-  ]) {
+  for (const [mediaId, byProducer] of [...runtime.localMediaRequestProducers]) {
     for (const [producerId, entry] of [...byProducer]) {
       if (entry.roomId === roomKey) {
         byProducer.delete(producerId)

@@ -46,18 +46,12 @@ export function PlayerPanelGlobalStyles() {
       .guest-controls-guard .vds-controls .vds-caption-button,
       .guest-controls-guard .vds-controls .vds-menu-button,
       .guest-controls-guard .vds-controls [data-media-control="mute-button"],
-      .guest-controls-guard
-        .vds-controls
-        [data-media-control="volume-slider"],
+      .guest-controls-guard .vds-controls [data-media-control="volume-slider"],
       .guest-controls-guard .vds-controls [data-media-control="volume-popup"],
       .guest-controls-guard .vds-controls [data-media-control="volume-group"],
-      .guest-controls-guard
-        .vds-controls
-        [data-media-control="caption-button"],
+      .guest-controls-guard .vds-controls [data-media-control="caption-button"],
       .guest-controls-guard .vds-controls [data-media-control="settings"],
-      .guest-controls-guard
-        .vds-controls
-        [data-media-control="settings-menu"],
+      .guest-controls-guard .vds-controls [data-media-control="settings-menu"],
       .guest-controls-guard .vds-controls [aria-label*="settings" i],
       .guest-controls-guard .vds-controls [aria-label*="captions" i],
       .guest-controls-guard .vds-controls [aria-label*="subtitles" i] {

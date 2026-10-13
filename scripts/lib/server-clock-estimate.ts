@@ -48,7 +48,6 @@ export function expectedPlayheadSec(
   }
   const anchorSec = pb.timelineAnchorMs / 1000
   if (pb.paused) return anchorSec
-  const elapsedSec =
-    Math.max(0, serverNowEstimateMs() - pb.serverNowMs) / 1000
+  const elapsedSec = Math.max(0, serverNowEstimateMs() - pb.serverNowMs) / 1000
   return anchorSec + elapsedSec * (pb.playbackRate ?? 1)
 }

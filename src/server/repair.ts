@@ -1,13 +1,9 @@
+import type { PlaybackState, PlaylistItem, RoomState } from "@/contracts/types"
 import { env } from "@/env"
 import {
   createDefaultRoomSecurity,
   normalizeRoomSecurity,
 } from "@/server/realtime/services/room-security"
-import type {
-  PlaybackState,
-  PlaylistItem,
-  RoomState,
-} from "@/contracts/types"
 import { roomActionLogMaxAgeMs } from "@/shared/room-lifecycle"
 import { randomUUID } from "node:crypto"
 import { pruneActionLog, trackedActionTypes } from "./log"

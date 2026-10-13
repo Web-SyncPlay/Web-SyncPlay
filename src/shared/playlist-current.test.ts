@@ -1,9 +1,9 @@
-import { describe, expect, test } from "bun:test"
 import {
   resolveCurrentPlaylistItem,
   resolveCurrentPlaylistItemId,
 } from "@/shared/playlist-current"
 import { createRoomState } from "@/shared/test-utils/room-fixtures"
+import { describe, expect, test } from "bun:test"
 
 describe("playlist-current", () => {
   test("prefers playback.mediaId over currentIndex", () => {

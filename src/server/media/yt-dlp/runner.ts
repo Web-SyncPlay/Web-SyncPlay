@@ -109,7 +109,8 @@ async function runYtDlpInner(args: string[]): Promise<YtDlpRunResult> {
     proc.on("close", (code) => {
       clearTimeout(timer)
       if (truncated && !stderr.includes("output truncated")) {
-        stderr = `${stderr}\nyt-dlp output truncated after ${MAX_OUTPUT_BYTES} bytes`.trim()
+        stderr =
+          `${stderr}\nyt-dlp output truncated after ${MAX_OUTPUT_BYTES} bytes`.trim()
       }
       const failureKind: YtDlpRunFailureKind | null = timedOut
         ? "timeout"

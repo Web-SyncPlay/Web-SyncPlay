@@ -55,20 +55,17 @@ export async function ensureLocalMediaReannounceSubscriber(): Promise<void> {
   g.__webSyncPlayLocalMediaReannounceSub = true
   try {
     const sub = await getSubscriberClient()
-    await sub.subscribe<false>(
-      keys.localMediaReannounceChannel(),
-      (raw) => {
-        let message: ReannounceMessage
-        try {
-          message = JSON.parse(String(raw)) as ReannounceMessage
-        } catch {
-          return
-        }
-        if (!message.roomId || !message.userId) return
-        if (message.originNodeId === getAppNodeId()) return
-        deliverReannounce(message.roomId, message.userId)
-      },
-    )
+    await sub.subscribe<false>(keys.localMediaReannounceChannel(), (raw) => {
+      let message: ReannounceMessage
+      try {
+        message = JSON.parse(String(raw)) as ReannounceMessage
+      } catch {
+        return
+      }
+      if (!message.roomId || !message.userId) return
+      if (message.originNodeId === getAppNodeId()) return
+      deliverReannounce(message.roomId, message.userId)
+    })
   } catch (error) {
     g.__webSyncPlayLocalMediaReannounceSub = false
     console.warn("[local-media] reannounce subscriber install failed", error)

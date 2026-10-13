@@ -1,12 +1,12 @@
 "use client"
 
 import { computeExpectedPlaybackTimeSec } from "@/client/player/playback-sync"
-import { serverNowEstimateMs } from "@/shared/server-clock"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLatestRef } from "@/hooks/use-latest-ref"
-import { createPlaybackActions } from "./use-playback-actions"
+import { serverNowEstimateMs } from "@/shared/server-clock"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { PlayerNavRoomState } from "./types"
+import { createPlaybackActions } from "./use-playback-actions"
 
 /** Local seek ack: room timeline must land within this of the requested target. */
 export const SEEK_ACK_MATCH_THRESHOLD_MS = 450
@@ -21,7 +21,9 @@ export function projectPlaybackMs(
   roomState: PlayerNavRoomState,
   nowMs = serverNowEstimateMs(),
 ) {
-  return Math.floor(computeExpectedPlaybackTimeSec(roomState.playback, nowMs) * 1000)
+  return Math.floor(
+    computeExpectedPlaybackTimeSec(roomState.playback, nowMs) * 1000,
+  )
 }
 
 export function usePlaybackTimelineController(config: {
@@ -32,7 +34,9 @@ export function usePlaybackTimelineController(config: {
   const { roomState, send, controlsDisabled } = config
   const [nowMs, setNowMs] = useState(() => serverNowEstimateMs())
   const [seekPhase, setSeekPhase] = useState<LocalSeekPhase>("idle")
-  const [localSeekTargetMs, setLocalSeekTargetMs] = useState<number | null>(null)
+  const [localSeekTargetMs, setLocalSeekTargetMs] = useState<number | null>(
+    null,
+  )
   const awaitingSeekSinceRef = useRef<number | null>(null)
   const lastPreviewAtRef = useRef(0)
 
@@ -170,7 +174,8 @@ export function usePlaybackTimelineController(config: {
   return {
     elapsedMs,
     seekPhase,
-    awaitingSeekTargetMs: seekPhase === "awaitingAck" ? localSeekTargetMs : null,
+    awaitingSeekTargetMs:
+      seekPhase === "awaitingAck" ? localSeekTargetMs : null,
     play: playbackActions.play,
     pause: playbackActions.pause,
     stepBy: playbackActions.stepBy,

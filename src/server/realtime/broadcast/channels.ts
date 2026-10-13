@@ -17,7 +17,10 @@ export type RoomPublishHint =
   | { kind: "action-log" }
 
 export type ControlEnvelope = WsEnvelope<"room:control", RoomControlPayload>
-export type PresenceEnvelope = WsEnvelope<"presence:batch", PresenceBatchPayload>
+export type PresenceEnvelope = WsEnvelope<
+  "presence:batch",
+  PresenceBatchPayload
+>
 export type SnapshotEnvelope = WsEnvelope<"room:snapshot", RoomSnapshotPayload>
 export type AdmissionChangedEnvelope = WsEnvelope<
   "room:admission:changed",

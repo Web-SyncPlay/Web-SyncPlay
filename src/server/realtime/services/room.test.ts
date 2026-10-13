@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test"
 import { InMemoryRoomStateStore } from "@/server/realtime/test-utils/fixtures"
+import { describe, expect, test } from "bun:test"
 import { createInitialRoomState, evaluateCreateMediaSeed } from "./room"
 
 describe("evaluateCreateMediaSeed", () => {

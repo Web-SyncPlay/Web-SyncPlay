@@ -1,12 +1,12 @@
 import { env } from "@/env"
 import {
-  bytesFromChunkPayload,
-  throwFromChunkPayload,
-} from "@/server/media/local-media-relay/chunk"
-import {
   getLocalMediaNode,
   isLocalMediaInternalConfigured,
 } from "@/server/media/local-media-node-registry"
+import {
+  bytesFromChunkPayload,
+  throwFromChunkPayload,
+} from "@/server/media/local-media-relay/chunk"
 import {
   createPending,
   settlePending,
@@ -93,7 +93,10 @@ export async function fetchChunkViaInternalHttp(
 
   const url = `${holder.baseUrl}/api/media/local/internal/${encodeURIComponent(entry.id)}`
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), LOCAL_MEDIA_RELAY_TIMEOUT_MS)
+  const timer = setTimeout(
+    () => controller.abort(),
+    LOCAL_MEDIA_RELAY_TIMEOUT_MS,
+  )
 
   try {
     const response = await fetch(url, {

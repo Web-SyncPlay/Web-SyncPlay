@@ -40,7 +40,10 @@ describe("resolveEffectiveDurationMs", () => {
   test("returns null when both unknown", () => {
     expect(resolveEffectiveDurationMs({})).toBeNull()
     expect(
-      resolveEffectiveDurationMs({ mediaDurationMs: 0, catalogDurationMs: null }),
+      resolveEffectiveDurationMs({
+        mediaDurationMs: 0,
+        catalogDurationMs: null,
+      }),
     ).toBeNull()
   })
 })

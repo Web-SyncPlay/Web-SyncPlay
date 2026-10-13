@@ -9,8 +9,7 @@ import {
 import { NextResponse, type NextRequest } from "next/server"
 
 const CORS_ALLOW_METHODS = "GET,HEAD,POST,OPTIONS"
-const CORS_EXPOSE_HEADERS =
-  "content-range, accept-ranges, content-length"
+const CORS_EXPOSE_HEADERS = "content-range, accept-ranges, content-length"
 
 function applyCorsHeaders(
   headers: Headers,

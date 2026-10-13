@@ -386,11 +386,8 @@ describe("consumeHotWsEventLimit", () => {
   test("trips seek:preview after burst for the same room+user", async () => {
     mockRedisTokenBucketClient()
 
-    const {
-      HOT_WS_EVENT_LIMITS,
-      consumeHotWsEventLimit,
-      hotWsEventRateKey,
-    } = await import("./rate-limit")
+    const { HOT_WS_EVENT_LIMITS, consumeHotWsEventLimit, hotWsEventRateKey } =
+      await import("./rate-limit")
     const roomId = "room-hot"
     const userId = "user-hot"
     const { capacity } = HOT_WS_EVENT_LIMITS["seek:preview"]
@@ -561,9 +558,9 @@ describe("consumeHotWsEventLimit", () => {
         })
       ).allowed,
     ).toBe(false)
-    expect(hotWsEventRateKey("local-media:webrtc:signal", "r-rtc", "u-rtc")).toBe(
-      "ws:local-media-webrtc-signal:r-rtc:u-rtc",
-    )
+    expect(
+      hotWsEventRateKey("local-media:webrtc:signal", "r-rtc", "u-rtc"),
+    ).toBe("ws:local-media-webrtc-signal:r-rtc:u-rtc")
 
     const sfuCap =
       HOT_WS_EVENT_LIMITS["local-media:sfu:create-transport"].capacity

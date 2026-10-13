@@ -5,8 +5,7 @@
 export type RawBytesRange = { start: number; end: number | null }
 
 export type ResolvedBytesRange =
-  | { invalid: true }
-  | { start: number; end: number }
+  { invalid: true } | { start: number; end: number }
 
 /**
  * Parse a single `bytes=start-end` Range header without clamping to a length.
@@ -24,8 +23,7 @@ export function parseRawBytesRangeHeader(
     return null
   }
   const start = Number.parseInt(match[1] ?? "0", 10)
-  const end =
-    match[2] != null ? Number.parseInt(match[2], 10) : null
+  const end = match[2] != null ? Number.parseInt(match[2], 10) : null
   if (!Number.isFinite(start) || (end != null && !Number.isFinite(end))) {
     return null
   }

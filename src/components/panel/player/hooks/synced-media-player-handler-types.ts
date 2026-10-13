@@ -1,14 +1,11 @@
 import type { TypedRoomEventSender } from "@/contracts/room-events"
-import type {
-  MediaErrorDetail,
-  MediaPlayerInstance,
-} from "@vidstack/react"
-import type { RefObject } from "react"
 import type { ClientRoomState, LoopMode, PlaylistItem } from "@/contracts/types"
-import type { PlayerSrcInput } from "../player-src"
-import type { PendingSyncState } from "./use-buffering-watchdog"
+import type { MediaErrorDetail, MediaPlayerInstance } from "@vidstack/react"
+import type { RefObject } from "react"
 import type { LocalSeekPhase } from "../playback-control/use-playback-timeline-controller"
+import type { PlayerSrcInput } from "../player-src"
 import type { TransportIntent } from "./transport-intent"
+import type { PendingSyncState } from "./use-buffering-watchdog"
 
 /** Playlist nav fields read from a ref so ended logic avoids prop churn. */
 export type PlaylistNavSnapshot = {

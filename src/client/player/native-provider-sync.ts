@@ -216,8 +216,7 @@ export function createNativeSyncTracker(): NativeSyncTracker {
         const sampleGapOk =
           nowMs - probe.lastSampleAtMs >= NATIVE_MIN_SAMPLE_GAP_MS
         const advanced =
-          Math.abs(currentSec - probe.lastSampleSec) >=
-          NATIVE_STALE_EPSILON_SEC
+          Math.abs(currentSec - probe.lastSampleSec) >= NATIVE_STALE_EPSILON_SEC
         const wasNearRoom = probe.lastNearRoom
         probe.lastSampleSec = currentSec
         probe.lastSampleAtMs = nowMs

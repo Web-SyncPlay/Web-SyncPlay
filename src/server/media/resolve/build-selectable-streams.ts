@@ -1,12 +1,16 @@
-import { isHttpOrHttpsUrl } from "@/shared/sanitize-display"
 import {
   MEDIA_STREAM_CATALOG_LIMIT,
   MEDIA_TEXT_TRACK_CATALOG_LIMIT,
   type PlaylistMediaStream,
   type PlaylistTextTrack,
 } from "@/contracts/types"
-import type { YtDlpNormalizedVariant, YtDlpStream, YtDlpTextTrack } from "@/server/media/yt-dlp"
+import type {
+  YtDlpNormalizedVariant,
+  YtDlpStream,
+  YtDlpTextTrack,
+} from "@/server/media/yt-dlp"
 import { PLAYBACK_LADDER_HEIGHTS } from "@/server/media/yt-dlp/policy"
+import { isHttpOrHttpsUrl } from "@/shared/sanitize-display"
 
 const LADDER_HEIGHTS = PLAYBACK_LADDER_HEIGHTS
 
@@ -16,10 +20,19 @@ function isNoneCodec(value: string | undefined): boolean {
   return lower === "none" || lower === "null"
 }
 
-function isAdaptiveProtocol(protocol: string | undefined, type: string | undefined, src: string): boolean {
+function isAdaptiveProtocol(
+  protocol: string | undefined,
+  type: string | undefined,
+  src: string,
+): boolean {
   const p = (protocol ?? "").toLowerCase()
   const t = (type ?? "").toLowerCase()
-  if (p.includes("m3u8") || p.includes("hls") || p.includes("dash") || p.includes("http_dash")) {
+  if (
+    p.includes("m3u8") ||
+    p.includes("hls") ||
+    p.includes("dash") ||
+    p.includes("http_dash")
+  ) {
     return true
   }
   if (t.includes("mpegurl") || t.includes("dash+xml")) {

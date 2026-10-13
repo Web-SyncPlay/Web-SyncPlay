@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test"
 import type { RoomState } from "@/contracts/types"
+import { expect, test } from "bun:test"
 import { createPlaybackActions } from "./use-playback-actions"
 
 function createRoomState(): RoomState {
@@ -71,9 +71,13 @@ test("commitSeek ends scrub via playback:seek only", () => {
       payload: { targetMs: 45_000 },
     },
   ])
-  expect(sent.some((e) => e.type === "seek:preview" && (e.payload as { active?: boolean }).active === false)).toBe(
-    false,
-  )
+  expect(
+    sent.some(
+      (e) =>
+        e.type === "seek:preview" &&
+        (e.payload as { active?: boolean }).active === false,
+    ),
+  ).toBe(false)
 })
 
 test("endSeekPreview sends ephemeral inactive preview only", () => {

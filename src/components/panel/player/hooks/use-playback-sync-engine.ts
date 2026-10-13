@@ -5,11 +5,11 @@ import {
   type PlaybackSyncEngine,
 } from "@/client/player/playback-sync-engine"
 import type { ProviderSyncTuning } from "@/client/player/provider-sync-tuning"
+import { useLatestRef } from "@/hooks/use-latest-ref"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import { useEffect, useRef, type RefObject } from "react"
-import { useLatestRef } from "@/hooks/use-latest-ref"
-import type { PendingSyncState } from "./use-buffering-watchdog"
 import { toSyncablePlayer } from "./to-syncable-player"
+import type { PendingSyncState } from "./use-buffering-watchdog"
 
 /**
  * Owns a single PlaybackSyncEngine for the player lifecycle.

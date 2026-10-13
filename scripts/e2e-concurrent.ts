@@ -38,11 +38,7 @@ async function seedUsername(context: BrowserContext, userId: string) {
   )
 }
 
-async function openRoom(
-  context: BrowserContext,
-  path: string,
-  hash = "",
-) {
+async function openRoom(context: BrowserContext, path: string, hash = "") {
   const page = await context.newPage()
   page.setDefaultTimeout(20_000)
   await page.goto(`${BASE}${path}${hash}`, { waitUntil: "domcontentloaded" })

@@ -1,5 +1,5 @@
-import { resetPlaybackTimeline } from "@/server/realtime/services/timeline"
 import type { PlaylistItem, RoomState } from "@/contracts/types"
+import { resetPlaybackTimeline } from "@/server/realtime/services/timeline"
 
 /** True when a remote URL item may be explicitly re-resolved. */
 export function canRetryRemotePlaylistItem(
@@ -68,10 +68,7 @@ export function applyPlaylistRename(
 /**
  * Drop a removed playlist item id from every participant's viewer preferences.
  */
-export function pruneViewerMediaItemId(
-  state: RoomState,
-  itemId: string,
-): void {
+export function pruneViewerMediaItemId(state: RoomState, itemId: string): void {
   for (const participant of Object.values(state.participants)) {
     const byItemId = participant.viewerMedia?.byItemId
     if (!byItemId || !(itemId in byItemId)) continue
@@ -256,9 +253,7 @@ export function buildLocalFilePlaylistItem(params: {
     sourceUrl: playableUrl,
     playableUrl,
     ingestStatus: "ready",
-    ...(durationOk
-      ? { durationSeconds: Math.round(durationSeconds) }
-      : {}),
+    ...(durationOk ? { durationSeconds: Math.round(durationSeconds) } : {}),
     mediaStreams: [
       {
         id: "local-default",

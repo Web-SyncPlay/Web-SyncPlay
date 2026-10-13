@@ -1,6 +1,6 @@
-import { describe, expect, mock, test } from "bun:test"
-import { createRoomState } from "@/shared/test-utils/room-fixtures"
 import type { LoopMode } from "@/contracts/types"
+import { createRoomState } from "@/shared/test-utils/room-fixtures"
+import { describe, expect, mock, test } from "bun:test"
 import type { LocalSeekPhase } from "../playback-control/use-playback-timeline-controller"
 import { createTransportRequestHandlers } from "./create-transport-request-handlers"
 import {
@@ -8,15 +8,17 @@ import {
   type TransportIntent,
 } from "./transport-intent"
 
-function createDeps(overrides: {
-  canControlPlayback?: boolean
-  paused?: boolean
-  playbackRate?: number
-  videoLoop?: LoopMode
-  seekPhase?: LocalSeekPhase
-  /** Live element paused flag; `undefined` = no player mounted. */
-  elementPaused?: boolean
-} = {}) {
+function createDeps(
+  overrides: {
+    canControlPlayback?: boolean
+    paused?: boolean
+    playbackRate?: number
+    videoLoop?: LoopMode
+    seekPhase?: LocalSeekPhase
+    /** Live element paused flag; `undefined` = no player mounted. */
+    elementPaused?: boolean
+  } = {},
+) {
   const sent: Array<{ type: string; payload: unknown }> = []
   const enforceServerPlaybackState = mock(() => {})
   const beginSeek = mock((_ms: number) => {})
@@ -139,7 +141,11 @@ describe("createTransportRequestHandlers", () => {
     const { handlers } = createDeps({ canControlPlayback: false })
     for (const key of [" ", "k", "K", "MediaPlayPause"]) {
       const fn = mock(() => {})
-      handlers.onKeyDownCapture({ key, preventDefault: fn, stopPropagation: fn })
+      handlers.onKeyDownCapture({
+        key,
+        preventDefault: fn,
+        stopPropagation: fn,
+      })
       expect(fn).toHaveBeenCalledTimes(2)
     }
   })

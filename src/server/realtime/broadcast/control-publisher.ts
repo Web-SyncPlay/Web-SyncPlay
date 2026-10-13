@@ -1,15 +1,15 @@
-import { getCommandClient } from "@/server/redis/client"
-import { keys } from "@/server/redis/keys"
 import type {
   AdmissionChangedPayload,
   RoomControlPayload,
 } from "@/contracts/types"
+import { getCommandClient } from "@/server/redis/client"
+import { keys } from "@/server/redis/keys"
+import { forceRejoinNonOwners, sendRawToRoom } from "./bus-fanout"
 import type {
   AdmissionChangedEnvelope,
   ControlEnvelope,
   RoomBroadcastEnvelope,
 } from "./channels"
-import { forceRejoinNonOwners, sendRawToRoom } from "./bus-fanout"
 import { BROADCAST_NODE_ID } from "./node-id"
 
 export type PublishCapture = {
@@ -81,11 +81,7 @@ export async function publishUserEphemeralEnvelope(options: {
     envelope: { type: string; requestId?: string; payload: unknown },
   ) => void
 }) {
-  options.fanOutLocal(
-    options.roomId,
-    options.targetUserId,
-    options.envelope,
-  )
+  options.fanOutLocal(options.roomId, options.targetUserId, options.envelope)
 
   if (options.captureOnly) {
     return

@@ -1,3 +1,4 @@
+import type { PlaylistItem, PlaylistMediaStream } from "@/contracts/types"
 import { describe, expect, test } from "bun:test"
 import {
   buildPlayerSrc,
@@ -6,7 +7,6 @@ import {
   normalizeHlsMime,
   playerSrcContentKey,
 } from "./player-src"
-import type { PlaylistItem, PlaylistMediaStream } from "@/contracts/types"
 
 describe("playerSrcContentKey", () => {
   test("string src is the key", () => {
@@ -17,8 +17,14 @@ describe("playerSrcContentKey", () => {
   })
 
   test("object src+type is stable across new instances", () => {
-    const a = { src: "https://cdn.example/a.m3u8", type: "application/x-mpegurl" }
-    const b = { src: "https://cdn.example/a.m3u8", type: "application/x-mpegurl" }
+    const a = {
+      src: "https://cdn.example/a.m3u8",
+      type: "application/x-mpegurl",
+    }
+    const b = {
+      src: "https://cdn.example/a.m3u8",
+      type: "application/x-mpegurl",
+    }
     expect(a).not.toBe(b)
     expect(playerSrcContentKey(a)).toBe(playerSrcContentKey(b))
   })
@@ -102,16 +108,17 @@ describe("buildPlayerSrc", () => {
 
   test("falls back to bare URL when mime is unknown", () => {
     const item = {
-      mediaStreams: [{ id: "s1", src: "https://x", type: "application/octet-stream" }],
+      mediaStreams: [
+        { id: "s1", src: "https://x", type: "application/octet-stream" },
+      ],
     } as PlaylistItem
-    expect(
-      buildPlayerSrc("https://cdn.example/video", item, null, null),
-    ).toBe("https://cdn.example/video")
+    expect(buildPlayerSrc("https://cdn.example/video", item, null, null)).toBe(
+      "https://cdn.example/video",
+    )
   })
 
   test("does not force video/mp4 for progressive m2ts URLs", () => {
-    const m2ts =
-      "https://jf.example/Videos/id/stream?api_key=k&container=m2ts"
+    const m2ts = "https://jf.example/Videos/id/stream?api_key=k&container=m2ts"
     expect(
       buildPlayerSrc(
         m2ts,

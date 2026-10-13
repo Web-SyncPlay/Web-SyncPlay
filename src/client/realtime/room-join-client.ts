@@ -5,7 +5,7 @@ import type {
   WsEnvelope,
 } from "@/contracts/types"
 
-export type { SessionCapabilities, RoomJoinRejectedReason }
+export type { RoomJoinRejectedReason, SessionCapabilities }
 export type JoinRejectedReason = RoomJoinRejectedReason
 
 export type JoinStatus =
@@ -49,9 +49,7 @@ export function normalizeSessionCapabilities(
   }
 }
 
-export function messageForJoinRejected(
-  reason?: JoinRejectedReason,
-): string {
+export function messageForJoinRejected(reason?: JoinRejectedReason): string {
   if (reason === "media_url_unsupported") {
     return "This media URL is not supported for room creation."
   }
@@ -70,9 +68,7 @@ export function messageForJoinRejected(
   return "This room requires a join password."
 }
 
-export function statusForJoinRejected(
-  reason?: JoinRejectedReason,
-): JoinStatus {
+export function statusForJoinRejected(reason?: JoinRejectedReason): JoinStatus {
   if (reason === "media_url_unsupported") {
     return "media_unsupported"
   }
@@ -92,9 +88,7 @@ export function statusForJoinRejected(
  * Password / identity / media failures must not auto-reconnect.
  * `rate_limited` pauses until {@link RATE_LIMITED_RECONNECT_MS}; `connection_closed` does not pause.
  */
-export function shouldPauseAutoReconnect(
-  reason?: JoinRejectedReason,
-): boolean {
+export function shouldPauseAutoReconnect(reason?: JoinRejectedReason): boolean {
   return (
     reason === "password_required" ||
     reason === "invalid_password" ||
@@ -106,9 +100,7 @@ export function shouldPauseAutoReconnect(
 }
 
 /** Hard stop — no cooldown resume. */
-export function isTerminalJoinRejection(
-  reason?: JoinRejectedReason,
-): boolean {
+export function isTerminalJoinRejection(reason?: JoinRejectedReason): boolean {
   return reason === "media_url_unsupported" || reason === "identity_mismatch"
 }
 

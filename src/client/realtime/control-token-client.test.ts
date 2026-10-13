@@ -33,9 +33,7 @@ describe("resolveBootstrapControlToken", () => {
       hashControlToken: "from-hash",
     })
     expect(token).toBe("from-hash")
-    expect(
-      JSON.parse(stored["web-syncplay:control-token:room-1"]!),
-    ).toEqual({
+    expect(JSON.parse(stored["web-syncplay:control-token:room-1"]!)).toEqual({
       token: "from-hash",
     })
   })
@@ -141,7 +139,8 @@ describe("createControlTokenReminter", () => {
         Response.json({ token: "mint-1", expiresAt: Date.now() + 60_000 }),
       ),
     )
-    ;(globalThis as { fetch?: typeof fetch }).fetch = fetchMock as unknown as typeof fetch
+    ;(globalThis as { fetch?: typeof fetch }).fetch =
+      fetchMock as unknown as typeof fetch
     const stored: Record<string, string> = {}
     ;(globalThis as { window?: unknown }).window = {
       sessionStorage: {
@@ -182,7 +181,8 @@ describe("createControlTokenReminter", () => {
     const fetchMock = mock(() =>
       Promise.resolve(new Response(null, { status: 403 })),
     )
-    ;(globalThis as { fetch?: typeof fetch }).fetch = fetchMock as unknown as typeof fetch
+    ;(globalThis as { fetch?: typeof fetch }).fetch =
+      fetchMock as unknown as typeof fetch
 
     const reminter = createControlTokenReminter()
     const input = {
@@ -225,9 +225,7 @@ describe("mintRoomControlToken", () => {
       },
     }
     ;(globalThis as { fetch?: typeof fetch }).fetch = mock(() =>
-      Promise.resolve(
-        Response.json({ token: "t1", expiresAt: 42 }),
-      ),
+      Promise.resolve(Response.json({ token: "t1", expiresAt: 42 })),
     ) as unknown as typeof fetch
 
     const minted = await mintRoomControlToken({
@@ -264,9 +262,7 @@ describe("mintRoomControlTokenWithRetry", () => {
       if (calls < 2) {
         return Promise.resolve(new Response(null, { status: 503 }))
       }
-      return Promise.resolve(
-        Response.json({ token: "ok", expiresAt: 99 }),
-      )
+      return Promise.resolve(Response.json({ token: "ok", expiresAt: 99 }))
     }) as unknown as typeof fetch
 
     const sleeps: number[] = []
@@ -312,10 +308,7 @@ describe("createControlTokenRefreshScheduler", () => {
 
     // Remaining lifetime >> skew so delay is remaining - CONTROL_TOKEN_REMINT_SKEW_MS.
     const expiresAt = 1_000_000 + CONTROL_TOKEN_REMINT_SKEW_MS * 10
-    scheduler.arm(
-      { roomId: "r1", userId: "u1", userSecret: "s1" },
-      expiresAt,
-    )
+    scheduler.arm({ roomId: "r1", userId: "u1", userSecret: "s1" }, expiresAt)
     expect(timers).toHaveLength(1)
     expect(timers[0]!.ms).toBe(CONTROL_TOKEN_REMINT_SKEW_MS * 9)
 

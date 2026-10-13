@@ -1,3 +1,4 @@
+import { createPlaylistItem } from "@/shared/test-utils/room-fixtures"
 import { afterEach, describe, expect, test } from "bun:test"
 import {
   claimNextNativePlaylistMetadataProbe,
@@ -8,7 +9,6 @@ import {
   resetNativePlaylistMetadataProbeStateForTests,
   wasNativePlaylistItemProbed,
 } from "./native-playlist-metadata-probe"
-import { createPlaylistItem } from "@/shared/test-utils/room-fixtures"
 
 afterEach(() => {
   resetNativePlaylistMetadataProbeStateForTests()
@@ -72,9 +72,9 @@ describe("native playlist metadata probe helpers", () => {
     expect(queueNativePlaylistMetadataProbe("https://example.com/a.mp4")).toBe(
       false,
     )
-    expect(
-      queueNativePlaylistMetadataProbe("https://youtu.be/abc123"),
-    ).toBe(true)
+    expect(queueNativePlaylistMetadataProbe("https://youtu.be/abc123")).toBe(
+      true,
+    )
   })
 
   test("claim matches newest item by createdBy + sourceUrl and dedupes", () => {

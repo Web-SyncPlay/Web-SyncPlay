@@ -1,4 +1,3 @@
-import { afterEach, describe, expect, test } from "bun:test"
 import {
   createTestBroadcastBus,
   setRoomBroadcastBusForTests,
@@ -21,6 +20,7 @@ import {
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
 import { getCommandClient } from "@/server/redis/client"
+import { afterEach, describe, expect, test } from "bun:test"
 
 async function redisAvailable(): Promise<boolean> {
   try {
@@ -100,10 +100,7 @@ describe("playlist handler interfaces", () => {
       envelope("playlist:remove", { itemId: "item-b" }),
     )
     const next = store.peek("room-1")
-    expect(next?.playlist.map((item) => item.id)).toEqual([
-      "item-a",
-      "item-c",
-    ])
+    expect(next?.playlist.map((item) => item.id)).toEqual(["item-a", "item-c"])
     expect(next?.currentIndex).toBe(1)
     expect(next?.actionLog.at(-1)?.action).toBe("playlist:remove")
   })
@@ -179,9 +176,8 @@ describe("playlist handler interfaces", () => {
       expect(item?.localSizeBytes).toBe(2048)
       expect(item?.durationSeconds).toBe(88)
 
-      const { getLocalMediaEntry, deleteLocalMediaEntry } = await import(
-        "@/server/media/local-media-store"
-      )
+      const { getLocalMediaEntry, deleteLocalMediaEntry } =
+        await import("@/server/media/local-media-store")
       const meta = await getLocalMediaEntry(localMediaId)
       expect(meta?.providerReady).toBe(true)
       await deleteLocalMediaEntry(localMediaId)

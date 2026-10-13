@@ -5,8 +5,8 @@ import {
   mintRoomControlTokenWithRetry,
 } from "@/client/realtime/control-token-client"
 import { getControlEmbedUrl } from "@/client/realtime/control-url"
-import { canMutateByRole } from "@/shared/permissions-utils"
 import type { RoomRole } from "@/contracts/types"
+import { canMutateByRole } from "@/shared/permissions-utils"
 import { useEffect, useMemo, useState } from "react"
 
 /**
@@ -70,12 +70,7 @@ export function useControlEmbedUrl(input: {
         }
         setMintedControlEmbedUrl({
           scopeKey: mintScopeKey,
-          url: getControlEmbedUrl(
-            roomId,
-            userId,
-            userSecret,
-            minted.token,
-          ),
+          url: getControlEmbedUrl(roomId, userId, userSecret, minted.token),
         })
       },
     })
@@ -93,10 +88,7 @@ export function useControlEmbedUrl(input: {
         scopeKey: mintScopeKey,
         url: getControlEmbedUrl(roomId, userId, userSecret, minted.token),
       })
-      scheduler.arm(
-        { roomId, userId, userSecret },
-        minted.expiresAt,
-      )
+      scheduler.arm({ roomId, userId, userSecret }, minted.expiresAt)
     })()
 
     return () => {

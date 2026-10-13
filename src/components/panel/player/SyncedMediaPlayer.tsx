@@ -1,5 +1,6 @@
 "use client"
 
+import type { PlaylistMediaStream } from "@/contracts/types"
 import {
   resolvePlayerDurationSec,
   resolvePlayerStreamType,
@@ -19,13 +20,12 @@ import {
   defaultLayoutIcons,
 } from "@vidstack/react/player/layouts/default"
 import { memo, useMemo } from "react"
-import type { PlaylistMediaStream } from "@/contracts/types"
 import { useSyncedMediaPlayerHandlers } from "./hooks/use-synced-media-player-handlers"
-import { buildPlayerSettingsSlots } from "./player-settings-slots"
 import type {
   PlayerSessionController,
   SyncedMediaPlayerViewModel,
 } from "./player-session-controller"
+import { buildPlayerSettingsSlots } from "./player-settings-slots"
 
 const EMPTY_MEDIA_STREAMS: PlaylistMediaStream[] = []
 
@@ -70,8 +70,7 @@ export const SyncedMediaPlayer = memo(function SyncedMediaPlayer({
   const playerStreamType = resolvePlayerStreamType(current)
   const playerDurationSec = resolvePlayerDurationSec(current)
   const streams = current?.mediaStreams ?? EMPTY_MEDIA_STREAMS
-  const selectedStreamId =
-    activeStream?.id ?? current?.defaultStreamId ?? ""
+  const selectedStreamId = activeStream?.id ?? current?.defaultStreamId ?? ""
   // Explicit useMemo: slots feed Vidstack and must stay referentially stable
   // for memo(SyncedMediaPlayer) even when the React Compiler is active.
   const layoutSlots = useMemo(
@@ -150,7 +149,8 @@ export const SyncedMediaPlayer = memo(function SyncedMediaPlayer({
     setPlaybackError: (value) => controller.setPlaybackError(value),
     setMediaDurationMs: (value) => controller.setMediaDurationMs(value),
     setForceLocalRelaySrc: (value) => controller.setForceLocalRelaySrc(value),
-    setPlayerRemountNonce: (updater) => controller.setPlayerRemountNonce(updater),
+    setPlayerRemountNonce: (updater) =>
+      controller.setPlayerRemountNonce(updater),
   })
 
   return (

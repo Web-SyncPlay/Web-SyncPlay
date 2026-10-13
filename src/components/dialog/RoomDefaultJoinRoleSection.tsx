@@ -1,5 +1,6 @@
 "use client"
 
+import { cn } from "@/components/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   Field,
@@ -9,8 +10,10 @@ import {
   FieldTitle,
 } from "@/components/ui/field"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
-import { cn } from "@/components/lib/utils"
-import type { DefaultJoinRole, PublicRoomSecurityState } from "@/contracts/types"
+import type {
+  DefaultJoinRole,
+  PublicRoomSecurityState,
+} from "@/contracts/types"
 import { Shield } from "lucide-react"
 
 const JOIN_ROLE_OPTIONS: ReadonlyArray<{

@@ -1,9 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import {
-  DEFAULT_PLAYER_VOLUME,
-  resolveUnmuteVolume,
-} from "./use-player-volume"
+import { DEFAULT_PLAYER_VOLUME, resolveUnmuteVolume } from "./use-player-volume"
 
 describe("resolveUnmuteVolume", () => {
   test("keeps a stored preference above silence", () => {

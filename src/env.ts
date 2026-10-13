@@ -80,12 +80,7 @@ export const env = createEnv({
       .min(1)
       .max(1000)
       .default(500),
-    ROOM_PLAYLIST_LIMIT: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(200)
-      .default(50),
+    ROOM_PLAYLIST_LIMIT: z.coerce.number().int().min(1).max(200).default(50),
     PROXY_ALLOW_PRIVATE_URLS: z
       .enum(["true", "false"])
       .default("false")

@@ -27,9 +27,7 @@ export function EmbedClient({
   })
 
   if (model.mediaUnsupported) {
-    return (
-      <MediaUrlUnsupportedView roomId={roomId} mediaUrl={seedMediaUrl} />
-    )
+    return <MediaUrlUnsupportedView roomId={roomId} mediaUrl={seedMediaUrl} />
   }
 
   if (!model.ready) {

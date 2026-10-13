@@ -103,15 +103,16 @@ function looksLikeHlsPlaylist(body: string, contentType: string): boolean {
  * Heuristic before buffering a response body: is this likely an HLS playlist
  * (including opaque CDN types without `.m3u8`)?
  */
-export function playlistTargetHint(target: string, contentType: string): boolean {
+export function playlistTargetHint(
+  target: string,
+  contentType: string,
+): boolean {
   const ct = contentType.toLowerCase()
   if (ct.includes("mpegurl") || ct.includes("m3u8")) return true
   if (/\.m3u8(\?|$)/i.test(target)) return true
   // Opaque CDN playlists often use octet-stream without .m3u8
   if (
-    (ct === "" ||
-      ct.includes("octet-stream") ||
-      ct.includes("text/plain")) &&
+    (ct === "" || ct.includes("octet-stream") || ct.includes("text/plain")) &&
     !/\.(ts|m4s|mp4|webm|aac|m4a)(\?|$)/i.test(target)
   ) {
     return true

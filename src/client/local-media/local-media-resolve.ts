@@ -1,5 +1,5 @@
-import type { ClientRoomState } from "@/contracts/types"
 import { getAbrVariantMeta } from "@/client/local-media/local-media-abr"
+import type { ClientRoomState } from "@/contracts/types"
 
 /** Extract local media UUID from `/api/media/local/{id}` (optional /hls suffix ignored). */
 export function localMediaIdFromSrc(src: string | undefined): string | null {
@@ -26,7 +26,11 @@ export function findLocalPlaylistItemForMediaId(
       const id = localMediaIdFromSrc(stream.src)
       if (id === localMediaId) return item
       // HLS master /api/media/local/{parent}/hls — parent id is first segment
-      if (stream.src.includes(`/api/media/local/${encodeURIComponent(localMediaId)}/`)) {
+      if (
+        stream.src.includes(
+          `/api/media/local/${encodeURIComponent(localMediaId)}/`,
+        )
+      ) {
         return item
       }
     }
@@ -57,7 +61,8 @@ export function resolveLocalMediaMeta(
   if (item.localMediaId === localMediaId) {
     const mimeType =
       item.localMimeType ??
-      item.mediaStreams?.find((s) => s.type && !s.type.includes("mpegurl"))?.type
+      item.mediaStreams?.find((s) => s.type && !s.type.includes("mpegurl"))
+        ?.type
     if (!mimeType || !item.localSizeBytes) return null
     return { mimeType, sizeBytes: item.localSizeBytes }
   }
@@ -65,7 +70,12 @@ export function resolveLocalMediaMeta(
   const stream = (item.mediaStreams ?? []).find(
     (s) => localMediaIdFromSrc(s.src) === localMediaId,
   )
-  if (stream?.type && stream.bitrate && stream.bitrate > 0 && item.durationSeconds) {
+  if (
+    stream?.type &&
+    stream.bitrate &&
+    stream.bitrate > 0 &&
+    item.durationSeconds
+  ) {
     // Approximate size from bitrate × duration when child size unknown.
     const sizeBytes = Math.max(
       1,

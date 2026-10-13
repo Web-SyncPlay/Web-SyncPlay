@@ -1,11 +1,11 @@
-import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+import { setJoinPassword } from "@/server/realtime/services/room-security"
 import {
   createFakeWs,
   createParticipant,
   createRoomState,
 } from "@/server/realtime/test-utils/fixtures"
-import { setJoinPassword } from "@/server/realtime/services/room-security"
 import { setSocketClientIp } from "@/server/ws/registry"
+import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
 
 let roomLimitAllowed = true
 let ipLimitAllowed = true

@@ -61,8 +61,8 @@ export default function ImprintPage() {
         <p>
           Rooms sync playback of media chosen by users (external URLs or files
           on a participant’s device). We do not operate a media library or
-          curate that content. Liability for third-party information follows
-          §§ 7–10 DDG.
+          curate that content. Liability for third-party information follows §§
+          7–10 DDG.
         </p>
       </section>
     </LegalPage>

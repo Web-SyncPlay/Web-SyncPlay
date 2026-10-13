@@ -100,10 +100,13 @@ export function getEmbedFrameAncestors(
 ): string[] {
   const raw = rawAncestors?.trim()
   if (!raw) return []
-  return raw.split(/\s+/).filter(Boolean).map((token) => {
-    if (token === "*") return token
-    return token.replace(/\/$/, "")
-  })
+  return raw
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((token) => {
+      if (token === "*") return token
+      return token.replace(/\/$/, "")
+    })
 }
 
 function buildFrameAncestorsDirective(

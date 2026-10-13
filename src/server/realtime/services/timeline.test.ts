@@ -1,3 +1,4 @@
+import { createRoomState } from "@/server/realtime/test-utils/fixtures"
 import { describe, expect, test } from "bun:test"
 import {
   commitPlaybackSeek,
@@ -6,7 +7,6 @@ import {
   resetPlaybackTimeline,
   resolveCurrentTimelineMs,
 } from "./timeline"
-import { createRoomState } from "@/server/realtime/test-utils/fixtures"
 
 describe("timeline helpers", () => {
   test("nextMonotonicMs never moves backwards", () => {

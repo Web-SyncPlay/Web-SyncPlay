@@ -1,5 +1,5 @@
-import { authorizeControlSession } from "@/server/realtime/services/control-auth"
 import type { SessionKind } from "@/contracts/types"
+import { authorizeControlSession } from "@/server/realtime/services/control-auth"
 
 export async function authorizeJoinSession(options: {
   sessionKind: SessionKind

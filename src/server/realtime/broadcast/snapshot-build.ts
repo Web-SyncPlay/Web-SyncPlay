@@ -1,11 +1,11 @@
-import type { RoomStateStorePort } from "@/server/ports"
-import { sanitizeRoomStateForClient } from "@/server/realtime/services/room-security"
-import { peekPresenceRevision } from "@/server/realtime/broadcast/presence-seq"
 import type {
   PresencePatch,
   RoomSnapshotPayload,
   RoomState,
 } from "@/contracts/types"
+import type { RoomStateStorePort } from "@/server/ports"
+import { peekPresenceRevision } from "@/server/realtime/broadcast/presence-seq"
+import { sanitizeRoomStateForClient } from "@/server/realtime/services/room-security"
 
 export function structuralHash(state: RoomState): string {
   const participants = Object.fromEntries(

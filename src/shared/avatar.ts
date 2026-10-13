@@ -5,11 +5,7 @@ import lorelei from "@dicebear/styles/lorelei.json" with { type: "json" }
 
 export const DEFAULT_AVATAR_STYLE = "adventurer" as const
 
-export const avatarStyles = [
-  "adventurer",
-  "avataaars",
-  "lorelei",
-] as const
+export const avatarStyles = ["adventurer", "avataaars", "lorelei"] as const
 
 export type AvatarStyleId = (typeof avatarStyles)[number]
 

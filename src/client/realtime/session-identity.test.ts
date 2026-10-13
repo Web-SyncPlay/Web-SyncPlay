@@ -1,5 +1,9 @@
 import { expect, test } from "bun:test"
 import {
+  isEncryptedSecret,
+  resetSecretStorageCacheForTests,
+} from "./secret-storage"
+import {
   clearPersistedControlToken,
   consumeSessionIdentityFromHash,
   getOrCreateSessionIdentity,
@@ -11,10 +15,6 @@ import {
   resetSessionIdentityBootstrapForTests,
   stripIdentityHashFromUrl,
 } from "./session-identity"
-import {
-  isEncryptedSecret,
-  resetSecretStorageCacheForTests,
-} from "./secret-storage"
 
 type MockStorage = {
   getItem: (key: string) => string | null
@@ -64,7 +64,11 @@ function createMockWindow(hash: string) {
     },
     history: {
       state: {},
-      replaceState: (_state: unknown, _title: string, url?: string | URL | null) => {
+      replaceState: (
+        _state: unknown,
+        _title: string,
+        url?: string | URL | null,
+      ) => {
         replacedUrl = typeof url === "string" ? url : null
       },
     },
@@ -100,9 +104,11 @@ test("consumeSessionIdentityFromHash stores encrypted identity and strips hash",
 
 test("concurrent consumeSessionIdentityFromHash shares one consume after hash is cleared mid-flight (Strict Mode)", async () => {
   const mock = createMockWindow("#uid=user-1&secret=secret-1")
-  const win = (globalThis as unknown as {
-    window: { location: { hash: string } }
-  }).window
+  const win = (
+    globalThis as unknown as {
+      window: { location: { hash: string } }
+    }
+  ).window
 
   // Mount A: sync-writes userId, then awaits persistEncryptedUserSecret.
   const mountA = consumeSessionIdentityFromHash()

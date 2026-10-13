@@ -1,4 +1,7 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import {
+  VIEWER_MEDIA_BY_ITEM_LIMIT,
+  type PlaylistItem,
+} from "@/contracts/types"
 import {
   createTestBroadcastBus,
   setRoomBroadcastBusForTests,
@@ -16,7 +19,7 @@ import {
   envelope,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
-import { VIEWER_MEDIA_BY_ITEM_LIMIT, type PlaylistItem } from "@/contracts/types"
+import { afterEach, describe, expect, test } from "bun:test"
 
 describe("viewer media preference helpers", () => {
   const item = {
@@ -33,12 +36,16 @@ describe("viewer media preference helpers", () => {
       }),
     ).toBeNull()
     expect(
-      mergeViewerMediaItemPreference(item, { streamId: "stream-1" }, {
-        itemId: "item-c",
-        streamId: null,
-        textTrackId: "track-1",
-        audioLanguage: "en",
-      }),
+      mergeViewerMediaItemPreference(
+        item,
+        { streamId: "stream-1" },
+        {
+          itemId: "item-c",
+          streamId: null,
+          textTrackId: "track-1",
+          audioLanguage: "en",
+        },
+      ),
     ).toEqual({
       streamId: undefined,
       textTrackId: "track-1",
@@ -52,8 +59,12 @@ describe("viewer media preference helpers", () => {
       byItemId[`old-${i}`] = { streamId: "stream-1" }
     }
     const capped = capViewerMediaByItemId({ byItemId })
-    expect(Object.keys(capped.byItemId)).toHaveLength(VIEWER_MEDIA_BY_ITEM_LIMIT)
-    expect(capped.byItemId[`old-${VIEWER_MEDIA_BY_ITEM_LIMIT + 1}`]).toBeDefined()
+    expect(Object.keys(capped.byItemId)).toHaveLength(
+      VIEWER_MEDIA_BY_ITEM_LIMIT,
+    )
+    expect(
+      capped.byItemId[`old-${VIEWER_MEDIA_BY_ITEM_LIMIT + 1}`],
+    ).toBeDefined()
     expect(capped.byItemId["old-0"]).toBeUndefined()
   })
 
@@ -146,7 +157,8 @@ describe("viewer media preferences handler interface", () => {
       }),
     )
 
-    const prefs = store.peek("room-1")?.participants.guest?.viewerMedia?.byItemId
+    const prefs =
+      store.peek("room-1")?.participants.guest?.viewerMedia?.byItemId
     expect(Object.keys(prefs ?? {}).length).toBe(VIEWER_MEDIA_BY_ITEM_LIMIT)
     expect(prefs?.["item-c"]).toBeDefined()
   })

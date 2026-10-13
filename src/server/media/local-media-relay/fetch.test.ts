@@ -1,4 +1,3 @@
-import { describe, expect, test } from "bun:test"
 import {
   alignedBlockStart,
   fetchLocalMediaAlignedBlock,
@@ -9,6 +8,7 @@ import {
   LocalMediaRelayError,
 } from "@/server/media/local-media-relay/types"
 import type { LocalMediaEntry } from "@/server/media/local-media-store"
+import { describe, expect, test } from "bun:test"
 
 function entry(sizeBytes: number): LocalMediaEntry {
   return {
@@ -50,13 +50,17 @@ describe("fetchLocalMediaRangeBytes validation", () => {
   test("rejects negative, inverted, and past-EOF ranges", async () => {
     const media = entry(1000)
 
-    await expect(fetchLocalMediaRangeBytes(media, -1, 10)).rejects.toBeInstanceOf(
-      LocalMediaRelayError,
-    )
-    await expect(fetchLocalMediaRangeBytes(media, 20, 10)).rejects.toMatchObject({
+    await expect(
+      fetchLocalMediaRangeBytes(media, -1, 10),
+    ).rejects.toBeInstanceOf(LocalMediaRelayError)
+    await expect(
+      fetchLocalMediaRangeBytes(media, 20, 10),
+    ).rejects.toMatchObject({
       code: "invalid_range",
     })
-    await expect(fetchLocalMediaRangeBytes(media, 1000, 1001)).rejects.toMatchObject({
+    await expect(
+      fetchLocalMediaRangeBytes(media, 1000, 1001),
+    ).rejects.toMatchObject({
       code: "invalid_range",
     })
   })

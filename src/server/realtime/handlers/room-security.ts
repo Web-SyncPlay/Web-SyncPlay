@@ -1,11 +1,11 @@
-import { appendActionLog } from "@/server/log"
-import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
   roomDefaultRoleSetSchema,
   roomPasswordClearSchema,
   roomPasswordSetSchema,
 } from "@/contracts/schemas"
 import type { RoomState, WsEnvelope } from "@/contracts/types"
+import { appendActionLog } from "@/server/log"
+import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import type { z } from "zod"
 import {
   clearJoinPassword,
@@ -36,7 +36,8 @@ function logSecurityAction(
   state: RoomState,
   ctx: RoomMessageContext,
   participant: RoomState["participants"][string],
-  action: "room:password:set" | "room:password:cleared" | "room:default-role:set",
+  action:
+    "room:password:set" | "room:password:cleared" | "room:default-role:set",
   payload: Record<string, unknown>,
 ) {
   appendActionLog(state, {

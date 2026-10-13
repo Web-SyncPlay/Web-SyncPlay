@@ -60,9 +60,7 @@ describe("room-join-client", () => {
       "join password",
     )
     expect(messageForJoinRejected("rate_limited")).toContain("Too many")
-    expect(messageForJoinRejected("identity_mismatch")).toContain(
-      "identity",
-    )
+    expect(messageForJoinRejected("identity_mismatch")).toContain("identity")
     expect(messageForJoinRejected("media_url_unsupported")).toContain(
       "not supported",
     )
@@ -77,13 +75,9 @@ describe("room-join-client", () => {
       "media_unsupported",
     )
     expect(statusForJoinRejected("rate_limited")).toBe("rate_limited")
-    expect(statusForJoinRejected("identity_mismatch")).toBe(
-      "identity_mismatch",
-    )
+    expect(statusForJoinRejected("identity_mismatch")).toBe("identity_mismatch")
     expect(statusForJoinRejected("connection_closed")).toBe("reconnecting")
-    expect(statusForJoinRejected("password_required")).toBe(
-      "awaiting_password",
-    )
+    expect(statusForJoinRejected("password_required")).toBe("awaiting_password")
     expect(statusForJoinRejected("invalid_password")).toBe("awaiting_password")
   })
 

@@ -1,12 +1,12 @@
 import { createLocalMediaSfuPort } from "@/server/media/local-media-sfu-port"
 import { createMediaResolvePort } from "@/server/media/media-resolve-port"
-import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
   setLocalMediaSfuPort,
   setMediaMaintenancePort,
   setMediaResolvePort,
   setRoomPublishPort,
 } from "@/server/ports"
+import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { cleanupInactiveRooms } from "@/server/realtime/services/cleanup"
 import { processDuePrunes } from "@/server/realtime/services/participants"
 import { reresolveRemotePlaylistItem } from "@/server/realtime/services/playlist-resolve"

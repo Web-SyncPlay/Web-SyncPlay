@@ -1,18 +1,18 @@
 "use client"
 
+import type { ClientRoomState } from "@/contracts/types"
+import { useLatestRef } from "@/hooks/use-latest-ref"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import { useRef, type MutableRefObject } from "react"
-import { useLatestRef } from "@/hooks/use-latest-ref"
-import type { ClientRoomState } from "@/contracts/types"
-import type { PendingSyncState } from "./use-buffering-watchdog"
-import type { TransportIntent } from "./transport-intent"
-import type { PlaylistNavSnapshot } from "./use-synced-media-player-handlers"
 import {
   createPlayerSessionActionsRef,
   createPlayerSessionController,
   type PlayerSessionActions,
   type PlayerSessionController,
 } from "../player-session-controller"
+import type { TransportIntent } from "./transport-intent"
+import type { PendingSyncState } from "./use-buffering-watchdog"
+import type { PlaylistNavSnapshot } from "./use-synced-media-player-handlers"
 
 export type PlayerSessionControllerHandle = {
   controller: PlayerSessionController

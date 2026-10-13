@@ -1,14 +1,14 @@
-import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
 import { getAppNodeId } from "@/server/node-id"
+import { setJoinPassword } from "@/server/realtime/services/room-security"
 import {
   createFakeWs,
   createParticipant,
   createRoomState,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
-import { setJoinPassword } from "@/server/realtime/services/room-security"
 import { totalPresenceRefs } from "@/server/redis/presence-ref"
 import { getSocketMeta } from "@/server/ws/registry"
+import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
 
 mock.module("@/server/redis/client", () => ({
   getCommandClient: async () => ({
@@ -74,10 +74,7 @@ describe("commitJoinMembership", () => {
       }),
     )
     // Owner already present; guest must not gain a ref from commit alone.
-    store.presence.set(
-      "room-1",
-      new Map([["owner", { [getAppNodeId()]: 1 }]]),
-    )
+    store.presence.set("room-1", new Map([["owner", { [getAppNodeId()]: 1 }]]))
     const { ws, sent } = createFakeWs()
     const presenceBefore = totalPresenceRefs(
       store.presence.get("room-1")?.get("guest") ?? {},
@@ -101,7 +98,9 @@ describe("commitJoinMembership", () => {
     ).toBe(presenceBefore)
     expect(sent).toEqual([])
     expect(
-      result.committed?.actionLog.some((e) => e.action === "participant:joined"),
+      result.committed?.actionLog.some(
+        (e) => e.action === "participant:joined",
+      ),
     ).toBe(true)
   })
 
@@ -154,7 +153,9 @@ describe("commitJoinMembership", () => {
 
     expect(result.committed).not.toBeNull()
     expect(
-      result.committed?.actionLog.some((e) => e.action === "participant:joined"),
+      result.committed?.actionLog.some(
+        (e) => e.action === "participant:joined",
+      ),
     ).toBe(false)
   })
 
@@ -182,10 +183,7 @@ describe("commitJoinMembership", () => {
         },
       }),
     )
-    store.presence.set(
-      "room-1",
-      new Map([["mod", { [getAppNodeId()]: 1 }]]),
-    )
+    store.presence.set("room-1", new Map([["mod", { [getAppNodeId()]: 1 }]]))
     const { ws } = createFakeWs()
 
     const result = await commitJoinMembership(baseInput(store, ws))

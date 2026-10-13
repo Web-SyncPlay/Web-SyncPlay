@@ -8,41 +8,47 @@ import {
 } from "./server-clock-estimate.ts"
 
 export { createServerClockEstimate, expectedPlayheadSec }
-export type { ServerClockEstimate, PlaybackClockFields }
+export type { PlaybackClockFields, ServerClockEstimate }
 
-function playbackFromPayload(payload: Record<string, unknown>): PlaybackClockFields {
-  const playback = payload.playback as PlaybackClockFields | undefined
-  const serverNowMs =
-    typeof payload.serverNowMs === "number"
+/** True send-time wall stamp — never the frozen playback timeline stamp. */
+function wallClockFromEnvelope(msg: {
+  type: string
+  payload: Record<string, unknown>
+}): number | undefined {
+  const payload = msg.payload
+  if (msg.type === "presence:batch" || msg.type === "session:clock") {
+    return typeof payload.serverNowMs === "number"
       ? payload.serverNowMs
-      : playback?.serverNowMs
-  return { ...playback, serverNowMs }
+      : undefined
+  }
+  if (
+    msg.type === "room:snapshot" ||
+    msg.type === "room:state" ||
+    msg.type === "room:control"
+  ) {
+    return typeof payload.serverWallNowMs === "number"
+      ? payload.serverWallNowMs
+      : undefined
+  }
+  return undefined
 }
 
-/** Feed serverNowMs from inbound room envelopes into a clock estimate. */
+/** Feed wall-clock stamps from inbound room envelopes into a clock estimate. */
 export function wireServerClockFromRoomClient(
   client: RoomClient,
   clock: ServerClockEstimate,
 ): void {
   const prev = client.onMessage
   client.onMessage = (msg) => {
-    if (
-      msg.type === "room:snapshot" ||
-      msg.type === "room:state" ||
-      msg.type === "room:control"
-    ) {
-      const pb = playbackFromPayload(msg.payload)
-      if (typeof pb.serverNowMs === "number") {
-        clock.observeServerNowMs(pb.serverNowMs)
-      }
+    const wall = wallClockFromEnvelope(msg)
+    if (typeof wall === "number") {
+      clock.observeServerNowMs(wall)
     }
     prev?.(msg)
   }
-  if (client.roomState?.playback) {
-    const pb = client.roomState.playback as PlaybackClockFields
-    if (typeof pb.serverNowMs === "number") {
-      clock.observeServerNowMs(pb.serverNowMs)
-    }
+  const wall = client.roomState?.serverWallNowMs
+  if (typeof wall === "number") {
+    clock.observeServerNowMs(wall)
   }
 }
 
@@ -213,7 +219,9 @@ async function readHostCurrentTimeMs(page: Page): Promise<number | null> {
     if (Number.isFinite(playerTime)) {
       return Math.max(0, Math.round(playerTime * 1000))
     }
-    const media = document.querySelector("video, audio") as HTMLMediaElement | null
+    const media = document.querySelector(
+      "video, audio",
+    ) as HTMLMediaElement | null
     if (media && Number.isFinite(media.currentTime)) {
       return Math.max(0, Math.round(media.currentTime * 1000))
     }

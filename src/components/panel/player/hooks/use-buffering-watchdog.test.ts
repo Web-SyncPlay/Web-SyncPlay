@@ -198,7 +198,11 @@ describe("useBufferingWatchdog", () => {
     const windowSetTimeoutSpy = spyOn(
       globalThis.window,
       "setTimeout",
-    ).mockImplementation(((handler: TimerHandler, ms?: number, ...args: unknown[]) =>
+    ).mockImplementation(((
+      handler: TimerHandler,
+      ms?: number,
+      ...args: unknown[]
+    ) =>
       realSetTimeout(
         handler as never,
         ms as never,
@@ -207,10 +211,8 @@ describe("useBufferingWatchdog", () => {
     const windowClearTimeoutSpy = spyOn(
       globalThis.window,
       "clearTimeout",
-    ).mockImplementation(
-      (((id?: number) =>
-        realClearTimeout(id as never)) as unknown) as typeof clearTimeout,
-    )
+    ).mockImplementation(((id?: number) =>
+      realClearTimeout(id as never)) as unknown as typeof clearTimeout)
 
     const container = document.createElement("div")
     document.body.appendChild(container)

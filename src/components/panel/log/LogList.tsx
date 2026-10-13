@@ -1,9 +1,6 @@
 import { ItemGroup } from "@/components/ui/item"
-import {
-  formatLogTimestamp,
-  getActionLogDetails,
-} from "@/shared/log-format"
 import type { ActionLogEntry } from "@/contracts/types"
+import { formatLogTimestamp, getActionLogDetails } from "@/shared/log-format"
 
 function resolveActorName(
   log: ActionLogEntry,

@@ -1,10 +1,8 @@
-import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
-import { WebSocket } from "ws"
+import { getAppNodeId } from "@/server/node-id"
 import {
   createTestBroadcastBus,
   setRoomBroadcastBusForTests,
 } from "@/server/realtime/broadcast/room-broadcast-bus"
-import { getAppNodeId } from "@/server/node-id"
 import {
   createFakeWs,
   createParticipant,
@@ -13,6 +11,8 @@ import {
 } from "@/server/realtime/test-utils/fixtures"
 import { totalPresenceRefs } from "@/server/redis/presence-ref"
 import { getSocketMeta, removeSocket } from "@/server/ws/registry"
+import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+import { WebSocket } from "ws"
 
 mock.module("@/server/redis/client", () => ({
   getCommandClient: async () => ({
@@ -87,10 +87,7 @@ describe("postCommitJoinSideEffects (R2/R3 membership timing)", () => {
 
   test("R2/R3: registers socket then presence then joinCommitted", async () => {
     const store = new InMemoryRoomStateStore(committedState())
-    store.presence.set(
-      "room-1",
-      new Map([["owner", { [getAppNodeId()]: 1 }]]),
-    )
+    store.presence.set("room-1", new Map([["owner", { [getAppNodeId()]: 1 }]]))
     createTestBroadcastBus(store)
     const { ws, sent } = createFakeWs()
 
@@ -98,9 +95,7 @@ describe("postCommitJoinSideEffects (R2/R3 membership timing)", () => {
     const originalAdd = store.addWsConnectionRef.bind(store)
     store.addWsConnectionRef = async (roomId, userId) => {
       // R3: flag must still be false while presence is being added.
-      joinCommittedAtPresence.push(
-        getSocketMeta(ws)?.joinCommitted === true,
-      )
+      joinCommittedAtPresence.push(getSocketMeta(ws)?.joinCommitted === true)
       expect(getSocketMeta(ws)).toMatchObject({
         roomId: "room-1",
         userId: "guest",
@@ -165,10 +160,7 @@ describe("postCommitJoinSideEffects (R2/R3 membership timing)", () => {
 
   test("aborts before membership when socket already closed (R1)", async () => {
     const store = new InMemoryRoomStateStore(committedState())
-    store.presence.set(
-      "room-1",
-      new Map([["owner", { [getAppNodeId()]: 1 }]]),
-    )
+    store.presence.set("room-1", new Map([["owner", { [getAppNodeId()]: 1 }]]))
     createTestBroadcastBus(store)
     const { ws, sent } = createFakeWs()
     ws.close()
@@ -191,10 +183,7 @@ describe("postCommitJoinSideEffects (R2/R3 membership timing)", () => {
 
   test("aborts after presence add when socket closes mid post-commit (D3)", async () => {
     const store = new InMemoryRoomStateStore(committedState())
-    store.presence.set(
-      "room-1",
-      new Map([["owner", { [getAppNodeId()]: 1 }]]),
-    )
+    store.presence.set("room-1", new Map([["owner", { [getAppNodeId()]: 1 }]]))
     createTestBroadcastBus(store)
     const { ws, sent } = createFakeWs()
 

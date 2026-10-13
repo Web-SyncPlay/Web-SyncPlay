@@ -9,12 +9,24 @@ export interface PlaybackSyncState {
 export const DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC = 0.8
 
 /**
- * Playing force/late-join seek lead (HTML5 + native): write ahead of the room
- * clock so seek latency / post-seek buffering (~2–3s) does not leave the
- * playhead permanently behind. Soft (0.8) seeks do not add lead; paused seeks
- * never lead.
+ * Soft drift threshold grows with half-RTT so high-latency peers do not
+ * soft-seek on every watchdog tick. Floor remains {@link DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC}.
  */
-export const FORCE_SEEK_LEAD_SEC = 2.5
+export function resolvePlaybackDriftThresholdSec(
+  rttMs = 0,
+  baseSec = DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
+): number {
+  const halfRttSec = Number.isFinite(rttMs) && rttMs > 0 ? rttMs / 2000 : 0
+  return Math.max(baseSec, halfRttSec + 0.25)
+}
+
+/**
+ * Playing force/late-join seek lead — kept at 0 after clock sampling was fixed.
+ * Residual lead amplified multi-second peer deltas under high RTT; rate catch-up
+ * closes mid-range lag without writing ahead of the room clock.
+ * @deprecated Always 0; allowAhead/seekLead call sites should pass 0.
+ */
+export const FORCE_SEEK_LEAD_SEC = 0
 
 /**
  * Local rate catch-up (non-native playing only): close mid-range lag without
@@ -32,10 +44,13 @@ export const CATCH_UP_RATE_MAX_FACTOR = 1.5
 export const PLAYBACK_RATE_SCHEMA_MAX = 3
 
 /** True when drift is in the catch-up band `(min, max]`. */
-export function isCatchUpDriftBand(driftSec: number): boolean {
+export function isCatchUpDriftBand(
+  driftSec: number,
+  minSec = CATCH_UP_DRIFT_MIN_SEC,
+): boolean {
   return (
     Number.isFinite(driftSec) &&
-    driftSec > CATCH_UP_DRIFT_MIN_SEC &&
+    driftSec > minSec &&
     driftSec <= CATCH_UP_DRIFT_MAX_SEC
   )
 }
@@ -47,8 +62,9 @@ export function isCatchUpDriftBand(driftSec: number): boolean {
 export function resolveCatchUpPlaybackRate(
   roomRate: number,
   driftSec: number,
+  minSec = CATCH_UP_DRIFT_MIN_SEC,
 ): number | null {
-  if (!isCatchUpDriftBand(driftSec)) {
+  if (!isCatchUpDriftBand(driftSec, minSec)) {
     return null
   }
   if (!Number.isFinite(roomRate) || roomRate <= 0) {
@@ -154,8 +170,7 @@ export function resolveSeekCeilingSec(input: {
     Number.isFinite(seekableEnd) && seekableEnd > 0 ? seekableEnd : null
   const finiteDuration =
     Number.isFinite(durationSec) && durationSec > 0 ? durationSec : null
-  const finiteHint =
-    Number.isFinite(hintSec) && hintSec > 0 ? hintSec : null
+  const finiteHint = Number.isFinite(hintSec) && hintSec > 0 ? hintSec : null
 
   // Ignore bounds that collapse to the buffered window (with or without a
   // catalog hint — a poisoned hint≈seekable must not create a fake ceiling).

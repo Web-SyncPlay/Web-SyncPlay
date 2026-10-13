@@ -1,4 +1,8 @@
-import { resolveStyle } from "@/shared/avatar"
+import {
+  participantRoleUpdateSchema,
+  participantUpdateSchema,
+} from "@/contracts/schemas"
+import type { ParticipantState, PresencePatch } from "@/contracts/types"
 import { appendActionLog } from "@/server/log"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import {
@@ -8,15 +12,11 @@ import {
 } from "@/server/realtime/services/local-playback-presence"
 import { computeSessionCapabilities } from "@/server/realtime/services/permissions"
 import {
-  participantRoleUpdateSchema,
-  participantUpdateSchema,
-} from "@/contracts/schemas"
-import type { PresencePatch, ParticipantState } from "@/contracts/types"
-import {
   getSocketMeta,
   getSocketsForUser,
   setSocketCanControlPlayback,
 } from "@/server/ws/registry"
+import { resolveStyle } from "@/shared/avatar"
 import type { z } from "zod"
 import { mutateOwnerRoomMessage } from "./mutate-controlled"
 import { mutateRoomMessage } from "./mutate-room"
@@ -236,11 +236,7 @@ export const handleParticipantRoleUpdate: RoomMessageHandler = async (
   ctx,
   data,
 ) => {
-  const roleUpdate = parseOrNack(
-    participantRoleUpdateSchema,
-    ctx.ws,
-    data,
-  )
+  const roleUpdate = parseOrNack(participantRoleUpdateSchema, ctx.ws, data)
   if (!roleUpdate) return
 
   const next = await mutateOwnerRoomMessage(

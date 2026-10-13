@@ -150,9 +150,9 @@ describe("stored preference matching", () => {
     expect(
       audioTrackStorageValue({ label: "Narration", language: "" }, 3),
     ).toBe("Narration")
-    expect(
-      videoQualityStorageValue({ id: "q0", height: 1080 }, false),
-    ).toBe("q0")
+    expect(videoQualityStorageValue({ id: "q0", height: 1080 }, false)).toBe(
+      "q0",
+    )
     expect(videoQualityStorageValue({ height: 720 }, true)).toBe("auto")
   })
 })

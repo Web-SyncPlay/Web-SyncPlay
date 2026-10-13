@@ -1,13 +1,10 @@
-import {
-  isHttpOrHttpsUrl,
-  sanitizeMediaTitle,
-} from "@/shared/sanitize-display"
 import type {
   YtDlpExtractSuccess,
   YtDlpNormalizedVariant,
   YtDlpStream,
   YtDlpTextTrack,
 } from "@/server/media/yt-dlp/types"
+import { isHttpOrHttpsUrl, sanitizeMediaTitle } from "@/shared/sanitize-display"
 
 type YtDlpDumpJson = {
   title?: unknown
@@ -122,10 +119,8 @@ export function parseYtDlpDumpJson(
       typeof format.height === "number" && Number.isFinite(format.height)
         ? format.height
         : undefined
-    const vcodec =
-      typeof format.vcodec === "string" ? format.vcodec : undefined
-    const acodec =
-      typeof format.acodec === "string" ? format.acodec : undefined
+    const vcodec = typeof format.vcodec === "string" ? format.vcodec : undefined
+    const acodec = typeof format.acodec === "string" ? format.acodec : undefined
     const formatId =
       typeof format.format_id === "string"
         ? format.format_id
@@ -136,8 +131,7 @@ export function parseYtDlpDumpJson(
       id: formatId,
       src,
       type:
-        typeof format.protocol === "string" &&
-        format.protocol === "m3u8_native"
+        typeof format.protocol === "string" && format.protocol === "m3u8_native"
           ? "application/x-mpegURL"
           : typeof format.ext === "string"
             ? `video/${String(format.ext)}`
@@ -158,8 +152,7 @@ export function parseYtDlpDumpJson(
           : undefined,
       label:
         typeof format.format_note === "string"
-          ? (sanitizeMediaTitle(format.format_note)?.slice(0, 64) ??
-            undefined)
+          ? (sanitizeMediaTitle(format.format_note)?.slice(0, 64) ?? undefined)
           : width && height
             ? `${height}p`
             : undefined,

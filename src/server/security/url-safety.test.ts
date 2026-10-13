@@ -1,8 +1,5 @@
 import { expect, test } from "bun:test"
-import {
-  assertPublicHttpUrl,
-  assertPublicHttpUrlResolved,
-} from "./url-safety"
+import { assertPublicHttpUrl, assertPublicHttpUrlResolved } from "./url-safety"
 
 test("allows public https URLs", () => {
   const result = assertPublicHttpUrl("https://cdn.example.com/video.mp4")
@@ -28,9 +25,7 @@ test("blocks trailing-dot and IPv4-mapped IPv6 SSRF bypasses", () => {
   expect(assertPublicHttpUrl("http://[0:0:0:0:0:ffff:127.0.0.1]/").ok).toBe(
     false,
   )
-  expect(assertPublicHttpUrl("http://[::ffff:169.254.169.254]/").ok).toBe(
-    false,
-  )
+  expect(assertPublicHttpUrl("http://[::ffff:169.254.169.254]/").ok).toBe(false)
   expect(assertPublicHttpUrl("http://0x7f000001/").ok).toBe(false)
   expect(assertPublicHttpUrl("http://2130706433/").ok).toBe(false)
 })
@@ -70,7 +65,12 @@ test("resolved check rejects link-local and unique-local IPv6", async () => {
 test("resolved check allows hostname that DNSes only to public IPs", async () => {
   const result = await assertPublicHttpUrlResolved(
     "https://cdn.example.com/video.mp4",
-    { lookup: async () => ["93.184.216.34", "2606:2800:220:1:248:1893:25c8:1946"] },
+    {
+      lookup: async () => [
+        "93.184.216.34",
+        "2606:2800:220:1:248:1893:25c8:1946",
+      ],
+    },
   )
   expect(result.ok).toBe(true)
 })

@@ -9,6 +9,11 @@ import {
   type SyncablePlayer,
 } from "@/client/player/apply-playback-sync"
 import {
+  createNativeSyncTracker,
+  isNativeDurationReady,
+} from "@/client/player/native-provider-sync"
+import { pendingSyncFromPlayback } from "@/client/player/pending-sync"
+import {
   CATCH_UP_CLEAR_DRIFT_SEC,
   CATCH_UP_DRIFT_MAX_SEC,
   computeExpectedPlaybackTimeSec,
@@ -17,22 +22,15 @@ import {
   isCatchUpDriftBand,
   measurePlaybackDriftSec,
   resolveCatchUpPlaybackRate,
+  resolvePlaybackDriftThresholdSec,
   type PlaybackSyncState,
 } from "@/client/player/playback-sync"
-import {
-  createNativeSyncTracker,
-  isNativeDurationReady,
-} from "@/client/player/native-provider-sync"
-import { pendingSyncFromPlayback } from "@/client/player/pending-sync"
 import type { ProviderSyncTuning } from "@/client/player/provider-sync-tuning"
-import { serverNowEstimateMs } from "@/shared/server-clock"
+import { getLastRttMs, serverNowEstimateMs } from "@/shared/server-clock"
 
 /** Single scheduler phases for room ↔ local playhead sync. */
 export type PlaybackSyncPhase =
-  | "idle"
-  | "applying"
-  | "verifying"
-  | "holdingLocalSeek"
+  "idle" | "applying" | "verifying" | "holdingLocalSeek"
 
 export const WATCHDOG_INTERVAL_MS = 1_000
 /**
@@ -66,19 +64,20 @@ export const CATCH_UP_STALL_POST_SEEK_GRACE_MS = 2_500
  * 2. Seek-confirm pending + near room → suppress threshold-0 re-force
  * 3. Catch-up band (not forcing, not HLS echo, not stalled) → rate only
  * 4. Stall escalate / HLS echo / drift > catch-up max → force seek
- * 5. threshold 0 + playing → write with FORCE_SEEK_LEAD_SEC
+ * 5. threshold 0 + playing → snap to expected (no seek lead)
  */
 
-type AnchorBudget = { anchorMs: number; count: number }
+export type AnchorBudget = { anchorMs: number; count: number }
 
-function resetAnchorBudget(
+/** Keep count when the authority anchor is unchanged; reset on a new anchor. */
+export function resetAnchorBudget(
   budget: AnchorBudget,
   anchorMs: number,
 ): AnchorBudget {
   return budget.anchorMs === anchorMs ? budget : { anchorMs, count: 0 }
 }
 
-function tryConsumeAnchorBudget(
+export function tryConsumeAnchorBudget(
   budget: AnchorBudget,
   anchorMs: number,
   max: number,
@@ -179,13 +178,11 @@ export function planPlaybackDriftCorrection(input: {
   | { action: "noop"; syncState: EngineSyncState }
   | { action: "clear"; syncState: EngineSyncState }
   | { action: "apply"; syncState: EngineSyncState } {
-  const syncState =
-    input.pending ?? pendingSyncFromPlayback(input.playback)
+  const syncState = input.pending ?? pendingSyncFromPlayback(input.playback)
   if (input.driftSec === null) {
     return { action: "noop", syncState }
   }
-  const threshold =
-    input.thresholdSec ?? DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC
+  const threshold = input.thresholdSec ?? DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC
   if (input.driftSec <= threshold) {
     return { action: "clear", syncState }
   }
@@ -235,8 +232,7 @@ export function createPlaybackSyncEngine(
   /** Native only: hard seeks were skipped because duration was unknown. */
   let durationGated = false
 
-  const isNativeSync = () =>
-    host.getSyncTuning?.()?.nativeProvider === true
+  const isNativeSync = () => host.getSyncTuning?.()?.nativeProvider === true
   /** Catalog duration; `Infinity` means catalog-live (see usePlayerPlaybackSync). */
   const rawDurationHintSec = () => host.getDurationHintSec?.()
   const isCatalogLive = () => rawDurationHintSec() === Number.POSITIVE_INFINITY
@@ -254,10 +250,8 @@ export function createPlaybackSyncEngine(
     })
 
   /** Seek-confirm probe: native iframes always; HTML5 only while playing. */
-  const shouldSeekConfirm = (
-    syncState: EngineSyncState,
-    nativeMode: boolean,
-  ) => nativeMode || !syncState.paused
+  const shouldSeekConfirm = (syncState: EngineSyncState, nativeMode: boolean) =>
+    nativeMode || !syncState.paused
 
   const clearCatchUpRate = (player?: SyncablePlayer | null) => {
     if (host.getCatchUpRate() === null) {
@@ -304,7 +298,7 @@ export function createPlaybackSyncEngine(
     if (
       syncState.paused ||
       driftSec === null ||
-      driftSec <= DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC
+      driftSec <= softDriftThresholdSec()
     ) {
       resetCatchUpStallSample()
       return false
@@ -343,7 +337,11 @@ export function createPlaybackSyncEngine(
     syncState: EngineSyncState,
     driftSec: number,
   ): number | null => {
-    const rate = resolveCatchUpPlaybackRate(syncState.playbackRate, driftSec)
+    const rate = resolveCatchUpPlaybackRate(
+      syncState.playbackRate,
+      driftSec,
+      softDriftThresholdSec(),
+    )
     if (rate === null) {
       return null
     }
@@ -352,9 +350,16 @@ export function createPlaybackSyncEngine(
     return rate
   }
 
-  /** Playing (HTML5 + native): allow intentional force-seek lead without false drift. */
-  const playingSeekLeadSec = (syncState: EngineSyncState) =>
-    syncState.paused ? 0 : FORCE_SEEK_LEAD_SEC
+  /** Soft threshold grows with measured RTT (see resolvePlaybackDriftThresholdSec). */
+  const softDriftThresholdSec = () =>
+    resolvePlaybackDriftThresholdSec(getLastRttMs())
+
+  /**
+   * Playing force-seek lead — always 0. Kept as a named helper so call sites
+   * stay explicit; FORCE_SEEK_LEAD_SEC was removed after it amplified peer deltas.
+   */
+  const playingSeekLeadSec = (_syncState: EngineSyncState) =>
+    FORCE_SEEK_LEAD_SEC
 
   const measureDrift = (
     player: SyncablePlayer,
@@ -385,8 +390,7 @@ export function createPlaybackSyncEngine(
     )
   }
   const maxForceSeeks = () =>
-    host.getSyncTuning?.()?.maxForceSeeksPerAnchor ??
-    MAX_FORCE_SEEKS_PER_ANCHOR
+    host.getSyncTuning?.()?.maxForceSeeksPerAnchor ?? MAX_FORCE_SEEKS_PER_ANCHOR
 
   /** Public phase: local-seek hold always wins over internal apply/verify work. */
   const resolvePhase = (): PlaybackSyncPhase => {
@@ -503,7 +507,8 @@ export function createPlaybackSyncEngine(
         if (!fresh || isSyncablePlayerPlaying(fresh)) {
           return
         }
-        void nudgePlaybackTransport({ player: fresh, paused: false }).playAttempt
+        void nudgePlaybackTransport({ player: fresh, paused: false })
+          .playAttempt
       }, delayMs)
       pauseTimers.push(timerId)
     }
@@ -531,11 +536,9 @@ export function createPlaybackSyncEngine(
     // Late join: keep force-snapping (threshold 0) until the playhead actually
     // converges. Clearing the flag on the first attempt left iframe/HLS
     // no-ops stranded ~20s behind after a short settle.
-    const isInitialSnap =
-      !gated && initialSnapPending && host.isMediaReady()
+    const isInitialSnap = !gated && initialSnapPending && host.isMediaReady()
     let effectiveThresholdSec =
-      driftThresholdSec ??
-      (isInitialSnap || reapplyAfterGate ? 0 : undefined)
+      driftThresholdSec ?? (isInitialSnap || reapplyAfterGate ? 0 : undefined)
     if (gated) {
       effectiveThresholdSec = Number.POSITIVE_INFINITY
     } else if (
@@ -562,32 +565,33 @@ export function createPlaybackSyncEngine(
       // playhead is already near the clock, do not re-force (threshold 0) —
       // wait for motion confirmation. Verify/watchdog still force-seeks when
       // drift grows past the threshold during rebuffer.
+      const softThresholdSec = softDriftThresholdSec()
       if (
         shouldSeekConfirm(syncState, nativeMode) &&
         native.hasSeekProbe() &&
         driftThresholdSec === undefined &&
         effectiveThresholdSec === 0 &&
         driftBeforeSec !== null &&
-        driftBeforeSec <= DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC
+        driftBeforeSec <= softThresholdSec
       ) {
         effectiveThresholdSec = Number.POSITIVE_INFINITY
       }
       // Mid-range playing drift: prefer local rate catch-up over another hard
       // seek (force/snap threshold 0 and drift > CATCH_UP_DRIFT_MAX_SEC still seek).
-      // Explicit caller thresholds (budgeted force seeks, including soft 0.8)
+      // Explicit caller thresholds (budgeted force seeks, including soft)
       // must not be rewritten to Infinity — that swallowed the seek path.
       const forcing =
         driftThresholdSec !== undefined ||
         effectiveThresholdSec === 0 ||
         (effectiveThresholdSec !== undefined &&
-          effectiveThresholdSec < DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC)
+          effectiveThresholdSec < softThresholdSec)
       const catchUpInsteadOfSeek =
         !nativeMode &&
         !syncState.paused &&
         !gated &&
         !forcing &&
         driftBeforeSec !== null &&
-        isCatchUpDriftBand(driftBeforeSec)
+        isCatchUpDriftBand(driftBeforeSec, softThresholdSec)
       if (catchUpInsteadOfSeek) {
         effectiveThresholdSec = Number.POSITIVE_INFINITY
       }
@@ -595,14 +599,12 @@ export function createPlaybackSyncEngine(
         ? resolveCatchUpPlaybackRate(
             syncState.playbackRate,
             driftBeforeSec,
+            softThresholdSec,
           )
         : nativeMode || syncState.paused
           ? null
           : host.getCatchUpRate()
-      // Playing force/snap (threshold 0 / initialSnap / stall escalate):
-      // lead the write so seek latency does not strand the playhead behind.
-      // Soft 0.8 seeks do not lead; paused never leads. allowAheadSec keeps
-      // soft seeks from undoing a prior lead (HTML5 + native).
+      // No playing seek lead — snap to expected. Soft seeks use RTT-scaled threshold.
       const allowAheadSec = playingSeekLeadSec(syncState)
       const seekLeadSec =
         allowAheadSec > 0 && effectiveThresholdSec === 0 ? allowAheadSec : 0
@@ -648,7 +650,7 @@ export function createPlaybackSyncEngine(
               anchorMs: syncState.timelineAnchorMs,
               currentSec: readPlayerPlayheadSec(player),
               driftSec: result.driftSec,
-              thresholdSec: DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
+              thresholdSec: softThresholdSec,
               roomPaused: syncState.paused,
               nowMs,
             }) === "pending"
@@ -683,10 +685,9 @@ export function createPlaybackSyncEngine(
         targetSec !== null &&
         mediaAfterSec !== null &&
         Number.isFinite(mediaAfterSec) &&
-        Math.abs(mediaAfterSec - targetSec) >
-          DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC &&
+        Math.abs(mediaAfterSec - targetSec) > softDriftThresholdSec() &&
         driftSec !== null &&
-        driftSec > DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC
+        driftSec > softDriftThresholdSec()
       ) {
         const anchorMs = syncState.timelineAnchorMs
         const consumed = tryConsumeAnchorBudget(
@@ -742,7 +743,7 @@ export function createPlaybackSyncEngine(
         seekConfirmPending ||
         hlsSeekEchoUnconfirmed ||
         driftSec === null ||
-        driftSec > DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC ||
+        driftSec > softThresholdSec ||
         pauseUnconverged ||
         playUnconverged
       // Only consume the late-join snap once media is ready *and* converged.
@@ -758,16 +759,13 @@ export function createPlaybackSyncEngine(
       if (nativeMode || syncState.paused || holdLocalSeek) {
         clearCatchUpRate(player)
         resetCatchUpStallSample()
-      } else if (
-        driftSec !== null &&
-        driftSec <= CATCH_UP_CLEAR_DRIFT_SEC
-      ) {
+      } else if (driftSec !== null && driftSec <= CATCH_UP_CLEAR_DRIFT_SEC) {
         clearCatchUpRate(player)
         resetCatchUpStallSample()
       } else if (
         catchUpInsteadOfSeek &&
         driftSec !== null &&
-        isCatchUpDriftBand(driftSec)
+        isCatchUpDriftBand(driftSec, softThresholdSec)
       ) {
         activateCatchUpRate(player, syncState, driftSec)
       } else if (
@@ -786,8 +784,7 @@ export function createPlaybackSyncEngine(
           reapplyAfterGate ||
           hlsSeekEchoUnconfirmed ||
           result.seekAttempted ||
-          (driftSec !== null &&
-            driftSec > DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC))
+          (driftSec !== null && driftSec > softThresholdSec))
       ) {
         // Re-arm for late-join and HLS seek-while-paused. Skip when a burst
         // is already in flight so force-seeks do not reset the schedule.
@@ -818,17 +815,17 @@ export function createPlaybackSyncEngine(
     forceSeeksForAnchor = consumed.budget
     if (!consumed.consumed) {
       // Burst budget spent (slow YouTube iframe / late canSeek). Keep applying
-      // at the normal drift threshold so late joiners are not stranded for the
+      // at the soft RTT-scaled threshold so late joiners are not stranded for the
       // entire remaining play session while timelineAnchorMs stays fixed.
       applyRoomClock(
         player,
         syncState,
-        options?.thresholdSec ?? DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
+        options?.thresholdSec ?? softDriftThresholdSec(),
       )
       return
     }
     // First seek: hard snap (threshold 0) so late-join / echo / large lag
-    // actually moves. Later HTML5 seeks use the normal drift threshold so
+    // actually moves. Later HTML5 seeks use the soft drift threshold so
     // residual sub-threshold noise cannot rebuffer-storm. Native iframes
     // keep threshold 0 for every budgeted force seek. Stall escalate always
     // passes threshold 0 explicitly.
@@ -836,7 +833,7 @@ export function createPlaybackSyncEngine(
       options?.thresholdSec ??
       (forceSeeksForAnchor.count === 1 || isNativeSync()
         ? 0
-        : DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC)
+        : softDriftThresholdSec())
     applyRoomClock(player, syncState, thresholdSec)
   }
 
@@ -874,7 +871,7 @@ export function createPlaybackSyncEngine(
       anchorMs: syncState.timelineAnchorMs,
       currentSec: readPlayerPlayheadSec(player),
       driftSec,
-      thresholdSec: DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
+      thresholdSec: softDriftThresholdSec(),
       roomPaused: syncState.paused,
       nowMs: scheduler.nowMs(),
     })
@@ -933,7 +930,7 @@ export function createPlaybackSyncEngine(
     if (
       !nativeMode &&
       !syncState.paused &&
-      isCatchUpDriftBand(driftSec) &&
+      isCatchUpDriftBand(driftSec, softDriftThresholdSec()) &&
       !hlsEchoUnconfirmed(player, syncState, nativeMode)
     ) {
       if (activateCatchUpRate(player, syncState, driftSec) !== null) {
@@ -994,18 +991,14 @@ export function createPlaybackSyncEngine(
     if (nativeMode && gateNativeTick(player, syncState)) {
       return
     }
-    const {
-      driftSec,
-      pauseUnconverged,
-      playUnconverged,
-      seekConfirmHold,
-    } = sampleTickConvergence(player, syncState, nativeMode)
+    const { driftSec, pauseUnconverged, playUnconverged, seekConfirmHold } =
+      sampleTickConvergence(player, syncState, nativeMode)
+    const softThresholdSec = softDriftThresholdSec()
     if (
       !pauseUnconverged &&
       !playUnconverged &&
       !seekConfirmHold &&
-      (driftSec === null ||
-        driftSec <= DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC)
+      (driftSec === null || driftSec <= softThresholdSec)
     ) {
       clearPendingWhenConverged(player, driftSec)
       if (!holdLocalSeek) {
@@ -1015,10 +1008,7 @@ export function createPlaybackSyncEngine(
     }
 
     setPhase("verifying")
-    if (
-      driftSec !== null &&
-      driftSec > DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC
-    ) {
+    if (driftSec !== null && driftSec > softThresholdSec) {
       tryCatchUpOrForceSeek(
         player,
         syncState,
@@ -1034,7 +1024,9 @@ export function createPlaybackSyncEngine(
 
   const scheduleAnchorVerifyBurst = (anchorMs: number) => {
     clearRetryTimers()
-    forceSeeksForAnchor = { anchorMs, count: 0 }
+    // Preserve force-seek count across re-arms of the same anchor so
+    // MAX_FORCE_SEEKS_PER_ANCHOR actually caps seek storms.
+    forceSeeksForAnchor = resetAnchorBudget(forceSeeksForAnchor, anchorMs)
     // Escalations stay budgeted for the whole anchor, not each burst re-arm.
     escalationsForAnchor = resetAnchorBudget(escalationsForAnchor, anchorMs)
     if (holdLocalSeek) {
@@ -1072,16 +1064,13 @@ export function createPlaybackSyncEngine(
     }
     // Steady-state transport enforcement: HLS `playing` must not leave a
     // paused room running, and a stuck pause must not clear pending below.
-    const {
-      driftSec,
-      pauseUnconverged,
-      playUnconverged,
-      seekConfirmHold,
-    } = sampleTickConvergence(player, syncState, nativeMode)
+    const { driftSec, pauseUnconverged, playUnconverged, seekConfirmHold } =
+      sampleTickConvergence(player, syncState, nativeMode)
     const plan = planPlaybackDriftCorrection({
       pending: host.getPendingSync(),
       playback: host.getPlayback(),
       driftSec,
+      thresholdSec: softDriftThresholdSec(),
     })
     if (plan.action === "noop") {
       return
@@ -1108,11 +1097,7 @@ export function createPlaybackSyncEngine(
         nativeMode,
       )
     } else {
-      tryForceSeek(
-        player,
-        syncState,
-        host.getPlayback().timelineAnchorMs,
-      )
+      tryForceSeek(player, syncState, host.getPlayback().timelineAnchorMs)
     }
   }
 
@@ -1123,10 +1108,7 @@ export function createPlaybackSyncEngine(
       return
     }
     started = true
-    watchdogTimer = scheduler.setInterval(
-      runWatchdogTick,
-      WATCHDOG_INTERVAL_MS,
-    )
+    watchdogTimer = scheduler.setInterval(runWatchdogTick, WATCHDOG_INTERVAL_MS)
   }
 
   const dispose = () => {
@@ -1187,7 +1169,12 @@ export function createPlaybackSyncEngine(
     applyRoomClock,
     clearTransportNudge,
     onDurationAvailable: () => {
-      if (disposed || holdLocalSeek || !isNativeSync() || !host.isMediaReady()) {
+      if (
+        disposed ||
+        holdLocalSeek ||
+        !isNativeSync() ||
+        !host.isMediaReady()
+      ) {
         return
       }
       const player = host.getPlayer()

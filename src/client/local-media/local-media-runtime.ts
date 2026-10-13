@@ -6,20 +6,20 @@
  * modules and the active {@link RangeResponder}.
  */
 
-import type { SfuSendRequest } from "@/client/local-media/local-media-sfu"
+import { getLocalMediaFile } from "@/client/local-media/local-media-provider"
 import {
   clearActiveRangeResponderIf,
   createRangeResponder,
   setActiveRangeResponder,
   type RangeResponder,
 } from "@/client/local-media/local-media-range-responder"
-import { getLocalMediaFile } from "@/client/local-media/local-media-provider"
+import type { SfuSendRequest } from "@/client/local-media/local-media-sfu"
 import {
   attachLocalMediaServiceWorkerBridge,
   type LocalMediaSwBridgeDeps,
 } from "@/client/local-media/local-media-sw"
-import { resolveCurrentPlaylistItem } from "@/shared/playlist-current"
 import type { ClientRoomState } from "@/contracts/types"
+import { resolveCurrentPlaylistItem } from "@/shared/playlist-current"
 
 /** Pure invite-target selection for bootstrap / first-range policy. */
 export function selectLazyWebrtcInviteMediaId(input: {
@@ -53,7 +53,10 @@ export type LocalMediaRuntimeSend = (
 
 export type LocalMediaRuntimeSwBridgeInput = Pick<
   LocalMediaSwBridgeDeps,
-  "getSfuAvailable" | "resolveProviderUserId" | "resolveMediaMeta" | "onP2pRangeMiss"
+  | "getSfuAvailable"
+  | "resolveProviderUserId"
+  | "resolveMediaMeta"
+  | "onP2pRangeMiss"
 >
 
 export type LocalMediaRuntime = {
@@ -151,17 +154,15 @@ export function createLocalMediaRuntime(input: {
     async configureSfu(sendRequest) {
       if (closed) return
       configuredSfuSendRequest = sendRequest
-      const { configureLocalMediaSfu } = await import(
-        "@/client/local-media/local-media-sfu"
-      )
+      const { configureLocalMediaSfu } =
+        await import("@/client/local-media/local-media-sfu")
       configureLocalMediaSfu(sendRequest)
     },
 
     async configureWebrtc() {
       if (closed) return
-      const { configureLocalMediaWebrtc } = await import(
-        "@/client/local-media/local-media-webrtc"
-      )
+      const { configureLocalMediaWebrtc } =
+        await import("@/client/local-media/local-media-webrtc")
       configureLocalMediaWebrtc({
         sendSignal: (targetUserId, localMediaId, signal) => {
           input.send("local-media:webrtc:signal", {

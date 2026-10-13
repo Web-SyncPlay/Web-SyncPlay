@@ -1,4 +1,3 @@
-import { describe, expect, test } from "bun:test"
 import {
   buildContentSecurityPolicy,
   getEmbedFrameAncestors,
@@ -7,6 +6,7 @@ import {
   isOriginAllowed,
   MEDIASOUP_RTC_UDP_PORT,
 } from "@/shared/public-domain"
+import { describe, expect, test } from "bun:test"
 
 describe("public-domain", () => {
   test("hardcodes mediasoup UDP port", () => {
@@ -44,9 +44,7 @@ describe("public-domain", () => {
     expect(csp).toContain("https://player.vimeo.com")
     expect(csp).toContain("img-src 'self' data: blob: https: http:")
     expect(csp).toContain("wss://web-syncplay.de")
-    expect(csp).toContain(
-      "frame-ancestors 'self' https://web-syncplay.de",
-    )
+    expect(csp).toContain("frame-ancestors 'self' https://web-syncplay.de")
     expect(csp).not.toContain("https://partner.example")
     process.env.PUBLIC_DOMAIN = prev
     if (prevAncestors === undefined) {

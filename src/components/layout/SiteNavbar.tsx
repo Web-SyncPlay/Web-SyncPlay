@@ -2,6 +2,7 @@
 
 import { RoomDefaultJoinRoleSection } from "@/components/dialog/RoomDefaultJoinRoleSection"
 import { RoomJoinPasswordSection } from "@/components/dialog/RoomJoinPasswordSection"
+import { cn } from "@/components/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -19,10 +20,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import type { RoomRailTab } from "@/hooks/use-room-rail"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
-import { cn } from "@/components/lib/utils"
 import type { PublicRoomSecurityState } from "@/contracts/types"
+import type { RoomRailTab } from "@/hooks/use-room-rail"
 import {
   Check,
   Copy,
@@ -36,8 +36,8 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import type { ReactNode } from "react"
 import { QRCodeSVG } from "qrcode.react"
+import type { ReactNode } from "react"
 import { toast } from "sonner"
 
 const navControlClass = cn(
@@ -85,9 +85,7 @@ type SiteNavbarFullProps = {
 }
 
 export type SiteNavbarProps =
-  | SiteNavbarHomeProps
-  | SiteNavbarBareProps
-  | SiteNavbarFullProps
+  SiteNavbarHomeProps | SiteNavbarBareProps | SiteNavbarFullProps
 
 function SiteNavbarBrand(props: { roomId?: string }) {
   const { roomId } = props
@@ -118,10 +116,7 @@ function SiteNavbarBrand(props: { roomId?: string }) {
   )
 }
 
-function SiteNavbarChrome(props: {
-  children: ReactNode
-  className?: string
-}) {
+function SiteNavbarChrome(props: { children: ReactNode; className?: string }) {
   return (
     <header className="sticky top-0 z-20 border-b bg-background/95">
       <div
@@ -189,224 +184,224 @@ export function SiteNavbar(props: SiteNavbarProps) {
 
   return (
     <SiteNavbarChrome className="justify-between">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <SiteNavbarBrand roomId={roomId} />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 shrink-0 touch-manipulation gap-1.5 max-lg:w-8 max-lg:px-0"
-            aria-label={copied ? "Copied" : "Copy room link"}
-            onClick={onCopyShareUrl}
-          >
-            {copied ? (
-              <Check className="size-3.5" />
-            ) : (
-              <Copy className="size-3.5" />
-            )}
-            <span className="hidden lg:inline">
-              {copied ? "Copied" : "Copy room link"}
-            </span>
-          </Button>
-          <Badge
-            variant={paused ? "outline" : "secondary"}
-            className="hidden xl:inline-flex"
-          >
-            {paused ? "Paused" : "Playing"}
-          </Badge>
-          <span className="hidden min-w-0 truncate text-muted-foreground xl:inline">
-            {currentName ?? "None"}
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <SiteNavbarBrand roomId={roomId} />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 shrink-0 touch-manipulation gap-1.5 max-lg:w-8 max-lg:px-0"
+          aria-label={copied ? "Copied" : "Copy room link"}
+          onClick={onCopyShareUrl}
+        >
+          {copied ? (
+            <Check className="size-3.5" />
+          ) : (
+            <Copy className="size-3.5" />
+          )}
+          <span className="hidden lg:inline">
+            {copied ? "Copied" : "Copy room link"}
           </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {showEmbedsMenu ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                className={navControlClass}
-                aria-label="Open embeds menu"
+        </Button>
+        <Badge
+          variant={paused ? "outline" : "secondary"}
+          className="hidden xl:inline-flex"
+        >
+          {paused ? "Paused" : "Playing"}
+        </Badge>
+        <span className="hidden min-w-0 truncate text-muted-foreground xl:inline">
+          {currentName ?? "None"}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {showEmbedsMenu ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className={navControlClass}
+              aria-label="Open embeds menu"
+            >
+              <Rows3 className="size-3.5" />
+              <span className="hidden lg:inline">Embeds</span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-[min(calc(100vw-1.5rem),22rem)] p-3"
+            >
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Open in new window</DropdownMenuLabel>
+                <DropdownMenuItem
+                  disabled={viewMode === "room"}
+                  onClick={() => openInNewWindow(roomUrl)}
+                  className="cursor-pointer"
+                >
+                  <ExternalLink />
+                  Room view
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={viewMode === "player"}
+                  onClick={() => openInNewWindow(playerEmbedUrl)}
+                  className="cursor-pointer"
+                >
+                  <ExternalLink />
+                  Player embed
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={viewMode === "control"}
+                  onClick={() => openInNewWindow(controlEmbedUrl)}
+                  className="cursor-pointer"
+                >
+                  <ExternalLink />
+                  Control embed
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <div
+                className="flex flex-col gap-3 px-1 py-2"
+                onPointerDown={(event) => event.preventDefault()}
               >
-                <Rows3 className="size-3.5" />
-                <span className="hidden lg:inline">Embeds</span>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-[min(calc(100vw-1.5rem),22rem)] p-3"
+                <div>
+                  <p className="text-sm font-medium">Control remotely</p>
+                  <p className="text-xs text-muted-foreground">
+                    Scan this QR code on your phone to open the control embed
+                    and operate playback from another device.
+                  </p>
+                </div>
+                <div className="w-full rounded-lg bg-white p-3">
+                  <QRCodeSVG
+                    value={controlEmbedUrl}
+                    size={320}
+                    className="h-auto w-full"
+                    title="QR code for control embed URL"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={copyControlUrl}
+                >
+                  <Copy className="size-4" />
+                  Copy control URL
+                </Button>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+        {canManageRoomSecurity && send && roomSecurity ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className={navControlClass}
+              aria-label="Open room settings"
+            >
+              <Settings className="size-3.5" />
+              <span className="hidden lg:inline">Settings</span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-[min(calc(100vw-1.5rem),22rem)] p-3"
+            >
+              <div
+                className="flex flex-col gap-4"
+                onPointerDown={(event) => {
+                  const target = event.target as HTMLElement
+                  // Keep the menu open for clicks, but allow inputs to take focus.
+                  if (
+                    target.closest(
+                      "input, textarea, [data-slot='input-group-control']",
+                    )
+                  ) {
+                    return
+                  }
+                  // Blur first so inline edits (join password) commit like
+                  // username does — preventDefault would otherwise keep focus.
+                  const active = document.activeElement
+                  if (
+                    active instanceof HTMLElement &&
+                    (active.tagName === "INPUT" ||
+                      active.tagName === "TEXTAREA") &&
+                    event.currentTarget.contains(active)
+                  ) {
+                    active.blur()
+                  }
+                  event.preventDefault()
+                }}
               >
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Open in new window</DropdownMenuLabel>
-                  <DropdownMenuItem
-                    disabled={viewMode === "room"}
-                    onClick={() => openInNewWindow(roomUrl)}
-                    className="cursor-pointer"
-                  >
-                    <ExternalLink />
-                    Room view
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={viewMode === "player"}
-                    onClick={() => openInNewWindow(playerEmbedUrl)}
-                    className="cursor-pointer"
-                  >
-                    <ExternalLink />
-                    Player embed
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={viewMode === "control"}
-                    onClick={() => openInNewWindow(controlEmbedUrl)}
-                    className="cursor-pointer"
-                  >
-                    <ExternalLink />
-                    Control embed
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
+                <RoomJoinPasswordSection
+                  roomId={roomId}
+                  roomSecurity={roomSecurity}
+                  canManageRoomSecurity={canManageRoomSecurity}
+                  send={send}
+                />
                 <DropdownMenuSeparator />
-                <div
-                  className="flex flex-col gap-3 px-1 py-2"
-                  onPointerDown={(event) => event.preventDefault()}
+                <RoomDefaultJoinRoleSection
+                  roomSecurity={roomSecurity}
+                  canManageRoomSecurity={canManageRoomSecurity}
+                  send={send}
+                />
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+        {showRailControls ? (
+          <>
+            {onToggleRail ? (
+              <Tooltip>
+                <TooltipTrigger
+                  className={navIconControlClass}
+                  aria-label={railOpen ? "Hide panel" : "Show panel"}
+                  aria-pressed={railOpen}
+                  onClick={onToggleRail}
                 >
-                  <div>
-                    <p className="text-sm font-medium">Control remotely</p>
-                    <p className="text-xs text-muted-foreground">
-                      Scan this QR code on your phone to open the control
-                      embed and operate playback from another device.
-                    </p>
-                  </div>
-                  <div className="w-full rounded-lg bg-white p-3">
-                    <QRCodeSVG
-                      value={controlEmbedUrl}
-                      size={320}
-                      className="h-auto w-full"
-                      title="QR code for control embed URL"
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={copyControlUrl}
-                  >
-                    <Copy className="size-4" />
-                    Copy control URL
-                  </Button>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-          {canManageRoomSecurity && send && roomSecurity ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                className={navControlClass}
-                aria-label="Open room settings"
+                  {railOpen ? (
+                    <PanelRightClose className="size-3.5" />
+                  ) : (
+                    <PanelRightOpen className="size-3.5" />
+                  )}
+                </TooltipTrigger>
+                <TooltipContent>
+                  {railOpen ? "Hide panel" : "Show panel"}
+                </TooltipContent>
+              </Tooltip>
+            ) : null}
+            {railOpen || !onToggleRail ? (
+              <div
+                className="inline-flex h-8 items-stretch rounded-lg border border-border bg-background p-0.5"
+                role="group"
+                aria-label="Side panel content"
               >
-                <Settings className="size-3.5" />
-                <span className="hidden lg:inline">Settings</span>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-[min(calc(100vw-1.5rem),22rem)] p-3"
-              >
-                <div
-                  className="flex flex-col gap-4"
-                  onPointerDown={(event) => {
-                    const target = event.target as HTMLElement
-                    // Keep the menu open for clicks, but allow inputs to take focus.
-                    if (
-                      target.closest(
-                        "input, textarea, [data-slot='input-group-control']",
-                      )
-                    ) {
-                      return
-                    }
-                    // Blur first so inline edits (join password) commit like
-                    // username does — preventDefault would otherwise keep focus.
-                    const active = document.activeElement
-                    if (
-                      active instanceof HTMLElement &&
-                      (active.tagName === "INPUT" ||
-                        active.tagName === "TEXTAREA") &&
-                      event.currentTarget.contains(active)
-                    ) {
-                      active.blur()
-                    }
-                    event.preventDefault()
-                  }}
+                <Button
+                  size="sm"
+                  variant={railTab === "playlist" ? "secondary" : "ghost"}
+                  className={cn(
+                    navTabClass,
+                    railTab !== "playlist" && "text-muted-foreground",
+                  )}
+                  aria-label="Playlist"
+                  aria-pressed={railTab === "playlist"}
+                  onClick={() => onRailTabChange?.("playlist")}
                 >
-                  <RoomJoinPasswordSection
-                    roomId={roomId}
-                    roomSecurity={roomSecurity}
-                    canManageRoomSecurity={canManageRoomSecurity}
-                    send={send}
-                  />
-                  <DropdownMenuSeparator />
-                  <RoomDefaultJoinRoleSection
-                    roomSecurity={roomSecurity}
-                    canManageRoomSecurity={canManageRoomSecurity}
-                    send={send}
-                  />
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-          {showRailControls ? (
-            <>
-              {onToggleRail ? (
-                <Tooltip>
-                  <TooltipTrigger
-                    className={navIconControlClass}
-                    aria-label={railOpen ? "Hide panel" : "Show panel"}
-                    aria-pressed={railOpen}
-                    onClick={onToggleRail}
-                  >
-                    {railOpen ? (
-                      <PanelRightClose className="size-3.5" />
-                    ) : (
-                      <PanelRightOpen className="size-3.5" />
-                    )}
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {railOpen ? "Hide panel" : "Show panel"}
-                  </TooltipContent>
-                </Tooltip>
-              ) : null}
-              {railOpen || !onToggleRail ? (
-                <div
-                  className="inline-flex h-8 items-stretch rounded-lg border border-border bg-background p-0.5"
-                  role="group"
-                  aria-label="Side panel content"
+                  <ListVideo className="size-3.5" />
+                  <span className="hidden lg:inline">Playlist</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant={railTab === "log" ? "secondary" : "ghost"}
+                  className={cn(
+                    navTabClass,
+                    railTab !== "log" && "text-muted-foreground",
+                  )}
+                  aria-label="Logs"
+                  aria-pressed={railTab === "log"}
+                  onClick={() => onRailTabChange?.("log")}
                 >
-                  <Button
-                    size="sm"
-                    variant={railTab === "playlist" ? "secondary" : "ghost"}
-                    className={cn(
-                      navTabClass,
-                      railTab !== "playlist" && "text-muted-foreground",
-                    )}
-                    aria-label="Playlist"
-                    aria-pressed={railTab === "playlist"}
-                    onClick={() => onRailTabChange?.("playlist")}
-                  >
-                    <ListVideo className="size-3.5" />
-                    <span className="hidden lg:inline">Playlist</span>
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={railTab === "log" ? "secondary" : "ghost"}
-                    className={cn(
-                      navTabClass,
-                      railTab !== "log" && "text-muted-foreground",
-                    )}
-                    aria-label="Logs"
-                    aria-pressed={railTab === "log"}
-                    onClick={() => onRailTabChange?.("log")}
-                  >
-                    <ScrollText className="size-3.5" />
-                    <span className="hidden lg:inline">Logs</span>
-                  </Button>
-                </div>
-              ) : null}
-            </>
-          ) : null}
-        </div>
+                  <ScrollText className="size-3.5" />
+                  <span className="hidden lg:inline">Logs</span>
+                </Button>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+      </div>
     </SiteNavbarChrome>
   )
 }

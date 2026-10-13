@@ -628,7 +628,10 @@ describe("real playhead (media element) measurement", () => {
     expect(player.currentTime).toBe(6)
   })
 
-  test("seekLeadSec writes expected+lead for playing force seeks (ceiling clamped)", () => {
+  test("seekLeadSec writes expected+lead when callers pass an explicit lead", () => {
+    // Engine no longer leads (FORCE_SEEK_LEAD_SEC === 0); apply layer still
+    // honors an explicit seekLeadSec for ceiling / allowAhead tests.
+    const explicitLeadSec = 2.5
     const mediaEl = stubMediaEl({ currentTime: 5.5 })
     const player = {
       playbackRate: 1,
@@ -648,15 +651,42 @@ describe("real playhead (media element) measurement", () => {
       syncState,
       nowMs: 100,
       driftThresholdSec: 0,
-      seekLeadSec: FORCE_SEEK_LEAD_SEC,
-      allowAheadSec: FORCE_SEEK_LEAD_SEC,
+      seekLeadSec: explicitLeadSec,
+      allowAheadSec: explicitLeadSec,
     })
 
     expect(result.seekAttempted).toBe(true)
-    expect(mediaEl.currentTime).toBeCloseTo(6 + FORCE_SEEK_LEAD_SEC, 5)
-    expect(player.currentTime).toBeCloseTo(6 + FORCE_SEEK_LEAD_SEC, 5)
-    expect(result.targetSec).toBeCloseTo(6 + FORCE_SEEK_LEAD_SEC, 5)
+    expect(mediaEl.currentTime).toBeCloseTo(6 + explicitLeadSec, 5)
+    expect(player.currentTime).toBeCloseTo(6 + explicitLeadSec, 5)
+    expect(result.targetSec).toBeCloseTo(6 + explicitLeadSec, 5)
     expect(result.driftSec).toBe(0)
+  })
+
+  test("engine default FORCE_SEEK_LEAD_SEC is zero (no ahead write)", () => {
+    expect(FORCE_SEEK_LEAD_SEC).toBe(0)
+    const mediaEl = stubMediaEl({ currentTime: 5.5 })
+    const player = {
+      playbackRate: 1,
+      duration: 120,
+      mediaEl,
+      currentTime: 5.5,
+    }
+    const result = applyPlaybackClockToPlayer({
+      player,
+      syncState: {
+        paused: false,
+        playbackRate: 1,
+        timelineAnchorMs: 6_000,
+        serverNowMs: 100,
+      },
+      nowMs: 100,
+      driftThresholdSec: 0,
+      seekLeadSec: FORCE_SEEK_LEAD_SEC,
+      allowAheadSec: FORCE_SEEK_LEAD_SEC,
+    })
+    expect(result.seekAttempted).toBe(true)
+    expect(mediaEl.currentTime).toBeCloseTo(6, 5)
+    expect(result.targetSec).toBeCloseTo(6, 5)
   })
 
   test("seekLeadSec clamps to resolveSeekCeilingSec", () => {
@@ -677,7 +707,7 @@ describe("real playhead (media element) measurement", () => {
       },
       nowMs: 100,
       driftThresholdSec: 0,
-      seekLeadSec: FORCE_SEEK_LEAD_SEC,
+      seekLeadSec: 2.5,
     })
     // expected 6 + lead 2.5 = 8.5, ceiling ≈ 6.95
     expect(mediaEl.currentTime).toBeCloseTo(6.95, 5)
@@ -726,7 +756,7 @@ describe("real playhead (media element) measurement", () => {
       nowMs: 100,
       driftThresholdSec: DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
       seekLeadSec: 0,
-      allowAheadSec: FORCE_SEEK_LEAD_SEC,
+      allowAheadSec: 2.5,
     })
     expect(result.seekAttempted).toBe(false)
     expect(mediaEl.currentTime).toBe(8.5)

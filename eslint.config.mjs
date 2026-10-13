@@ -28,7 +28,11 @@ export default defineConfig([
   // Client UI / hooks / client packages must not import server internals.
   // Prefer ClientRoomState (sanitized snapshot) over server RoomState.
   {
-    files: ["src/components/**/*.{ts,tsx}", "src/hooks/**/*.{ts,tsx}", "src/client/**/*.{ts,tsx}"],
+    files: [
+      "src/components/**/*.{ts,tsx}",
+      "src/hooks/**/*.{ts,tsx}",
+      "src/client/**/*.{ts,tsx}",
+    ],
     ignores: ["**/*.{test,spec}.{ts,tsx}", "**/*.property.test.ts"],
     rules: {
       "no-restricted-imports": [
@@ -176,7 +180,8 @@ export default defineConfig([
                 "@/hooks",
                 "@/hooks/*",
               ],
-              message: "Server code must not import @/client, @/components, or @/hooks.",
+              message:
+                "Server code must not import @/client, @/components, or @/hooks.",
             },
           ],
         },

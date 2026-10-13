@@ -125,9 +125,7 @@ function pruneStaleHotWsCoalesce(nowMs: number) {
       entry.remainingLocal <= 0 &&
       entry.deniedUntilMs > 0 &&
       nowMs - entry.deniedUntilMs >= HOT_WS_COALESCE_STALE_MS
-    const spent =
-      entry.remainingLocal <= 0 &&
-      entry.deniedUntilMs === 0
+    const spent = entry.remainingLocal <= 0 && entry.deniedUntilMs === 0
     if (idle || spent) {
       hotWsCoalesce.delete(key)
     }

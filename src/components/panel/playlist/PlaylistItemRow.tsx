@@ -1,3 +1,4 @@
+import { cn } from "@/components/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -12,7 +13,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { cn } from "@/components/lib/utils"
 import type { PlaylistItem } from "@/contracts/types"
 import { useSortable } from "@dnd-kit/react/sortable"
 import { Copy, GripVertical, Loader2, Play, Trash2 } from "lucide-react"
@@ -122,9 +122,7 @@ export function PlaylistItemRow(props: {
         variant={isCurrent ? "outline" : "muted"}
         className={cn(
           "relative items-center border",
-          isCurrent
-            ? "border-emerald-500/70"
-            : "border-border",
+          isCurrent ? "border-emerald-500/70" : "border-border",
           item.ingestStatus === "error" && "border-destructive/60",
         )}
       >

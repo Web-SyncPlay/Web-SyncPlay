@@ -21,9 +21,7 @@ function asOptionalString(value: unknown): string | undefined {
 }
 
 function asNonNegativeInt(value: unknown, fallback = 0): number {
-  return typeof value === "number" &&
-    Number.isInteger(value) &&
-    value >= 0
+  return typeof value === "number" && Number.isInteger(value) && value >= 0
     ? value
     : fallback
 }
@@ -32,9 +30,7 @@ function asFiniteNumberOrNull(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null
 }
 
-export function normalizeDefaultJoinRole(
-  value: unknown,
-): DefaultJoinRole {
+export function normalizeDefaultJoinRole(value: unknown): DefaultJoinRole {
   return value === "guest" ? "guest" : "moderator"
 }
 
@@ -99,6 +95,8 @@ export function sanitizeRoomStateForClient(
   return {
     ...state,
     roomSecurity: publicRoomSecurity(ensureRoomSecurity(state)),
+    // Fresh wall clock at sanitize/publish — not the frozen timeline stamp.
+    serverWallNowMs: Date.now(),
   }
 }
 

@@ -1,5 +1,5 @@
-import { validateControlToken } from "@/server/realtime/services/control-token"
 import type { SessionKind } from "@/contracts/types"
+import { validateControlToken } from "@/server/realtime/services/control-token"
 
 /**
  * Resolves whether a joining socket is a control session and whether it is

@@ -37,7 +37,9 @@ export function resolvePlayableMimeType(
   return null
 }
 
-export function isProgressiveMediaMime(mime: string | undefined | null): boolean {
+export function isProgressiveMediaMime(
+  mime: string | undefined | null,
+): boolean {
   if (!mime) return false
   const lower = mime.toLowerCase()
   return lower.startsWith("video/") || lower.startsWith("audio/")

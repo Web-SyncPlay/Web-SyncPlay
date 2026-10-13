@@ -1,3 +1,4 @@
+import type { RoomState, SessionKind, WsEnvelope } from "@/contracts/types"
 import { getAppNodeId } from "@/server/node-id"
 import type { RoomStateStorePort } from "@/server/ports"
 import {
@@ -6,11 +7,6 @@ import {
   totalPresenceRefs,
   type PresenceNodeCounts,
 } from "@/server/redis/presence-ref"
-import type {
-  RoomState,
-  SessionKind,
-  WsEnvelope,
-} from "@/contracts/types"
 import type { WebSocket } from "ws"
 import type { RoomMessageContext } from "../handlers/types"
 
@@ -35,7 +31,10 @@ export class InMemoryRoomStateStore implements RoomStateStorePort {
   aliveNodeIds = new Set<string>([getAppNodeId()])
   /** When false, mirrors fail-closed alive-list fetch (no dead-node filtering). */
   aliveListReliable = true
-  presenceData = new Map<string, Map<string, import("@/contracts/types").PresencePatch>>()
+  presenceData = new Map<
+    string,
+    Map<string, import("@/contracts/types").PresencePatch>
+  >()
   dailyDefaults: Array<{ title: string; url: string }> = []
 
   constructor(initial?: RoomState) {

@@ -77,9 +77,7 @@ describe("queryPlayerMediaElement", () => {
 
 describe("readPlayerSeekableEndSec", () => {
   test("uses player store seekableEnd when media is unavailable", () => {
-    expect(
-      readPlayerSeekableEndSec({ state: { seekableEnd: 88 } }),
-    ).toBe(88)
+    expect(readPlayerSeekableEndSec({ state: { seekableEnd: 88 } })).toBe(88)
   })
 
   test("returns undefined for non-finite store values", () => {

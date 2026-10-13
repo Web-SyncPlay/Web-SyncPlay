@@ -1,9 +1,6 @@
 import { expect, test } from "bun:test"
 import fc from "fast-check"
-import {
-  assertPublicHttpUrl,
-  assertPublicHttpUrlResolved,
-} from "./url-safety"
+import { assertPublicHttpUrl, assertPublicHttpUrlResolved } from "./url-safety"
 
 const privateIpv4 = fc
   .oneof(

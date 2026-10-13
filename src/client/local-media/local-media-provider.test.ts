@@ -1,4 +1,3 @@
-import { describe, expect, test } from "bun:test"
 import {
   announceLocalMediaProviderReady,
   getLocalMediaFile,
@@ -10,6 +9,7 @@ import {
 } from "@/client/local-media/local-media-provider"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { RoomState } from "@/contracts/types"
+import { describe, expect, test } from "bun:test"
 
 describe("local-media-provider", () => {
   test("keeps File reference and derives object URL", () => {

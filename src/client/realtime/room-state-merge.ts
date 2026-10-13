@@ -6,10 +6,7 @@ import type {
   RoomSnapshotPayload,
 } from "@/contracts/types"
 
-function pickDefined<T>(
-  patchValue: T | undefined,
-  existing: T,
-): T {
+function pickDefined<T>(patchValue: T | undefined, existing: T): T {
   return patchValue !== undefined ? patchValue : existing
 }
 
@@ -26,7 +23,10 @@ function mergeParticipantPresence(
       ...existing,
       connected: pickDefined(patch.connected, existing.connected),
       lastSeenAt: pickDefined(patch.lastSeenAt, existing.lastSeenAt),
-      disconnectedAt: pickDefined(patch.disconnectedAt, existing.disconnectedAt),
+      disconnectedAt: pickDefined(
+        patch.disconnectedAt,
+        existing.disconnectedAt,
+      ),
       username: pickDefined(patch.username, existing.username),
       avatarStyle: pickDefined(patch.avatarStyle, existing.avatarStyle),
       localPlayback: patch.localPlayback ?? existing.localPlayback,

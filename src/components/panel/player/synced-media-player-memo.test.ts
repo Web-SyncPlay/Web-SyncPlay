@@ -8,6 +8,12 @@
  * browser harness; we assert memo identity + prop isolation, then prove React
  * memo skips re-render on equal props via a tiny createRoot + act() harness.
  */
+import {
+  applyPresenceBatches,
+  createPresenceBatchCoalescer,
+} from "@/client/realtime/room-state-merge"
+import type { PresenceBatchPayload, RoomState } from "@/contracts/types"
+import { createRoomState } from "@/shared/test-utils/room-fixtures"
 import { expect, test } from "bun:test"
 import {
   act,
@@ -18,12 +24,9 @@ import {
 } from "react"
 import { createRoot } from "react-dom/client"
 import {
-  applyPresenceBatches,
-  createPresenceBatchCoalescer,
-} from "@/client/realtime/room-state-merge"
-import { createRoomState } from "@/shared/test-utils/room-fixtures"
-import type { PresenceBatchPayload, RoomState } from "@/contracts/types"
-import { SyncedMediaPlayer, type SyncedMediaPlayerProps } from "./SyncedMediaPlayer"
+  SyncedMediaPlayer,
+  type SyncedMediaPlayerProps,
+} from "./SyncedMediaPlayer"
 import type { PlaylistNavSnapshot } from "./hooks/use-synced-media-player-handlers"
 import {
   playerShellSlicesEqual,
@@ -40,7 +43,8 @@ type AssertNever<T extends never> = T
 type NoPresenceOnPlayerProps = AssertNever<
   keyof SyncedMediaPlayerProps & ForbiddenPlayerProp
 >
-const _presenceIsolated: NoPresenceOnPlayerProps = true as NoPresenceOnPlayerProps
+const _presenceIsolated: NoPresenceOnPlayerProps =
+  true as NoPresenceOnPlayerProps
 void _presenceIsolated
 
 type ForbiddenViewModelProp = "roomState" | "participants" | "presenceRevision"

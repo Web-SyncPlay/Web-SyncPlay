@@ -19,10 +19,7 @@ function normalizeCheckUrl(raw: string): string {
 }
 
 const checkBodySchema = z.object({
-  url: z
-    .string()
-    .transform(normalizeCheckUrl)
-    .pipe(z.url()),
+  url: z.string().transform(normalizeCheckUrl).pipe(z.url()),
 })
 
 function successMessage(input: {

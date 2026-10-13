@@ -1,8 +1,8 @@
 "use client"
 
-import { formatClockMs } from "@/shared/time-format"
 import type { PlaybackState } from "@/contracts/types"
-import { useMemo, useState, useEffect } from "react"
+import { formatClockMs } from "@/shared/time-format"
+import { useEffect, useMemo, useState } from "react"
 
 /** Drop stuck remote seek overlays when the final seek never arrives. */
 const REMOTE_SEEK_STALE_MS = 2_500
@@ -34,13 +34,8 @@ export function useRemoteSeekOverlay(config: {
       updatedAt <= 0 ||
       nowMs - updatedAt <= REMOTE_SEEK_STALE_MS
     const isOtherUserSeeking =
-      seekPreview?.active === true &&
-      seekPreview.userId !== userId &&
-      isFresh
-    const remoteSeekTargetMs = Math.max(
-      0,
-      Number(seekPreview?.targetMs ?? 0),
-    )
+      seekPreview?.active === true && seekPreview.userId !== userId && isFresh
+    const remoteSeekTargetMs = Math.max(0, Number(seekPreview?.targetMs ?? 0))
     const seekProgressPercent =
       mediaDurationMs > 0
         ? Math.min(100, (remoteSeekTargetMs / mediaDurationMs) * 100)

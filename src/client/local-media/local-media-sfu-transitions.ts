@@ -66,9 +66,7 @@ export function isSfuViewerChannelReady(input: {
   requestProducerClosed: boolean
   consumerClosed: boolean
 }): boolean {
-  return (
-    input.ready && !input.requestProducerClosed && !input.consumerClosed
-  )
+  return input.ready && !input.requestProducerClosed && !input.consumerClosed
 }
 
 /** File holders publish; they must not also consume as viewers. */
@@ -100,9 +98,7 @@ export function planSfuProvideAttempt(
 }
 
 export type SfuProducerWireAction =
-  | "noop"
-  | "consume-requests"
-  | "ensure-viewer"
+  "noop" | "consume-requests" | "ensure-viewer"
 
 /**
  * `requests` → provider consumes viewer request channel;
@@ -120,7 +116,5 @@ export function decideSfuProducerWireAction(input: {
       ? "consume-requests"
       : "noop"
   }
-  return shouldActAsSfuViewer(input.holdsLocalFile)
-    ? "ensure-viewer"
-    : "noop"
+  return shouldActAsSfuViewer(input.holdsLocalFile) ? "ensure-viewer" : "noop"
 }

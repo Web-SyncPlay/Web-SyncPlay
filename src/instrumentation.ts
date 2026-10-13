@@ -8,9 +8,7 @@ export async function register() {
   if (process.env.NEXT_PHASE === "phase-production-build") return
 
   try {
-    const { ensureBackgroundMaintenance } = await import(
-      "@/server/maintenance"
-    )
+    const { ensureBackgroundMaintenance } = await import("@/server/maintenance")
     await ensureBackgroundMaintenance()
     console.info("[maintenance] instrumentation boot ok")
   } catch (error) {
