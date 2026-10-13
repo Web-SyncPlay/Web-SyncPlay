@@ -33,6 +33,13 @@ export function PlayerPanelGlobalStyles() {
         pointer-events: none !important;
       }
 
+      /* Hide spinner during post-play / post-canplay waiting grace. */
+      .suppress-buffering-ui .vds-buffering-indicator {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+      }
+
       /* Gestures stay blocked for guests (tap-to-seek / click-to-play). */
       .guest-controls-guard .vds-gesture {
         pointer-events: none !important;

@@ -34,6 +34,8 @@ export type PlayerSessionActions = {
   updateSeek: (targetMs: number) => void
   commitSeek: (targetMs: number) => void
   setIsBuffering: (value: boolean) => void
+  setPlaybackUnlocked: (value: boolean) => void
+  setSuppressBufferingUi: (value: boolean) => void
   setPlaybackError: (value: MediaErrorDetail | undefined) => void
   setMediaDurationMs: (value: number | ((prev: number) => number)) => void
   setForceLocalRelaySrc: (value: boolean) => void
@@ -82,6 +84,8 @@ export type PlayerSessionController = {
   updateSeek: PlayerSessionActions["updateSeek"]
   commitSeek: PlayerSessionActions["commitSeek"]
   setIsBuffering: PlayerSessionActions["setIsBuffering"]
+  setPlaybackUnlocked: PlayerSessionActions["setPlaybackUnlocked"]
+  setSuppressBufferingUi: PlayerSessionActions["setSuppressBufferingUi"]
   setPlaybackError: PlayerSessionActions["setPlaybackError"]
   setMediaDurationMs: PlayerSessionActions["setMediaDurationMs"]
   setForceLocalRelaySrc: PlayerSessionActions["setForceLocalRelaySrc"]
@@ -119,6 +123,10 @@ export type SyncedMediaPlayerViewModel = {
   seekPhase: LocalSeekPhase
   awaitingSeekTargetMs: number | null
   totalItems: number
+  /** True after first canplay room-clock snap for the current media load. */
+  playbackUnlocked: boolean
+  /** Hides Vidstack buffering spinner during post-play waiting grace. */
+  suppressBufferingUi: boolean
 }
 
 const noopActions: PlayerSessionActions = {
@@ -132,6 +140,8 @@ const noopActions: PlayerSessionActions = {
   updateSeek: () => {},
   commitSeek: () => {},
   setIsBuffering: () => {},
+  setPlaybackUnlocked: () => {},
+  setSuppressBufferingUi: () => {},
   setPlaybackError: () => {},
   setMediaDurationMs: () => {},
   setForceLocalRelaySrc: () => {},
@@ -181,6 +191,10 @@ export function createPlayerSessionController(
     updateSeek: (targetMs) => actionsRef.current.updateSeek(targetMs),
     commitSeek: (targetMs) => actionsRef.current.commitSeek(targetMs),
     setIsBuffering: (value) => actionsRef.current.setIsBuffering(value),
+    setPlaybackUnlocked: (value) =>
+      actionsRef.current.setPlaybackUnlocked(value),
+    setSuppressBufferingUi: (value) =>
+      actionsRef.current.setSuppressBufferingUi(value),
     setPlaybackError: (value) => actionsRef.current.setPlaybackError(value),
     setMediaDurationMs: (value) => actionsRef.current.setMediaDurationMs(value),
     setForceLocalRelaySrc: (value) =>

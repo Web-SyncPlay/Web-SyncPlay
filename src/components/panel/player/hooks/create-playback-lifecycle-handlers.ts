@@ -5,6 +5,9 @@ import { readPlayerPausedSafe } from "./to-syncable-player"
 import { isTransportIntentInFlight } from "./transport-intent"
 import { markVolumeSettling } from "./use-player-volume"
 
+/** Ignore transient play→waiting→playing (Gecko/WebKit) and post-snap seeking. */
+export const PLAYBACK_WAITING_GRACE_MS = 400
+
 type PlaybackLifecycleDeps = Pick<
   SyncedMediaPlayerHandlerDeps,
   | "playerRef"
@@ -23,7 +26,10 @@ type PlaybackLifecycleDeps = Pick<
   | "send"
   | "applyRoomClock"
   | "enforceServerPlaybackState"
+  | "clearTransportNudge"
   | "setIsBuffering"
+  | "setPlaybackUnlocked"
+  | "setSuppressBufferingUi"
   | "setPlaybackError"
 >
 
@@ -46,9 +52,38 @@ export function createPlaybackLifecycleHandlers(deps: PlaybackLifecycleDeps) {
     send,
     applyRoomClock,
     enforceServerPlaybackState,
+    clearTransportNudge,
     setIsBuffering,
+    setPlaybackUnlocked,
+    setSuppressBufferingUi,
     setPlaybackError,
   } = deps
+
+  let waitingGraceUntilMs = 0
+  let suppressBufferingUiTimer: ReturnType<typeof setTimeout> | null = null
+
+  const clearSuppressBufferingUiTimer = () => {
+    if (suppressBufferingUiTimer !== null) {
+      clearTimeout(suppressBufferingUiTimer)
+      suppressBufferingUiTimer = null
+    }
+  }
+
+  const armWaitingGrace = (nowMs = Date.now()) => {
+    waitingGraceUntilMs = nowMs + PLAYBACK_WAITING_GRACE_MS
+    setSuppressBufferingUi(true)
+    clearSuppressBufferingUiTimer()
+    suppressBufferingUiTimer = setTimeout(() => {
+      suppressBufferingUiTimer = null
+      setSuppressBufferingUi(false)
+    }, PLAYBACK_WAITING_GRACE_MS)
+  }
+
+  const unlockPlaybackAfterClock = () => {
+    markVolumeSettling(isMediaReadyRef)
+    isMediaReadyRef.current = true
+    setPlaybackUnlocked(true)
+  }
 
   return {
     onPlay: () => {
@@ -56,6 +91,7 @@ export function createPlaybackLifecycleHandlers(deps: PlaybackLifecycleDeps) {
       setPlaybackError(undefined)
       participantStatusErrorRef.current = null
       bufferingSinceRef.current = null
+      armWaitingGrace()
       if (!canControlPlayback && playbackRef.current.paused) {
         enforceServerPlaybackState()
       }
@@ -101,6 +137,11 @@ export function createPlaybackLifecycleHandlers(deps: PlaybackLifecycleDeps) {
       }
     },
     onWaiting: () => {
+      // Firefox/Safari emit a brief waiting between play and playing; the
+      // canplay force-snap also waits while seeking. Ignore that blip.
+      if (Date.now() < waitingGraceUntilMs) {
+        return
+      }
       setIsBuffering(true)
       if (bufferingSinceRef.current === null) {
         bufferingSinceRef.current = Date.now()
@@ -108,18 +149,22 @@ export function createPlaybackLifecycleHandlers(deps: PlaybackLifecycleDeps) {
     },
     onLoadStart: () => {
       isMediaReadyRef.current = false
+      setPlaybackUnlocked(false)
+      waitingGraceUntilMs = 0
+      clearSuppressBufferingUiTimer()
+      setSuppressBufferingUi(false)
       setIsBuffering(true)
       bufferingSinceRef.current = Date.now()
     },
     onCanPlay: () => {
+      armWaitingGrace()
       setIsBuffering(false)
       participantStatusErrorRef.current = null
       bufferingSinceRef.current = null
       const player = playerRef.current
       if (!player) {
         // Still mark ready so presence/sync are not stuck if the element unmounts.
-        markVolumeSettling(isMediaReadyRef)
-        isMediaReadyRef.current = true
+        unlockPlaybackAfterClock()
         return
       }
 
@@ -137,8 +182,6 @@ export function createPlaybackLifecycleHandlers(deps: PlaybackLifecycleDeps) {
               serverNowMs: Date.now(),
             }
           : pending
-      // Force-snap after canplay — HLS often becomes seekable only here.
-      applyRoomClock(player, pendingToApply, 0)
       // Providers may reset volume on load; re-apply preferred level *before*
       // flipping mediaReady so a synchronous volumechange(1) cannot persist.
       if (Math.abs(player.volume - preferredVolume) > 0.001) {
@@ -147,8 +190,14 @@ export function createPlaybackLifecycleHandlers(deps: PlaybackLifecycleDeps) {
       if (player.muted !== isMuted) {
         player.muted = isMuted
       }
-      markVolumeSettling(isMediaReadyRef)
-      isMediaReadyRef.current = true
+      // Force-snap while held paused so autoplay cannot paint-at-0 then seek.
+      // Room paused=false would otherwise nudge play() mid-snap.
+      applyRoomClock(player, { ...pendingToApply, paused: true }, 0)
+      clearTransportNudge()
+      pendingSyncRef.current = pendingToApply
+      // Unlock after the snap — React paused={roomPaused || !unlocked} then
+      // starts playback if the room is playing.
+      unlockPlaybackAfterClock()
     },
   }
 }

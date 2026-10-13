@@ -65,6 +65,8 @@ export const SyncedMediaPlayer = memo(function SyncedMediaPlayer({
     seekPhase,
     awaitingSeekTargetMs,
     totalItems,
+    playbackUnlocked,
+    suppressBufferingUi,
   } = viewModel
 
   const playerStreamType = resolvePlayerStreamType(current)
@@ -146,6 +148,8 @@ export const SyncedMediaPlayer = memo(function SyncedMediaPlayer({
     updateSeek: (targetMs) => controller.updateSeek(targetMs),
     commitSeek: (targetMs) => controller.commitSeek(targetMs),
     setIsBuffering: (value) => controller.setIsBuffering(value),
+    setPlaybackUnlocked: (value) => controller.setPlaybackUnlocked(value),
+    setSuppressBufferingUi: (value) => controller.setSuppressBufferingUi(value),
     setPlaybackError: (value) => controller.setPlaybackError(value),
     setMediaDurationMs: (value) => controller.setMediaDurationMs(value),
     setForceLocalRelaySrc: (value) => controller.setForceLocalRelaySrc(value),
@@ -163,9 +167,10 @@ export const SyncedMediaPlayer = memo(function SyncedMediaPlayer({
       loop={videoLoop !== "off"}
       crossOrigin={useCrossOriginAnonymous ? "anonymous" : undefined}
       playsInline
-      // Room playback is the transport authority — player follows.
-      paused={roomPaused}
-      autoPlay={!roomPaused}
+      // Hold pause until canplay force-snap finishes so autoplay cannot
+      // paint-at-0 then seek (brief loading flicker on Firefox/Safari).
+      paused={roomPaused || !playbackUnlocked}
+      autoPlay={false}
       playbackRate={catchUpRate ?? roomPlaybackRate}
       // ARD/catch-up HLS often lacks EXT-X-ENDLIST, so hls.js reports
       // `live` and Vidstack disables seeking. Force VOD unless catalog says live.
@@ -174,7 +179,7 @@ export const SyncedMediaPlayer = memo(function SyncedMediaPlayer({
         ? { duration: playerDurationSec }
         : {})}
       muted={isMuted}
-      className={`size-full ${isOtherUserSeeking ? "remote-seek-controls-hidden" : ""} ${!canControlPlayback ? "guest-controls-guard" : ""}`}
+      className={`size-full ${isOtherUserSeeking ? "remote-seek-controls-hidden" : ""} ${!canControlPlayback ? "guest-controls-guard" : ""} ${suppressBufferingUi ? "suppress-buffering-ui" : ""}`}
       onKeyDownCapture={handlers.onKeyDownCapture}
       onMediaPlayRequest={handlers.onMediaPlayRequest}
       onMediaPauseRequest={handlers.onMediaPauseRequest}

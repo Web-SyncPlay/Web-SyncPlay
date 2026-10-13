@@ -1,6 +1,9 @@
 import { createRoomState } from "@/shared/test-utils/room-fixtures"
 import { describe, expect, mock, test } from "bun:test"
-import { createPlaybackLifecycleHandlers } from "./create-playback-lifecycle-handlers"
+import {
+  createPlaybackLifecycleHandlers,
+  PLAYBACK_WAITING_GRACE_MS,
+} from "./create-playback-lifecycle-handlers"
 import { markTransportIntent, type TransportIntent } from "./transport-intent"
 import { isVolumeSettling } from "./use-player-volume"
 
@@ -9,12 +12,29 @@ function createDeps(config: {
   player?: { volume: number; muted: boolean; paused?: boolean }
   preferredVolume?: number
   isMediaReadyRef?: { current: boolean }
+  applyRoomClock?: ReturnType<typeof mock>
+  nowMs?: () => number
 }) {
   const enforceServerPlaybackState = mock(() => {})
+  const clearTransportNudge = mock(() => {})
+  const setIsBuffering = mock((value: boolean) => {
+    void value
+  })
+  const setPlaybackUnlocked = mock((value: boolean) => {
+    void value
+  })
+  const setSuppressBufferingUi = mock((value: boolean) => {
+    void value
+  })
+  const applyRoomClock = config.applyRoomClock ?? mock(() => {})
   const transportIntentRef: { current: TransportIntent | null } = {
     current: null,
   }
   const isMediaReadyRef = config.isMediaReadyRef ?? { current: true }
+  const pendingSyncRef: { current: null | ReturnType<typeof Object> } = {
+    current: null,
+  }
+  const bufferingSinceRef: { current: number | null } = { current: null }
   const handlers = createPlaybackLifecycleHandlers({
     playerRef: { current: (config.player as never) ?? null },
     current: undefined,
@@ -26,22 +46,32 @@ function createDeps(config: {
     },
     transportIntentRef,
     isMediaReadyRef,
-    bufferingSinceRef: { current: null },
+    bufferingSinceRef,
     participantStatusErrorRef: { current: null },
-    pendingSyncRef: { current: null },
+    pendingSyncRef: pendingSyncRef as never,
     reportedItemErrorRef: { current: null },
     awaitingSeekTargetMs: null,
     send: (() => {}) as never,
-    applyRoomClock: () => {},
+    applyRoomClock: applyRoomClock as never,
     enforceServerPlaybackState,
-    setIsBuffering: () => {},
+    clearTransportNudge,
+    setIsBuffering,
+    setPlaybackUnlocked,
+    setSuppressBufferingUi,
     setPlaybackError: () => {},
   })
   return {
     handlers,
     enforceServerPlaybackState,
+    clearTransportNudge,
     transportIntentRef,
     isMediaReadyRef,
+    applyRoomClock,
+    setIsBuffering,
+    setPlaybackUnlocked,
+    setSuppressBufferingUi,
+    bufferingSinceRef,
+    pendingSyncRef,
   }
 }
 
@@ -126,5 +156,136 @@ describe("createPlaybackLifecycleHandlers onCanPlay volume", () => {
     expect(readyWhenVolumeSet).toBe(false)
     expect(isMediaReadyRef.current).toBe(true)
     expect(isVolumeSettling(isMediaReadyRef)).toBe(true)
+  })
+})
+
+describe("createPlaybackLifecycleHandlers unlock + waiting grace", () => {
+  test("onCanPlay force-snaps while held paused then restores room pending", () => {
+    const applyRoomClock = mock(() => {})
+    const player = { volume: 1, muted: false, paused: true }
+    const {
+      handlers,
+      clearTransportNudge,
+      isMediaReadyRef,
+      setPlaybackUnlocked,
+      pendingSyncRef,
+    } = createDeps({
+      roomPaused: false,
+      player,
+      isMediaReadyRef: { current: false },
+      applyRoomClock,
+    })
+
+    handlers.onCanPlay()
+
+    expect(applyRoomClock).toHaveBeenCalledTimes(1)
+    const [, syncState, threshold] = applyRoomClock.mock.calls[0] as [
+      unknown,
+      { paused: boolean },
+      number,
+    ]
+    expect(syncState.paused).toBe(true)
+    expect(threshold).toBe(0)
+    expect(clearTransportNudge).toHaveBeenCalledTimes(1)
+    expect(isMediaReadyRef.current).toBe(true)
+    expect(setPlaybackUnlocked).toHaveBeenCalledWith(true)
+    expect(pendingSyncRef.current).toMatchObject({ paused: false })
+  })
+
+  test("onCanPlay unlocks after clock apply (ordering)", () => {
+    const order: string[] = []
+    const applyRoomClock = mock(() => {
+      order.push("clock")
+    })
+    const player = { volume: 1, muted: false, paused: true }
+    const setPlaybackUnlocked = mock((value: boolean) => {
+      order.push(`unlock:${String(value)}`)
+    })
+    const setIsBuffering = mock((value: boolean) => {
+      void value
+    })
+    const setSuppressBufferingUi = mock((value: boolean) => {
+      void value
+    })
+    const isMediaReadyRef = { current: false }
+    const handlers = createPlaybackLifecycleHandlers({
+      playerRef: { current: player as never },
+      current: undefined,
+      canControlPlayback: true,
+      isMuted: false,
+      preferredVolume: 1,
+      playbackRef: {
+        current: { ...createRoomState().playback, paused: false },
+      },
+      transportIntentRef: { current: null },
+      isMediaReadyRef,
+      bufferingSinceRef: { current: null },
+      participantStatusErrorRef: { current: null },
+      pendingSyncRef: { current: null },
+      reportedItemErrorRef: { current: null },
+      awaitingSeekTargetMs: null,
+      send: (() => {}) as never,
+      applyRoomClock: applyRoomClock as never,
+      enforceServerPlaybackState: () => {},
+      clearTransportNudge: () => {},
+      setIsBuffering,
+      setPlaybackUnlocked,
+      setSuppressBufferingUi,
+      setPlaybackError: () => {},
+    })
+
+    handlers.onCanPlay()
+
+    expect(order).toEqual(["clock", "unlock:true"])
+    expect(isMediaReadyRef.current).toBe(true)
+    expect(setSuppressBufferingUi).toHaveBeenCalledWith(true)
+  })
+
+  test("onLoadStart locks playback again", () => {
+    const { handlers, setPlaybackUnlocked, setIsBuffering, isMediaReadyRef } =
+      createDeps({ roomPaused: false })
+    handlers.onCanPlay()
+    setPlaybackUnlocked.mockClear()
+    setIsBuffering.mockClear()
+
+    handlers.onLoadStart()
+
+    expect(isMediaReadyRef.current).toBe(false)
+    expect(setPlaybackUnlocked).toHaveBeenCalledWith(false)
+    expect(setIsBuffering).toHaveBeenCalledWith(true)
+  })
+
+  test("onWaiting during grace does not set buffering", () => {
+    const { handlers, setIsBuffering, bufferingSinceRef } = createDeps({
+      roomPaused: false,
+    })
+    handlers.onPlay()
+    setIsBuffering.mockClear()
+    bufferingSinceRef.current = null
+
+    handlers.onWaiting()
+
+    expect(setIsBuffering).not.toHaveBeenCalled()
+    expect(bufferingSinceRef.current).toBeNull()
+  })
+
+  test("onWaiting after grace arms buffering", () => {
+    const { handlers, setIsBuffering, bufferingSinceRef } = createDeps({
+      roomPaused: false,
+    })
+    handlers.onPlay()
+    setIsBuffering.mockClear()
+
+    // Advance past grace by patching Date.now for the waiting check.
+    const realNow = Date.now
+    Date.now = () => realNow() + PLAYBACK_WAITING_GRACE_MS + 1
+    try {
+      handlers.onWaiting()
+    } finally {
+      Date.now = realNow
+    }
+
+    expect(setIsBuffering).toHaveBeenCalledWith(true)
+    expect(bufferingSinceRef.current).not.toBeNull()
   })
 })

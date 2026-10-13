@@ -97,6 +97,8 @@ export function usePlayerSession({
   const currentItemId = current?.id
 
   const [isBuffering, setIsBuffering] = useState(false)
+  const [playbackUnlocked, setPlaybackUnlocked] = useState(false)
+  const [suppressBufferingUi, setSuppressBufferingUi] = useState(false)
   const [mediaDurationMs, setMediaDurationMs] = useState(0)
   const [playbackError, setPlaybackError] = useState<
     MediaErrorDetail | undefined
@@ -109,6 +111,9 @@ export function usePlayerSession({
     controller.reportedDurationItemIdRef.current = null
     queueMicrotask(() => {
       setMediaDurationMs(0)
+      // Hold play until the new item's canplay force-snap finishes.
+      setPlaybackUnlocked(false)
+      setSuppressBufferingUi(false)
     })
   }, [controller, currentItemId])
 
@@ -211,6 +216,8 @@ export function usePlayerSession({
     updateSeek: timeline.updateSeek,
     commitSeek: timeline.commitSeek,
     setIsBuffering,
+    setPlaybackUnlocked,
+    setSuppressBufferingUi,
     setPlaybackError,
     setMediaDurationMs,
     setForceLocalRelaySrc: media.setForceLocalRelaySrc,
@@ -247,6 +254,8 @@ export function usePlayerSession({
       seekPhase: timeline.seekPhase,
       awaitingSeekTargetMs: timeline.awaitingSeekTargetMs,
       totalItems: chrome.totalItems,
+      playbackUnlocked,
+      suppressBufferingUi,
     }),
     [
       current,
@@ -275,6 +284,8 @@ export function usePlayerSession({
       timeline.seekPhase,
       timeline.awaitingSeekTargetMs,
       chrome.totalItems,
+      playbackUnlocked,
+      suppressBufferingUi,
     ],
   )
 

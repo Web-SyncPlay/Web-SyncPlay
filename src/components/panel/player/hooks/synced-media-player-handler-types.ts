@@ -60,6 +60,10 @@ export type SyncedMediaPlayerHandlerDeps = {
   updateSeek: (targetMs: number) => void
   commitSeek: (targetMs: number) => void
   setIsBuffering: (value: boolean) => void
+  /** False until first canplay room-clock snap; gates Vidstack play. */
+  setPlaybackUnlocked: (value: boolean) => void
+  /** Transient suppress of Vidstack buffering chrome after play/canplay. */
+  setSuppressBufferingUi: (value: boolean) => void
   setPlaybackError: (value: MediaErrorDetail | undefined) => void
   setMediaDurationMs: (value: number | ((prev: number) => number)) => void
   setForceLocalRelaySrc: (value: boolean) => void
