@@ -105,9 +105,9 @@ export function usePlayerSession({
     MediaErrorDetail | undefined
   >(undefined)
   /** Only show the recovery overlay while still on the item that failed. */
-  const [playbackErrorItemId, setPlaybackErrorItemId] = useState<
-    string | null
-  >(null)
+  const [playbackErrorItemId, setPlaybackErrorItemId] = useState<string | null>(
+    null,
+  )
   const [playerRemountNonce, setPlayerRemountNonce] = useState(0)
 
   const setPlaybackErrorBound = (
@@ -117,22 +117,19 @@ export function usePlayerSession({
     setPlaybackError(value)
     // Prefer the reporting item id so a late error from a previous item
     // cannot attach to the newly selected media.
-    setPlaybackErrorItemId(
-      value ? (forItemId ?? currentItemId ?? null) : null,
-    )
+    setPlaybackErrorItemId(value ? (forItemId ?? currentItemId ?? null) : null)
   }
 
   useEffect(() => {
     // Session bag holds mutable refs; clearing on item change is intentional.
     // eslint-disable-next-line react-hooks/immutability -- ref.current write
     controller.reportedDurationItemIdRef.current = null
-    // eslint-disable-next-line react-hooks/immutability -- ref.current write
     controller.reportedItemErrorRef.current = null
-    // Drop sticky MediaError UI immediately so the next item can unlock/play
-    // without the recovery overlay stealing the first paint.
-    setPlaybackError(undefined)
-    setPlaybackErrorItemId(null)
+    // Defer setState out of the effect body (react-hooks/set-state-in-effect).
+    // Overlay stays hidden via playbackErrorItemId !== currentItemId until cleared.
     queueMicrotask(() => {
+      setPlaybackError(undefined)
+      setPlaybackErrorItemId(null)
       setMediaDurationMs(0)
       // Hold play until the new item's canplay force-snap finishes.
       setPlaybackUnlocked(false)
@@ -170,12 +167,7 @@ export function usePlayerSession({
       return undefined
     }
     return formatMediaErrorDetail(playbackError)
-  }, [
-    playbackError,
-    playbackErrorItemId,
-    currentItemId,
-    current?.ingestStatus,
-  ])
+  }, [playbackError, playbackErrorItemId, currentItemId, current?.ingestStatus])
 
   const media = usePlayerMediaPipeline({
     current,
@@ -195,8 +187,7 @@ export function usePlayerSession({
     catalogDurationMs,
   })
 
-  const canControlPlayback =
-    canControlByRole && capabilities.canControlPlayback
+  const canControlPlayback = canControlByRole && capabilities.canControlPlayback
 
   const chrome = usePlayerChromeUi({
     controller,

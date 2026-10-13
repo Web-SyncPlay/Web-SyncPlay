@@ -7,9 +7,12 @@ import {
 import { localMediaIdFromSrc } from "@/client/local-media/local-media-resolve"
 import { withLocalMediaViewerToken } from "@/client/local-media/local-media-viewer-token"
 import { inferMediaViewType } from "@/client/player/playback-sync"
+import type {
+  IngestStatus,
+  PlaylistItem,
+  ViewerMediaItemPreference,
+} from "@/contracts/types"
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
-import type { PlaylistItem, ViewerMediaItemPreference } from "@/contracts/types"
-import type { IngestStatus } from "@/contracts/types"
 import {
   buildPlayerSrc,
   isSameOriginPlaybackUrl,
@@ -44,7 +47,7 @@ export function usePlayerMediaSource(config: {
       setForceLocalRelaySrc(false)
     })
     localBlobFallbackAttemptedRef.current = null
-  }, [current?.id])
+  }, [current?.id, localBlobFallbackAttemptedRef])
 
   const activeStream = useMemo(() => {
     if (!current) {
@@ -123,7 +126,9 @@ export function usePlayerMediaSource(config: {
       // Prefer mime for whichever File we are playing (parent or ABR child).
       const streamSrc = activeStream?.src ?? ""
       const id = localMediaIdFromSrc(streamSrc) ?? current.localMediaId
-      return getLocalMediaMimeType(id) ?? getLocalMediaMimeType(current.localMediaId)
+      return (
+        getLocalMediaMimeType(id) ?? getLocalMediaMimeType(current.localMediaId)
+      )
     }
     return current.localMediaId
       ? getLocalMediaMimeType(current.localMediaId)
