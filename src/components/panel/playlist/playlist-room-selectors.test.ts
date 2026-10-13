@@ -7,6 +7,7 @@ import {
 import { expect, test } from "bun:test"
 import {
   playlistShellSlicesEqual,
+  selectLocalOriginUsernames,
   selectPlaylistShellSlice,
 } from "./playlist-room-selectors"
 
@@ -29,6 +30,50 @@ test("playlist shell slice stays equal across presence-only lastSeen churn", () 
   expect(after.currentItemId).toBe(before.currentItemId)
   expect(after.playlistLoop).toBe(before.playlistLoop)
   expect(after.myRole).toBe(before.myRole)
+  expect(after.localOriginUsernames).toEqual(before.localOriginUsernames)
+})
+
+test("local origin usernames map only local_file sharers", () => {
+  const local = createPlaylistItem({
+    id: "local-1",
+    name: "clip.mp4",
+    sourceKind: "local_file",
+    localOriginUserId: "owner",
+    createdBy: "owner",
+  })
+  const remote = createPlaylistItem({ id: "remote-1", name: "Remote" })
+  const state = createRoomState({ playlist: [local, remote] })
+
+  expect(selectLocalOriginUsernames(state)).toEqual({ owner: "Owner" })
+})
+
+test("playlist shell flips when a local origin username changes", () => {
+  const local = createPlaylistItem({
+    id: "local-1",
+    name: "clip.mp4",
+    sourceKind: "local_file",
+    localOriginUserId: "owner",
+    createdBy: "owner",
+  })
+  const base = createRoomState({ playlist: [local] })
+  const before = selectPlaylistShellSlice(base, "guest")
+
+  const renamed = {
+    ...base,
+    participants: {
+      ...base.participants,
+      owner: { ...base.participants.owner!, username: "Renamed" },
+    },
+  }
+  expect(
+    playlistShellSlicesEqual(
+      before,
+      selectPlaylistShellSlice(renamed, "guest"),
+    ),
+  ).toBe(false)
+  expect(selectPlaylistShellSlice(renamed, "guest").localOriginUsernames).toEqual(
+    { owner: "Renamed" },
+  )
 })
 
 test("playlist shell slice flips when current item or loop changes", () => {

@@ -67,12 +67,19 @@ function useStripSortableRowA11y(row: HTMLElement | null) {
   }, [row])
 }
 
+export function localFileOriginLabel(username: string): string {
+  const trimmed = username.trim()
+  return trimmed ? `${trimmed} device` : "device"
+}
+
 export function PlaylistItemRow(props: {
   item: PlaylistItem
   index: number
   isCurrent: boolean
   itemDuration: string | null
   canControlPlaylist: boolean
+  /** Display name for local_file origin; ignored for remote_url. */
+  localOriginUsername?: string
   draftValue: string
   isEditing: boolean
   onDraftChange: (next: string) => void
@@ -88,6 +95,7 @@ export function PlaylistItemRow(props: {
     isCurrent,
     itemDuration,
     canControlPlaylist,
+    localOriginUsername,
     draftValue,
     isEditing,
     onDraftChange,
@@ -202,7 +210,7 @@ export function PlaylistItemRow(props: {
               )}
             </ItemTitle>
           )}
-          {item.ingestStatus === "resolving" || item.ingestError ? (
+          {item.sourceKind === "remote_url" ? (
             <div className="flex min-w-0 flex-col gap-0.5">
               <div className="flex min-w-0 items-center gap-0.5">
                 <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
@@ -237,6 +245,14 @@ export function PlaylistItemRow(props: {
                 <p className="text-xs text-muted-foreground">Resolving…</p>
               ) : null}
             </div>
+          ) : item.sourceKind === "local_file" ? (
+            <p className="min-w-0 truncate text-xs text-muted-foreground">
+              {localFileOriginLabel(
+                localOriginUsername ??
+                  item.localOriginUserId ??
+                  item.createdBy,
+              )}
+            </p>
           ) : null}
         </ItemContent>
         <ItemActions className="shrink-0 gap-1 self-center">

@@ -151,6 +151,7 @@ const PlaylistPanelShell = memo(
             <ItemGroup className="min-h-0 flex-1 gap-3 overflow-y-auto pt-1 text-sm">
               {playlist.map((x, i) => {
                 const isCurrent = currentItemId === x.id
+                const originUserId = x.localOriginUserId ?? x.createdBy
 
                 return (
                   <PlaylistItemRow
@@ -160,6 +161,11 @@ const PlaylistPanelShell = memo(
                     isCurrent={isCurrent}
                     itemDuration={renderItemDuration(x.durationSeconds)}
                     canControlPlaylist={canManagePlaylist}
+                    localOriginUsername={
+                      x.sourceKind === "local_file"
+                        ? slice.localOriginUsernames[originUserId]
+                        : undefined
+                    }
                     draftValue={rename.draftName[x.id] ?? x.name}
                     isEditing={rename.editingItemId === x.id}
                     onDraftChange={(next) => rename.setDraft(x.id, next)}
