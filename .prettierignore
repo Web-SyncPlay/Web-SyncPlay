@@ -19,6 +19,7 @@ coverage
 .turbo
 next-env.d.ts
 public/sw.js
+public/local-media-sw.js
 public/workbox-*.js
 public/fallback-*.js
 public/*.map
