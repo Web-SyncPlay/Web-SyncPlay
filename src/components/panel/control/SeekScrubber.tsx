@@ -74,7 +74,7 @@ export function SeekScrubber(props: {
       className={cn(
         slider04ClassName,
         transport
-          ? "h-10 sm:h-full sm:min-h-10 lg:h-10 lg:min-h-10 lg:flex-none"
+          ? "h-10 sm:h-full sm:min-h-10 lg:h-8 lg:min-h-8 lg:flex-none lg:**:data-[slot=slider-track]:min-h-8"
           : undefined,
       )}
       aria-label="Seek playback position"

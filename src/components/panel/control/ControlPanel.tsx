@@ -112,17 +112,10 @@ export function ControlPanel(props: {
           onPause(elapsedMs)
         }}
       >
-        {paused ? (
-          <>
-            <Play className="size-4" />
-            Play
-          </>
-        ) : (
-          <>
-            <Pause className="size-4" />
-            Pause
-          </>
-        )}
+        <span className="inline-flex items-center gap-1.5 leading-none">
+          {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
+          {paused ? "Play" : "Pause"}
+        </span>
       </Button>
       <Button
         variant="outline"
