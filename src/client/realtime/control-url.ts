@@ -5,12 +5,23 @@ function roomPath(roomId: string, embed?: "control" | "player"): string {
   return embed ? `/room/${roomId}/${embed}` : `/room/${roomId}`
 }
 
+function hasIdentityCredentials(userId: string, userSecret: string): boolean {
+  return userId.trim().length > 0 && userSecret.trim().length > 0
+}
+
+/**
+ * Attaches a session-handover hash. Returns null when credentials are empty
+ * so callers never open `#uid=&secret=` (which mints a new guest identity).
+ */
 function withIdentityHash(
   path: string,
   userId: string,
   userSecret: string,
   controlToken?: string,
-): string {
+): string | null {
+  if (!hasIdentityCredentials(userId, userSecret)) {
+    return null
+  }
   const hash = buildIdentityHash(userId, userSecret, controlToken)
   if (typeof window === "undefined") {
     return `${path}#${hash}`
@@ -20,6 +31,7 @@ function withIdentityHash(
   return url.toString()
 }
 
+/** Public share link — no identity secrets. */
 export function getRoomUrl(roomId: string): string {
   const path = roomPath(roomId)
   if (typeof window === "undefined") {
@@ -28,17 +40,31 @@ export function getRoomUrl(roomId: string): string {
   return `${window.location.origin}${path}`
 }
 
+/**
+ * In-app “Room view” popup URL with identity handover.
+ * Empty until `userId`/`userSecret` are ready.
+ */
+export function getRoomPopupUrl(
+  roomId: string,
+  userId: string,
+  userSecret: string,
+): string {
+  return withIdentityHash(roomPath(roomId), userId, userSecret) ?? ""
+}
+
 export function getControlEmbedUrl(
   roomId: string,
   userId: string,
   userSecret: string,
   controlToken?: string,
 ): string {
-  return withIdentityHash(
-    roomPath(roomId, "control"),
-    userId,
-    userSecret,
-    controlToken,
+  return (
+    withIdentityHash(
+      roomPath(roomId, "control"),
+      userId,
+      userSecret,
+      controlToken,
+    ) ?? ""
   )
 }
 
@@ -47,7 +73,7 @@ export function getPlayerEmbedUrl(
   userId: string,
   userSecret: string,
 ): string {
-  return withIdentityHash(roomPath(roomId, "player"), userId, userSecret)
+  return withIdentityHash(roomPath(roomId, "player"), userId, userSecret) ?? ""
 }
 
 /** Mint a control token via HTTP. Returns null on failure (no silent tokenless auth). */
@@ -73,10 +99,11 @@ export async function mintControlEmbedUrl(input: {
   if (!minted) {
     return null
   }
-  return getControlEmbedUrl(
+  const url = getControlEmbedUrl(
     input.roomId,
     input.userId,
     input.userSecret,
     minted.token,
   )
+  return url || null
 }

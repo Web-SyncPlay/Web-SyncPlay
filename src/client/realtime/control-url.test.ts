@@ -2,6 +2,7 @@ import { afterEach, describe, expect, mock, test } from "bun:test"
 import {
   getControlEmbedUrl,
   getPlayerEmbedUrl,
+  getRoomPopupUrl,
   getRoomUrl,
   mintControlEmbedUrl,
   requestControlToken,
@@ -17,6 +18,15 @@ describe("control-url", () => {
     expect(getRoomUrl("abc")).toBe("/room/abc")
   })
 
+  test("empty identity credentials never produce a handover hash", () => {
+    expect(getPlayerEmbedUrl("abc", "", "secret-1")).toBe("")
+    expect(getPlayerEmbedUrl("abc", "uid-1", "")).toBe("")
+    expect(getControlEmbedUrl("abc", "", "secret-1")).toBe("")
+    expect(getControlEmbedUrl("abc", "uid-1", "", "tok")).toBe("")
+    expect(getRoomPopupUrl("abc", "", "secret-1")).toBe("")
+    expect(getRoomPopupUrl("abc", "uid-1", "")).toBe("")
+  })
+
   test("embed URLs attach identity hash without window", () => {
     const control = getControlEmbedUrl("abc", "uid-1", "secret-1", "tok")
     expect(control.startsWith("/room/abc/control#")).toBe(true)
@@ -27,6 +37,11 @@ describe("control-url", () => {
     const player = getPlayerEmbedUrl("abc", "uid-1", "secret-1")
     expect(player.startsWith("/room/abc/player#")).toBe(true)
     expect(player).not.toContain("ct=")
+
+    const roomPopup = getRoomPopupUrl("abc", "uid-1", "secret-1")
+    expect(roomPopup.startsWith("/room/abc#")).toBe(true)
+    expect(roomPopup).toContain("uid=uid-1")
+    expect(roomPopup).toContain("secret=secret-1")
   })
 
   test("getRoomUrl is absolute with window", () => {

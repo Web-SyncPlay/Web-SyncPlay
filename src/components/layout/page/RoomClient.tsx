@@ -1,6 +1,5 @@
 "use client"
 
-import { getRoomUrl } from "@/client/realtime/control-url"
 import { RoomConnectingView } from "@/components/layout/RoomConnectingView"
 import { SidePanel } from "@/components/layout/SidePanel"
 import { SiteNavbar } from "@/components/layout/SiteNavbar"
@@ -50,7 +49,7 @@ export function RoomClient({
       currentName={model.current?.name}
       paused={model.roomState.playback.paused}
       canControlByRole={model.canControlByRole}
-      roomUrl={getRoomUrl(roomId)}
+      roomUrl={session.roomUrl}
       playerEmbedUrl={session.playerEmbedUrl}
       controlEmbedUrl={session.controlEmbedUrl}
       shareUrl={session.shareUrl}

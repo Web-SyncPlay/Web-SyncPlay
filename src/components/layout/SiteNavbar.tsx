@@ -170,6 +170,9 @@ export function SiteNavbar(props: SiteNavbarProps) {
   } = props
 
   const openInNewWindow = (url: string) => {
+    if (!url) {
+      return
+    }
     window.open(url, "_blank", "noopener,noreferrer")
   }
 
@@ -230,7 +233,7 @@ export function SiteNavbar(props: SiteNavbarProps) {
               <DropdownMenuGroup>
                 <DropdownMenuLabel>Open in new window</DropdownMenuLabel>
                 <DropdownMenuItem
-                  disabled={viewMode === "room"}
+                  disabled={viewMode === "room" || !roomUrl}
                   onClick={() => openInNewWindow(roomUrl)}
                   className="cursor-pointer"
                 >
@@ -238,7 +241,7 @@ export function SiteNavbar(props: SiteNavbarProps) {
                   Room view
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  disabled={viewMode === "player"}
+                  disabled={viewMode === "player" || !playerEmbedUrl}
                   onClick={() => openInNewWindow(playerEmbedUrl)}
                   className="cursor-pointer"
                 >
@@ -246,7 +249,7 @@ export function SiteNavbar(props: SiteNavbarProps) {
                   Player embed
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  disabled={viewMode === "control"}
+                  disabled={viewMode === "control" || !controlEmbedUrl}
                   onClick={() => openInNewWindow(controlEmbedUrl)}
                   className="cursor-pointer"
                 >

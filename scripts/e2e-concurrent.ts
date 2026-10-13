@@ -69,6 +69,7 @@ async function main() {
   let guestPage: Page | undefined
   let playerPage: Page | undefined
   let controlPage: Page | undefined
+  let playerCtx: BrowserContext | undefined
 
   try {
     hostPage = await openRoom(
@@ -168,7 +169,13 @@ async function main() {
       record("host play button available", false, "Play button not found")
     }
 
-    playerPage = await openRoom(hostCtx, `/room/${ROOM}/player`)
+    // Isolated context (no shared localStorage) — hash handover must reuse host.
+    playerCtx = await browser.newContext()
+    playerPage = await openRoom(
+      playerCtx,
+      `/room/${ROOM}/player`,
+      identityHash(hostId, hostSecret),
+    )
     const playerBody = await playerPage.locator("body").innerText()
     record(
       "player embed connects",
@@ -186,7 +193,23 @@ async function main() {
       )
     }
 
-    const siteEmbedPage = await openRoom(hostCtx, `/room/${ROOM}/embed`)
+    await hostPage.waitForTimeout(1500)
+    const hostUsersAfterPlayer = await hostPage.locator("body").innerText()
+    const ownerBadgeCount = (hostUsersAfterPlayer.match(/\bOwner\b/g) ?? [])
+      .length
+    const guestBadgeCount = (hostUsersAfterPlayer.match(/\bGuest\b/g) ?? [])
+      .length
+    record(
+      "player embed reuses host identity (no extra guest)",
+      ownerBadgeCount >= 1 && guestBadgeCount === 1,
+      `Owner×${ownerBadgeCount} Guest×${guestBadgeCount}`,
+    )
+
+    const siteEmbedPage = await openRoom(
+      hostCtx,
+      `/room/${ROOM}/embed`,
+      identityHash(hostId, hostSecret),
+    )
     const siteEmbedBody = await siteEmbedPage.locator("body").innerText()
     record(
       "site embed connects",
@@ -229,11 +252,14 @@ async function main() {
       /Playlist|Remote Control|Play|Pause/i.test(controlBody),
     )
 
-    // Same-user prefs path: control + player both for host
+    await hostPage.waitForTimeout(1000)
+    const hostUsersAfterControl = await hostPage.locator("body").innerText()
+    const guestAfterControl = (hostUsersAfterControl.match(/\bGuest\b/g) ?? [])
+      .length
     record(
       "viewer prefs share same host identity across embeds",
-      true,
-      "host player + control use same seeded identity",
+      guestAfterControl === 1,
+      `Guest×${guestAfterControl} after control+player hash handover`,
     )
 
     // Optional: yt-dlp default resolve progress
@@ -256,6 +282,7 @@ async function main() {
     await guestPage?.close().catch(() => {})
     await playerPage?.close().catch(() => {})
     await controlPage?.close().catch(() => {})
+    await playerCtx?.close().catch(() => {})
     await hostCtx.close()
     await guestCtx.close()
     await browser.close()

@@ -1,6 +1,5 @@
 "use client"
 
-import { getRoomUrl } from "@/client/realtime/control-url"
 import { RoomConnectingView } from "@/components/layout/RoomConnectingView"
 import { useRoomRail } from "@/hooks/use-room-rail"
 import { useRoomSession } from "@/hooks/use-room-session"
@@ -24,6 +23,7 @@ function ControlClientReady(props: {
   model: RoomPanelModelReady
   copied: boolean
   shareUrl: string
+  roomUrl: string
   handleCopyShareUrl: () => void
   playerEmbedUrl: string
   controlEmbedUrl: string
@@ -32,6 +32,7 @@ function ControlClientReady(props: {
     model,
     copied,
     shareUrl,
+    roomUrl,
     handleCopyShareUrl,
     playerEmbedUrl,
     controlEmbedUrl,
@@ -95,7 +96,7 @@ function ControlClientReady(props: {
         paused={roomState.playback.paused}
         currentName={current?.name}
         viewMode="control"
-        roomUrl={getRoomUrl(roomId)}
+        roomUrl={roomUrl}
         playerEmbedUrl={playerEmbedUrl}
         controlEmbedUrl={controlEmbedUrl}
         shareUrl={shareUrl}
@@ -160,6 +161,7 @@ export function ControlClient(props: { roomId: string }) {
       model={model}
       copied={session.copied}
       shareUrl={session.shareUrl}
+      roomUrl={session.roomUrl}
       handleCopyShareUrl={session.handleCopyShareUrl}
       playerEmbedUrl={session.playerEmbedUrl}
       controlEmbedUrl={session.controlEmbedUrl}
