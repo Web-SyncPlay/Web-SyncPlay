@@ -27,7 +27,11 @@ function pickNameDictionaries(count: number) {
   return dictionaries
 }
 
-function decodeRoomSegment(segment: string): string {
+/**
+ * Decode a room id from a URL path segment or App Router `params.roomId`.
+ * Next.js may leave percent-encoding intact for some characters (e.g. `^` → `%5E`).
+ */
+export function decodeRoomId(segment: string): string {
   try {
     return decodeURIComponent(segment)
   } catch {
@@ -45,7 +49,7 @@ export function parseRoomId(raw: string): string | null {
 
   const pathMatch = trimmed.match(/\/room\/([^/?#]+)/i)
   if (pathMatch?.[1]) {
-    return decodeRoomSegment(pathMatch[1])
+    return decodeRoomId(pathMatch[1])
   }
 
   try {
@@ -53,7 +57,7 @@ export function parseRoomId(raw: string): string | null {
       const url = new URL(trimmed)
       const fromPath = url.pathname.match(/\/room\/([^/]+)/i)
       if (fromPath?.[1]) {
-        return decodeRoomSegment(fromPath[1])
+        return decodeRoomId(fromPath[1])
       }
     }
   } catch {
@@ -61,7 +65,7 @@ export function parseRoomId(raw: string): string | null {
   }
 
   const bare = trimmed.replace(/^\/+|\/+$/g, "")
-  return bare || null
+  return bare ? decodeRoomId(bare) : null
 }
 
 /** Path segments after stripping empty ends (keeps encoded roomId as one segment). */

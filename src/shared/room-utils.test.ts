@@ -1,5 +1,24 @@
 import { describe, expect, test } from "bun:test"
-import { isPlayerEmbedPath, isRoomEmbedPath, parseRoomId } from "./room-utils"
+import {
+  decodeRoomId,
+  isPlayerEmbedPath,
+  isRoomEmbedPath,
+  parseRoomId,
+} from "./room-utils"
+
+describe("decodeRoomId", () => {
+  test("decodes percent-encoded path segments", () => {
+    expect(decodeRoomId("my-room%5E%5E")).toBe("my-room^^")
+    expect(decodeRoomId("hello%20world")).toBe("hello world")
+    expect(decodeRoomId("%F0%9F%98%80")).toBe("😀")
+  })
+
+  test("returns already-decoded or invalid segments unchanged", () => {
+    expect(decodeRoomId("my-room^^")).toBe("my-room^^")
+    expect(decodeRoomId("plain")).toBe("plain")
+    expect(decodeRoomId("%")).toBe("%")
+  })
+})
 
 describe("parseRoomId", () => {
   test("accepts bare ids, paths, and URLs", () => {
@@ -8,6 +27,8 @@ describe("parseRoomId", () => {
     expect(parseRoomId("https://example.test/room/gamma%20delta")).toBe(
       "gamma delta",
     )
+    expect(parseRoomId("/room/my-room%5E%5E")).toBe("my-room^^")
+    expect(parseRoomId("my-room%5E%5E")).toBe("my-room^^")
     expect(parseRoomId("   ")).toBeNull()
   })
 })

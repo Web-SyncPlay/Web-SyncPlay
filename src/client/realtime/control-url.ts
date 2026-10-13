@@ -2,7 +2,8 @@ import { mintRoomControlToken } from "./control-token-client"
 import { buildIdentityHash } from "./session-identity"
 
 function roomPath(roomId: string, embed?: "control" | "player"): string {
-  return embed ? `/room/${roomId}/${embed}` : `/room/${roomId}`
+  const segment = encodeURIComponent(roomId)
+  return embed ? `/room/${segment}/${embed}` : `/room/${segment}`
 }
 
 function hasIdentityCredentials(userId: string, userSecret: string): boolean {

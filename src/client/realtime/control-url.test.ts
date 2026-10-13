@@ -18,6 +18,11 @@ describe("control-url", () => {
     expect(getRoomUrl("abc")).toBe("/room/abc")
   })
 
+  test("getRoomUrl percent-encodes special characters", () => {
+    expect(getRoomUrl("my-room^^")).toBe("/room/my-room%5E%5E")
+    expect(getRoomUrl("hello world")).toBe("/room/hello%20world")
+  })
+
   test("empty identity credentials never produce a handover hash", () => {
     expect(getPlayerEmbedUrl("abc", "", "secret-1")).toBe("")
     expect(getPlayerEmbedUrl("abc", "uid-1", "")).toBe("")
