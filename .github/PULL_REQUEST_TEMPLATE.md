@@ -5,8 +5,9 @@
 ## Test plan
 
 - [ ] `bun run test:unit` (and other relevant tests)
-- [ ] `bun run typecheck`
+- [ ] `bun check`
 - [ ] `bun run lint`
+- [ ] `bun run format`
 
 ## Breaking changes / env
 

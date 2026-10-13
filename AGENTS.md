@@ -33,15 +33,23 @@ Full layout table: [README Architecture](./README.md#architecture-developers).
 
 Prefer `@/shared/test-utils` fixtures in client/UI tests over `@/server` fixtures where practical.
 
-## Typecheck (IDE TS6 vs CI TS7)
+## Quality gates
+
+| Gate      | Command          | Notes                                                          |
+| --------- | ---------------- | -------------------------------------------------------------- |
+| Typecheck | `bun check`      | TypeScript **7** via `@typescript/native` (CI source of truth) |
+| Lint      | `bun run lint`   | ESLint                                                         |
+| Format    | `bun run format` | Prettier `--check` (CI). Fix with `bun run format:write`       |
+
+### Typecheck (IDE TS6 vs CI TS7)
 
 | Context                       | Command / setup                                                                                                                        |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| **CI gate (source of truth)** | `bun run typecheck` → TypeScript **7** via `@typescript/native`                                                                        |
+| **CI gate (source of truth)** | `bun check` → TypeScript **7** via `@typescript/native`                                                                                |
 | **IDE / workspace**           | `typescript` → `@typescript/typescript6` (TS **6**); `.vscode/settings.json` points `typescript.tsdk` at `node_modules/typescript/lib` |
 | **Advisory CI**               | Job **Typecheck (IDE TS6, advisory)** runs `./node_modules/.bin/tsc` with `continue-on-error`                                          |
 
-Prefer fixing failures from `bun run typecheck`. If TS6 and TS7 disagree, fix the CI TS7 failure first.
+Prefer fixing failures from `bun check`. If TS6 and TS7 disagree, fix the CI TS7 failure first.
 
 ## Git commits
 

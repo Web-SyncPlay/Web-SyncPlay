@@ -148,9 +148,7 @@ async function readPlayhead(page: Page): Promise<Playhead> {
   })
 }
 
-async function readPresenceClocks(
-  page: Page,
-): Promise<
+async function readPresenceClocks(page: Page): Promise<
   Array<{
     label: string
     state: "Playing" | "Paused" | "Unknown"

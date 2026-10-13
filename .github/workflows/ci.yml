@@ -52,10 +52,13 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Typecheck
-        run: bun run typecheck
+        run: bun check
 
       - name: Lint
         run: bun run lint
+
+      - name: Format
+        run: bun run format
 
       - name: Unit tests
         run: bun run test:unit
@@ -122,7 +125,7 @@ jobs:
           pkill -f "start-standalone|standalone/server.js" || true
 
   # Advisory only: workspace typescript → @typescript/typescript6 (IDE). Does not gate PRs/Docker.
-  # CI truth remains `bun run typecheck` (TS7 via @typescript/native) in the Test job above.
+  # CI truth remains `bun check` (TS7 via @typescript/native) in the Test job above.
   typecheck-ide:
     name: Typecheck (IDE TS6, advisory)
     runs-on: ubuntu-latest

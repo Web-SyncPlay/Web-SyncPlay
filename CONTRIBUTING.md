@@ -18,13 +18,14 @@ bun run dev
 
 ## Checks before a PR
 
-| Command             | Notes                        |
-| ------------------- | ---------------------------- |
-| `bun run test:unit` | Prefer locally (no live app) |
-| `bun run typecheck` | CI gate (TypeScript **7**)   |
-| `bun run lint`      | ESLint                       |
+| Command             | Notes                                   |
+| ------------------- | --------------------------------------- |
+| `bun run test:unit` | Prefer locally (no live app)            |
+| `bun check`         | CI typecheck gate (TypeScript **7**)    |
+| `bun run lint`      | ESLint                                  |
+| `bun run format`    | Prettier check; fix with `format:write` |
 
-**TypeScript:** IDE uses TS **6**; CI uses TS **7**. Prefer fixing `bun run typecheck` failures. Details: [AGENTS.md](./AGENTS.md).
+**TypeScript:** IDE uses TS **6**; CI uses TS **7**. Prefer fixing `bun check` failures. Details: [AGENTS.md](./AGENTS.md).
 
 Integration / e2e / a11y need Valkey or a healthy app — see [README](./README.md#quick-start-development).
 

@@ -39,7 +39,7 @@ Agent-oriented map and dual TypeScript notes: [AGENTS.md](./AGENTS.md).
 | [Bun](https://bun.sh) | **1.4.2** (`packageManager` / CI)                        |
 | Node.js               | **≥ 26** (`engines.node`; Docker image / native tooling) |
 
-**TypeScript:** IDE = TS **6** (`typescript` → `@typescript/typescript6`); CI gate = TS **7** via `@typescript/native` (`bun run typecheck`). Prefer fixing issues that fail `typecheck`. Details: [AGENTS.md](./AGENTS.md).
+**TypeScript:** IDE = TS **6** (`typescript` → `@typescript/typescript6`); CI gate = TS **7** via `@typescript/native` (`bun check`). Prefer fixing issues that fail `bun check`. Details: [AGENTS.md](./AGENTS.md).
 
 ## Quick start (development)
 
@@ -54,8 +54,9 @@ Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
 | Script                                                                                                          | Purpose                                                     |
 | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `bun run typecheck`                                                                                             | CI TypeScript 7 gate                                        |
+| `bun check`                                                                                                     | CI TypeScript 7 gate                                        |
 | `bun run lint`                                                                                                  | ESLint                                                      |
+| `bun run format`                                                                                                | Prettier check (CI); fix with `bun run format:write`        |
 | `bun run test:unit`                                                                                             | Unit tests (no live app; prefer this locally)               |
 | `bun run test:integration`                                                                                      | Needs Valkey / `VALKEY_URL`                                 |
 | `bun run test`                                                                                                  | Full `bun test` suite (includes integration → needs Valkey) |
