@@ -5,7 +5,7 @@ import { SeekScrubber } from "@/components/panel/control/SeekScrubber"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { SkipBack, SkipForward } from "lucide-react"
+import { Pause, Play, SkipBack, SkipForward } from "lucide-react"
 
 function ControlHints(props: {
   authorizationHint?: string
@@ -112,7 +112,17 @@ export function ControlPanel(props: {
           onPause(elapsedMs)
         }}
       >
-        {paused ? "Play" : "Pause"}
+        {paused ? (
+          <>
+            <Play className="size-4" />
+            Play
+          </>
+        ) : (
+          <>
+            <Pause className="size-4" />
+            Pause
+          </>
+        )}
       </Button>
       <Button
         variant="outline"
