@@ -5,6 +5,41 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1] - 2026-10-13
+
+Patch release after `3.0.0`: playback sync hardening, Docker/standalone fixes,
+native playlist metadata, and a floating major Docker tag (`3`).
+
+### Added
+
+- **Playlist:** Probe native YouTube/Vimeo title and duration on add (client-side
+  embed probe; no yt-dlp).
+- **Docker tags:** CI also publishes the major semver tag (`3`) alongside full
+  (`3.0.1`) and major.minor (`3.0`).
+
+### Fixed
+
+- **Player sync:** Stop seek/sync loops under high RTT; harden catch-up and seek
+  lead; emit pause on intent; native iframe sync; multi-user identity bootstrap;
+  empty-state / provider teardown.
+- **Native providers:** Skip yt-dlp for YouTube/Vimeo resolves; treat blocked
+  CORS probes as unreachable.
+- **Docker / standalone:** Ensure `ws` is present in the standalone image for
+  `/api/ws`; use webpack for production builds under Next 16.4; standalone
+  `bun run start` path.
+- **CI:** Restore local-media SW artifact; quality-gate and e2e noise hardening.
+
+### Changed
+
+- Redis TTLs unified in code. Removed operator envs (values are ignored if set):
+  `YTDLP_CACHE_TTL_SECONDS`, `CONTROL_TOKEN_TTL_SECONDS`,
+  `WS_HEARTBEAT_INTERVAL_MS`.
+
+### Ops
+
+Floating `:3` tracks the latest 3.x image from CI; pin `:3.0.1` (or a digest)
+for reproducibility.
+
 ## [3.0.0] - 2026-10-11
 
 Full rewrite of Web-SyncPlay for operators and users. Themes below summarize
@@ -81,5 +116,6 @@ Greenfield redeploy from v2: **[docs/MIGRATION-v3.md](./docs/MIGRATION-v3.md)**.
 
 Prior stable line. See git tag `v2.0.1` and the README at that revision.
 
+[3.0.1]: https://github.com/Web-SyncPlay/Web-SyncPlay/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/Web-SyncPlay/Web-SyncPlay/compare/v2.0.1...v3.0.0
 [2.0.1]: https://github.com/Web-SyncPlay/Web-SyncPlay/releases/tag/v2.0.1

@@ -255,6 +255,7 @@ jobs:
             type=ref,event=tag
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
           labels: |
             org.opencontainers.image.title=Web-SyncPlay
             org.opencontainers.image.description=Watch any yt-dlp source in sync—or stream local files to everyone

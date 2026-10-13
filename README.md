@@ -20,7 +20,7 @@ Watch video or audio in sync with friends. One Next.js app: WebSocket realtime, 
 | [Architecture](#architecture-developers)                                | Source layout and media paths       |
 | [Contributing](#contributing)                                           | Setup, checks, PR expectations      |
 | [Security](#security--accessibility)                                    | Reporting and a11y gate             |
-| [Changelog](./CHANGELOG.md) / [Migrate from v2](./docs/MIGRATION-v3.md) | v3.0.0 notes and greenfield cutover |
+| [Changelog](./CHANGELOG.md) / [Migrate from v2](./docs/MIGRATION-v3.md) | v3.0.1 notes and greenfield cutover |
 
 Agent-oriented map and dual TypeScript notes: [AGENTS.md](./AGENTS.md).
 
@@ -71,17 +71,18 @@ Local Bun may skip the mediasoup native worker; the Docker image runs the in-pro
 
 ## Deploy
 
-Product version is the git tag, `package.json` `version`, and Docker semver tags published from CI.
+Product version is the git tag, `package.json` `version`, and Docker semver tags
+published from CI (`latest`, major `3`, major.minor `3.0`, and full `3.0.1`).
 
 ### Pull image
 
-Minimal `docker-compose.yml` (pin a release tag in production; `latest` tracks
-`main`):
+Minimal `docker-compose.yml` (pin a major tag such as `3` in production; use a
+full semver or digest for reproducibility; `latest` tracks `main`):
 
 ```yaml
 services:
   web:
-    image: websyncplay/websyncplay:3.0.0
+    image: websyncplay/websyncplay:3
     restart: unless-stopped
     environment:
       VALKEY_URL: redis://valkey:6379

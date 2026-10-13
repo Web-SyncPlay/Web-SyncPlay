@@ -59,12 +59,13 @@ Details and proxy snippets:
 
 ## Minimal compose shape
 
-Pin a release tag in production; `latest` tracks `main`.
+Pin a major tag such as `3` in production; use a full semver or digest for
+reproducibility; `latest` tracks `main`.
 
 ```yaml
 services:
   web:
-    image: websyncplay/websyncplay:3.0.0
+    image: websyncplay/websyncplay:3
     environment:
       VALKEY_URL: redis://valkey:6379
       PUBLIC_DOMAIN: web-syncplay.example
