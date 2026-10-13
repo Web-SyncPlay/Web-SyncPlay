@@ -5,6 +5,47 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.2] - 2026-10-13
+
+Patch release after `3.0.1`: multi-replica restart recovery, join/snapshot
+correctness, player volume and background-tab presence hardening, and room UI
+polish (seek scrubber, embed handoff, guest chrome).
+
+### Added
+
+- **Realtime:** Multi-replica restart recovery (drain-aware empty-room destroy,
+  readiness via `/api/ready`).
+- **Navbar:** Direct player embed button for guests.
+- **Users:** Role badge tooltips with promote/demote hints.
+- **Control:** Slider-style pill seek scrubber.
+
+### Fixed
+
+- **Join snapshots:** Avoid stale joiner snapshots from presence-only cache;
+  invalidate before build so new participants are not omitted.
+- **Empty-room destroy:** Re-check presence and `emptyAt` before destroy so a
+  concurrent join cannot lose the room (TOCTOU).
+- **Player volume:** Keep preferred volume across playlist source changes;
+  apply preferred level before `canplay` readiness and ignore provider `0`/`1`
+  defaults during a short settling window.
+- **Background tabs:** Smoother presence/loading while hidden; resume on focus;
+  users list shows “Loading” instead of “Playing” while media is not ready.
+- **Embed / room UI:** Unify identity hash handover for player and room popups;
+  restore guest chrome, rail height, and YouTube metadata; truncate playing
+  title to keep the navbar on one row; clarify guest control hint.
+- **Dev / CI:** `next dev` with webpack for ffmpeg.wasm; stop empty-room
+  `mock.module` pollution in CI.
+
+### Changed
+
+- Lint cleanup without silencing unused vars; slightly narrower users row.
+
+### Ops
+
+Floating `:3` / `:3.0` track the latest 3.x image from CI; pin `:3.0.2` (or a
+digest) for reproducibility. Use `GET /api/ready` (not only `/api/health`) for
+load-balancer readiness during rolling restarts.
+
 ## [3.0.1] - 2026-10-13
 
 Patch release after `3.0.0`: playback sync hardening, Docker/standalone fixes,
@@ -116,6 +157,7 @@ Greenfield redeploy from v2: **[docs/MIGRATION-v3.md](./docs/MIGRATION-v3.md)**.
 
 Prior stable line. See git tag `v2.0.1` and the README at that revision.
 
+[3.0.2]: https://github.com/Web-SyncPlay/Web-SyncPlay/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/Web-SyncPlay/Web-SyncPlay/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/Web-SyncPlay/Web-SyncPlay/compare/v2.0.1...v3.0.0
 [2.0.1]: https://github.com/Web-SyncPlay/Web-SyncPlay/releases/tag/v2.0.1
