@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
 import { cn } from "@/components/lib/utils"
 import { slider04ClassName } from "@/components/shadcn-space/slider/slider-04-classes"
 import { Slider } from "@/components/ui/slider"
 import { formatClockMs } from "@/shared/time-format"
+import { useState, type ReactNode } from "react"
 
 function getSliderTargetMs(values: number | readonly number[]): number {
   if (Array.isArray(values)) {
