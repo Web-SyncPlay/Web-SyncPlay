@@ -98,7 +98,6 @@ async function main() {
 
     await hostPage.waitForTimeout(1500)
     const hostUsers = await hostPage.locator("body").innerText()
-    const guestUsers = await guestPage.locator("body").innerText()
     record(
       "host sees guest participant",
       hostUsers.includes(guestId.slice(0, 8)),
@@ -106,13 +105,15 @@ async function main() {
         ? "guest username present"
         : "guest username missing",
     )
-    // Default join role is guest. Self card layout is:
-    // You / username / [icon+time · Ready|Offline|…] / Guest|Moderator
-    // (host Owner appears on the next card — keep this match line-anchored)
+    // Default join role is guest — assert via stable self-card attr (not body text).
+    const guestSelfRole = await guestPage
+      .locator("[data-self-role]")
+      .first()
+      .getAttribute("data-self-role")
     record(
       "guest is not owner",
-      /^You\n[^\n]+\n[^\n]+\n(Moderator|Guest)\b/m.test(guestUsers),
-      "guest self-card role",
+      guestSelfRole === "guest" || guestSelfRole === "moderator",
+      `guest self-card role=${guestSelfRole ?? "missing"}`,
     )
 
     // Guests lack playlist-panel "Add Media"; empty-state may still show a

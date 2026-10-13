@@ -88,14 +88,16 @@ function RoleBadge(props: {
   user: ParticipantState
   canToggle: boolean
   onToggle: () => void
+  isSelf?: boolean
 }) {
-  const { user, canToggle, onToggle } = props
+  const { user, canToggle, onToggle, isSelf = false } = props
   const description = roleDescription(user.role)
   const toggleHint = canToggle ? roleToggleHint(user.role) : null
+  const selfRoleAttrs = isSelf ? { "data-self-role": user.role } : null
 
   const badge =
     user.role === "owner" ? (
-      <Badge variant="default" className="capitalize">
+      <Badge variant="default" className="capitalize" {...selfRoleAttrs}>
         Owner
       </Badge>
     ) : canToggle ? (
@@ -112,11 +114,12 @@ function RoleBadge(props: {
             onToggle()
           }
         }}
+        {...selfRoleAttrs}
       >
         {user.role}
       </Badge>
     ) : (
-      <Badge variant="outline" className="capitalize">
+      <Badge variant="outline" className="capitalize" {...selfRoleAttrs}>
         {user.role}
       </Badge>
     )
@@ -300,6 +303,7 @@ export function UserItem({
           user={user}
           canToggle={canToggleRole}
           onToggle={toggleRole}
+          isSelf={isSelf}
         />
       </ItemActions>
     </Item>
