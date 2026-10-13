@@ -1,9 +1,17 @@
 import type { RoomState } from "@/contracts/types"
 import type { RoomStateStorePort } from "@/server/ports"
-import { afterEach, describe, expect, mock, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import {
+  buildSanitizedSnapshot,
+  resetSnapshotCacheForTests,
+} from "./snapshot-build"
+
+beforeEach(() => {
+  resetSnapshotCacheForTests()
+})
 
 afterEach(() => {
-  mock.restore()
+  resetSnapshotCacheForTests()
 })
 
 function minimalState(overrides?: Partial<RoomState>): RoomState {
@@ -52,19 +60,10 @@ function minimalState(overrides?: Partial<RoomState>): RoomState {
 
 describe("buildSanitizedSnapshot", () => {
   test("parallel fetch and short-lived cache hit", async () => {
-    mock.module("@/server/realtime/broadcast/presence-seq", () => ({
-      peekPresenceRevision: async () => 9,
-      nextPresenceRevision: async () => 10,
-      clearPresenceSeqFallback: () => {},
-      resetPresenceSeqFallbackForTests: () => {},
-    }))
-
-    const { buildSanitizedSnapshot, resetSnapshotCacheForTests } =
-      await import("@/server/realtime/broadcast/snapshot-build")
-    resetSnapshotCacheForTests()
-
+    // Unique room id so a live Valkey presenceSeq (CI) does not collide.
+    const roomId = `snap-cache-${crypto.randomUUID()}`
     let getCalls = 0
-    const state = minimalState()
+    const state = minimalState({ roomId })
     const store = {
       get: async () => {
         getCalls += 1
@@ -73,13 +72,13 @@ describe("buildSanitizedSnapshot", () => {
       getPresenceDataAll: async () => ({}),
     } as unknown as RoomStateStorePort
 
-    const first = await buildSanitizedSnapshot(store, "room-1")
-    const second = await buildSanitizedSnapshot(store, "room-1")
+    const first = await buildSanitizedSnapshot(store, roomId)
+    const second = await buildSanitizedSnapshot(store, roomId)
 
     expect(first).not.toBeNull()
     expect(second).toBe(first)
     expect(first?.generation).toBe(3)
-    expect(first?.presenceRevision).toBe(9)
+    expect(first?.presenceRevision).toBe(second?.presenceRevision)
     expect(getCalls).toBe(1)
   })
 })

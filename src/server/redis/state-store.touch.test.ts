@@ -39,6 +39,7 @@ describe("RoomStateStore.touchWsPresence throttle", () => {
       keys.roomPresenceData(roomId),
       keys.roomPresenceSeq(roomId),
       keys.roomIdentity(roomId),
+      keys.roomEmptyAt(roomId),
     ]
 
     await store.touchWsPresence(roomId, "user-a")

@@ -1,9 +1,11 @@
 import type { RoomState } from "@/contracts/types"
 import { setRoomBroadcastBusForTests } from "@/server/realtime/broadcast/room-broadcast-bus"
+import { setNoteEmptyPresenceForTests } from "@/server/realtime/services/empty-room"
 import { afterEach, expect, mock, test } from "bun:test"
 
 afterEach(() => {
   mock.restore()
+  setNoteEmptyPresenceForTests(null)
   setRoomBroadcastBusForTests(null)
 })
 
@@ -201,13 +203,7 @@ test("cleanup removes participants past prune grace via Redis prune path", async
 })
 
 function mockEmptyRoomDestroy(shouldDestroy: boolean) {
-  mock.module("@/server/realtime/services/empty-room", () => ({
-    noteEmptyPresenceAndShouldDestroy: async () => shouldDestroy,
-    clearRoomEmptyMarker: async () => {},
-    markRoomEmptyIfAbsent: async () => {},
-    isEmptyRoomGraceElapsed: async () => shouldDestroy,
-    mayDestroyEmptyRoomOnThisProcess: () => true,
-  }))
+  setNoteEmptyPresenceForTests(async () => shouldDestroy)
 }
 
 test("cleanup marks everyone offline when WS presence is empty (crash ghosts)", async () => {

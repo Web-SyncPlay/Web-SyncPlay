@@ -3,6 +3,7 @@ import {
   resetPresenceSeqFallbackForTests,
   setRoomBroadcastBusForTests,
 } from "@/server/realtime/broadcast/room-broadcast-bus"
+import { resetSnapshotCacheForTests } from "@/server/realtime/broadcast/snapshot-build"
 import {
   createFakeWs,
   createRoomState,
@@ -16,6 +17,7 @@ describe("RoomBroadcastBus", () => {
   afterEach(() => {
     setRoomBroadcastBusForTests(null)
     resetPresenceSeqFallbackForTests()
+    resetSnapshotCacheForTests()
     mock.restore()
   })
 

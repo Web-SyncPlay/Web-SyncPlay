@@ -1,40 +1,47 @@
 import { markProcessDraining, resetLifecycleForTests } from "@/server/lifecycle"
 import { keys } from "@/server/redis/keys"
 import { EMPTY_ROOM_DESTROY_GRACE_MS } from "@/shared/room-lifecycle"
-import { afterEach, describe, expect, mock, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import {
+  clearRoomEmptyMarker,
+  isEmptyRoomGraceElapsed,
+  markRoomEmptyIfAbsent,
+  noteEmptyPresenceAndShouldDestroy,
+  setEmptyAtClientForTests,
+  setNoteEmptyPresenceForTests,
+} from "./empty-room"
 
-afterEach(() => {
-  mock.restore()
-  resetLifecycleForTests({ exitProcess: false })
-})
-
-function mockEmptyAtStore(initial?: Map<string, string>) {
+function installMemoryEmptyAtStore(initial?: Map<string, string>) {
   const store = initial ?? new Map<string, string>()
-  mock.module("@/server/redis/client", () => ({
-    getCommandClient: async () => ({
-      set: async (key: string, value: string, opts?: { NX?: boolean }) => {
-        if (opts?.NX && store.has(key)) return null
-        store.set(key, value)
-        return "OK"
-      },
-      get: async (key: string) => store.get(key) ?? null,
-      del: async (key: string) => {
-        store.delete(key)
-        return 1
-      },
-    }),
-  }))
+  setEmptyAtClientForTests({
+    set: async (key, value, opts) => {
+      if (opts?.NX && store.has(key)) return null
+      store.set(key, value)
+      return "OK"
+    },
+    get: async (key) => store.get(key) ?? null,
+    del: async (key) => {
+      store.delete(key)
+      return 1
+    },
+  })
   return store
 }
 
+beforeEach(() => {
+  setNoteEmptyPresenceForTests(null)
+  resetLifecycleForTests({ exitProcess: false })
+})
+
+afterEach(() => {
+  setEmptyAtClientForTests(null)
+  setNoteEmptyPresenceForTests(null)
+  resetLifecycleForTests({ exitProcess: false })
+})
+
 describe("empty-room grace", () => {
   test("mark NX then clear; grace not elapsed immediately", async () => {
-    mockEmptyAtStore()
-    const {
-      markRoomEmptyIfAbsent,
-      clearRoomEmptyMarker,
-      isEmptyRoomGraceElapsed,
-    } = await import("./empty-room")
+    installMemoryEmptyAtStore()
 
     const now = Date.now()
     await markRoomEmptyIfAbsent("room-a", now)
@@ -45,26 +52,22 @@ describe("empty-room grace", () => {
   })
 
   test("grace elapsed after EMPTY_ROOM_DESTROY_GRACE_MS", async () => {
-    const store = mockEmptyAtStore()
+    const store = installMemoryEmptyAtStore()
     const emptyAt = Date.now() - EMPTY_ROOM_DESTROY_GRACE_MS - 500
     store.set(keys.roomEmptyAt("room-b"), String(emptyAt))
-
-    const { isEmptyRoomGraceElapsed, noteEmptyPresenceAndShouldDestroy } =
-      await import("./empty-room")
 
     expect(await isEmptyRoomGraceElapsed("room-b")).toBe(true)
     expect(await noteEmptyPresenceAndShouldDestroy("room-b")).toBe(true)
   })
 
   test("draining process never destroys", async () => {
-    const store = mockEmptyAtStore()
+    const store = installMemoryEmptyAtStore()
     store.set(
       keys.roomEmptyAt("room-c"),
       String(Date.now() - EMPTY_ROOM_DESTROY_GRACE_MS - 1_000),
     )
     markProcessDraining()
 
-    const { noteEmptyPresenceAndShouldDestroy } = await import("./empty-room")
     expect(await noteEmptyPresenceAndShouldDestroy("room-c")).toBe(false)
   })
 })

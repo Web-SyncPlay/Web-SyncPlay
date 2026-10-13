@@ -7,6 +7,7 @@ import {
   applyUserWentOffline,
   handleSocketDisconnect,
 } from "@/server/realtime/services/disconnect"
+import { setNoteEmptyPresenceForTests } from "@/server/realtime/services/empty-room"
 import {
   createPlaylistItem,
   createRoomState,
@@ -17,6 +18,7 @@ import { afterEach, describe, expect, mock, test } from "bun:test"
 describe("disconnect lifecycle", () => {
   afterEach(() => {
     mock.restore()
+    setNoteEmptyPresenceForTests(null)
     setRoomBroadcastBusForTests(null)
   })
   test("applyUserWentOffline marks participant, invalidates local media, transfers ownership", () => {
@@ -54,13 +56,7 @@ describe("disconnect lifecycle", () => {
   })
 
   test("handleSocketDisconnect keeps empty rooms during emptyAt grace", async () => {
-    mock.module("@/server/realtime/services/empty-room", () => ({
-      noteEmptyPresenceAndShouldDestroy: async () => false,
-      clearRoomEmptyMarker: async () => {},
-      markRoomEmptyIfAbsent: async () => {},
-      isEmptyRoomGraceElapsed: async () => false,
-      mayDestroyEmptyRoomOnThisProcess: () => true,
-    }))
+    setNoteEmptyPresenceForTests(async () => false)
     const store = new InMemoryRoomStateStore(createRoomState())
     createTestBroadcastBus(store)
     store.presence.set("room-1", new Map())
@@ -78,13 +74,7 @@ describe("disconnect lifecycle", () => {
   })
 
   test("handleSocketDisconnect deletes empty rooms after grace outside WATCH", async () => {
-    mock.module("@/server/realtime/services/empty-room", () => ({
-      noteEmptyPresenceAndShouldDestroy: async () => true,
-      clearRoomEmptyMarker: async () => {},
-      markRoomEmptyIfAbsent: async () => {},
-      isEmptyRoomGraceElapsed: async () => true,
-      mayDestroyEmptyRoomOnThisProcess: () => true,
-    }))
+    setNoteEmptyPresenceForTests(async () => true)
     const store = new InMemoryRoomStateStore(createRoomState())
     createTestBroadcastBus(store)
     store.presence.set("room-1", new Map())
