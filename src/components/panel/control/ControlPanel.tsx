@@ -79,9 +79,9 @@ export function ControlPanel(props: {
     />
   )
 
-  const controls = (
+  const transport = (
     <>
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <Button
           variant="outline"
           className={touchButtonClass}
@@ -90,19 +90,6 @@ export function ControlPanel(props: {
           onClick={() => onSelectAdjacent("previous")}
         >
           <SkipBack className="size-4" />
-        </Button>
-        <Button
-          className={cn("col-span-3", touchButtonClass)}
-          disabled={controlsDisabled}
-          onClick={() => {
-            if (paused) {
-              onPlay(elapsedMs)
-              return
-            }
-            onPause(elapsedMs)
-          }}
-        >
-          {paused ? "Play" : "Pause"}
         </Button>
         <Button
           variant="outline"
@@ -114,6 +101,19 @@ export function ControlPanel(props: {
           <SkipForward className="size-4" />
         </Button>
       </div>
+      <Button
+        className={cn("w-full", touchButtonClass)}
+        disabled={controlsDisabled}
+        onClick={() => {
+          if (paused) {
+            onPlay(elapsedMs)
+            return
+          }
+          onPause(elapsedMs)
+        }}
+      >
+        {paused ? "Play" : "Pause"}
+      </Button>
       <div className="grid grid-cols-2 gap-2">
         <Button
           variant="outline"
@@ -132,16 +132,20 @@ export function ControlPanel(props: {
           +10s
         </Button>
       </div>
-      <SeekScrubber
-        currentName={currentName}
-        elapsedMs={elapsedMs}
-        totalDurationMs={totalDurationMs}
-        disabled={controlsDisabled}
-        trailing={!title ? viewOnlyBadge : null}
-        onSeekPreview={onSeekPreview}
-        onSeekCommit={onSeekCommit}
-      />
     </>
+  )
+
+  const controls = (
+    <SeekScrubber
+      currentName={currentName}
+      elapsedMs={elapsedMs}
+      totalDurationMs={totalDurationMs}
+      disabled={controlsDisabled}
+      trailing={!title ? viewOnlyBadge : null}
+      transport={transport}
+      onSeekPreview={onSeekPreview}
+      onSeekCommit={onSeekCommit}
+    />
   )
 
   if (variant === "bar") {

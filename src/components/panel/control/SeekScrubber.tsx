@@ -20,6 +20,8 @@ export function SeekScrubber(props: {
   totalDurationMs: number | null
   disabled: boolean
   trailing?: ReactNode
+  /** Transport controls rendered in the shared row beside the seek track. */
+  transport?: ReactNode
   className?: string
   onSeekPreview: (targetMs: number, active: boolean) => void
   onSeekCommit: (targetMs: number) => void
@@ -30,6 +32,7 @@ export function SeekScrubber(props: {
     totalDurationMs,
     disabled,
     trailing,
+    transport,
     className,
     onSeekPreview,
     onSeekCommit,
@@ -49,55 +52,76 @@ export function SeekScrubber(props: {
     : 0
   const value = [clampedMs]
   const durationLabel = durationKnown ? formatClockMs(totalDurationMs) : "--:--"
+  const clocksLabel = `${formatClockMs(clampedMs)} / ${durationLabel}`
+
+  const clocks = (
+    <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+      {clocksLabel}
+    </span>
+  )
+
+  const slider = (
+    <Slider
+      min={0}
+      max={durationKnown ? totalDurationMs : 1}
+      value={value}
+      className={cn(
+        slider04ClassName,
+        transport ? "h-10 sm:h-full sm:min-h-10" : undefined,
+      )}
+      aria-label="Seek playback position"
+      aria-valuetext={
+        durationKnown
+          ? formatClockMs(clampedMs)
+          : "Duration unknown; scrubbing unavailable"
+      }
+      disabled={disabled || !durationKnown}
+      onValueChange={(values) => {
+        if (disabled || !durationKnown) {
+          return
+        }
+        const targetMs = getSliderTargetMs(values)
+        setScrubbing(true)
+        setPreviewMs(targetMs)
+        onSeekPreview(targetMs, true)
+      }}
+      onValueCommitted={(values) => {
+        if (disabled || !durationKnown) {
+          return
+        }
+        const targetMs = getSliderTargetMs(values)
+        setPreviewMs(targetMs)
+        setScrubbing(false)
+        onSeekPreview(targetMs, false)
+        onSeekCommit(targetMs)
+      }}
+    />
+  )
 
   return (
     <div className={cn("w-full", className)}>
       <div className="mb-2 flex items-center gap-2">
-        <p className="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight text-foreground">
+        <p className="min-w-0 flex-1 truncate text-base font-semibold tracking-tight text-foreground">
           {currentName ?? "No media selected"}
         </p>
         {trailing}
-        <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
-          {durationLabel}
-        </span>
+        <span className="hidden sm:inline">{clocks}</span>
       </div>
 
-      <Slider
-        min={0}
-        max={durationKnown ? totalDurationMs : 1}
-        value={value}
-        className={slider04ClassName}
-        aria-label="Seek playback position"
-        aria-valuetext={
-          durationKnown
-            ? formatClockMs(clampedMs)
-            : "Duration unknown; scrubbing unavailable"
-        }
-        disabled={disabled || !durationKnown}
-        onValueChange={(values) => {
-          if (disabled || !durationKnown) {
-            return
-          }
-          const targetMs = getSliderTargetMs(values)
-          setScrubbing(true)
-          setPreviewMs(targetMs)
-          onSeekPreview(targetMs, true)
-        }}
-        onValueCommitted={(values) => {
-          if (disabled || !durationKnown) {
-            return
-          }
-          const targetMs = getSliderTargetMs(values)
-          setPreviewMs(targetMs)
-          setScrubbing(false)
-          onSeekPreview(targetMs, false)
-          onSeekCommit(targetMs)
-        }}
-      />
+      {transport ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-3">
+          <div className="flex w-full shrink-0 flex-col gap-2 sm:w-40">
+            {transport}
+          </div>
+          <div className="flex min-h-0 min-w-0 flex-1 items-stretch">
+            {slider}
+          </div>
+        </div>
+      ) : (
+        slider
+      )}
 
-      <p className="mt-2 text-xl font-medium tracking-tight text-foreground tabular-nums">
-        {formatClockMs(clampedMs)}
-      </p>
+      <div className="mt-2 sm:hidden">{clocks}</div>
     </div>
   )
 }

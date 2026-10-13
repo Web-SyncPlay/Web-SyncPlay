@@ -194,7 +194,7 @@ export function SiteNavbar(props: SiteNavbarProps) {
           type="button"
           variant="outline"
           size="sm"
-          className="h-8 shrink-0 touch-manipulation gap-1.5 max-lg:w-8 max-lg:px-0"
+          className="h-8 shrink-0 touch-manipulation gap-1.5 max-sm:w-8 max-sm:px-0"
           aria-label={copied ? "Copied" : "Copy room link"}
           onClick={onCopyShareUrl}
         >
@@ -203,7 +203,7 @@ export function SiteNavbar(props: SiteNavbarProps) {
           ) : (
             <Copy className="size-3.5" />
           )}
-          <span className="hidden lg:inline">
+          <span className="hidden sm:inline">
             {copied ? "Copied" : "Copy room link"}
           </span>
         </Button>
