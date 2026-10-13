@@ -26,47 +26,81 @@ function playbackBadgeVariant(
   return "secondary"
 }
 
+function roleDescription(role: ParticipantState["role"]): string {
+  switch (role) {
+    case "owner":
+      return "Room owner — controls playback, playlist, and who can moderate."
+    case "moderator":
+      return "Moderator — can control playback and the playlist."
+    case "guest":
+      return "Guest — can watch, but cannot control playback or the playlist."
+  }
+}
+
+function roleToggleHint(role: ParticipantState["role"]): string | null {
+  if (role === "moderator") return "Click to demote to guest."
+  if (role === "guest") return "Click to promote to moderator."
+  return null
+}
+
 function RoleBadge(props: {
   user: ParticipantState
   canToggle: boolean
   onToggle: () => void
 }) {
   const { user, canToggle, onToggle } = props
+  const description = roleDescription(user.role)
+  const toggleHint = canToggle ? roleToggleHint(user.role) : null
 
-  if (user.role === "owner") {
-    return (
+  const badge =
+    user.role === "owner" ? (
       <Badge variant="default" className="capitalize">
         Owner
       </Badge>
-    )
-  }
-
-  if (!canToggle) {
-    return (
+    ) : canToggle ? (
+      <Badge
+        variant="outline"
+        className="cursor-pointer capitalize"
+        role="button"
+        tabIndex={0}
+        aria-label={`${description} ${toggleHint}`}
+        onClick={onToggle}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault()
+            onToggle()
+          }
+        }}
+      >
+        {user.role}
+      </Badge>
+    ) : (
       <Badge variant="outline" className="capitalize">
         {user.role}
       </Badge>
     )
-  }
 
   return (
-    <Badge
-      variant="outline"
-      className="cursor-pointer capitalize"
-      role="button"
-      tabIndex={0}
-      title="Click to toggle role"
-      aria-label={`Role ${user.role}, click to toggle`}
-      onClick={onToggle}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault()
-          onToggle()
+    <Tooltip>
+      {/* Span trigger avoids nesting a button when the badge is toggleable. */}
+      <TooltipTrigger className="inline-flex" render={<span />}>
+        {badge}
+      </TooltipTrigger>
+      <TooltipContent
+        className={
+          toggleHint ? "flex-col items-start gap-0.5 text-left" : undefined
         }
-      }}
-    >
-      {user.role}
-    </Badge>
+      >
+        {toggleHint ? (
+          <>
+            <span>{description}</span>
+            <span>{toggleHint}</span>
+          </>
+        ) : (
+          description
+        )}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
