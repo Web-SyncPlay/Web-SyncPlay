@@ -33,32 +33,14 @@ export function PlayerPanelGlobalStyles() {
         pointer-events: none !important;
       }
 
-      .guest-controls-guard .vds-controls,
+      /* Gestures stay blocked for guests (tap-to-seek / click-to-play). */
       .guest-controls-guard .vds-gesture {
         pointer-events: none !important;
       }
 
-      /* Local-only: volume, captions toggle, and settings (quality/audio/CC). */
-      .guest-controls-guard .vds-controls .vds-mute-button,
-      .guest-controls-guard .vds-controls .vds-volume-slider,
-      .guest-controls-guard .vds-controls .vds-volume-popup,
-      .guest-controls-guard .vds-controls .vds-volume-group,
-      .guest-controls-guard .vds-controls .vds-caption-button,
-      .guest-controls-guard .vds-controls .vds-menu-button,
-      .guest-controls-guard .vds-controls [data-media-control="mute-button"],
-      .guest-controls-guard .vds-controls [data-media-control="volume-slider"],
-      .guest-controls-guard .vds-controls [data-media-control="volume-popup"],
-      .guest-controls-guard .vds-controls [data-media-control="volume-group"],
-      .guest-controls-guard .vds-controls [data-media-control="caption-button"],
-      .guest-controls-guard .vds-controls [data-media-control="settings"],
-      .guest-controls-guard .vds-controls [data-media-control="settings-menu"],
-      .guest-controls-guard .vds-controls [aria-label*="settings" i],
-      .guest-controls-guard .vds-controls [aria-label*="captions" i],
-      .guest-controls-guard .vds-controls [aria-label*="subtitles" i] {
-        pointer-events: auto !important;
-      }
-
-      /* Room-synced transport stays host/moderator-only. */
+      /* Room-synced transport stays host/moderator-only.
+       * Local chrome (mute/volume/captions/settings/fullscreen) uses Vidstack's
+       * normal pointer-events — do not blanket-disable .vds-controls. */
       .guest-controls-guard .vds-controls .vds-time-slider,
       .guest-controls-guard .vds-controls .vds-play-button,
       .guest-controls-guard .vds-controls .vds-seek-button,

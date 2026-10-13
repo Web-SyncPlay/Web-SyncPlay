@@ -118,7 +118,7 @@ function SiteNavbarBrand(props: { roomId?: string }) {
 
 function SiteNavbarChrome(props: { children: ReactNode; className?: string }) {
   return (
-    <header className="sticky top-0 z-20 border-b bg-background/95">
+    <header className="sticky top-0 z-40 border-b bg-background/95">
       <div
         className={cn(
           "flex flex-wrap items-center gap-2 px-3 py-2 text-sm",

@@ -130,7 +130,7 @@ function RoomClientReady(props: {
         >
           <PlayerPanel
             {...panelProps}
-            className="min-h-0 w-full"
+            className="min-h-0 h-auto w-full"
             // Playlist rail already has add controls — avoid a duplicate form.
             showEmptyAddControls={!(railOpen && railTab === "playlist")}
           />
@@ -140,7 +140,7 @@ function RoomClientReady(props: {
               hideTabBar
               tab={railTab}
               onTabChange={setRailTab}
-              className="min-h-0 max-h-[70vh] overflow-hidden lg:max-h-none"
+              className="min-h-0 max-h-[70vh] overflow-hidden lg:h-0 lg:max-h-none lg:min-h-full"
             />
           ) : null}
         </div>

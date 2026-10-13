@@ -138,6 +138,8 @@ export function NativePlaylistMetadataProbeHost(props: {
         paused
         autoPlay={false}
         playsInline
+        // Off-screen probe never intersects; default load="visible" never loads.
+        load="eager"
         preload="metadata"
         volume={0}
         className="size-px"
