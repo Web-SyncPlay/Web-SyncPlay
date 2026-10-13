@@ -1,17 +1,15 @@
 /**
  * Boot background maintenance without waiting for a WebSocket upgrade.
  * Without this, ghost rooms after a crash linger until someone opens a room.
+ *
+ * Node-only work lives in `./instrumentation-node` so webpack can eliminate it
+ * from the edge instrumentation graph (avoids redis/`node:` builtin errors).
  */
 export async function register() {
-  if (process.env.NEXT_RUNTIME !== "nodejs") return
-  // Avoid Valkey during `next build` (no Redis in the image build stage).
-  if (process.env.NEXT_PHASE === "phase-production-build") return
-
-  try {
-    const { ensureBackgroundMaintenance } = await import("@/server/maintenance")
-    await ensureBackgroundMaintenance()
-    console.info("[maintenance] instrumentation boot ok")
-  } catch (error) {
-    console.error("[maintenance] instrumentation boot failed", error)
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { registerNodeInstrumentation } = await import(
+      "./instrumentation-node"
+    )
+    await registerNodeInstrumentation()
   }
 }

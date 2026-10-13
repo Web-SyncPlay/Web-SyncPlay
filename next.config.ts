@@ -11,18 +11,17 @@ const config: NextConfig = {
   reactStrictMode: true,
   reactCompiler: true,
   // Native C++ worker + ws (webpack emits import("ws"); must resolve at runtime).
-  serverExternalPackages: ["mediasoup", "ws"],
+  // redis: keep external under webpack so @redis/client is not bundled against
+  // a graph that cannot resolve Node's `stream`.
+  serverExternalPackages: ["mediasoup", "ws", "redis", "@redis/client"],
   // Bun/Alpine file tracing can omit runtime-external packages from standalone;
   // force-include ws for /api/ws (used by the WebSocket upgrade path).
   outputFileTracingIncludes: {
     "/api/ws": ["./node_modules/ws/**/*"],
   },
-  // Production builds use `next build --webpack` (see package.json): Turbopack
+  // `dev` and `build` both pass `--webpack` (see package.json): Turbopack
   // fails on @ffmpeg/ffmpeg's `new Worker(new URL(dynamic, import.meta.url))`
   // used by local-media ABR packaging.
-  experimental: {
-    turbopackFileSystemCacheForDev: true,
-  },
 }
 
 export default config

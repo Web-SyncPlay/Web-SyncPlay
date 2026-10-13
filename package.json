@@ -10,7 +10,7 @@
     "postinstall": "bun scripts/prepare-static-assets.ts",
     "prepare:assets": "bun scripts/prepare-static-assets.ts",
     "check:local-media-sw": "bun scripts/build-local-media-sw.ts --verify",
-    "dev": "NEXT_TELEMETRY_DISABLED=1 next dev",
+    "dev": "NEXT_TELEMETRY_DISABLED=1 next dev --webpack",
     "prebuild": "bun scripts/prepare-static-assets.ts",
     "build": "NEXT_TELEMETRY_DISABLED=1 next build --webpack",
     "start": "bun scripts/start-standalone.ts",
