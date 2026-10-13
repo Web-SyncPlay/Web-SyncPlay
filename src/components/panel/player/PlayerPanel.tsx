@@ -117,8 +117,7 @@ const PlayerPanelShell = memo(
         />
         {!canControlPlayback && (
           <div className="guest-view-hint pointer-events-none absolute left-3 top-3 z-20 rounded-md bg-black/70 px-2 py-1 text-xs text-white/90">
-            Guest view — use player settings for tracks, captions, quality &
-            audio delay
+            Guest — playback controls disabled
           </div>
         )}
         {isMuted && Boolean(activePlaybackSrc) && (
