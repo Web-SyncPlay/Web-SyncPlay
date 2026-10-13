@@ -2,23 +2,30 @@ import { createRoomState } from "@/shared/test-utils/room-fixtures"
 import { describe, expect, mock, test } from "bun:test"
 import { createPlaybackLifecycleHandlers } from "./create-playback-lifecycle-handlers"
 import { markTransportIntent, type TransportIntent } from "./transport-intent"
+import { isVolumeSettling } from "./use-player-volume"
 
-function createDeps(config: { roomPaused: boolean }) {
+function createDeps(config: {
+  roomPaused: boolean
+  player?: { volume: number; muted: boolean; paused?: boolean }
+  preferredVolume?: number
+  isMediaReadyRef?: { current: boolean }
+}) {
   const enforceServerPlaybackState = mock(() => {})
   const transportIntentRef: { current: TransportIntent | null } = {
     current: null,
   }
+  const isMediaReadyRef = config.isMediaReadyRef ?? { current: true }
   const handlers = createPlaybackLifecycleHandlers({
-    playerRef: { current: null },
+    playerRef: { current: (config.player as never) ?? null },
     current: undefined,
     canControlPlayback: true,
     isMuted: false,
-    preferredVolume: 1,
+    preferredVolume: config.preferredVolume ?? 1,
     playbackRef: {
       current: { ...createRoomState().playback, paused: config.roomPaused },
     },
     transportIntentRef,
-    isMediaReadyRef: { current: true },
+    isMediaReadyRef,
     bufferingSinceRef: { current: null },
     participantStatusErrorRef: { current: null },
     pendingSyncRef: { current: null },
@@ -30,7 +37,12 @@ function createDeps(config: { roomPaused: boolean }) {
     setIsBuffering: () => {},
     setPlaybackError: () => {},
   })
-  return { handlers, enforceServerPlaybackState, transportIntentRef }
+  return {
+    handlers,
+    enforceServerPlaybackState,
+    transportIntentRef,
+    isMediaReadyRef,
+  }
 }
 
 describe("createPlaybackLifecycleHandlers transport intent", () => {
@@ -82,5 +94,37 @@ describe("createPlaybackLifecycleHandlers transport intent", () => {
     markTransportIntent(transportIntentRef, true)
     handlers.onPlaying()
     expect(enforceServerPlaybackState).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("createPlaybackLifecycleHandlers onCanPlay volume", () => {
+  test("applies preferred volume before flipping mediaReady and arms settling", () => {
+    let volume = 1
+    let readyWhenVolumeSet = true
+    const isMediaReadyRef = { current: false }
+    const player = {
+      muted: false,
+      paused: true,
+      get volume() {
+        return volume
+      },
+      set volume(value: number) {
+        volume = value
+        readyWhenVolumeSet = isMediaReadyRef.current
+      },
+    }
+    const { handlers } = createDeps({
+      roomPaused: true,
+      player,
+      preferredVolume: 0.4,
+      isMediaReadyRef,
+    })
+
+    handlers.onCanPlay()
+
+    expect(volume).toBe(0.4)
+    expect(readyWhenVolumeSet).toBe(false)
+    expect(isMediaReadyRef.current).toBe(true)
+    expect(isVolumeSettling(isMediaReadyRef)).toBe(true)
   })
 })

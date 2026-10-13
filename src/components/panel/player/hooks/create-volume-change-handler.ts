@@ -1,5 +1,8 @@
 import type { SyncedMediaPlayerHandlerDeps } from "./synced-media-player-handler-types"
-import { shouldPersistVolumeChange } from "./use-player-volume"
+import {
+  isVolumeSettling,
+  shouldPersistVolumeChange,
+} from "./use-player-volume"
 
 type VolumeChangeDeps = Pick<
   SyncedMediaPlayerHandlerDeps,
@@ -35,6 +38,7 @@ export function createVolumeChangeHandler(deps: VolumeChangeDeps) {
       }
 
       const mediaReady = isMediaReadyRef.current
+      const volumeSettling = isVolumeSettling(isMediaReadyRef)
       // Provider/HTML default is volume=1 and props are queued until canplay.
       // Re-assert preference so the UI does not stick at 100% across source changes.
       if (
@@ -43,6 +47,7 @@ export function createVolumeChangeHandler(deps: VolumeChangeDeps) {
           nextMuted: detail.muted,
           preferredVolume,
           mediaReady,
+          volumeSettling,
         })
       ) {
         const player = playerRef.current
@@ -51,7 +56,7 @@ export function createVolumeChangeHandler(deps: VolumeChangeDeps) {
         }
       }
 
-      handleVolumeChange({ ...detail, mediaReady })
+      handleVolumeChange({ ...detail, mediaReady, volumeSettling })
     },
   }
 }

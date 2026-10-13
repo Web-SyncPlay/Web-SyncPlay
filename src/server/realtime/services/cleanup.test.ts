@@ -1,6 +1,8 @@
 import type { RoomState } from "@/contracts/types"
 import { setRoomBroadcastBusForTests } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { setNoteEmptyPresenceForTests } from "@/server/realtime/services/empty-room"
+import { keys } from "@/server/redis/keys"
+import { EMPTY_ROOM_DESTROY_GRACE_MS } from "@/shared/room-lifecycle"
 import { afterEach, expect, mock, test } from "bun:test"
 
 afterEach(() => {
@@ -244,8 +246,13 @@ test("cleanup marks everyone offline when WS presence is empty (crash ghosts)", 
 })
 
 test("cleanup destroys empty rooms after emptyAt grace elapses", async () => {
-  mockRedisPruneIndex()
+  const { grace } = mockRedisPruneIndex()
   mockEmptyRoomDestroy(true)
+  // Confirm gate re-reads emptyAt — seed past-grace marker (join would clear it).
+  grace.set(
+    keys.roomEmptyAt("room-1"),
+    String(Date.now() - EMPTY_ROOM_DESTROY_GRACE_MS - 1_000),
+  )
   const { cleanupInactiveRooms: cleanup } = await import("./cleanup")
   const state = createState()
   state.participants = {}
@@ -275,6 +282,40 @@ test("cleanup destroys empty rooms after emptyAt grace elapses", async () => {
   expect(deletedDuringMutate).toBe(false)
   expect(deleted).toBe(true)
   expect(result.removedRooms).toBe(1)
+})
+
+test("cleanup aborts destroy when presence returns before confirm", async () => {
+  const { grace } = mockRedisPruneIndex()
+  mockEmptyRoomDestroy(true)
+  grace.set(
+    keys.roomEmptyAt("room-1"),
+    String(Date.now() - EMPTY_ROOM_DESTROY_GRACE_MS - 1_000),
+  )
+  const { cleanupInactiveRooms: cleanup } = await import("./cleanup")
+  const state = createState()
+  state.participants = {}
+  let deleted = false
+  let presenceReads = 0
+
+  const fakeStore = createCleanupStore({
+    state,
+    presence: new Set(),
+    get: async () => null,
+    onDelete: () => {
+      deleted = true
+    },
+  })
+  fakeStore.readWsPresenceUserIds = async () => {
+    presenceReads += 1
+    // First read (sweep): empty. Confirm re-read: joiner arrived.
+    return presenceReads === 1 ? new Set() : new Set(["joiner"])
+  }
+
+  const result = await cleanup(fakeStore as never)
+
+  expect(deleted).toBe(false)
+  expect(result.removedRooms).toBe(0)
+  expect(grace.has(keys.roomEmptyAt("room-1"))).toBe(false)
 })
 
 test("cleanup does not destroy empty rooms during emptyAt grace", async () => {

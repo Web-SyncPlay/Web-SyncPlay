@@ -17,6 +17,28 @@ export type PlayerVolumeChangeDetail = {
   muted: boolean
   /** False while a new source is loading (Vidstack queues volume until canplay). */
   mediaReady?: boolean
+  /** True during the short post-canplay window that ignores provider 0/1 defaults. */
+  volumeSettling?: boolean
+}
+
+/** How long after canplay extreme provider defaults (0/1) must not clobber preference. */
+export const VOLUME_SETTLING_MS = 750
+
+const volumeSettlingUntilByReadyRef = new WeakMap<object, number>()
+
+/** Mark a short post-canplay window where volume=0/1 defaults are ignored. */
+export function markVolumeSettling(
+  mediaReadyRef: object,
+  durationMs = VOLUME_SETTLING_MS,
+): void {
+  volumeSettlingUntilByReadyRef.set(mediaReadyRef, Date.now() + durationMs)
+}
+
+export function isVolumeSettling(
+  mediaReadyRef: object,
+  nowMs = Date.now(),
+): boolean {
+  return nowMs < (volumeSettlingUntilByReadyRef.get(mediaReadyRef) ?? 0)
 }
 
 /**
@@ -25,14 +47,25 @@ export type PlayerVolumeChangeDetail = {
  * HTMLMediaElement / Vidstack default volume is 1, and the controlled `volume`
  * prop is applied only after canplay. During load (and while muted) providers
  * emit volume=0/1 as side-effects — those must not clobber the user's level.
+ * Immediately after canplay, the same extremes are still treated as defaults
+ * ({@link markVolumeSettling}) so a late provider `volumechange(1)` cannot
+ * persist 100% before the preferred level sticks.
  */
 export function shouldPersistVolumeChange(input: {
   nextVolume: number
   nextMuted: boolean
   preferredVolume: number
   mediaReady: boolean
+  /** True during the short post-canplay settling window. */
+  volumeSettling?: boolean
 }): boolean {
-  const { nextVolume, nextMuted, preferredVolume, mediaReady } = input
+  const {
+    nextVolume,
+    nextMuted,
+    preferredVolume,
+    mediaReady,
+    volumeSettling = false,
+  } = input
   const isExtreme = nextVolume <= 0.01 || nextVolume >= 0.999
   if (!isExtreme) {
     return true
@@ -40,8 +73,8 @@ export function shouldPersistVolumeChange(input: {
   if (Math.abs(nextVolume - preferredVolume) <= 0.001) {
     return true
   }
-  // Mute side-effects, or pre-canplay HTML/provider defaults (volume starts at 1).
-  if (nextMuted || !mediaReady) {
+  // Mute side-effects, pre-canplay defaults, or post-canplay provider resets.
+  if (nextMuted || !mediaReady || volumeSettling) {
     return false
   }
   return true
@@ -77,6 +110,7 @@ export function usePlayerVolume() {
         preferredVolume,
         // Call sites that omit mediaReady are treated as ready (user chrome).
         mediaReady: detail.mediaReady !== false,
+        volumeSettling: detail.volumeSettling === true,
       })
     ) {
       return

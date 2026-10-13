@@ -3,6 +3,7 @@ import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-
 import { destroyRoom } from "@/server/realtime/services/disconnect"
 import {
   clearRoomEmptyMarker,
+  confirmEmptyRoomDestroyAllowed,
   noteEmptyPresenceAndShouldDestroy,
 } from "@/server/realtime/services/empty-room"
 import { transferOwnershipIfNeeded } from "./ownership"
@@ -103,10 +104,17 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
     if (hasConnections) {
       await clearRoomEmptyMarker(roomId)
     } else if (await noteEmptyPresenceAndShouldDestroy(roomId)) {
-      // Never DEL room keys inside WATCH — destroy after commit/presence I/O.
-      await destroyRoom(store, roomId)
-      removedRooms += 1
-      continue
+      // Re-check presence + emptyAt so a concurrent join cannot lose the room.
+      const allowed = await confirmEmptyRoomDestroyAllowed(
+        roomId,
+        async () => (await store.readWsPresenceUserIds(roomId)).size > 0,
+      )
+      if (allowed) {
+        // Never DEL room keys inside WATCH — destroy after commit/presence I/O.
+        await destroyRoom(store, roomId)
+        removedRooms += 1
+        continue
+      }
     }
 
     if (written) {

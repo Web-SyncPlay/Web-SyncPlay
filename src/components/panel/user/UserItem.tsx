@@ -207,8 +207,12 @@ export function UserItem({
             </div>
             <div className="flex min-w-0 items-center gap-1.5">
               <div className="truncate text-xs leading-tight text-muted-foreground">
-                {user.localPlayback.paused ? "Paused" : "Playing"} at{" "}
-                {formatClockMs(displayTimeMs)}
+                {user.localPlayback.loading
+                  ? "Loading"
+                  : user.localPlayback.paused
+                    ? "Paused"
+                    : "Playing"}{" "}
+                at {formatClockMs(displayTimeMs)}
               </div>
               <Tooltip>
                 <TooltipTrigger>

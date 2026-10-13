@@ -43,6 +43,7 @@ export type PlayerSessionActions = {
     volume: number
     muted: boolean
     mediaReady?: boolean
+    volumeSettling?: boolean
   }) => void
 }
 

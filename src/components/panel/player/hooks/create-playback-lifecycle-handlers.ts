@@ -3,6 +3,7 @@ import { SEEK_ACK_MATCH_THRESHOLD_MS } from "../playback-control/use-playback-ti
 import type { SyncedMediaPlayerHandlerDeps } from "./synced-media-player-handler-types"
 import { readPlayerPausedSafe } from "./to-syncable-player"
 import { isTransportIntentInFlight } from "./transport-intent"
+import { markVolumeSettling } from "./use-player-volume"
 
 type PlaybackLifecycleDeps = Pick<
   SyncedMediaPlayerHandlerDeps,
@@ -111,12 +112,14 @@ export function createPlaybackLifecycleHandlers(deps: PlaybackLifecycleDeps) {
       bufferingSinceRef.current = Date.now()
     },
     onCanPlay: () => {
-      isMediaReadyRef.current = true
       setIsBuffering(false)
       participantStatusErrorRef.current = null
       bufferingSinceRef.current = null
       const player = playerRef.current
       if (!player) {
+        // Still mark ready so presence/sync are not stuck if the element unmounts.
+        markVolumeSettling(isMediaReadyRef)
+        isMediaReadyRef.current = true
         return
       }
 
@@ -136,13 +139,16 @@ export function createPlaybackLifecycleHandlers(deps: PlaybackLifecycleDeps) {
           : pending
       // Force-snap after canplay — HLS often becomes seekable only here.
       applyRoomClock(player, pendingToApply, 0)
-      // Providers may reset volume on load; re-apply preferred level.
+      // Providers may reset volume on load; re-apply preferred level *before*
+      // flipping mediaReady so a synchronous volumechange(1) cannot persist.
       if (Math.abs(player.volume - preferredVolume) > 0.001) {
         player.volume = preferredVolume
       }
       if (player.muted !== isMuted) {
         player.muted = isMuted
       }
+      markVolumeSettling(isMediaReadyRef)
+      isMediaReadyRef.current = true
     },
   }
 }

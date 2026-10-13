@@ -6,7 +6,10 @@ import {
 } from "@/server/media/local-media-store"
 import type { RoomStateStorePort } from "@/server/ports"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
-import { noteEmptyPresenceAndShouldDestroy } from "@/server/realtime/services/empty-room"
+import {
+  confirmEmptyRoomDestroyAllowed,
+  noteEmptyPresenceAndShouldDestroy,
+} from "@/server/realtime/services/empty-room"
 import { clearConnectionLocalPlaybackReport } from "@/server/realtime/services/local-playback-report-lifecycle"
 import { publishUserOfflinePresence } from "@/server/realtime/services/offline-presence"
 import { transferOwnershipIfNeeded } from "./ownership"
@@ -204,8 +207,14 @@ export async function handleSocketDisconnect(
   if (pendingEmptyCheck) {
     const shouldDestroy = await noteEmptyPresenceAndShouldDestroy(meta.roomId)
     if (shouldDestroy) {
-      await destroyRoom(store, meta.roomId)
-      return
+      const allowed = await confirmEmptyRoomDestroyAllowed(
+        meta.roomId,
+        async () => (await store.readWsPresenceUserIds(meta.roomId)).size > 0,
+      )
+      if (allowed) {
+        await destroyRoom(store, meta.roomId)
+        return
+      }
     }
   }
 

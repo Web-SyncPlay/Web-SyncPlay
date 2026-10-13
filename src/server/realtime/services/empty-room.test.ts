@@ -4,6 +4,7 @@ import { EMPTY_ROOM_DESTROY_GRACE_MS } from "@/shared/room-lifecycle"
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import {
   clearRoomEmptyMarker,
+  confirmEmptyRoomDestroyAllowed,
   isEmptyRoomGraceElapsed,
   markRoomEmptyIfAbsent,
   noteEmptyPresenceAndShouldDestroy,
@@ -69,5 +70,38 @@ describe("empty-room grace", () => {
     markProcessDraining()
 
     expect(await noteEmptyPresenceAndShouldDestroy("room-c")).toBe(false)
+  })
+
+  test("confirm aborts when presence returned during grace window", async () => {
+    const store = installMemoryEmptyAtStore()
+    store.set(
+      keys.roomEmptyAt("room-d"),
+      String(Date.now() - EMPTY_ROOM_DESTROY_GRACE_MS - 1_000),
+    )
+
+    expect(
+      await confirmEmptyRoomDestroyAllowed("room-d", async () => true),
+    ).toBe(false)
+    expect(store.has(keys.roomEmptyAt("room-d"))).toBe(false)
+  })
+
+  test("confirm aborts when join cleared emptyAt", async () => {
+    installMemoryEmptyAtStore()
+
+    expect(
+      await confirmEmptyRoomDestroyAllowed("room-e", async () => false),
+    ).toBe(false)
+  })
+
+  test("confirm allows destroy when still empty past grace", async () => {
+    const store = installMemoryEmptyAtStore()
+    store.set(
+      keys.roomEmptyAt("room-f"),
+      String(Date.now() - EMPTY_ROOM_DESTROY_GRACE_MS - 1_000),
+    )
+
+    expect(
+      await confirmEmptyRoomDestroyAllowed("room-f", async () => false),
+    ).toBe(true)
   })
 })

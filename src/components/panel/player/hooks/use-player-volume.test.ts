@@ -2,8 +2,11 @@ import { describe, expect, test } from "bun:test"
 
 import {
   DEFAULT_PLAYER_VOLUME,
+  isVolumeSettling,
+  markVolumeSettling,
   resolveUnmuteVolume,
   shouldPersistVolumeChange,
+  VOLUME_SETTLING_MS,
 } from "./use-player-volume"
 
 describe("resolveUnmuteVolume", () => {
@@ -62,15 +65,28 @@ describe("shouldPersistVolumeChange", () => {
     ).toBe(false)
   })
 
-  test("allows intentional 100% after media is ready", () => {
+  test("allows intentional 100% after media is ready and settled", () => {
     expect(
       shouldPersistVolumeChange({
         nextVolume: 1,
         nextMuted: false,
         preferredVolume: 0.4,
         mediaReady: true,
+        volumeSettling: false,
       }),
     ).toBe(true)
+  })
+
+  test("ignores provider volume=1 during post-canplay settling", () => {
+    expect(
+      shouldPersistVolumeChange({
+        nextVolume: 1,
+        nextMuted: false,
+        preferredVolume: 0.4,
+        mediaReady: true,
+        volumeSettling: true,
+      }),
+    ).toBe(false)
   })
 
   test("persists extremes that already match preference", () => {
@@ -82,5 +98,15 @@ describe("shouldPersistVolumeChange", () => {
         mediaReady: false,
       }),
     ).toBe(true)
+  })
+})
+
+describe("volume settling window", () => {
+  test("markVolumeSettling arms a short post-canplay window", () => {
+    const readyRef = { current: true }
+    const now = Date.now()
+    markVolumeSettling(readyRef, VOLUME_SETTLING_MS)
+    expect(isVolumeSettling(readyRef, now + 10)).toBe(true)
+    expect(isVolumeSettling(readyRef, now + VOLUME_SETTLING_MS + 1)).toBe(false)
   })
 })

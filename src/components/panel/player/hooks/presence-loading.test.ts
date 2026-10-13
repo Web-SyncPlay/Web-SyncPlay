@@ -1,8 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import {
-  PRESENCE_STUCK_START_MS,
-  resolvePresenceLoading,
-} from "./presence-loading"
+import { resolvePresenceLoading } from "./presence-loading"
 
 describe("resolvePresenceLoading", () => {
   test("true while buffering regardless of visibility", () => {
@@ -29,14 +26,14 @@ describe("resolvePresenceLoading", () => {
     ).toBe(true)
   })
 
-  test("true while hidden, room playing, and stuck near 0:00", () => {
+  test("true while hidden and not ready near 0:00 (stuck-at-start case)", () => {
     expect(
       resolvePresenceLoading({
         hidden: true,
         isMediaReady: false,
         isBuffering: false,
         roomPaused: false,
-        currentTimeMs: PRESENCE_STUCK_START_MS - 1,
+        currentTimeMs: 749,
       }),
     ).toBe(true)
   })

@@ -123,3 +123,29 @@ export async function noteEmptyPresenceAndShouldDestroy(
   }
   return await isEmptyRoomGraceElapsed(roomId, nowMs)
 }
+
+/**
+ * Final gate before destroyRoom: re-check presence and that emptyAt still
+ * exists past grace. A concurrent join clears emptyAt / adds presence — abort
+ * destroy in that window (TOCTOU with the earlier empty observation).
+ */
+export async function confirmEmptyRoomDestroyAllowed(
+  roomId: string,
+  hasPresence: () => Promise<boolean>,
+  nowMs = Date.now(),
+): Promise<boolean> {
+  if (!mayDestroyEmptyRoomOnThisProcess()) {
+    return false
+  }
+  try {
+    if (await hasPresence()) {
+      await clearRoomEmptyMarker(roomId)
+      return false
+    }
+    // Join clears emptyAt; if the marker is gone, do not destroy.
+    return await isEmptyRoomGraceElapsed(roomId, nowMs)
+  } catch (error) {
+    console.warn("[empty-room] confirm destroy failed", error)
+    return false
+  }
+}

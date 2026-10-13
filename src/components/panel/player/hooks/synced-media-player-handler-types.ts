@@ -27,6 +27,7 @@ export type SyncedMediaPlayerHandlerDeps = {
     volume: number
     muted: boolean
     mediaReady?: boolean
+    volumeSettling?: boolean
   }) => void
   playbackRef: RefObject<ClientRoomState["playback"]>
   playlistNavRef: RefObject<PlaylistNavSnapshot>

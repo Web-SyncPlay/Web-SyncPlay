@@ -7,18 +7,44 @@ import {
   applyUserWentOffline,
   handleSocketDisconnect,
 } from "@/server/realtime/services/disconnect"
-import { setNoteEmptyPresenceForTests } from "@/server/realtime/services/empty-room"
+import {
+  setEmptyAtClientForTests,
+  setNoteEmptyPresenceForTests,
+} from "@/server/realtime/services/empty-room"
 import {
   createPlaylistItem,
   createRoomState,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
+import { keys } from "@/server/redis/keys"
+import { EMPTY_ROOM_DESTROY_GRACE_MS } from "@/shared/room-lifecycle"
 import { afterEach, describe, expect, mock, test } from "bun:test"
+
+function installPastGraceEmptyAt(roomId: string) {
+  const store = new Map<string, string>()
+  store.set(
+    keys.roomEmptyAt(roomId),
+    String(Date.now() - EMPTY_ROOM_DESTROY_GRACE_MS - 1_000),
+  )
+  setEmptyAtClientForTests({
+    set: async (key, value, opts) => {
+      if (opts?.NX && store.has(key)) return null
+      store.set(key, value)
+      return "OK"
+    },
+    get: async (key) => store.get(key) ?? null,
+    del: async (key) => {
+      store.delete(key)
+      return 1
+    },
+  })
+}
 
 describe("disconnect lifecycle", () => {
   afterEach(() => {
     mock.restore()
     setNoteEmptyPresenceForTests(null)
+    setEmptyAtClientForTests(null)
     setRoomBroadcastBusForTests(null)
   })
   test("applyUserWentOffline marks participant, invalidates local media, transfers ownership", () => {
@@ -75,6 +101,7 @@ describe("disconnect lifecycle", () => {
 
   test("handleSocketDisconnect deletes empty rooms after grace outside WATCH", async () => {
     setNoteEmptyPresenceForTests(async () => true)
+    installPastGraceEmptyAt("room-1")
     const store = new InMemoryRoomStateStore(createRoomState())
     createTestBroadcastBus(store)
     store.presence.set("room-1", new Map())
@@ -101,6 +128,33 @@ describe("disconnect lifecycle", () => {
 
     expect(deleteDuringMutate).toBe(false)
     expect(await store.get("room-1")).toBeNull()
+  })
+
+  test("handleSocketDisconnect aborts destroy when presence returns before confirm", async () => {
+    setNoteEmptyPresenceForTests(async () => true)
+    installPastGraceEmptyAt("room-1")
+    const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
+    store.presence.set("room-1", new Map())
+
+    let presenceReads = 0
+    const originalRead = store.readWsPresenceUserIds.bind(store)
+    store.readWsPresenceUserIds = async (roomId) => {
+      presenceReads += 1
+      if (presenceReads === 1) {
+        return originalRead(roomId)
+      }
+      return new Set(["joiner"])
+    }
+
+    await handleSocketDisconnect(store, {
+      roomId: "room-1",
+      userId: "owner",
+      connectionId: "conn-owner",
+      presenceTracked: true,
+    })
+
+    expect(await store.get("room-1")).not.toBeNull()
   })
 
   test("handleSocketDisconnect no-ops when user still has another connection", async () => {
