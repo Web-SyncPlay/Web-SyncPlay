@@ -25,7 +25,10 @@ import {
   clearPresenceSeqFallback,
   resetPresenceSeqFallbackForTests,
 } from "./presence-seq"
-import { buildSanitizedSnapshot } from "./snapshot-build"
+import {
+  buildSanitizedSnapshot,
+  invalidateSnapshotCache,
+} from "./snapshot-build"
 import { flushSnapshotPublish } from "./snapshot-publisher"
 
 export { BROADCAST_NODE_ID, resetPresenceSeqFallbackForTests }
@@ -239,6 +242,7 @@ export class RoomBroadcastBus {
   }
 
   markSnapshotDirty(roomId: string) {
+    invalidateSnapshotCache(roomId)
     const dirty = this.ensure(roomId)
     dirty.snapshot = true
     this.scheduleOnce(dirty, "snapshotTimer", SNAPSHOT_COALESCE_MS, () => {

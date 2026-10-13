@@ -68,6 +68,14 @@ export const keys = {
     return `${ROOM_PREFIX}${roomId}:presenceRef`
   },
 
+  /**
+   * Epoch-ms when WS presence last hit zero. Used for empty-room destroy grace
+   * across replicas (see EMPTY_ROOM_DESTROY_GRACE_MS).
+   */
+  roomEmptyAt(roomId: string) {
+    return `${ROOM_PREFIX}${roomId}:emptyAt`
+  },
+
   /** Short-lived liveness probe for a realtime process (`getAppNodeId()`). */
   appNodeAlive(nodeId: string) {
     return `app:node:${nodeId}:alive`

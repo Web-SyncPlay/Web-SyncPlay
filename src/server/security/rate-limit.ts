@@ -4,6 +4,38 @@ import type { IncomingMessage } from "node:http"
 
 type RateLimitResult = { allowed: boolean; remaining: number }
 
+export type RateLimitMetricKey =
+  "allowed" | "deniedExhausted" | "deniedRedisError"
+
+type RateLimitCounters = Record<RateLimitMetricKey, number>
+
+const rateLimitCounters: RateLimitCounters = {
+  allowed: 0,
+  deniedExhausted: 0,
+  deniedRedisError: 0,
+}
+
+export function recordRateLimitMetric(key: RateLimitMetricKey, by = 1) {
+  rateLimitCounters[key] += by
+}
+
+export function getRateLimitMetrics(): RateLimitCounters {
+  return { ...rateLimitCounters }
+}
+
+/** Test helper — resets process-local counters. */
+export function resetRateLimitMetricsForTest() {
+  for (const key of Object.keys(rateLimitCounters) as RateLimitMetricKey[]) {
+    rateLimitCounters[key] = 0
+  }
+}
+
+function trackRateLimitResult(result: RateLimitResult): RateLimitResult {
+  if (result.allowed) recordRateLimitMetric("allowed")
+  else recordRateLimitMetric("deniedExhausted")
+  return result
+}
+
 type TokenBucket = {
   tokens: number
   updatedAtMs: number
@@ -365,19 +397,21 @@ export async function consumeRedisTokenBucket(params: {
         String(REDIS_TOKEN_BUCKET_TTL_SECONDS),
       ],
     })
-    return parseTokenBucketEvalResult(raw)
+    return trackRateLimitResult(parseTokenBucketEvalResult(raw))
   } catch (error) {
     if (params.failOpen) {
       console.warn(
         "[rate-limit] redis token-bucket unavailable; allowing request (failOpen)",
         error,
       )
+      recordRateLimitMetric("allowed")
       return { allowed: true, remaining: capacity }
     }
     console.warn(
       "[rate-limit] redis token-bucket unavailable; denying request",
       error,
     )
+    recordRateLimitMetric("deniedRedisError")
     return { allowed: false, remaining: 0 }
   }
 }
@@ -406,22 +440,24 @@ export async function consumeRateLimit(params: {
     }
 
     if (count > params.limit) {
-      return { allowed: false, remaining: 0 }
+      return trackRateLimitResult({ allowed: false, remaining: 0 })
     }
 
-    return {
+    return trackRateLimitResult({
       allowed: true,
       remaining: Math.max(0, params.limit - count),
-    }
+    })
   } catch (error) {
     if (params.failOpen) {
       console.warn(
         "[rate-limit] redis unavailable; allowing request (failOpen)",
         error,
       )
+      recordRateLimitMetric("allowed")
       return { allowed: true, remaining: params.limit }
     }
     console.warn("[rate-limit] redis unavailable; denying request", error)
+    recordRateLimitMetric("deniedRedisError")
     return { allowed: false, remaining: 0 }
   }
 }

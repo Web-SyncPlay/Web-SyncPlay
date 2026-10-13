@@ -7,6 +7,26 @@ import type { RoomStateStorePort } from "@/server/ports"
 import { peekPresenceRevision } from "@/server/realtime/broadcast/presence-seq"
 import { sanitizeRoomStateForClient } from "@/server/realtime/services/room-security"
 
+/** In-process snapshot cache TTL — short enough to avoid stale presence overlays. */
+const SNAPSHOT_CACHE_TTL_MS = 250
+
+type SnapshotCacheEntry = {
+  generation: number
+  structuralRevision: number
+  presenceRevision: number
+  payload: RoomSnapshotPayload
+  cachedAt: number
+}
+
+const g = globalThis as typeof globalThis & {
+  __webSyncPlaySnapshotCache?: Map<string, SnapshotCacheEntry>
+}
+
+function snapshotCache(): Map<string, SnapshotCacheEntry> {
+  g.__webSyncPlaySnapshotCache ??= new Map()
+  return g.__webSyncPlaySnapshotCache
+}
+
 export function structuralHash(state: RoomState): string {
   const participants = Object.fromEntries(
     Object.entries(state.participants).map(([id, p]) => [
@@ -61,22 +81,59 @@ export function applyPresenceOverlay(
   }
 }
 
+/** Drop cached snapshot for a room (or all rooms when roomId omitted). */
+export function invalidateSnapshotCache(roomId?: string): void {
+  const cache = snapshotCache()
+  if (!roomId) {
+    cache.clear()
+    return
+  }
+  cache.delete(roomId)
+}
+
+/** Test helper. */
+export function resetSnapshotCacheForTests(): void {
+  snapshotCache().clear()
+}
+
 export async function buildSanitizedSnapshot(
   store: RoomStateStorePort | null,
   roomId: string,
 ): Promise<RoomSnapshotPayload | null> {
   if (!store || typeof store.get !== "function") return null
-  const state = await store.get(roomId)
+
+  const cache = snapshotCache()
+  const cached = cache.get(roomId)
+  if (cached && Date.now() - cached.cachedAt < SNAPSHOT_CACHE_TTL_MS) {
+    // Cheap validity: presence revision only (structural bumps invalidate via bus).
+    const presenceRevision = await peekPresenceRevision(roomId)
+    if (presenceRevision === cached.presenceRevision) {
+      return cached.payload
+    }
+  }
+
+  const [state, overlay, presenceRevision] = await Promise.all([
+    store.get(roomId),
+    store.getPresenceDataAll(roomId),
+    peekPresenceRevision(roomId),
+  ])
   if (!state) return null
 
-  const overlay = await store.getPresenceDataAll(roomId)
   applyPresenceOverlay(state, overlay)
 
-  const presenceRevision = await peekPresenceRevision(roomId)
-
-  return sanitizeRoomStateForClient({
+  const payload = sanitizeRoomStateForClient({
     ...state,
     presenceRevision,
     playback: { ...state.playback, seekPreview: undefined },
   })
+
+  cache.set(roomId, {
+    generation: state.generation ?? 0,
+    structuralRevision: state.structuralRevision ?? 0,
+    presenceRevision,
+    payload,
+    cachedAt: Date.now(),
+  })
+
+  return payload
 }

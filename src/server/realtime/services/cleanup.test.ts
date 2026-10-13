@@ -73,8 +73,18 @@ function mockRedisPruneIndex(options?: {
 
   mock.module("@/server/redis/client", () => ({
     getCommandClient: async () => ({
-      set: async (key: string, _value: string) => {
-        grace.set(key, "1")
+      set: async (key: string, value: string, _opts?: unknown) => {
+        // Honor NX so emptyAt grace starts only once.
+        if (
+          _opts &&
+          typeof _opts === "object" &&
+          "NX" in _opts &&
+          (_opts as { NX?: boolean }).NX &&
+          grace.has(key)
+        ) {
+          return null
+        }
+        grace.set(key, value)
         return "OK"
       },
       get: async (key: string) => grace.get(key) ?? null,
@@ -190,8 +200,20 @@ test("cleanup removes participants past prune grace via Redis prune path", async
   expect(state.ownerId).toBe("mod")
 })
 
+function mockEmptyRoomDestroy(shouldDestroy: boolean) {
+  mock.module("@/server/realtime/services/empty-room", () => ({
+    noteEmptyPresenceAndShouldDestroy: async () => shouldDestroy,
+    clearRoomEmptyMarker: async () => {},
+    markRoomEmptyIfAbsent: async () => {},
+    isEmptyRoomGraceElapsed: async () => shouldDestroy,
+    mayDestroyEmptyRoomOnThisProcess: () => true,
+  }))
+}
+
 test("cleanup marks everyone offline when WS presence is empty (crash ghosts)", async () => {
   mockRedisPruneIndex()
+  // Presence empty but participants remain — grace must not destroy yet.
+  mockEmptyRoomDestroy(false)
   const { cleanupInactiveRooms: cleanup } = await import("./cleanup")
   const state = createState()
   let deleted = false
@@ -225,8 +247,9 @@ test("cleanup marks everyone offline when WS presence is empty (crash ghosts)", 
   expect(deletedDuringMutate).toBe(false)
 })
 
-test("cleanup destroys empty rooms after WATCH mutate returns", async () => {
+test("cleanup destroys empty rooms after emptyAt grace elapses", async () => {
   mockRedisPruneIndex()
+  mockEmptyRoomDestroy(true)
   const { cleanupInactiveRooms: cleanup } = await import("./cleanup")
   const state = createState()
   state.participants = {}
@@ -256,6 +279,28 @@ test("cleanup destroys empty rooms after WATCH mutate returns", async () => {
   expect(deletedDuringMutate).toBe(false)
   expect(deleted).toBe(true)
   expect(result.removedRooms).toBe(1)
+})
+
+test("cleanup does not destroy empty rooms during emptyAt grace", async () => {
+  mockRedisPruneIndex()
+  mockEmptyRoomDestroy(false)
+  const { cleanupInactiveRooms: cleanup } = await import("./cleanup")
+  const state = createState()
+  state.participants = {}
+  let deleted = false
+
+  await cleanup(
+    createCleanupStore({
+      state,
+      presence: new Set(),
+      get: async () => null,
+      onDelete: () => {
+        deleted = true
+      },
+    }) as never,
+  )
+
+  expect(deleted).toBe(false)
 })
 
 test("cleanup migrates legacy room fields without waiting for join", async () => {

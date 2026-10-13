@@ -6,6 +6,7 @@ import {
 } from "@/server/media/local-media-store"
 import type { RoomStateStorePort } from "@/server/ports"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
+import { noteEmptyPresenceAndShouldDestroy } from "@/server/realtime/services/empty-room"
 import { clearConnectionLocalPlaybackReport } from "@/server/realtime/services/local-playback-report-lifecycle"
 import { publishUserOfflinePresence } from "@/server/realtime/services/offline-presence"
 import { transferOwnershipIfNeeded } from "./ownership"
@@ -170,8 +171,8 @@ export async function handleSocketDisconnect(
   await store.reconcilePresenceRefs(meta.roomId)
 
   let userStillConnected = false
-  /** Destroy after WATCH commit — never DEL room keys inside mutate. */
-  let pendingDestroy = false
+  /** Presence empty — mark emptyAt / maybe destroy after WATCH (grace). */
+  let pendingEmptyCheck = false
   let pendingOffline = false
 
   const next = await store.updateRoom(meta.roomId, async (state) => {
@@ -180,9 +181,12 @@ export async function handleSocketDisconnect(
     }
 
     if (activeUsers.size === 0) {
-      pendingDestroy = true
-      // Abort write; destroyRoom runs after WATCH is released.
-      return null
+      // Keep room during empty-room grace; still mark last user offline.
+      applyUserWentOffline(state, meta.roomId, meta.userId)
+      pendingOffline = true
+      pendingEmptyCheck = true
+      bumpRoomRevisions(state)
+      return state
     }
 
     if (activeUsers.has(meta.userId)) {
@@ -197,9 +201,12 @@ export async function handleSocketDisconnect(
     return state
   })
 
-  if (pendingDestroy) {
-    await destroyRoom(store, meta.roomId)
-    return
+  if (pendingEmptyCheck) {
+    const shouldDestroy = await noteEmptyPresenceAndShouldDestroy(meta.roomId)
+    if (shouldDestroy) {
+      await destroyRoom(store, meta.roomId)
+      return
+    }
   }
 
   if (userStillConnected) {

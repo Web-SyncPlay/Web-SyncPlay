@@ -1,5 +1,6 @@
 import {
   installShutdownOnce,
+  isProcessDraining,
   registerShutdownHandler,
 } from "@/server/lifecycle"
 import { clientIpFromUpgradeRequest } from "@/server/security/rate-limit"
@@ -123,6 +124,13 @@ export function attachWebSocketTransport(
     // Resolve WSS from the slot so a post-shutdown recreate still works.
     server.on("upgrade", (req: IncomingMessage, socket, head) => {
       if (isWsApiUpgradeUrl(req.url)) {
+        if (isProcessDraining()) {
+          socket.write(
+            "HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n",
+          )
+          socket.destroy()
+          return
+        }
         const current = getTransportSlot().wss
         if (!current) {
           socket.destroy()

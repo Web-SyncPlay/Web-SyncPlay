@@ -345,7 +345,7 @@ export function createRoomSocketConnection(
       ws.close()
     }
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       if (!cancelled) {
         console.warn("[realtime] websocket closed")
       }
@@ -365,6 +365,14 @@ export function createRoomSocketConnection(
       }
 
       options.setStatus("reconnecting")
+      // 1001 + "server shutdown" is intentional drain; still reconnect (other replica).
+      if (
+        event.code === 1001 &&
+        typeof event.reason === "string" &&
+        event.reason.toLowerCase().includes("shutdown")
+      ) {
+        options.setJoinError("Server restarting… reconnecting")
+      }
       reconnectTimer = window.setTimeout(() => {
         void connect()
       }, DEFAULT_RECONNECT_MS)

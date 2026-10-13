@@ -117,6 +117,8 @@ export async function commitJoinMembership(
         { username, avatarStyle },
       )
       const overlayPlayback = presenceOverlay[input.userId]?.localPlayback
+      const priorRole = existingParticipant?.role
+      const priorOwnerId = state.ownerId
       state.participants[input.userId] = {
         userId: input.userId,
         username: participantProfile.username,
@@ -148,14 +150,13 @@ export async function commitJoinMembership(
       }
 
       // Heal orphaned ownership once the joiner is connected in this commit.
-      transferOwnershipIfNeeded(state, "join")
+      const ownershipTransferred = transferOwnershipIfNeeded(state, "join")
 
-      if (
-        shouldAppendParticipantJoinedLog(
-          input.isPresenceAlreadyTracked,
-          existingParticipant?.connected,
-        )
-      ) {
+      const appendJoinedLog = shouldAppendParticipantJoinedLog(
+        input.isPresenceAlreadyTracked,
+        existingParticipant?.connected,
+      )
+      if (appendJoinedLog) {
         appendActionLog(state, {
           roomId: input.roomId,
           actorUserId: input.userId,
@@ -172,8 +173,19 @@ export async function commitJoinMembership(
       })
       markCurrentMedia(state)
       state.updatedAt = Date.now()
-      state.generation = (state.generation ?? 0) + 1
-      state.structuralRevision = (state.structuralRevision ?? 0) + 1
+
+      // Pure reconnect (already connected, multi-tab / same-session rejoin):
+      // skip generation/structural bumps so seek-preview caches stay warm.
+      const pureReconnect =
+        Boolean(existingParticipant) &&
+        !appendJoinedLog &&
+        !ownershipTransferred &&
+        priorRole === role &&
+        state.ownerId === priorOwnerId
+      if (!pureReconnect) {
+        state.generation = (state.generation ?? 0) + 1
+        state.structuralRevision = (state.structuralRevision ?? 0) + 1
+      }
       return state
     },
   )

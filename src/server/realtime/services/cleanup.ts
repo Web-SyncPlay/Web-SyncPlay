@@ -1,6 +1,10 @@
 import type { RoomStateStorePort } from "@/server/ports"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { destroyRoom } from "@/server/realtime/services/disconnect"
+import {
+  clearRoomEmptyMarker,
+  noteEmptyPresenceAndShouldDestroy,
+} from "@/server/realtime/services/empty-room"
 import { transferOwnershipIfNeeded } from "./ownership"
 import {
   clearPrune,
@@ -29,8 +33,6 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
   bus.attachStore(store)
 
   for (const roomId of roomIds) {
-    /** Destroy after WATCH commit — never DEL room keys inside mutate. */
-    let pendingDestroy = false
     let disconnectingUserIds: string[] = []
     let reconnectingUserIds: string[] = []
     let pastGraceUserIds: string[] = []
@@ -38,9 +40,9 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
     // Presence I/O outside WATCH: read snapshot, then reconcile side effects.
     const activeConnections = await store.readWsPresenceUserIds(roomId)
     await store.reconcilePresenceRefs(roomId)
+    const hasConnections = activeConnections.size > 0
 
     const written = await store.updateRoom(roomId, async (current) => {
-      pendingDestroy = false
       disconnectingUserIds = []
       reconnectingUserIds = []
       pastGraceUserIds = []
@@ -75,14 +77,6 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
         didMutate = true
       }
 
-      const hasConnections = activeConnections.size > 0
-      const hasParticipants = Object.keys(current.participants).length > 0
-      if (!hasConnections && !hasParticipants) {
-        pendingDestroy = true
-        // Abort write; destroyRoom runs after WATCH is released.
-        return null
-      }
-
       if (!didMutate) {
         return null
       }
@@ -106,9 +100,13 @@ export async function cleanupInactiveRooms(store: RoomStateStorePort): Promise<{
       }
     }
 
-    if (pendingDestroy) {
+    if (hasConnections) {
+      await clearRoomEmptyMarker(roomId)
+    } else if (await noteEmptyPresenceAndShouldDestroy(roomId)) {
+      // Never DEL room keys inside WATCH — destroy after commit/presence I/O.
       await destroyRoom(store, roomId)
       removedRooms += 1
+      continue
     }
 
     if (written) {

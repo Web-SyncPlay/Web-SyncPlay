@@ -51,6 +51,7 @@ function roomLifecycleKeys(roomId: string): string[] {
     keys.roomPresenceData(roomId),
     keys.roomPresenceSeq(roomId),
     keys.roomIdentity(roomId),
+    keys.roomEmptyAt(roomId),
   ]
 }
 

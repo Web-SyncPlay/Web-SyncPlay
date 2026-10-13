@@ -157,6 +157,9 @@ describe("commitJoinMembership", () => {
         (e) => e.action === "participant:joined",
       ),
     ).toBe(false)
+    // Pure reconnect: do not bump generation / structuralRevision.
+    expect(result.committed!.generation).toBe(0)
+    expect(result.committed!.structuralRevision).toBe(0)
   })
 
   test("heals ownership when owner is offline and joiner connects", async () => {

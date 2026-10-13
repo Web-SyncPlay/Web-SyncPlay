@@ -191,8 +191,10 @@ function createTokenBucketEvalMock(opts?: {
 
 afterEach(async () => {
   mock.restore()
-  const { resetTokenBucketsForTests } = await import("./rate-limit")
+  const { resetTokenBucketsForTests, resetRateLimitMetricsForTest } =
+    await import("./rate-limit")
   resetTokenBucketsForTests()
+  resetRateLimitMetricsForTest()
 })
 
 describe("consumeTokenBucket", () => {
@@ -667,7 +669,12 @@ describe("consumeRateLimit", () => {
       getCommandClient: async () => createIncrMock({ fail: true }),
     }))
 
-    const { consumeRateLimit } = await import("./rate-limit")
+    const {
+      consumeRateLimit,
+      getRateLimitMetrics,
+      resetRateLimitMetricsForTest,
+    } = await import("./rate-limit")
+    resetRateLimitMetricsForTest()
 
     const result = await consumeRateLimit({
       key: "test:fail-closed",
@@ -675,6 +682,7 @@ describe("consumeRateLimit", () => {
       windowMs: 60_000,
     })
     expect(result).toEqual({ allowed: false, remaining: 0 })
+    expect(getRateLimitMetrics().deniedRedisError).toBeGreaterThanOrEqual(1)
   })
 
   test("allows when failOpen is true and Redis is unavailable", async () => {
@@ -691,5 +699,26 @@ describe("consumeRateLimit", () => {
       failOpen: true,
     })
     expect(result).toEqual({ allowed: true, remaining: 10 })
+  })
+
+  test("counts exhausted denials separately from redis errors", async () => {
+    const counts = new Map<string, number>()
+    mock.module("@/server/redis/client", () => ({
+      getCommandClient: async () => createIncrMock({ counts }),
+    }))
+
+    const {
+      consumeRateLimit,
+      getRateLimitMetrics,
+      resetRateLimitMetricsForTest,
+    } = await import("./rate-limit")
+    resetRateLimitMetricsForTest()
+
+    await consumeRateLimit({ key: "test:ex", limit: 1, windowMs: 60_000 })
+    await consumeRateLimit({ key: "test:ex", limit: 1, windowMs: 60_000 })
+
+    const metrics = getRateLimitMetrics()
+    expect(metrics.allowed).toBeGreaterThanOrEqual(1)
+    expect(metrics.deniedExhausted).toBeGreaterThanOrEqual(1)
   })
 })

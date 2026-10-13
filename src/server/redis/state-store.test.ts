@@ -94,6 +94,7 @@ describe("RoomStateStore.delete lifecycle keys", () => {
       keys.roomPresenceData(roomId),
       keys.roomPresenceSeq(roomId),
       keys.roomIdentity(roomId),
+      keys.roomEmptyAt(roomId),
     ])
   })
 })

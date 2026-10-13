@@ -1,4 +1,5 @@
 import { env } from "@/env"
+import { isProcessDraining } from "@/server/lifecycle"
 import { ensureBackgroundMaintenance } from "@/server/maintenance"
 import { getLocalMediaAffinityHealth } from "@/server/media/local-media-node-registry"
 import { getYtDlpMetrics } from "@/server/media/yt-dlp/metrics"
@@ -10,6 +11,7 @@ import {
   YTDLP_CACHE_RETENTION_SECONDS,
 } from "@/server/media/yt-dlp/policy"
 import { getCommandClient } from "@/server/redis/client"
+import { getRateLimitMetrics } from "@/server/security/rate-limit"
 import { NextResponse } from "next/server"
 
 async function pingValkey(): Promise<boolean> {
@@ -41,8 +43,12 @@ export async function GET() {
     {
       ok: valkeyOk,
       valkey: valkeyOk,
+      draining: isProcessDraining(),
       localMediaHttpAffinity,
       sfuLocality,
+      rateLimit: {
+        metrics: getRateLimitMetrics(),
+      },
       ytdlpBin: env.YTDLP_BIN,
       ytdlp: {
         maxConcurrent: env.YTDLP_MAX_CONCURRENT,

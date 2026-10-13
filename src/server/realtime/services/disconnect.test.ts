@@ -12,10 +12,11 @@ import {
   createRoomState,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, mock, test } from "bun:test"
 
 describe("disconnect lifecycle", () => {
   afterEach(() => {
+    mock.restore()
     setRoomBroadcastBusForTests(null)
   })
   test("applyUserWentOffline marks participant, invalidates local media, transfers ownership", () => {
@@ -52,7 +53,38 @@ describe("disconnect lifecycle", () => {
     ).toBe(true)
   })
 
-  test("handleSocketDisconnect deletes empty rooms outside WATCH", async () => {
+  test("handleSocketDisconnect keeps empty rooms during emptyAt grace", async () => {
+    mock.module("@/server/realtime/services/empty-room", () => ({
+      noteEmptyPresenceAndShouldDestroy: async () => false,
+      clearRoomEmptyMarker: async () => {},
+      markRoomEmptyIfAbsent: async () => {},
+      isEmptyRoomGraceElapsed: async () => false,
+      mayDestroyEmptyRoomOnThisProcess: () => true,
+    }))
+    const store = new InMemoryRoomStateStore(createRoomState())
+    createTestBroadcastBus(store)
+    store.presence.set("room-1", new Map())
+
+    await handleSocketDisconnect(store, {
+      roomId: "room-1",
+      userId: "owner",
+      connectionId: "conn-owner",
+      presenceTracked: true,
+    })
+
+    const room = await store.get("room-1")
+    expect(room).not.toBeNull()
+    expect(room?.participants.owner?.connected).toBe(false)
+  })
+
+  test("handleSocketDisconnect deletes empty rooms after grace outside WATCH", async () => {
+    mock.module("@/server/realtime/services/empty-room", () => ({
+      noteEmptyPresenceAndShouldDestroy: async () => true,
+      clearRoomEmptyMarker: async () => {},
+      markRoomEmptyIfAbsent: async () => {},
+      isEmptyRoomGraceElapsed: async () => true,
+      mayDestroyEmptyRoomOnThisProcess: () => true,
+    }))
     const store = new InMemoryRoomStateStore(createRoomState())
     createTestBroadcastBus(store)
     store.presence.set("room-1", new Map())

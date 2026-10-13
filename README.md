@@ -122,7 +122,9 @@ ICE is STUN-only (Google + Cloudflare). No TURN — UDP-blocked clients use HTTP
 
 ### Operations
 
-- `GET /api/health` — liveness (Valkey ping + yt-dlp config/metrics).
+- `GET /api/health` — **liveness** (Valkey ping + yt-dlp / rate-limit metrics; stays 200 while Valkey is up, including during drain).
+- `GET /api/ready` — **readiness** (Valkey ping **and** process not draining). Use this for load-balancer / orchestrator readiness so traffic stops before WS close on SIGTERM.
+- Empty rooms: after the last WS presence leaves, Valkey `emptyAt` holds room keys for **15s** so clients can reconnect during a rolling restart before destroy.
 - Background tick: room cleanup, ownership repair, playlist-resolve reclaim.
 - Daily defaults reseed from `FALLBACK_DEFAULT_MEDIA_URL` when the cache is empty or expired.
 

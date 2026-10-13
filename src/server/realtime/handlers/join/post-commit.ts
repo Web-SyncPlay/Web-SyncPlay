@@ -119,6 +119,14 @@ export async function postCommitJoinSideEffects(
   await input.store.touchWsPresence(input.roomId, input.userId, { force: true })
   // Joiner prune clear moved out of WATCH (was inside commitJoinMembership).
   await clearPrune(input.roomId, input.userId)
+  // Cancel empty-room destroy grace — presence is back.
+  try {
+    const { clearRoomEmptyMarker } =
+      await import("@/server/realtime/services/empty-room")
+    await clearRoomEmptyMarker(input.roomId)
+  } catch (error) {
+    console.warn("[join] clear emptyAt failed", error)
+  }
 
   scheduleResolvingPlaylistItems(
     input.store,
