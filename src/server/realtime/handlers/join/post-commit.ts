@@ -144,12 +144,14 @@ export async function postCommitJoinSideEffects(
     avatarStyle: input.committed.participants[input.userId]?.avatarStyle,
   })
 
+  // Invalidate before the joiner snapshot so a warm pre-join cache cannot
+  // omit this participant (presenceRev alone does not bump on join).
+  bus.markSnapshotDirty(input.roomId)
   // Critical: joiner must receive state without relying on store publish.
   const snapshot = await bus.buildSanitizedSnapshot(input.roomId)
   if (snapshot) {
     bus.sendToSocket(input.ws, { type: "room:snapshot", payload: snapshot })
   }
-  bus.markSnapshotDirty(input.roomId)
   bus.markPresenceDirty(input.roomId, input.userId, {
     connected: true,
     lastSeenAt: Date.now(),

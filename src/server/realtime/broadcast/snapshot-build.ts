@@ -102,23 +102,30 @@ export async function buildSanitizedSnapshot(
 ): Promise<RoomSnapshotPayload | null> {
   if (!store || typeof store.get !== "function") return null
 
-  const cache = snapshotCache()
-  const cached = cache.get(roomId)
-  if (cached && Date.now() - cached.cachedAt < SNAPSHOT_CACHE_TTL_MS) {
-    // Cheap validity: presence revision only (structural bumps invalidate via bus).
-    const presenceRevision = await peekPresenceRevision(roomId)
-    if (presenceRevision === cached.presenceRevision) {
-      return cached.payload
-    }
-  }
-
-  const [state, overlay, presenceRevision] = await Promise.all([
+  // Always load generation/structural + presenceRev. Presence alone is not
+  // enough: join bumps structure before a presence batch is flushed, and the
+  // joiner snapshot must not reuse a pre-join cache entry.
+  const [state, presenceRevision] = await Promise.all([
     store.get(roomId),
-    store.getPresenceDataAll(roomId),
     peekPresenceRevision(roomId),
   ])
   if (!state) return null
 
+  const generation = state.generation ?? 0
+  const structuralRevision = state.structuralRevision ?? 0
+  const cache = snapshotCache()
+  const cached = cache.get(roomId)
+  if (
+    cached &&
+    Date.now() - cached.cachedAt < SNAPSHOT_CACHE_TTL_MS &&
+    presenceRevision === cached.presenceRevision &&
+    generation === cached.generation &&
+    structuralRevision === cached.structuralRevision
+  ) {
+    return cached.payload
+  }
+
+  const overlay = await store.getPresenceDataAll(roomId)
   applyPresenceOverlay(state, overlay)
 
   const payload = sanitizeRoomStateForClient({
@@ -128,8 +135,8 @@ export async function buildSanitizedSnapshot(
   })
 
   cache.set(roomId, {
-    generation: state.generation ?? 0,
-    structuralRevision: state.structuralRevision ?? 0,
+    generation,
+    structuralRevision,
     presenceRevision,
     payload,
     cachedAt: Date.now(),

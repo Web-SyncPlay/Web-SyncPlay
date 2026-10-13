@@ -59,17 +59,21 @@ function minimalState(overrides?: Partial<RoomState>): RoomState {
 }
 
 describe("buildSanitizedSnapshot", () => {
-  test("parallel fetch and short-lived cache hit", async () => {
+  test("short-lived cache hit when generation and structuralRevision match", async () => {
     // Unique room id so a live Valkey presenceSeq (CI) does not collide.
     const roomId = `snap-cache-${crypto.randomUUID()}`
     let getCalls = 0
+    let overlayCalls = 0
     const state = minimalState({ roomId })
     const store = {
       get: async () => {
         getCalls += 1
         return { ...state }
       },
-      getPresenceDataAll: async () => ({}),
+      getPresenceDataAll: async () => {
+        overlayCalls += 1
+        return {}
+      },
     } as unknown as RoomStateStorePort
 
     const first = await buildSanitizedSnapshot(store, roomId)
@@ -79,6 +83,66 @@ describe("buildSanitizedSnapshot", () => {
     expect(second).toBe(first)
     expect(first?.generation).toBe(3)
     expect(first?.presenceRevision).toBe(second?.presenceRevision)
-    expect(getCalls).toBe(1)
+    // Cache hit still revalidates via store.get; overlay/sanitize skipped.
+    expect(getCalls).toBe(2)
+    expect(overlayCalls).toBe(1)
+  })
+
+  test("cache miss when structural revision advances (join)", async () => {
+    const roomId = `snap-struct-${crypto.randomUUID()}`
+    let generation = 3
+    let structuralRevision = 5
+    const participants: RoomState["participants"] = {
+      owner: {
+        userId: "owner",
+        username: "Owner",
+        avatarStyle: "adventurer",
+        role: "owner",
+        connected: true,
+        joinedAt: 1,
+        localPlayback: {
+          paused: true,
+          currentTimeMs: 0,
+          loading: false,
+          updatedAt: Date.now(),
+        },
+      },
+    }
+    const store = {
+      get: async () =>
+        minimalState({
+          roomId,
+          generation,
+          structuralRevision,
+          participants: { ...participants },
+        }),
+      getPresenceDataAll: async () => ({}),
+    } as unknown as RoomStateStorePort
+
+    const first = await buildSanitizedSnapshot(store, roomId)
+    expect(first?.participants.guest).toBeUndefined()
+
+    // Simulate join commit: bump structure and add guest before next snapshot.
+    generation = 4
+    structuralRevision = 6
+    participants.guest = {
+      userId: "guest",
+      username: "Guest",
+      avatarStyle: "adventurer",
+      role: "guest",
+      connected: true,
+      joinedAt: 2,
+      localPlayback: {
+        paused: true,
+        currentTimeMs: 0,
+        loading: false,
+        updatedAt: Date.now(),
+      },
+    }
+
+    const second = await buildSanitizedSnapshot(store, roomId)
+    expect(second).not.toBe(first)
+    expect(second?.participants.guest?.role).toBe("guest")
+    expect(second?.generation).toBe(4)
   })
 })

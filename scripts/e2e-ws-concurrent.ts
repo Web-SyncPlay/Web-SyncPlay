@@ -322,6 +322,7 @@ async function main() {
     record(
       "guest role is guest",
       guest.roomState.participants[guestId]?.role === "guest",
+      `role=${guest.roomState.participants[guestId]?.role ?? "missing"} keys=${Object.keys(guest.roomState.participants).join(",")}`,
     )
 
     await host.waitFor(
