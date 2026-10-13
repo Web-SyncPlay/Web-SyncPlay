@@ -1,9 +1,9 @@
 "use client"
 
 import type { TypedRoomEventSender } from "@/contracts/room-events"
+import { useLatestRef } from "@/hooks/use-latest-ref"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import { useEffect, type RefObject } from "react"
-import { useLatestRef } from "@/hooks/use-latest-ref"
 import { readPlayerPausedSafe } from "./to-syncable-player"
 
 /**
@@ -66,7 +66,8 @@ export function usePlayerPresenceHeartbeat(config: {
         next.paused !== lastSent.paused ||
         next.loading !== lastSent.loading ||
         next.error !== lastSent.error ||
-        Math.abs(next.currentTimeMs - lastSent.currentTimeMs) >= TIME_DIRTY_MS ||
+        Math.abs(next.currentTimeMs - lastSent.currentTimeMs) >=
+          TIME_DIRTY_MS ||
         now - lastSent.at >= HEARTBEAT_MS
       if (!dirty) {
         return

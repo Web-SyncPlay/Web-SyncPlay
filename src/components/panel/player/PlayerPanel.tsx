@@ -1,15 +1,12 @@
 "use client"
 
+import { cn } from "@/components/lib/utils"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
 import "@vidstack/react/player/styles/default/layouts/audio.css"
 import "@vidstack/react/player/styles/default/layouts/video.css"
 import "@vidstack/react/player/styles/default/theme.css"
 import { memo } from "react"
-import { cn } from "@/components/lib/utils"
-import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { RoomPanelProps } from "../../layout/page/types"
-import { useIgnoreProviderDestroyedRejections } from "./hooks/use-ignore-provider-destroyed-rejections"
-import { usePlayerSession } from "./hooks/use-player-session"
-import { bindSeekPreview } from "./playback-control/bind-seek-preview"
 import { NativePlaylistMetadataProbeHost } from "../playlist/NativePlaylistMetadataProbeHost"
 import { PlayerEmptyState } from "./PlayerEmptyState"
 import { PlayerErrorRecoveryOverlay } from "./PlayerErrorRecoveryOverlay"
@@ -17,6 +14,9 @@ import { PlayerPanelGlobalStyles } from "./PlayerPanelGlobalStyles"
 import { RemoteSeekOverlay } from "./RemoteSeekOverlay"
 import { SyncedMediaPlayer } from "./SyncedMediaPlayer"
 import { TapToUnmuteButton } from "./TapToUnmuteButton"
+import { useIgnoreProviderDestroyedRejections } from "./hooks/use-ignore-provider-destroyed-rejections"
+import { usePlayerSession } from "./hooks/use-player-session"
+import { bindSeekPreview } from "./playback-control/bind-seek-preview"
 import {
   playerShellSlicesEqual,
   selectPlayerShellSlice,
@@ -122,10 +122,7 @@ const PlayerPanelShell = memo(
           </div>
         )}
         {isMuted && Boolean(activePlaybackSrc) && (
-          <TapToUnmuteButton
-            playerRef={controller.playerRef}
-            unmute={unmute}
-          />
+          <TapToUnmuteButton playerRef={controller.playerRef} unmute={unmute} />
         )}
         {activePlaybackSrc ? (
           <SyncedMediaPlayer controller={controller} viewModel={viewModel} />

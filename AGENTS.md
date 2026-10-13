@@ -22,14 +22,14 @@ Full layout table: [README Architecture](./README.md#architecture-developers).
 
 ## Tests
 
-| Command                                                                                         | Needs                                                                       |
-| ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `bun run test:unit`                                                                             | Nothing extra                                                               |
-| `bun run test:integration`                                                                      | Valkey / `VALKEY_URL`                                                       |
-| `bun run test:a11y` / `test:e2e` / `test:e2e:ws` / `test:e2e:password` / `test:e2e:local-media` / `test:e2e:ui` | Healthy app (see CI) |
-| `bun run test:e2e:all` / `test:full`                                                            | Live suites: all e2e (+ unit/integration for `full`); need Valkey + app     |
-| `bun run test:fuzz`                                                                             | Valkey; **not in CI** — run when changing presence / state-store invariants |
-| `bun run start`                                                                                 | Standalone production server (syncs static/public into `.next/standalone`)  |
+| Command                                                                                                         | Needs                                                                       |
+| --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `bun run test:unit`                                                                                             | Nothing extra                                                               |
+| `bun run test:integration`                                                                                      | Valkey / `VALKEY_URL`                                                       |
+| `bun run test:a11y` / `test:e2e` / `test:e2e:ws` / `test:e2e:password` / `test:e2e:local-media` / `test:e2e:ui` | Healthy app (see CI)                                                        |
+| `bun run test:e2e:all` / `test:full`                                                                            | Live suites: all e2e (+ unit/integration for `full`); need Valkey + app     |
+| `bun run test:fuzz`                                                                                             | Valkey; **not in CI** — run when changing presence / state-store invariants |
+| `bun run start`                                                                                                 | Standalone production server (syncs static/public into `.next/standalone`)  |
 
 Prefer `@/shared/test-utils` fixtures in client/UI tests over `@/server` fixtures where practical.
 

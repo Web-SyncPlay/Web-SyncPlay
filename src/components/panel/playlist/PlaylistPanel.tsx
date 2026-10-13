@@ -7,9 +7,9 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ItemGroup } from "@/components/ui/item"
+import type { TypedRoomEventSender } from "@/contracts/room-events"
 import { canControlPlaylist } from "@/shared/permissions-utils"
 import { formatDurationSeconds } from "@/shared/time-format"
-import type { TypedRoomEventSender } from "@/contracts/room-events"
 import { RestrictToVerticalAxis } from "@dnd-kit/abstract/modifiers"
 import { DragDropProvider } from "@dnd-kit/react"
 import { isSortable } from "@dnd-kit/react/sortable"
@@ -18,10 +18,7 @@ import { memo } from "react"
 import type { RoomPanelProps } from "../../layout/page/types"
 import { PlaylistAddMediaControls } from "./PlaylistAddMediaControls"
 import { PlaylistItemRow } from "./PlaylistItemRow"
-import {
-  nextPlaylistLoopMode,
-  PlaylistLoopToggle,
-} from "./PlaylistLoopToggle"
+import { nextPlaylistLoopMode, PlaylistLoopToggle } from "./PlaylistLoopToggle"
 import {
   playlistShellSlicesEqual,
   selectPlaylistShellSlice,

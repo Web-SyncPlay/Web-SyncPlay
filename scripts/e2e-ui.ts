@@ -41,11 +41,7 @@ async function seedUsername(context: BrowserContext, userId: string) {
   )
 }
 
-async function openRoom(
-  context: BrowserContext,
-  path: string,
-  hash = "",
-) {
+async function openRoom(context: BrowserContext, path: string, hash = "") {
   const page = await context.newPage()
   page.setDefaultTimeout(25_000)
   const consoleErrors: string[] = []
@@ -116,7 +112,10 @@ async function main() {
     await roomInput.fill(`${BASE}/room/${ROOM}`)
     await landing.getByRole("button", { name: "Enter room" }).click()
     await landing.waitForURL(new RegExp(`/room/${ROOM}`), { timeout: 15_000 })
-    record("landing paste full room link navigates", landing.url().includes(ROOM))
+    record(
+      "landing paste full room link navigates",
+      landing.url().includes(ROOM),
+    )
     await landing.close()
 
     ;({
@@ -198,7 +197,10 @@ async function main() {
         "switching active playlist item updates UI",
         /Active[\s\S]{0,80}flower|flower[\s\S]{0,40}Active/i.test(hostBody) ||
           !/Fallback media[\s\S]{0,40}Active/i.test(hostBody),
-        hostBody.match(/[12]\.[\s\S]{0,80}/g)?.join(" | ")?.slice(0, 200),
+        hostBody
+          .match(/[12]\.[\s\S]{0,80}/g)
+          ?.join(" | ")
+          ?.slice(0, 200),
       )
     } else {
       record("flower playlist item clickable", false)
@@ -228,7 +230,8 @@ async function main() {
       hostBody = await bodyText(hostPage)
       record(
         "YouTube eventually leaves resolving",
-        !/Resolving/i.test(hostBody) || /failed|error|ready|zoo/i.test(hostBody),
+        !/Resolving/i.test(hostBody) ||
+          /failed|error|ready|zoo/i.test(hostBody),
         (await bodyText(hostPage))
           .match(/youtube|zoo|Resolv|fail|error/gi)
           ?.join(","),
@@ -241,7 +244,11 @@ async function main() {
       await loopBtn.first().click()
       await hostPage.waitForTimeout(400)
       const after = await loopBtn.first().getAttribute("aria-label")
-      record("loop toggle changes state", before !== after, `${before} → ${after}`)
+      record(
+        "loop toggle changes state",
+        before !== after,
+        `${before} → ${after}`,
+      )
     }
 
     await hostPage.getByRole("button", { name: "Logs" }).click()
@@ -261,7 +268,9 @@ async function main() {
     ))
     await hostPage.waitForTimeout(1500)
     const guestBody = await bodyText(guestPage)
-    const hostSeesGuest = (await bodyText(hostPage)).includes(guestId.slice(0, 8))
+    const hostSeesGuest = (await bodyText(hostPage)).includes(
+      guestId.slice(0, 8),
+    )
     record("guest joins room", !/Connecting/i.test(guestBody))
     record("host sees guest", hostSeesGuest)
 
@@ -326,7 +335,9 @@ async function main() {
       record("single playlist item — skip delete-all", true)
     }
 
-    const hide = hostPage.getByRole("button", { name: /Hide panel|Show panel/i })
+    const hide = hostPage.getByRole("button", {
+      name: /Hide panel|Show panel/i,
+    })
     if ((await hide.count()) > 0) {
       const labelBefore = await hide.first().getAttribute("aria-label")
       await hide.first().click()
@@ -341,7 +352,10 @@ async function main() {
             .catch(() => true)),
         `${labelBefore} → ${labelAfter}`,
       )
-      await hide.first().click().catch(() => {})
+      await hide
+        .first()
+        .click()
+        .catch(() => {})
     }
 
     await hostPage.setViewportSize({ width: 390, height: 844 })
@@ -366,9 +380,11 @@ async function main() {
     )
     await embed.page.close()
 
+    // Ignore expected player/ops noise: third-party media, Vidstack teardown,
+    // and buffering-watchdog recovery logs (console.error by design on stall).
     const seriousConsole = hostConsole.filter(
       (t) =>
-        !/favicon|third-party|youtube|googlevideo|cast_|Failed to load resource.*ytimg|provider destroyed/i.test(
+        !/favicon|third-party|youtube|googlevideo|cast_|Failed to load resource.*ytimg|provider destroyed|buffering watchdog/i.test(
           t,
         ),
     )

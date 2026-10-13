@@ -52,19 +52,19 @@ bun run dev
 
 Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
-| Script                                                                                          | Purpose                                                     |
-| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `bun run typecheck`                                                                             | CI TypeScript 7 gate                                        |
-| `bun run lint`                                                                                  | ESLint                                                      |
-| `bun run test:unit`                                                                             | Unit tests (no live app; prefer this locally)               |
-| `bun run test:integration`                                                                      | Needs Valkey / `VALKEY_URL`                                 |
-| `bun run test`                                                                                  | Full `bun test` suite (includes integration → needs Valkey) |
-| `bun run test:a11y` / `test:e2e` / `test:e2e:ws` / `test:e2e:password` / `test:e2e:local-media` / `test:e2e:ui` | Need a healthy app (`bun run start` or `dev`) |
-| `bun run test:e2e:all`                                                                          | All a11y + e2e scripts (needs healthy app)                  |
-| `bun run test:full`                                                                             | Unit + integration + `test:e2e:all` (Valkey + healthy app)  |
-| `bun run test:fuzz`                                                                             | Optional Valkey property suite (not in CI)                  |
-| `bun run check:local-media-sw`                                                                  | Verify committed SW artifact matches source                 |
-| `bun run start`                                                                                 | Production standalone runner (`node .next/standalone/…`)    |
+| Script                                                                                                          | Purpose                                                     |
+| --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `bun run typecheck`                                                                                             | CI TypeScript 7 gate                                        |
+| `bun run lint`                                                                                                  | ESLint                                                      |
+| `bun run test:unit`                                                                                             | Unit tests (no live app; prefer this locally)               |
+| `bun run test:integration`                                                                                      | Needs Valkey / `VALKEY_URL`                                 |
+| `bun run test`                                                                                                  | Full `bun test` suite (includes integration → needs Valkey) |
+| `bun run test:a11y` / `test:e2e` / `test:e2e:ws` / `test:e2e:password` / `test:e2e:local-media` / `test:e2e:ui` | Need a healthy app (`bun run start` or `dev`)               |
+| `bun run test:e2e:all`                                                                                          | All a11y + e2e scripts (needs healthy app)                  |
+| `bun run test:full`                                                                                             | Unit + integration + `test:e2e:all` (Valkey + healthy app)  |
+| `bun run test:fuzz`                                                                                             | Optional Valkey property suite (not in CI)                  |
+| `bun run check:local-media-sw`                                                                                  | Verify committed SW artifact matches source                 |
+| `bun run start`                                                                                                 | Production standalone runner (`node .next/standalone/…`)    |
 
 Local Bun may skip the mediasoup native worker; the Docker image runs the in-process SFU.
 
@@ -200,20 +200,20 @@ Set **both** on every `web` replica for sticky local-media HTTP affinity (miss p
 
 ### Optional
 
-| Variable                     | Default                        | Description                                                                                                |
-| ---------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                   | `production`                   | `development` \| `test` \| `production`. Compose forces `production`.                                      |
-| `YTDLP_BIN`                  | `yt-dlp`                       | yt-dlp binary (installed in the Docker image).                                                             |
-| `YTDLP_MAX_CONCURRENT`       | `2`                            | Max concurrent extracts per process.                                                                       |
-| `YTDLP_TIMEOUT_MS`           | `30000`                        | Extract timeout (1s–120s). Also drives lock heartbeat / reclaim intervals.                                 |
-| `FALLBACK_DEFAULT_MEDIA_URL` | `https://youtu.be/uD4izuDMUQA` | Seed media when daily defaults cache is empty.                                                             |
-| `ROOM_PARTICIPANTS_LIMIT`    | `100`                          | Max participants per room (1–100).                                                                         |
-| `ROOM_PLAYLIST_LIMIT`        | `50`                           | Max playlist items per room (1–200).                                                                       |
-| `ROOM_ACTION_LOG_LIMIT`      | `500`                          | Max action-log entries retained (1–1000).                                                                  |
-| `PROXY_ALLOW_PRIVATE_URLS`   | `false`                        | Allow proxying private/LAN URLs. Always forced `false` in production.                                      |
-| `EMBED_FRAME_ANCESTORS`      | unset                          | Space-separated absolute origins (or `*`) allowed to iframe this app. Default: none.                       |
-| `NEXT_TELEMETRY_DISABLED`    | `1` (true)                     | Next.js telemetry off by default. Set `0` only to opt in.                                                  |
-| `SKIP_ENV_VALIDATION`        | unset                          | Set truthy to skip env schema validation (e.g. image build).                                               |
+| Variable                     | Default                        | Description                                                                          |
+| ---------------------------- | ------------------------------ | ------------------------------------------------------------------------------------ |
+| `NODE_ENV`                   | `production`                   | `development` \| `test` \| `production`. Compose forces `production`.                |
+| `YTDLP_BIN`                  | `yt-dlp`                       | yt-dlp binary (installed in the Docker image).                                       |
+| `YTDLP_MAX_CONCURRENT`       | `2`                            | Max concurrent extracts per process.                                                 |
+| `YTDLP_TIMEOUT_MS`           | `30000`                        | Extract timeout (1s–120s). Also drives lock heartbeat / reclaim intervals.           |
+| `FALLBACK_DEFAULT_MEDIA_URL` | `https://youtu.be/uD4izuDMUQA` | Seed media when daily defaults cache is empty.                                       |
+| `ROOM_PARTICIPANTS_LIMIT`    | `100`                          | Max participants per room (1–100).                                                   |
+| `ROOM_PLAYLIST_LIMIT`        | `50`                           | Max playlist items per room (1–200).                                                 |
+| `ROOM_ACTION_LOG_LIMIT`      | `500`                          | Max action-log entries retained (1–1000).                                            |
+| `PROXY_ALLOW_PRIVATE_URLS`   | `false`                        | Allow proxying private/LAN URLs. Always forced `false` in production.                |
+| `EMBED_FRAME_ANCESTORS`      | unset                          | Space-separated absolute origins (or `*`) allowed to iframe this app. Default: none. |
+| `NEXT_TELEMETRY_DISABLED`    | `1` (true)                     | Next.js telemetry off by default. Set `0` only to opt in.                            |
+| `SKIP_ENV_VALIDATION`        | unset                          | Set truthy to skip env schema validation (e.g. image build).                         |
 
 ## Using the app
 

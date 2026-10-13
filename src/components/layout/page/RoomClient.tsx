@@ -1,14 +1,14 @@
 "use client"
 
+import { getRoomUrl } from "@/client/realtime/control-url"
 import { RoomConnectingView } from "@/components/layout/RoomConnectingView"
 import { SidePanel } from "@/components/layout/SidePanel"
 import { SiteNavbar } from "@/components/layout/SiteNavbar"
+import { cn } from "@/components/lib/utils"
 import { PlayerPanel } from "@/components/panel/player/PlayerPanel"
 import { UsersPanel } from "@/components/panel/user/UsersPanel"
 import { useRoomRail } from "@/hooks/use-room-rail"
 import { useRoomSession } from "@/hooks/use-room-session"
-import { getRoomUrl } from "@/client/realtime/control-url"
-import { cn } from "@/components/lib/utils"
 import { useState } from "react"
 import type { RoomPanelProps } from "./types"
 import { useRoomPanelModel } from "./use-room-panel-model"
@@ -125,8 +125,7 @@ function RoomClientReady(props: {
         <div
           className={cn(
             "grid gap-2",
-            railOpen &&
-              "lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]",
+            railOpen && "lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]",
           )}
         >
           <PlayerPanel
