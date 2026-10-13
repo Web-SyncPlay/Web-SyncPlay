@@ -1,4 +1,4 @@
-# Test on PR/push; build+push multi-arch images on push only.
+# Quality + tests on PR/push; build+push multi-arch images on push only.
 # docker/metadata-action OCI labels must stay aligned with Dockerfile LABEL lines.
 name: CI
 
@@ -20,8 +20,36 @@ env:
   REGISTRY_IMAGE: websyncplay/websyncplay
 
 jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          verify-local-media-sw: "true"
+
+      - name: Typecheck (TS7)
+        run: bun check
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Format
+        run: bun run format
+
+      # Advisory only: workspace typescript → @typescript/typescript6 (IDE).
+      # Does not gate PRs/Docker. CI truth remains bun check (TS7) above.
+      - name: Typecheck IDE TS6 (advisory)
+        continue-on-error: true
+        run: ./node_modules/.bin/tsc -p tsconfig.json --noEmit
+
   test:
     name: Test
+    needs: quality
     runs-on: ubuntu-latest
     services:
       valkey:
@@ -39,32 +67,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: 1.4.3
-
-      # Before install: postinstall rebuilds the SW and would mask artifact drift.
-      - name: Verify local-media SW artifact
-        run: bun run check:local-media-sw
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Quality gate — typecheck
-        run: bun check
-
-      - name: Quality gate — lint
-        run: bun run lint
-
-      - name: Quality gate — format
-        run: bun run format
+      - name: Setup
+        uses: ./.github/actions/setup
 
       - name: Unit tests
         run: bun run test:unit
 
       - name: Integration tests (Valkey)
         run: bun run test:integration
+
+  e2e:
+    name: E2E
+    needs: quality
+    runs-on: ubuntu-latest
+    services:
+      valkey:
+        image: valkey/valkey:9
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      VALKEY_URL: redis://127.0.0.1:6379
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup
+        uses: ./.github/actions/setup
 
       - name: Install Playwright Chromium
         run: bunx playwright install chromium --with-deps
@@ -124,30 +157,9 @@ jobs:
           fi
           pkill -f "start-standalone|standalone/server.js" || true
 
-  # Advisory only: workspace typescript → @typescript/typescript6 (IDE). Does not gate PRs/Docker.
-  # CI truth remains `bun check` (TS7 via @typescript/native) in the Test job above.
-  typecheck-ide:
-    name: Typecheck (IDE TS6, advisory)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: 1.4.3
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Typecheck with workspace TypeScript 6
-        run: ./node_modules/.bin/tsc -p tsconfig.json --noEmit
-
   docker:
     name: Docker (${{ matrix.platform }})
-    needs: test
+    needs: [quality, test, e2e]
     if: github.event_name == 'push'
     permissions:
       contents: read

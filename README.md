@@ -39,7 +39,7 @@ Agent-oriented map and dual TypeScript notes: [AGENTS.md](./AGENTS.md).
 | [Bun](https://bun.sh) | **1.4.2** (`packageManager` / CI)                        |
 | Node.js               | **≥ 26** (`engines.node`; Docker image / native tooling) |
 
-**TypeScript:** IDE = TS **6** (`typescript` → `@typescript/typescript6`); CI gate = TS **7** via `@typescript/native` (`bun check`). Prefer fixing issues that fail `bun check`. Details: [AGENTS.md](./AGENTS.md).
+**TypeScript:** IDE = TS **6** (`typescript` → `@typescript/typescript6`); CI **Quality** gate = TS **7** via `@typescript/native` (`bun check`). Prefer fixing issues that fail `bun check`. Details: [AGENTS.md](./AGENTS.md).
 
 ## Quick start (development)
 

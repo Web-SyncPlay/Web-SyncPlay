@@ -35,7 +35,7 @@ Prefer `@/shared/test-utils` fixtures in client/UI tests over `@/server` fixture
 
 ## Quality gates
 
-CI enforces all three. Before finishing agent work or opening a PR, run each and fix failures:
+CI enforces all three in the **Quality** job. Before finishing agent work or opening a PR, run each and fix failures:
 
 | Gate      | Command          | Notes                                                          |
 | --------- | ---------------- | -------------------------------------------------------------- |
@@ -43,13 +43,22 @@ CI enforces all three. Before finishing agent work or opening a PR, run each and
 | Lint      | `bun run lint`   | ESLint                                                         |
 | Format    | `bun run format` | Prettier `--check` (CI). Fix with `bun run format:write`       |
 
+### CI jobs
+
+| Job         | What it runs                                                                 |
+| ----------- | ---------------------------------------------------------------------------- |
+| **Quality** | SW verify, `bun check`, lint, format; advisory IDE TS6 (`continue-on-error`) |
+| **Test**    | Unit + integration (Valkey); needs Quality                                   |
+| **E2E**     | Build + a11y + browser/WS/password/local-media/UI e2e; needs Quality         |
+| **Docker**  | Multi-arch push on `push` only; needs Quality + Test + E2E                   |
+
 ### Typecheck (IDE TS6 vs CI TS7)
 
 | Context                       | Command / setup                                                                                                                        |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| **CI gate (source of truth)** | `bun check` → TypeScript **7** via `@typescript/native`                                                                                |
+| **CI gate (source of truth)** | `bun check` → TypeScript **7** via `@typescript/native` (Quality job)                                                                  |
 | **IDE / workspace**           | `typescript` → `@typescript/typescript6` (TS **6**); `.vscode/settings.json` points `typescript.tsdk` at `node_modules/typescript/lib` |
-| **Advisory CI**               | Job **Typecheck (IDE TS6, advisory)** runs `./node_modules/.bin/tsc` with `continue-on-error`                                          |
+| **Advisory CI**               | Quality step **Typecheck IDE TS6 (advisory)** runs `./node_modules/.bin/tsc` with `continue-on-error`                                  |
 
 Prefer fixing failures from `bun check` for type errors. If TS6 and TS7 disagree, fix the CI TS7 failure first. Treat `bun run lint` and `bun run format` as equal CI blockers — do not skip format after check/lint pass.
 

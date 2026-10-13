@@ -179,11 +179,10 @@ describe("createPlaybackLifecycleHandlers unlock + waiting grace", () => {
     handlers.onCanPlay()
 
     expect(applyRoomClock).toHaveBeenCalledTimes(1)
-    const [, syncState, threshold] = applyRoomClock.mock.calls[0] as [
-      unknown,
-      { paused: boolean },
-      number,
-    ]
+    const firstCall = applyRoomClock.mock.calls[0] as unknown as
+      [unknown, { paused: boolean }, number] | undefined
+    expect(firstCall).toBeDefined()
+    const [, syncState, threshold] = firstCall!
     expect(syncState.paused).toBe(true)
     expect(threshold).toBe(0)
     expect(clearTransportNudge).toHaveBeenCalledTimes(1)

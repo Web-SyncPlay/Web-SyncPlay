@@ -25,7 +25,7 @@ bun run dev
 | `bun run lint`      | ESLint                                  |
 | `bun run format`    | Prettier check; fix with `format:write` |
 
-All three of `bun check`, `bun run lint`, and `bun run format` are CI quality gates — run them together. **TypeScript:** IDE uses TS **6**; CI uses TS **7**. Prefer fixing `bun check` type failures. Details: [AGENTS.md](./AGENTS.md).
+All three of `bun check`, `bun run lint`, and `bun run format` are CI **Quality** job gates — run them together. CI then runs **Test** (unit/integration) and **E2E** in parallel. **TypeScript:** IDE uses TS **6**; CI uses TS **7**. Prefer fixing `bun check` type failures. Details: [AGENTS.md](./AGENTS.md).
 
 Integration / e2e / a11y need Valkey or a healthy app — see [README](./README.md#quick-start-development).
 
