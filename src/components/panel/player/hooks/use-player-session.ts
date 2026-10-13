@@ -195,6 +195,8 @@ export function usePlayerSession({
     seekPhase: timeline.seekPhase,
     timelineAnchorMs: playback.timelineAnchorMs,
     commitSeek: timeline.commitSeek,
+    setIsBuffering,
+    setPlayerRemountNonce,
   })
 
   // Publish latest implementations without reassigning controller method slots.

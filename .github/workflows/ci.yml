@@ -51,13 +51,13 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Typecheck
+      - name: Quality gate — typecheck
         run: bun check
 
-      - name: Lint
+      - name: Quality gate — lint
         run: bun run lint
 
-      - name: Format
+      - name: Quality gate — format
         run: bun run format
 
       - name: Unit tests

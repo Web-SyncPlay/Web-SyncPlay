@@ -35,6 +35,8 @@ Prefer `@/shared/test-utils` fixtures in client/UI tests over `@/server` fixture
 
 ## Quality gates
 
+CI enforces all three. Before finishing agent work or opening a PR, run each and fix failures:
+
 | Gate      | Command          | Notes                                                          |
 | --------- | ---------------- | -------------------------------------------------------------- |
 | Typecheck | `bun check`      | TypeScript **7** via `@typescript/native` (CI source of truth) |
@@ -49,7 +51,7 @@ Prefer `@/shared/test-utils` fixtures in client/UI tests over `@/server` fixture
 | **IDE / workspace**           | `typescript` → `@typescript/typescript6` (TS **6**); `.vscode/settings.json` points `typescript.tsdk` at `node_modules/typescript/lib` |
 | **Advisory CI**               | Job **Typecheck (IDE TS6, advisory)** runs `./node_modules/.bin/tsc` with `continue-on-error`                                          |
 
-Prefer fixing failures from `bun check`. If TS6 and TS7 disagree, fix the CI TS7 failure first.
+Prefer fixing failures from `bun check` for type errors. If TS6 and TS7 disagree, fix the CI TS7 failure first. Treat `bun run lint` and `bun run format` as equal CI blockers — do not skip format after check/lint pass.
 
 ## Git commits
 

@@ -2,6 +2,7 @@ import { cn } from "@/components/lib/utils"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { ParticipantState } from "@/contracts/types"
 import { useInlineEdit } from "@/hooks/use-inline-edit"
+import { extrapolateLocalPlaybackTimeMs } from "@/shared/local-playback-display"
 import { formatClockMs, formatRelativeLastSeen } from "@/shared/time-format"
 import { Badge } from "../../ui/badge"
 import { Input } from "../../ui/input"
@@ -74,11 +75,18 @@ export function UserItem({
   user,
   isSelf = false,
   isOwner = false,
+  nowMs,
+  playbackRate = 1,
+  durationMs = null,
 }: {
   send: TypedRoomEventSender
   user: ParticipantState
   isSelf?: boolean
   isOwner?: boolean
+  /** Shared wall clock for playhead extrapolation between presence samples. */
+  nowMs: number
+  playbackRate?: number
+  durationMs?: number | null
 }) {
   const inlineEdit = useInlineEdit({
     onCommit: (nextValue) =>
@@ -88,6 +96,11 @@ export function UserItem({
   const connectionLabel = user.connected ? "Online" : "Offline"
   const canToggleRole =
     isOwner && !isSelf && (user.role === "moderator" || user.role === "guest")
+  const displayTimeMs = extrapolateLocalPlaybackTimeMs(
+    user.localPlayback,
+    nowMs,
+    { playbackRate, durationMs },
+  )
 
   const toggleRole = () => {
     if (!canToggleRole) return
@@ -161,7 +174,7 @@ export function UserItem({
             <div className="flex min-w-0 items-center gap-1.5">
               <div className="truncate text-xs leading-tight text-muted-foreground">
                 {user.localPlayback.paused ? "Paused" : "Playing"} at{" "}
-                {formatClockMs(user.localPlayback.currentTimeMs)}
+                {formatClockMs(displayTimeMs)}
               </div>
               <Tooltip>
                 <TooltipTrigger>

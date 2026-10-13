@@ -5,9 +5,7 @@
 ## Test plan
 
 - [ ] `bun run test:unit` (and other relevant tests)
-- [ ] `bun check`
-- [ ] `bun run lint`
-- [ ] `bun run format`
+- [ ] Quality gates: `bun check`, `bun run lint`, and `bun run format`
 
 ## Breaking changes / env
 

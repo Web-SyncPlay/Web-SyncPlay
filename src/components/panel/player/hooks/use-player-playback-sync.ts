@@ -15,7 +15,14 @@ import {
 import { localMediaErrorMessage } from "@/shared/local-media/local-media-errors"
 import { isNativeProviderUrl, resolveLiveEdgeSec } from "@/shared/player-utils"
 import type { MediaPlayerInstance } from "@vidstack/react"
-import { useCallback, useEffect, useRef, type RefObject } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+} from "react"
 import { toast } from "sonner"
 import { SEEK_ACK_MATCH_THRESHOLD_MS } from "../playback-control/use-playback-timeline-controller"
 import { playerSrcContentKey, type PlayerSrcInput } from "../player-src"
@@ -24,6 +31,7 @@ import { useApplyRoomClock } from "./use-apply-room-clock"
 import { usePlaybackDriftCorrection } from "./use-playback-drift-correction"
 import { usePlaybackSyncEngine } from "./use-playback-sync-engine"
 import { usePlayerPresenceHeartbeat } from "./use-player-presence-heartbeat"
+import { usePlayerVisibilityResume } from "./use-player-visibility-resume"
 
 /**
  * Room-clock application, drift correction, and live-edge seek.
@@ -62,6 +70,8 @@ export function usePlayerPlaybackSync(config: {
   seekPhase: string
   timelineAnchorMs: number
   commitSeek: (targetMs: number) => void
+  setIsBuffering: (next: boolean) => void
+  setPlayerRemountNonce?: Dispatch<SetStateAction<number>>
 }) {
   const {
     playerRef,
@@ -91,6 +101,8 @@ export function usePlayerPlaybackSync(config: {
     seekPhase,
     timelineAnchorMs,
     commitSeek,
+    setIsBuffering,
+    setPlayerRemountNonce,
   } = config
 
   const applyFailContextRef = useLatestRef({
@@ -262,12 +274,14 @@ export function usePlayerPlaybackSync(config: {
     playerRef,
   ])
 
-  usePlayerPresenceHeartbeat({
+  const { flushPresence } = usePlayerPresenceHeartbeat({
     playerRef,
     participantStatusErrorRef,
+    isMediaReadyRef,
     isBuffering,
     playbackErrorLabel,
     currentIndex,
+    roomPaused: playback.paused,
     send,
     getPlayheadSec: () => {
       const player = playerRef.current
@@ -275,6 +289,18 @@ export function usePlayerPlaybackSync(config: {
         ? readSyncPlayheadSec(player, { native: isNativeSource() })
         : 0
     },
+  })
+
+  usePlayerVisibilityResume({
+    playerRef,
+    isMediaReadyRef,
+    bufferingSinceRef,
+    pendingSyncRef,
+    playbackRef,
+    applyRoomClock,
+    flushPresence,
+    setIsBuffering,
+    setPlayerRemountNonce,
   })
 
   const enforceServerPlaybackState = useCallback(() => {
