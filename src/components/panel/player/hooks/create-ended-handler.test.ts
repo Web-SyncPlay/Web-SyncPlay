@@ -18,9 +18,14 @@ function createDeps(config?: {
   timelineAnchorMs?: number
   serverNowMs?: number
 }) {
-  const send = mock((_type: string, _payload: unknown) => {})
+  const send = mock((type: string, payload: unknown) => {
+    void type
+    void payload
+  })
   const enforceServerPlaybackState = mock(() => {})
-  const selectPlaylistIndex = mock((_index: number) => {})
+  const selectPlaylistIndex = mock((index: number) => {
+    void index
+  })
   const now = Date.now()
   const room = createRoomState()
   room.playback = {

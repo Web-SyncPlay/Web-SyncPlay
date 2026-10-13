@@ -281,5 +281,14 @@ export function usePlayerCaptionPreferences(options: {
       clearSuppressTimer()
       unbind()
     }
-  }, [enabled, itemId, playerRef, syncKey, viewerPrefs?.textTrackId])
+  }, [
+    enabled,
+    itemId,
+    playerRef,
+    syncKey,
+    viewerPrefs?.textTrackId,
+    catalogRef,
+    sendRef,
+    viewerPrefsRef,
+  ])
 }

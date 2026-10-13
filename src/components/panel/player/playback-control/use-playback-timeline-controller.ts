@@ -50,7 +50,8 @@ export function usePlaybackTimelineController(config: {
 
   const projectedElapsedMs = useMemo(
     () => projectPlaybackMs(roomState, nowMs),
-    // Depend on playback fields only — presence batches must not recompute.
+    // Depend on playback fields only — presence/playlist must not recompute.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- field-level roomState deps
     [
       nowMs,
       roomState.playback.paused,
@@ -162,7 +163,7 @@ export function usePlaybackTimelineController(config: {
     }, SEEK_PREVIEW_IDLE_COMMIT_MS)
 
     return () => window.clearTimeout(timer)
-  }, [controlsDisabled, localSeekTargetMs, seekPhase])
+  }, [controlsDisabled, localSeekTargetMs, seekPhase, commitSeekRef])
 
   const selectAdjacent = useCallback(
     (direction: "previous" | "next") => {

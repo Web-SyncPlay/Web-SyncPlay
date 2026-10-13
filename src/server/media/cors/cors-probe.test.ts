@@ -83,14 +83,17 @@ test("HEAD without ACAO falls back to GET before denying", async () => {
 })
 
 test("403 with ACAO * is unreachable, not playable-direct", async () => {
-  globalThis.fetch = (async (_input: RequestInfo | URL, _init?: RequestInit) =>
-    new Response("<Error>AccessDenied</Error>", {
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    void input
+    void init
+    return new Response("<Error>AccessDenied</Error>", {
       status: 403,
       headers: {
         "access-control-allow-origin": "*",
         "content-type": "application/xml",
       },
-    })) as typeof fetch
+    })
+  }) as typeof fetch
 
   await expect(
     probeUpstreamPlayback("https://cdn.example/denied.mp4"),

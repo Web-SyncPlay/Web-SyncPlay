@@ -1,5 +1,6 @@
 import type { PresenceBatchPayload, PresencePatch } from "@/contracts/types"
 import { keys } from "@/server/redis/keys"
+import { omitKey } from "@/shared/omit-key"
 import type { PresenceEnvelope } from "./channels"
 import type { PublishCapture } from "./control-publisher"
 import { publishTyped } from "./control-publisher"
@@ -39,8 +40,8 @@ export function mergePresenceDirty(
 ) {
   const prev = dirty.get(userId) ?? {}
   // Never fan out per-connection report maps — clients only see the aggregate.
-  const { localPlaybackReports: _incoming, ...clientPatch } = patch
-  const { localPlaybackReports: _prev, ...prevClient } = prev
+  const clientPatch = omitKey(patch, "localPlaybackReports")
+  const prevClient = omitKey(prev, "localPlaybackReports")
   dirty.set(userId, {
     ...prevClient,
     ...clientPatch,

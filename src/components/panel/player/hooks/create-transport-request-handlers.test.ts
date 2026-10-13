@@ -21,9 +21,15 @@ function createDeps(
 ) {
   const sent: Array<{ type: string; payload: unknown }> = []
   const enforceServerPlaybackState = mock(() => {})
-  const beginSeek = mock((_ms: number) => {})
-  const updateSeek = mock((_ms: number) => {})
-  const commitSeek = mock((_ms: number) => {})
+  const beginSeek = mock((ms: number) => {
+    void ms
+  })
+  const updateSeek = mock((ms: number) => {
+    void ms
+  })
+  const commitSeek = mock((ms: number) => {
+    void ms
+  })
   const commitLiveEdgeSeek = mock(() => {})
   const clearTransportNudge = mock(() => {})
   const transportIntentRef: { current: TransportIntent | null } = {

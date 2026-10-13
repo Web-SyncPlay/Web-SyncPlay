@@ -89,7 +89,14 @@ export function useRoomSocket(
     return () => {
       connection.dispose()
     }
-  }, [roomId, identity, sessionKind, controlTokenRef, usernameRef])
+  }, [
+    roomId,
+    identity,
+    sessionKind,
+    controlTokenRef,
+    usernameRef,
+    initialMediaUrlRef,
+  ])
 
   const send = useCallback<TypedRoomEventSender>((type, payload) => {
     wsRef.current?.send(

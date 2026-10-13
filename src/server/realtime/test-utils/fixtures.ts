@@ -151,10 +151,13 @@ export class InMemoryRoomStateStore implements RoomStateStorePort {
   }
 
   async touchWsPresence(
-    _roomId: string,
-    _userId: string,
-    _options?: { force?: boolean },
+    roomId: string,
+    userId: string,
+    options?: { force?: boolean },
   ) {
+    void roomId
+    void userId
+    void options
     // Presence TTL is a no-op for the in-memory test store.
   }
 

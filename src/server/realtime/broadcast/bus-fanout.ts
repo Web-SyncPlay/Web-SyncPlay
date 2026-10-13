@@ -3,6 +3,7 @@ import {
   getSocketsForRoom,
   getSocketsForUser,
 } from "@/server/ws/registry"
+import { omitKey } from "@/shared/omit-key"
 import type { WebSocket } from "ws"
 import type {
   AdmissionChangedEnvelope,
@@ -75,7 +76,7 @@ export function fanOutFromPubSub(roomId: string, wired: WiredEnvelope) {
   if (wired.originNodeId && wired.originNodeId === BROADCAST_NODE_ID) {
     return
   }
-  const { originNodeId: _origin, ...envelope } = wired
+  const envelope = omitKey(wired, "originNodeId") as RoomBroadcastEnvelope
   if (envelope.type === "room:admission:changed") {
     forceRejoinNonOwners(
       roomId,
@@ -84,5 +85,5 @@ export function fanOutFromPubSub(roomId: string, wired: WiredEnvelope) {
     )
     return
   }
-  sendRawToRoom(roomId, JSON.stringify(envelope as RoomBroadcastEnvelope))
+  sendRawToRoom(roomId, JSON.stringify(envelope))
 }

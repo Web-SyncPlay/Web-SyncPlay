@@ -358,8 +358,7 @@ export function createPlaybackSyncEngine(
    * Playing force-seek lead — always 0. Kept as a named helper so call sites
    * stay explicit; FORCE_SEEK_LEAD_SEC was removed after it amplified peer deltas.
    */
-  const playingSeekLeadSec = (_syncState: EngineSyncState) =>
-    FORCE_SEEK_LEAD_SEC
+  const playingSeekLeadSec = () => FORCE_SEEK_LEAD_SEC
 
   const measureDrift = (
     player: SyncablePlayer,
@@ -376,7 +375,7 @@ export function createPlaybackSyncEngine(
         : undefined,
       vodDurationHintSec(),
       isCatalogLive(),
-      playingSeekLeadSec(syncState),
+      playingSeekLeadSec(),
     )
 
   const retryDelaysMs = (): readonly number[] =>
@@ -605,7 +604,7 @@ export function createPlaybackSyncEngine(
           ? null
           : host.getCatchUpRate()
       // No playing seek lead — snap to expected. Soft seeks use RTT-scaled threshold.
-      const allowAheadSec = playingSeekLeadSec(syncState)
+      const allowAheadSec = playingSeekLeadSec()
       const seekLeadSec =
         allowAheadSec > 0 && effectiveThresholdSec === 0 ? allowAheadSec : 0
       const result = applyPlaybackSyncToPlayer({

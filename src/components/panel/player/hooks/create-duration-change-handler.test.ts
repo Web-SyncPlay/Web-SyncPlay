@@ -6,7 +6,10 @@ function createHandler(config?: {
   seekableEndSec?: number
 }) {
   let mediaDurationMs = 0
-  const send = mock((_type: string, _payload: unknown) => {})
+  const send = mock((type: string, payload: unknown) => {
+    void type
+    void payload
+  })
   const enforceServerPlaybackState = mock(() => {})
   const reportedDurationItemIdRef = { current: null as string | null }
   const mediaEl = {

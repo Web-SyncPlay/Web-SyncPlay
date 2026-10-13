@@ -10,7 +10,8 @@ function createScanMock(keysByPage: ScanResult[]) {
   let scans = 0
   let refreshIndex = 0
   return {
-    scan: async (_cursor: string) => {
+    scan: async (cursor: string) => {
+      void cursor
       scans += 1
       return (
         keysByPage[Math.min(refreshIndex++, keysByPage.length - 1)] ?? {

@@ -148,40 +148,6 @@ async function readPlayhead(page: Page): Promise<Playhead> {
   })
 }
 
-async function readPresenceClocks(page: Page): Promise<
-  Array<{
-    label: string
-    state: "Playing" | "Paused" | "Unknown"
-    clock: string
-  }>
-> {
-  return page.evaluate(() => {
-    const text = document.body.innerText
-    const re = /(You|[a-f0-9]{8})\n(Playing|Paused) at ([0-9:]+)/g
-    const out: Array<{
-      label: string
-      state: "Playing" | "Paused" | "Unknown"
-      clock: string
-    }> = []
-    for (const m of text.matchAll(re)) {
-      out.push({
-        label: m[1]!,
-        state: m[2] as "Playing" | "Paused",
-        clock: m[3]!,
-      })
-    }
-    return out
-  })
-}
-
-function parseClockToSec(clock: string): number | null {
-  const parts = clock.split(":").map(Number)
-  if (parts.some((n) => !Number.isFinite(n))) return null
-  if (parts.length === 2) return parts[0]! * 60 + parts[1]!
-  if (parts.length === 3) return parts[0]! * 3600 + parts[1]! * 60 + parts[2]!
-  return null
-}
-
 async function roomPlayingLabel(
   page: Page,
 ): Promise<"Playing" | "Paused" | "Unknown"> {

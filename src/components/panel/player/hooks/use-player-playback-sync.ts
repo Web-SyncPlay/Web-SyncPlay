@@ -259,6 +259,8 @@ export function usePlayerPlaybackSync(config: {
       syncState,
       anchorChanged || pausedEdge ? 0 : undefined,
     )
+    // Sync fields only — seekPreview/mediaId/playlistLoop must not re-apply.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- field-level playback deps
   }, [
     clearTransportNudge,
     applyRoomClock,

@@ -22,6 +22,7 @@ export default defineConfig([
     ".next/**",
     ".worktrees/**",
     "public/vendor/**",
+    "public/local-media-sw.js",
     "src/components/ui/**",
     "next-env.d.ts",
   ]),

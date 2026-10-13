@@ -64,7 +64,6 @@ export function usePlayerChromeUi(config: {
       player.volume = preferredVolume
     }
     if (player.muted !== isMuted) {
-      // eslint-disable-next-line react-hooks/immutability -- media element API
       player.muted = isMuted
     }
   }, [controller, preferredVolume, isMuted, playerRemountNonce])

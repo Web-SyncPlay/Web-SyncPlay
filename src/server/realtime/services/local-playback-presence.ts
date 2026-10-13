@@ -4,6 +4,7 @@ import type {
   PresencePatch,
   SessionKind,
 } from "@/contracts/types"
+import { omitKey } from "@/shared/omit-key"
 
 export type LocalPlaybackSnapshot = ParticipantState["localPlayback"]
 
@@ -68,8 +69,7 @@ export function aggregateLocalPlaybackReports(
 
 export function clientPresencePatch(patch: PresencePatch): PresencePatch {
   if (!patch.localPlaybackReports) return patch
-  const { localPlaybackReports: _reports, ...rest } = patch
-  return rest
+  return omitKey(patch, "localPlaybackReports")
 }
 
 export function upsertLocalPlaybackReport(input: {

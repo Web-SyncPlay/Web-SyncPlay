@@ -11,7 +11,6 @@ import {
   LOCAL_MEDIA_VIEWER_USER_PARAM,
 } from "../shared/local-media/local-media-viewer-token"
 
-/* eslint-disable no-restricted-globals -- Service Worker global scope */
 const sw = self as unknown as {
   skipWaiting: () => Promise<void>
   clients: {

@@ -37,7 +37,7 @@ export function usePlayerMediaSource(config: {
       setForceLocalRelaySrc(false)
     })
     localBlobFallbackAttemptedRef.current = null
-  }, [current?.id])
+  }, [current?.id, localBlobFallbackAttemptedRef])
 
   const activeStream = useMemo(() => {
     if (!current) {

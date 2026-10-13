@@ -1,7 +1,9 @@
 import type { PlaylistItem } from "@/contracts/types"
 import { beforeEach, describe, expect, mock, test } from "bun:test"
 
-const toastError = mock((_message: string) => {})
+const toastError = mock((message: string) => {
+  void message
+})
 
 mock.module("sonner", () => ({
   toast: { error: toastError },
@@ -22,9 +24,15 @@ function createDeps(
   } = {},
 ) {
   const sent: Array<{ type: string; payload: unknown }> = []
-  const setIsBuffering = mock((_v: boolean) => {})
-  const setPlaybackError = mock((_v: unknown) => {})
-  const setForceLocalRelaySrc = mock((_v: boolean) => {})
+  const setIsBuffering = mock((value: boolean) => {
+    void value
+  })
+  const setPlaybackError = mock((value: unknown) => {
+    void value
+  })
+  const setForceLocalRelaySrc = mock((value: boolean) => {
+    void value
+  })
   const setPlayerRemountNonce = mock((fn: (n: number) => number) => fn(2))
   const bufferingSinceRef = { current: 100 as number | null }
   const participantStatusErrorRef = { current: "old" as string | null }
