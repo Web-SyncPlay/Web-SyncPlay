@@ -102,8 +102,12 @@ export function ControlPanel(props: {
         <SkipForward className="size-4" />
       </Button>
       <Button
-        className={cn("col-span-2 lg:order-2 lg:col-span-1", touchButtonClass)}
+        className={cn(
+          "col-span-2 hover:bg-primary/90 lg:order-2 lg:col-span-1",
+          touchButtonClass,
+        )}
         disabled={controlsDisabled}
+        aria-label={paused ? "Play" : "Pause"}
         onClick={() => {
           if (paused) {
             onPlay(elapsedMs)
@@ -112,10 +116,7 @@ export function ControlPanel(props: {
           onPause(elapsedMs)
         }}
       >
-        <span className="inline-flex items-center gap-1.5 leading-none">
-          {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
-          {paused ? "Play" : "Pause"}
-        </span>
+        {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
       </Button>
       <Button
         variant="outline"
