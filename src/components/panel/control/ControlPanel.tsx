@@ -1,19 +1,11 @@
 "use client"
 
 import { cn } from "@/components/lib/utils"
+import { SeekScrubber } from "@/components/panel/control/SeekScrubber"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Slider } from "@/components/ui/slider"
-import { formatClockMs } from "@/shared/time-format"
 import { SkipBack, SkipForward } from "lucide-react"
-
-function getSliderTargetMs(values: number | readonly number[]): number {
-  if (Array.isArray(values)) {
-    return Math.max(0, Number(values[0] ?? 0))
-  }
-  return Math.max(0, Number(values))
-}
 
 function ControlHints(props: {
   authorizationHint?: string
@@ -73,15 +65,6 @@ export function ControlPanel(props: {
     onSeekCommit,
   } = props
 
-  const durationKnown =
-    typeof totalDurationMs === "number" &&
-    Number.isFinite(totalDurationMs) &&
-    totalDurationMs > 0
-  const scrubDisabled = controlsDisabled || !durationKnown
-  const currentSeek = durationKnown
-    ? [Math.min(elapsedMs, totalDurationMs)]
-    : [0]
-  const durationLabel = durationKnown ? formatClockMs(totalDurationMs) : "--:--"
   const viewOnlyBadge = !canControl ? (
     <Badge variant={controlsDisabled ? "outline" : "secondary"}>
       View-only
@@ -149,41 +132,15 @@ export function ControlPanel(props: {
           +10s
         </Button>
       </div>
-      <Slider
-        min={0}
-        max={durationKnown ? totalDurationMs : 1}
-        value={currentSeek}
-        className="touch-manipulation py-2"
-        aria-label="Seek playback position"
-        aria-valuetext={
-          durationKnown ? undefined : "Duration unknown; scrubbing unavailable"
-        }
-        onValueChange={(values) => {
-          if (scrubDisabled) {
-            return
-          }
-          const targetMs = getSliderTargetMs(values)
-          onSeekPreview(targetMs, true)
-        }}
-        onValueCommitted={(values) => {
-          if (scrubDisabled) {
-            return
-          }
-          const targetMs = getSliderTargetMs(values)
-          onSeekPreview(targetMs, false)
-          onSeekCommit(targetMs)
-        }}
-        disabled={scrubDisabled}
+      <SeekScrubber
+        currentName={currentName}
+        elapsedMs={elapsedMs}
+        totalDurationMs={totalDurationMs}
+        disabled={controlsDisabled}
+        trailing={!title ? viewOnlyBadge : null}
+        onSeekPreview={onSeekPreview}
+        onSeekCommit={onSeekCommit}
       />
-      <div className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">
-          {currentName ?? "No media selected"}
-        </span>
-        {!title ? viewOnlyBadge : null}
-        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-          {formatClockMs(elapsedMs)} / {durationLabel}
-        </span>
-      </div>
     </>
   )
 
