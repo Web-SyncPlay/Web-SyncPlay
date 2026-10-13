@@ -274,6 +274,18 @@ async function main() {
     record("guest joins room", !/Connecting/i.test(guestBody))
     record("host sees guest", hostSeesGuest)
 
+    const guestPlayerEmbed = guestPage.getByRole("button", {
+      name: "Open player embed",
+    })
+    const guestEmbedsMenu = guestPage.getByRole("button", {
+      name: "Open embeds menu",
+    })
+    record(
+      "guest sees player embed button (not embeds menu)",
+      (await guestPlayerEmbed.count()) > 0 &&
+        (await guestEmbedsMenu.count()) === 0,
+    )
+
     const guestRemove = guestPage.getByRole("button", { name: "Remove item" })
     const guestRemoveCount = await guestRemove.count()
     let guestCannotRemove = guestRemoveCount === 0

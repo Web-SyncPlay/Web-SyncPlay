@@ -28,6 +28,7 @@ import {
   Copy,
   ExternalLink,
   ListVideo,
+  MonitorPlay,
   PanelRightClose,
   PanelRightOpen,
   Rows3,
@@ -289,7 +290,20 @@ export function SiteNavbar(props: SiteNavbarProps) {
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
-        ) : null}
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={navControlClass}
+            aria-label="Open player embed"
+            disabled={viewMode === "player" || !playerEmbedUrl}
+            onClick={() => openInNewWindow(playerEmbedUrl)}
+          >
+            <MonitorPlay className="size-3.5" />
+            <span className="hidden lg:inline">Player</span>
+          </Button>
+        )}
         {canManageRoomSecurity && send && roomSecurity ? (
           <DropdownMenu>
             <DropdownMenuTrigger
