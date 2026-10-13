@@ -39,7 +39,11 @@ export type PlayerSessionActions = {
   setForceLocalRelaySrc: (value: boolean) => void
   setPlayerRemountNonce: (updater: (n: number) => number) => void
   unmute: () => number
-  handleVolumeChange: (detail: { volume: number; muted: boolean }) => void
+  handleVolumeChange: (detail: {
+    volume: number
+    muted: boolean
+    mediaReady?: boolean
+  }) => void
 }
 
 /**

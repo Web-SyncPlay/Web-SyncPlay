@@ -23,7 +23,11 @@ export type SyncedMediaPlayerHandlerDeps = {
   isMuted: boolean
   preferredVolume: number
   unmute: () => number
-  handleVolumeChange: (detail: { volume: number; muted: boolean }) => void
+  handleVolumeChange: (detail: {
+    volume: number
+    muted: boolean
+    mediaReady?: boolean
+  }) => void
   playbackRef: RefObject<ClientRoomState["playback"]>
   playlistNavRef: RefObject<PlaylistNavSnapshot>
   isMediaReadyRef: RefObject<boolean>
