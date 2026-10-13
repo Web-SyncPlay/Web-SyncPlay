@@ -27,6 +27,7 @@
     "test:e2e:password": "bun scripts/e2e-password-join.ts",
     "test:e2e:local-media": "bun scripts/e2e-local-media-relay.ts",
     "test:e2e:ui": "bun scripts/e2e-ui.ts",
+    "test:e2e:action-log": "bun scripts/e2e-action-log.ts",
     "test:a11y": "bun scripts/a11y-wcag.ts",
     "test:e2e:all": "bun run test:a11y && bun run test:e2e && bun run test:e2e:ws && bun run test:e2e:password && bun run test:e2e:local-media && bun run test:e2e:ui",
     "test:full": "bun run test:unit && bun run test:integration && bun run test:e2e:all"

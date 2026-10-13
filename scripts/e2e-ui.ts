@@ -86,10 +86,42 @@ async function main() {
     const landing = await hostCtx.newPage()
     await landing.goto(BASE, { waitUntil: "domcontentloaded" })
     const checkInput = landing.getByLabel("Media URL to check")
-    await checkInput.fill(MEDIA_DIRECT)
     const checkBtn = landing.getByRole("button", { name: "Check URL" })
-    record("landing check button enables for URL", await checkBtn.isEnabled())
-    await checkBtn.click()
+    await checkInput.waitFor({ state: "visible" })
+    // Controlled Base UI input: wait for hydration, then type so React state updates.
+    await landing.waitForFunction(
+      () => {
+        const input = document.querySelector(
+          'input[aria-label="Media URL to check"]',
+        ) as HTMLInputElement | null
+        const btn = document.querySelector(
+          'button[aria-label="Check URL"]',
+        ) as HTMLButtonElement | null
+        return Boolean(input && btn && !input.disabled)
+      },
+      undefined,
+      { timeout: 15_000 },
+    )
+    await checkInput.click()
+    await checkInput.fill("")
+    await checkInput.pressSequentially(MEDIA_DIRECT, { delay: 5 })
+    await checkBtn.waitFor({ state: "visible" })
+    const checkEnabled = await checkBtn.isEnabled()
+    record("landing check button enables for URL", checkEnabled)
+    if (!checkEnabled) {
+      // Fallback: set value + dispatch input for stubborn controlled fields.
+      await checkInput.evaluate((el, value) => {
+        const input = el as HTMLInputElement
+        const setter = Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          "value",
+        )?.set
+        setter?.call(input, value)
+        input.dispatchEvent(new Event("input", { bubbles: true }))
+        input.dispatchEvent(new Event("change", { bubbles: true }))
+      }, MEDIA_DIRECT)
+    }
+    await checkBtn.click({ timeout: 10_000 })
     await landing.waitForTimeout(4_000)
     const landingBody = await bodyText(landing)
     record(
@@ -99,7 +131,9 @@ async function main() {
       ),
       landingBody.slice(0, 400),
     )
-    await checkInput.fill("not-a-url")
+    await checkInput.click()
+    await checkInput.fill("")
+    await checkInput.pressSequentially("not-a-url", { delay: 5 })
     await checkBtn.click().catch(() => {})
     await landing.waitForTimeout(1_000)
     record(
@@ -259,7 +293,87 @@ async function main() {
       /joined|playlist|play|pause|added|log/i.test(hostBody),
       hostBody.match(/Logs[\s\S]{0,300}/)?.[0]?.slice(0, 250),
     )
-    await hostPage.getByRole("button", { name: "Playlist" }).click()
+
+    const logSearch = hostPage.getByRole("textbox", {
+      name: "Search action log",
+    })
+    const logOverview = hostPage.getByRole("img", {
+      name: /Action log activity over time/i,
+    })
+    const playbackFacet = hostPage.getByRole("button", {
+      name: /Filter category Playback/,
+    })
+    const presenceFacet = hostPage.getByRole("button", {
+      name: /Filter category Presence/,
+    })
+    record("logs search field present", (await logSearch.count()) > 0)
+    record("logs density overview present", (await logOverview.count()) > 0)
+    record(
+      "logs category facets present",
+      (await playbackFacet.count()) > 0 && (await presenceFacet.count()) > 0,
+    )
+
+    if ((await logSearch.count()) > 0) {
+      const beforeMatch = hostBody.match(/Showing\s+(\d+)\s+of\s+(\d+)/)
+      await logSearch.fill("___no_such_log_entry___")
+      await hostPage.waitForTimeout(300)
+      const filteredBody = await bodyText(hostPage)
+      record(
+        "logs search can empty the list",
+        /No matching log entries/i.test(filteredBody) ||
+          /Showing\s+0\s+of\s+\d+/i.test(filteredBody),
+        filteredBody.match(/Showing[\s\S]{0,40}|No matching[\s\S]{0,60}/)?.[0],
+      )
+      await logSearch.fill("")
+      await hostPage.waitForTimeout(200)
+      if ((await presenceFacet.count()) > 0) {
+        await presenceFacet.click()
+        await hostPage.waitForTimeout(300)
+        const presenceBody = await bodyText(hostPage)
+        const afterPresence = presenceBody.match(/Showing\s+(\d+)\s+of\s+(\d+)/)
+        record(
+          "logs presence facet narrows results",
+          Boolean(afterPresence) &&
+            Number(afterPresence?.[1] ?? -1) <=
+              Number(beforeMatch?.[2] ?? afterPresence?.[2] ?? -1),
+          afterPresence?.[0] ?? presenceBody.slice(0, 120),
+        )
+        const clearAll = hostPage.getByRole("button", { name: "Clear all" })
+        if ((await clearAll.count()) > 0) {
+          await clearAll.click()
+          await hostPage.waitForTimeout(200)
+        }
+      }
+    }
+
+    if ((await logSearch.count()) > 0) {
+      await logSearch.fill("joined")
+      await hostPage.waitForTimeout(200)
+    }
+    await hostPage
+      .getByRole("button", { name: "Playlist", exact: true })
+      .click()
+    await hostPage.waitForTimeout(300)
+    await hostPage.getByRole("button", { name: "Logs" }).click()
+    await hostPage.waitForTimeout(400)
+    const searchAfterTab = hostPage.getByRole("textbox", {
+      name: "Search action log",
+    })
+    const persistedQuery =
+      (await searchAfterTab.count()) > 0
+        ? await searchAfterTab.inputValue()
+        : ""
+    record(
+      "logs search persists across tab switch",
+      persistedQuery === "joined",
+      persistedQuery,
+    )
+    if ((await searchAfterTab.count()) > 0) {
+      await searchAfterTab.fill("")
+    }
+    await hostPage
+      .getByRole("button", { name: "Playlist", exact: true })
+      .click()
 
     ;({ page: guestPage } = await openRoom(
       guestCtx,

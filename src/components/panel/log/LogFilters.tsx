@@ -1,67 +1,231 @@
+"use client"
+
+import { cn } from "@/components/lib/utils"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { actionLabelByType, visibleActionTypes } from "@/shared/log-format"
+  actionLabelByType,
+  categoryLabelByType,
+  logActionCategories,
+  type LogActionCategory,
+  type VisibleActionType,
+} from "@/shared/log-format"
+import { Search, X } from "lucide-react"
 
 export function LogFilters(props: {
-  actionFilter: string
-  userFilter: string
+  query: string
+  categories: readonly LogActionCategory[]
+  actions: readonly string[]
+  userIds: readonly string[]
   users: Array<{ id: string; label: string }>
-  onActionFilterChange: (value: string) => void
-  onUserFilterChange: (value: string) => void
+  categoryCounts: Record<LogActionCategory, number>
+  matchedCount: number
+  totalVisibleCount: number
+  hasActiveFilters: boolean
+  timeRangeActive: boolean
+  onQueryChange: (value: string) => void
+  onToggleCategory: (category: LogActionCategory) => void
+  onToggleUser: (userId: string) => void
+  onToggleAction: (action: string) => void
+  onClearTimeRange: () => void
+  onClearFilters: () => void
 }) {
   const {
-    actionFilter,
-    userFilter,
+    query,
+    categories,
+    actions,
+    userIds,
     users,
-    onActionFilterChange,
-    onUserFilterChange,
+    categoryCounts,
+    matchedCount,
+    totalVisibleCount,
+    hasActiveFilters,
+    timeRangeActive,
+    onQueryChange,
+    onToggleCategory,
+    onToggleUser,
+    onToggleAction,
+    onClearTimeRange,
+    onClearFilters,
   } = props
 
+  const selectedUsers = users.filter((user) => userIds.includes(user.id))
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <label className="flex items-center gap-2 text-sm">
-        <span className="text-muted-foreground">Action</span>
-        <Select
-          value={actionFilter}
-          onValueChange={(value) => onActionFilterChange(value ?? "all")}
+    <div className="flex w-full flex-col gap-2">
+      <div className="relative">
+        <Search
+          className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <Input
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Search actions, users, details…"
+          aria-label="Search action log"
+          className="h-8 pr-8 pl-8 text-sm"
+        />
+        {query.trim().length > 0 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className="absolute top-1/2 right-1.5 -translate-y-1/2 text-muted-foreground"
+            aria-label="Clear search"
+            onClick={() => onQueryChange("")}
+          >
+            <X />
+          </Button>
+        ) : null}
+      </div>
+
+      <div
+        className="flex flex-wrap gap-1.5"
+        role="group"
+        aria-label="Filter by category"
+      >
+        {logActionCategories.map((category) => {
+          const active = categories.includes(category)
+          const count = categoryCounts[category]
+          const disabled = count === 0 && !active
+          return (
+            <Button
+              key={category}
+              type="button"
+              size="xs"
+              variant={active ? "default" : "outline"}
+              disabled={disabled}
+              aria-pressed={active}
+              aria-label={`Filter category ${categoryLabelByType[category]} (${count})`}
+              className={cn(
+                "gap-1",
+                category === "error" &&
+                  !active &&
+                  count > 0 &&
+                  "border-destructive/40 text-destructive",
+              )}
+              onClick={() => onToggleCategory(category)}
+            >
+              {categoryLabelByType[category]}
+              <span className="tabular-nums opacity-70" aria-hidden>
+                {count}
+              </span>
+            </Button>
+          )
+        })}
+      </div>
+
+      {users.length > 0 ? (
+        <div
+          className="flex flex-wrap gap-1.5"
+          role="group"
+          aria-label="Filter by user"
         >
-          <SelectTrigger size="sm" aria-label="Filter by action">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All actions</SelectItem>
-            {visibleActionTypes.map((actionType) => (
-              <SelectItem key={actionType} value={actionType}>
-                {actionLabelByType[actionType]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </label>
-      <label className="flex items-center gap-2 text-sm">
-        <span className="text-muted-foreground">User</span>
-        <Select
-          value={userFilter}
-          onValueChange={(value) => onUserFilterChange(value ?? "all")}
-        >
-          <SelectTrigger size="sm" aria-label="Filter by user">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All users</SelectItem>
-            {users.map((user) => (
-              <SelectItem key={user.id} value={user.id}>
+          {users.map((user) => {
+            const active = userIds.includes(user.id)
+            return (
+              <Button
+                key={user.id}
+                type="button"
+                size="xs"
+                variant={active ? "secondary" : "ghost"}
+                aria-pressed={active}
+                aria-label={`Filter user ${user.label}`}
+                className="max-w-40 truncate"
+                onClick={() => onToggleUser(user.id)}
+              >
                 {user.label}
-              </SelectItem>
+              </Button>
+            )
+          })}
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+        <span className="tabular-nums">
+          Showing {matchedCount} of {totalVisibleCount}
+        </span>
+        {hasActiveFilters ? (
+          <>
+            <span aria-hidden>·</span>
+            {categories.map((category) => (
+              <Badge
+                key={category}
+                variant="secondary"
+                className="h-5 cursor-pointer gap-1"
+                render={<button type="button" />}
+                aria-label={`Remove ${categoryLabelByType[category]} filter`}
+                onClick={() => onToggleCategory(category)}
+              >
+                {categoryLabelByType[category]}
+                <X className="size-3" />
+              </Badge>
             ))}
-          </SelectContent>
-        </Select>
-      </label>
+            {actions.map((action) => (
+              <Badge
+                key={action}
+                variant="outline"
+                className="h-5 cursor-pointer gap-1"
+                render={<button type="button" />}
+                aria-label={`Remove ${action} filter`}
+                onClick={() => onToggleAction(action)}
+              >
+                {action in actionLabelByType
+                  ? actionLabelByType[action as VisibleActionType]
+                  : action}
+                <X className="size-3" />
+              </Badge>
+            ))}
+            {selectedUsers.map((user) => (
+              <Badge
+                key={user.id}
+                variant="outline"
+                className="h-5 max-w-36 cursor-pointer gap-1"
+                render={<button type="button" />}
+                aria-label={`Remove ${user.label} filter`}
+                onClick={() => onToggleUser(user.id)}
+              >
+                <span className="truncate">{user.label}</span>
+                <X className="size-3 shrink-0" />
+              </Badge>
+            ))}
+            {timeRangeActive ? (
+              <Badge
+                variant="outline"
+                className="h-5 cursor-pointer gap-1"
+                render={<button type="button" />}
+                aria-label="Clear time range filter"
+                onClick={onClearTimeRange}
+              >
+                Time range
+                <X className="size-3" />
+              </Badge>
+            ) : null}
+            {query.trim().length > 0 ? (
+              <Badge
+                variant="outline"
+                className="h-5 max-w-40 cursor-pointer gap-1"
+                render={<button type="button" />}
+                aria-label="Clear search"
+                onClick={() => onQueryChange("")}
+              >
+                <span className="truncate">“{query.trim()}”</span>
+                <X className="size-3 shrink-0" />
+              </Badge>
+            ) : null}
+            <Button
+              type="button"
+              size="xs"
+              variant="ghost"
+              className="text-muted-foreground"
+              onClick={onClearFilters}
+            >
+              Clear all
+            </Button>
+          </>
+        ) : null}
+      </div>
     </div>
   )
 }
