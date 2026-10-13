@@ -120,12 +120,14 @@ async function readPlayhead(page: Page): Promise<Playhead> {
         tag: media.tagName.toLowerCase(),
       }
     }
-    // Presence self-card fallback: "Playing at M:SS" / "Paused at M:SS"
-    const self = document.body.innerText.match(
-      /You\n[^\n]+\n(Playing|Paused) at ([0-9:]+)/,
-    )
-    if (self) {
-      const parts = self[2]!.split(":").map(Number)
+    // Presence self-card fallback: icon+time chip exposes data attrs.
+    const selfBadge = document.querySelector(
+      "[data-self-playback][data-playback-state][data-playback-time]",
+    ) as HTMLElement | null
+    const state = selfBadge?.getAttribute("data-playback-state")
+    const clock = selfBadge?.getAttribute("data-playback-time")
+    if (selfBadge && clock && (state === "Playing" || state === "Paused")) {
+      const parts = clock.split(":").map(Number)
       let sec = 0
       if (parts.length === 2) sec = parts[0]! * 60 + parts[1]!
       else if (parts.length === 3)
@@ -133,7 +135,7 @@ async function readPlayhead(page: Page): Promise<Playhead> {
       return {
         source: "player" as const,
         currentTimeSec: sec,
-        paused: self[1] === "Paused",
+        paused: state === "Paused",
         readyState: null,
         tag: "presence",
       }
@@ -151,12 +153,16 @@ async function readPlayhead(page: Page): Promise<Playhead> {
 async function roomPlayingLabel(
   page: Page,
 ): Promise<"Playing" | "Paused" | "Unknown"> {
-  // Prefer self presence line — room header chip can be ambiguous with playlist text.
-  const text = await page.locator("body").innerText()
-  const self = text.match(/You\n[^\n]+\n(Playing|Paused) at/)
-  if (self?.[1] === "Playing" || self?.[1] === "Paused") {
-    return self[1]
+  // Prefer self presence chip — room header chip can be ambiguous with playlist text.
+  const selfState = await page
+    .locator("[data-self-playback][data-playback-state]")
+    .first()
+    .getAttribute("data-playback-state")
+    .catch(() => null)
+  if (selfState === "Playing" || selfState === "Paused") {
+    return selfState
   }
+  const text = await page.locator("body").innerText()
   const header = text.split("\n").slice(0, 8)
   // Header transport chip is typically a short standalone line near the top.
   for (const line of header) {

@@ -4,13 +4,37 @@ import type { ParticipantState } from "@/contracts/types"
 import { useInlineEdit } from "@/hooks/use-inline-edit"
 import { extrapolateLocalPlaybackTimeMs } from "@/shared/local-playback-display"
 import { formatClockMs, formatRelativeLastSeen } from "@/shared/time-format"
+import { AlertCircle, Loader2, Pause, Play } from "lucide-react"
 import { Badge } from "../../ui/badge"
 import { Input } from "../../ui/input"
 import { Item, ItemActions, ItemContent } from "../../ui/item"
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip"
 import { UserAvatar } from "./UserAvatar"
 
-function playbackStatusLabel(
+type PlaybackTransport = "playing" | "paused" | "loading" | "error"
+
+function playbackTransport(
+  playback: ParticipantState["localPlayback"],
+): PlaybackTransport {
+  if (playback.error) return "error"
+  if (playback.loading) return "loading"
+  return playback.paused ? "paused" : "playing"
+}
+
+function playbackTransportLabel(transport: PlaybackTransport): string {
+  switch (transport) {
+    case "error":
+      return "Error"
+    case "loading":
+      return "Loading"
+    case "paused":
+      return "Paused"
+    case "playing":
+      return "Playing"
+  }
+}
+
+function playbackReadinessLabel(
   playback: ParticipantState["localPlayback"],
 ): string {
   if (playback.error) return "Error"
@@ -24,6 +48,23 @@ function playbackBadgeVariant(
   if (user.localPlayback.error) return "destructive"
   if (!user.connected || user.localPlayback.loading) return "outline"
   return "secondary"
+}
+
+function PlaybackTransportIcon({
+  transport,
+}: {
+  transport: PlaybackTransport
+}) {
+  switch (transport) {
+    case "error":
+      return <AlertCircle aria-hidden />
+    case "loading":
+      return <Loader2 className="animate-spin" aria-hidden />
+    case "paused":
+      return <Pause aria-hidden />
+    case "playing":
+      return <Play aria-hidden />
+  }
 }
 
 function roleDescription(role: ParticipantState["role"]): string {
@@ -135,6 +176,26 @@ export function UserItem({
     nowMs,
     { playbackRate, durationMs },
   )
+  const clockLabel = formatClockMs(displayTimeMs)
+  const transport = playbackTransport(user.localPlayback)
+  const transportLabel = playbackTransportLabel(transport)
+  const readinessLabel = playbackReadinessLabel(user.localPlayback)
+  // Prefer the most actionable signal in the compact chip; full detail is in the tooltip.
+  const statusSummaryLabel = user.localPlayback.error
+    ? "Error"
+    : !user.connected
+      ? "Offline"
+      : user.localPlayback.loading
+        ? "Loading"
+        : "Ready"
+  const statusFullParts = [
+    `${transportLabel} at ${clockLabel}`,
+    connectionLabel,
+  ]
+  if (readinessLabel !== transportLabel) {
+    statusFullParts.push(readinessLabel)
+  }
+  const statusFullLabel = statusFullParts.join(" · ")
 
   const toggleRole = () => {
     if (!canToggleRole) return
@@ -205,30 +266,32 @@ export function UserItem({
                 {user.username}
               </span>
             </div>
-            <div className="flex min-w-0 items-center gap-1.5">
-              <div className="truncate text-xs leading-tight text-muted-foreground">
-                {user.localPlayback.loading
-                  ? "Loading"
-                  : user.localPlayback.paused
-                    ? "Paused"
-                    : "Playing"}{" "}
-                at {formatClockMs(displayTimeMs)}
-              </div>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Badge
-                    variant={playbackBadgeVariant(user)}
-                    className="h-5 shrink-0 px-1.5 text-[10px]"
-                  >
-                    {connectionLabel} ·{" "}
-                    {playbackStatusLabel(user.localPlayback)}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {formatRelativeLastSeen(user.lastSeenAt)}
-                </TooltipContent>
-              </Tooltip>
-            </div>
+            <Tooltip>
+              <TooltipTrigger
+                className="inline-flex max-w-full"
+                render={<span />}
+              >
+                <Badge
+                  variant={playbackBadgeVariant(user)}
+                  className="h-5 max-w-full shrink px-1.5 text-[10px]"
+                  aria-label={statusFullLabel}
+                  data-playback-state={transportLabel}
+                  data-playback-time={clockLabel}
+                  {...(isSelf ? { "data-self-playback": "" } : {})}
+                >
+                  <PlaybackTransportIcon transport={transport} />
+                  <span className="tabular-nums">{clockLabel}</span>
+                  <span aria-hidden className="opacity-50">
+                    ·
+                  </span>
+                  <span className="truncate">{statusSummaryLabel}</span>
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="flex-col items-start gap-0.5 text-left">
+                <span>{statusFullLabel}</span>
+                <span>{formatRelativeLastSeen(user.lastSeenAt)}</span>
+              </TooltipContent>
+            </Tooltip>
           </div>
         )}
       </ItemContent>

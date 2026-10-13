@@ -107,11 +107,11 @@ async function main() {
         : "guest username missing",
     )
     // Default join role is guest. Self card layout is:
-    // You / username / playback / Online · Ready / Guest|Moderator
+    // You / username / [icon+time · Ready|Offline|…] / Guest|Moderator
     // (host Owner appears on the next card — keep this match line-anchored)
     record(
       "guest is not owner",
-      /^You\n[^\n]+\n[^\n]+\n[^\n]+\n(Moderator|Guest)\b/m.test(guestUsers),
+      /^You\n[^\n]+\n[^\n]+\n(Moderator|Guest)\b/m.test(guestUsers),
       "guest self-card role",
     )
 
