@@ -124,12 +124,19 @@ function RoomClientReady(props: {
         <div
           className={cn(
             "grid gap-2",
-            railOpen && "lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]",
+            // Side-by-side: stretch the rail to the player’s height (capped below).
+            railOpen &&
+              "lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)] lg:items-stretch",
           )}
         >
           <PlayerPanel
             {...panelProps}
-            className="min-h-0 h-auto w-full"
+            className={cn(
+              "min-h-0 h-auto w-full",
+              // Rail open: keep the player from dominating the viewport.
+              // Collapsed: full-width 16:9 already keeps height in check.
+              railOpen && "max-h-[70vh]",
+            )}
             // Playlist rail already has add controls — avoid a duplicate form.
             showEmptyAddControls={!(railOpen && railTab === "playlist")}
           />
@@ -139,7 +146,7 @@ function RoomClientReady(props: {
               hideTabBar
               tab={railTab}
               onTabChange={setRailTab}
-              className="min-h-0 max-h-[70vh] overflow-hidden lg:h-0 lg:max-h-none lg:min-h-full"
+              className="min-h-0 max-h-[70vh] overflow-hidden lg:h-0 lg:max-h-[70vh] lg:min-h-full"
             />
           ) : null}
         </div>
