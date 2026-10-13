@@ -248,9 +248,7 @@ export function PlaylistItemRow(props: {
           ) : item.sourceKind === "local_file" ? (
             <p className="min-w-0 truncate text-xs text-muted-foreground">
               {localFileOriginLabel(
-                localOriginUsername ??
-                  item.localOriginUserId ??
-                  item.createdBy,
+                localOriginUsername ?? item.localOriginUserId ?? item.createdBy,
               )}
             </p>
           ) : null}

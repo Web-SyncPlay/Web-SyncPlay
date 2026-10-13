@@ -71,9 +71,9 @@ test("playlist shell flips when a local origin username changes", () => {
       selectPlaylistShellSlice(renamed, "guest"),
     ),
   ).toBe(false)
-  expect(selectPlaylistShellSlice(renamed, "guest").localOriginUsernames).toEqual(
-    { owner: "Renamed" },
-  )
+  expect(
+    selectPlaylistShellSlice(renamed, "guest").localOriginUsernames,
+  ).toEqual({ owner: "Renamed" })
 })
 
 test("playlist shell slice flips when current item or loop changes", () => {

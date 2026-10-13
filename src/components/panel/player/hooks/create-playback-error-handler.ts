@@ -151,7 +151,10 @@ export function createPlaybackErrorHandler(deps: PlaybackErrorDeps) {
       setPlaybackError(
         userMessage === message
           ? detail
-          : ({ ...(detail as object), message: userMessage } as MediaErrorDetail),
+          : ({
+              ...(detail as object),
+              message: userMessage,
+            } as MediaErrorDetail),
         erroredItemId,
       )
 

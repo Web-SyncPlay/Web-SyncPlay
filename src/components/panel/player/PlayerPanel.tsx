@@ -138,8 +138,7 @@ const PlayerPanelShell = memo(
             canControlPlayback={canControlPlayback}
             onRetry={
               canControlPlayback
-                ? () =>
-                    send("playlist:retry", { itemId: currentItem.id })
+                ? () => send("playlist:retry", { itemId: currentItem.id })
                 : undefined
             }
           />
