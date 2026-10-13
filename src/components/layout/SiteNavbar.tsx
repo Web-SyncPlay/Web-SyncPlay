@@ -186,8 +186,8 @@ export function SiteNavbar(props: SiteNavbarProps) {
   }
 
   return (
-    <SiteNavbarChrome className="justify-between">
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
+    <SiteNavbarChrome className="flex-nowrap justify-between">
+      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
         <SiteNavbarBrand roomId={roomId} />
         <Button
           type="button"
@@ -208,15 +208,15 @@ export function SiteNavbar(props: SiteNavbarProps) {
         </Button>
         <Badge
           variant={paused ? "outline" : "secondary"}
-          className="hidden xl:inline-flex"
+          className="hidden shrink-0 xl:inline-flex"
         >
           {paused ? "Paused" : "Playing"}
         </Badge>
-        <span className="hidden min-w-0 truncate text-muted-foreground xl:inline">
+        <span className="hidden min-w-0 truncate text-muted-foreground xl:block">
           {currentName ?? "None"}
         </span>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         {showEmbedsMenu ? (
           <DropdownMenu>
             <DropdownMenuTrigger
