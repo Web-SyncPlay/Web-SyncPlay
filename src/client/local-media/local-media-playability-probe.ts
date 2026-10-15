@@ -4,6 +4,7 @@
  */
 
 import { canUseFileSystemAccess } from "@/client/local-media/local-media-handles"
+import { attachLocalMediaFileForProbe } from "@/client/local-media/local-media-probe-attach"
 import { resolvePlayableMimeType } from "@/shared/media-mime"
 
 export type LocalPlayabilityResult =
@@ -49,22 +50,15 @@ function probeMediaDurationSec(
     if (!isAudio) {
       ;(el as HTMLVideoElement).muted = true
     }
-    // Chromium rejects File/Blob on srcObject (MediaStream | MediaSourceHandle
-    // only). Object URLs from a user-picked File are safe — not DOM text.
-    const objectUrl = URL.createObjectURL(file)
+    const detach = attachLocalMediaFileForProbe(el, file)
     let settled = false
-    const cleanup = () => {
-      el.onloadedmetadata = null
-      el.onerror = null
-      el.removeAttribute("src")
-      el.load()
-      URL.revokeObjectURL(objectUrl)
-    }
     const done = (durationSec: number | null) => {
       if (settled) return
       settled = true
       window.clearTimeout(timeoutId)
-      cleanup()
+      el.onloadedmetadata = null
+      el.onerror = null
+      detach()
       resolve(durationSec)
     }
     const timeoutId = window.setTimeout(() => done(null), PROBE_TIMEOUT_MS)
@@ -77,7 +71,6 @@ function probeMediaDurationSec(
       done(durationSec)
     }
     el.onerror = () => done(null)
-    el.src = objectUrl
   })
 }
 

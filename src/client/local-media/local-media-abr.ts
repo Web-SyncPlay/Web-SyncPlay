@@ -3,6 +3,7 @@
  * Uses single-thread ffmpeg.wasm loaded from /vendor (vendored core).
  */
 
+import { attachLocalMediaFileForProbe } from "@/client/local-media/local-media-probe-attach"
 import { registerLocalMediaFile } from "@/client/local-media/local-media-provider"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 
@@ -69,18 +70,14 @@ function probeVideoFile(file: File): Promise<ProbeResult | null> {
     const video = document.createElement("video")
     video.preload = "metadata"
     video.muted = true
-    // Chromium rejects File/Blob on srcObject (MediaStream | MediaSourceHandle
-    // only). Object URLs from a user-picked File are safe — not DOM text.
-    const objectUrl = URL.createObjectURL(file)
+    const detach = attachLocalMediaFileForProbe(video, file)
     let settled = false
     const done = (result: ProbeResult | null) => {
       if (settled) return
       settled = true
       video.onloadedmetadata = null
       video.onerror = null
-      video.removeAttribute("src")
-      video.load()
-      URL.revokeObjectURL(objectUrl)
+      detach()
       resolve(result)
     }
     video.onloadedmetadata = () => {
@@ -101,7 +98,6 @@ function probeVideoFile(file: File): Promise<ProbeResult | null> {
       done({ width, height, durationSec })
     }
     video.onerror = () => done(null)
-    video.src = objectUrl
   })
 }
 
