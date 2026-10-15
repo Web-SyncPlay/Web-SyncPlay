@@ -23,9 +23,7 @@ export function RoomClient({
   const [seedMediaUrl] = useState(initialMediaUrl)
   // Peek only — File handoff is consumed later by PlaylistAddMediaControls.
   const [seedSkipDefaultMedia] = useState(() =>
-    typeof window !== "undefined"
-      ? peekLandingSkipDefaultMedia(roomId)
-      : false,
+    typeof window !== "undefined" ? peekLandingSkipDefaultMedia(roomId) : false,
   )
   const session = useRoomSession(roomId, {
     sessionKind: "room",
