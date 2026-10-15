@@ -61,4 +61,37 @@ describe("createInitialRoomState", () => {
     expect(state.playlist).toHaveLength(1)
     expect(state.playlist[0]?.sourceUrl).toBe("https://example.com/default.mp4")
   })
+
+  test("skipDefaultMedia creates an empty paused playlist", async () => {
+    const store = new InMemoryRoomStateStore()
+    await store.setDailyDefaults([
+      { url: "https://example.com/default.mp4", title: "Default" },
+    ])
+    const state = await createInitialRoomState(store, "room-empty", "owner", {
+      skipDefaultMedia: true,
+    })
+    expect(state.playlist).toEqual([])
+    expect(state.playback.paused).toBe(true)
+  })
+})
+
+describe("evaluateCreateMediaSeed skipDefaultMedia", () => {
+  test("returns skipDefaultMedia on create without URL", () => {
+    expect(
+      evaluateCreateMediaSeed({
+        roomExists: false,
+        skipDefaultMedia: true,
+      }),
+    ).toEqual({ ok: true, skipDefaultMedia: true })
+  })
+
+  test("initialMediaUrl wins over skipDefaultMedia", () => {
+    expect(
+      evaluateCreateMediaSeed({
+        roomExists: false,
+        initialMediaUrl: "https://youtu.be/abc",
+        skipDefaultMedia: true,
+      }),
+    ).toEqual({ ok: true, seedUrl: "https://youtu.be/abc" })
+  })
 })

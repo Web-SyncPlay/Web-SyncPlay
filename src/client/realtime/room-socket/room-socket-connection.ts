@@ -41,6 +41,7 @@ export type RoomSocketConnectionOptions = {
   sessionKind: SessionKind
   identity: { userId: string; userSecret: string }
   getInitialMediaUrl: () => string | undefined
+  getSkipDefaultMedia: () => boolean
   getJoinPassword: () => string
   controlTokenRef: MutableRefObject<string | undefined>
   usernameRef: MutableRefObject<string>
@@ -261,6 +262,7 @@ export function createRoomSocketConnection(
               sessionKind: options.sessionKind,
               controlToken: options.controlTokenRef.current,
               initialMediaUrl: options.getInitialMediaUrl(),
+              skipDefaultMedia: options.getSkipDefaultMedia(),
               requestId:
                 typeof crypto?.randomUUID === "function"
                   ? crypto.randomUUID()

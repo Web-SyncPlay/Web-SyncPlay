@@ -23,7 +23,11 @@ export type {
 
 export function useRoomSocket(
   roomId: string,
-  options?: { sessionKind?: SessionKind; initialMediaUrl?: string },
+  options?: {
+    sessionKind?: SessionKind
+    initialMediaUrl?: string
+    skipDefaultMedia?: boolean
+  },
 ): {
   roomState: ClientRoomState | null
   sessionCapabilities: SessionCapabilities
@@ -36,6 +40,7 @@ export function useRoomSocket(
 } {
   const sessionKind = options?.sessionKind ?? "room"
   const initialMediaUrlRef = useLatestRef(options?.initialMediaUrl)
+  const skipDefaultMediaRef = useLatestRef(options?.skipDefaultMedia)
   const [roomState, setRoomState] = useState<ClientRoomState | null>(null)
   const [status, setStatus] = useState<JoinStatus>("connecting")
   const [joinError, setJoinError] = useState<string | null>(null)
@@ -69,6 +74,7 @@ export function useRoomSocket(
       sessionKind,
       identity,
       getInitialMediaUrl: () => initialMediaUrlRef.current,
+      getSkipDefaultMedia: () => Boolean(skipDefaultMediaRef.current),
       getJoinPassword: () => joinPasswordRef.current,
       controlTokenRef,
       usernameRef,
@@ -96,6 +102,7 @@ export function useRoomSocket(
     controlTokenRef,
     usernameRef,
     initialMediaUrlRef,
+    skipDefaultMediaRef,
   ])
 
   const send = useCallback<TypedRoomEventSender>((type, payload) => {

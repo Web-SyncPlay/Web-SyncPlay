@@ -11,6 +11,7 @@ export type AdmitJoinInput = {
   roomId: string
   joinPassword: string | undefined
   initialMediaUrl: string | undefined
+  skipDefaultMedia?: boolean
   existingState: RoomState | null
   requestId?: string
 }
@@ -19,6 +20,7 @@ export type AdmitJoinResult =
   | {
       ok: true
       seedUrl: string | undefined
+      skipDefaultMedia: boolean
     }
   | { ok: false }
 
@@ -52,6 +54,7 @@ export async function admitJoin(
   const mediaSeed = evaluateCreateMediaSeed({
     roomExists: Boolean(input.existingState),
     initialMediaUrl: input.initialMediaUrl,
+    skipDefaultMedia: input.skipDefaultMedia,
   })
   if (!mediaSeed.ok) {
     reject(input.ws, input.requestId, mediaSeed.reason)
@@ -67,7 +70,11 @@ export async function admitJoin(
     return { ok: false }
   }
 
-  return { ok: true, seedUrl: mediaSeed.seedUrl }
+  return {
+    ok: true,
+    seedUrl: mediaSeed.seedUrl,
+    skipDefaultMedia: Boolean(mediaSeed.skipDefaultMedia),
+  }
 }
 
 function reject(

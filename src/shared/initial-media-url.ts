@@ -21,3 +21,18 @@ export function parseInitialMediaUrl(
     return undefined
   }
 }
+
+/** Create-time `?local=1` — skip daily-default playlist seeding. */
+export function readSkipDefaultMediaParam(
+  raw: string | string[] | undefined,
+): boolean {
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (!value) return false
+  const normalized = value.trim().toLowerCase()
+  return (
+    normalized === "1" ||
+    normalized === "true" ||
+    normalized === "yes" ||
+    normalized === "local"
+  )
+}

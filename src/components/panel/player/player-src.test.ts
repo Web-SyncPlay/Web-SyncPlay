@@ -106,6 +106,21 @@ describe("buildPlayerSrc", () => {
     ).toEqual({ src: "blob:https://app/1", type: "video/mp4" })
   })
 
+  test("never forces HLS mime onto blob URLs (host Auto HLS catalog)", () => {
+    expect(
+      buildPlayerSrc(
+        "blob:https://app/1",
+        undefined,
+        stream({
+          kind: "adaptive",
+          type: "application/vnd.apple.mpegurl",
+          src: "/api/media/local/m1/hls",
+        }),
+        "video/mp4",
+      ),
+    ).toEqual({ src: "blob:https://app/1", type: "video/mp4" })
+  })
+
   test("falls back to bare URL when mime is unknown", () => {
     const item = {
       mediaStreams: [

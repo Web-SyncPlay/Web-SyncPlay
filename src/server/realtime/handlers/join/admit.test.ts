@@ -174,6 +174,7 @@ describe("admitJoin", () => {
     expect(result).toEqual({
       ok: true,
       seedUrl: "https://example.com/seed.mp4",
+      skipDefaultMedia: false,
     })
     expect(sent).toEqual([])
     expect(rateKeys).toContain("join:room:room-new")
@@ -191,6 +192,30 @@ describe("admitJoin", () => {
       existingState: createRoomState(),
     })
 
-    expect(result).toEqual({ ok: true, seedUrl: undefined })
+    expect(result).toEqual({
+      ok: true,
+      seedUrl: undefined,
+      skipDefaultMedia: false,
+    })
+  })
+
+  test("allows skipDefaultMedia on new room without media URL", async () => {
+    const { ws, sent } = createFakeWs()
+
+    const result = await admitJoin({
+      ws,
+      roomId: "room-local",
+      joinPassword: undefined,
+      initialMediaUrl: undefined,
+      skipDefaultMedia: true,
+      existingState: null,
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      seedUrl: undefined,
+      skipDefaultMedia: true,
+    })
+    expect(sent).toEqual([])
   })
 })

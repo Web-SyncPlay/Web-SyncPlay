@@ -5,14 +5,27 @@ import {
   getLocalMediaObjectUrl,
 } from "@/client/local-media/local-media-provider"
 import { localMediaIdFromSrc } from "@/client/local-media/local-media-resolve"
-import { withLocalMediaViewerToken } from "@/client/local-media/local-media-viewer-token"
+import {
+  getLocalMediaViewerTokenEpoch,
+  isPublicLocalMediaApiUrl,
+  loadLocalMediaViewerToken,
+  subscribeLocalMediaViewerToken,
+  withLocalMediaViewerToken,
+} from "@/client/local-media/local-media-viewer-token"
 import { inferMediaViewType } from "@/client/player/playback-sync"
 import type {
   IngestStatus,
   PlaylistItem,
   ViewerMediaItemPreference,
 } from "@/contracts/types"
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type RefObject,
+} from "react"
 import {
   buildPlayerSrc,
   isSameOriginPlaybackUrl,
@@ -24,6 +37,19 @@ export function shouldDeferPlaybackSrc(
   ingestStatus: IngestStatus | undefined,
 ): boolean {
   return ingestStatus === "resolving" || ingestStatus === "error"
+}
+
+/**
+ * Guest relay URLs must not load until `vt`/`uid` exist — a bare
+ * `/api/media/local/*` request 403s and leaves the media element stuck.
+ */
+export function shouldDeferLocalMediaRelaySrc(
+  url: string,
+  hasViewerToken: boolean,
+): boolean {
+  if (hasViewerToken) return false
+  if (!url || url.startsWith("blob:")) return false
+  return isPublicLocalMediaApiUrl(url)
 }
 
 /**
@@ -41,6 +67,12 @@ export function usePlayerMediaSource(config: {
   const ownedLocalBlobFallbackAttemptedRef = useRef<string | null>(null)
   const localBlobFallbackAttemptedRef =
     config.localBlobFallbackAttemptedRef ?? ownedLocalBlobFallbackAttemptedRef
+  // Recompute relay URLs when the join-time viewer token lands.
+  const viewerTokenEpoch = useSyncExternalStore(
+    subscribeLocalMediaViewerToken,
+    getLocalMediaViewerTokenEpoch,
+    () => 0,
+  )
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -69,6 +101,8 @@ export function usePlayerMediaSource(config: {
   }, [current, viewerPrefs?.streamId])
 
   const activePlaybackSrc = useMemo(() => {
+    // Epoch is only a cache key — loadLocalMediaViewerToken() reads the store.
+    void viewerTokenEpoch
     if (!current) {
       return ""
     }
@@ -109,23 +143,40 @@ export function usePlayerMediaSource(config: {
     }
 
     const fromStream = activeStream?.src
-    if (
+    const relayCandidate =
       current.playbackMode === "relay" &&
       fromStream &&
       /^https?:\/\//i.test(fromStream)
+        ? (current.playableUrl ?? "")
+        : (fromStream ?? current.playableUrl ?? "")
+
+    // Do not fire a tokenless local-media request (permanent MediaError 403).
+    if (
+      shouldDeferLocalMediaRelaySrc(
+        relayCandidate,
+        Boolean(loadLocalMediaViewerToken()?.token),
+      )
     ) {
-      return withLocalMediaViewerToken(current.playableUrl ?? "")
+      return ""
     }
 
-    return withLocalMediaViewerToken(fromStream ?? current.playableUrl ?? "")
-  }, [activeStream, current, forceLocalRelaySrc, userId])
+    return withLocalMediaViewerToken(relayCandidate)
+    // viewerTokenEpoch: token may arrive after first render without playlist churn.
+  }, [activeStream, current, forceLocalRelaySrc, userId, viewerTokenEpoch])
 
   const localMimeHint = (() => {
     if (current?.sourceKind !== "local_file") return null
     if (activePlaybackSrc.startsWith("blob:") && current.localMediaId) {
       // Prefer mime for whichever File we are playing (parent or ABR child).
+      // When Auto HLS is selected we still play the parent File as progressive.
       const streamSrc = activeStream?.src ?? ""
-      const id = localMediaIdFromSrc(streamSrc) ?? current.localMediaId
+      const isHlsAuto =
+        activeStream?.kind === "adaptive" ||
+        /\.m3u8(\?|$)/i.test(streamSrc) ||
+        /\/hls(\?|$)/i.test(streamSrc)
+      const id = isHlsAuto
+        ? current.localMediaId
+        : (localMediaIdFromSrc(streamSrc) ?? current.localMediaId)
       return (
         getLocalMediaMimeType(id) ?? getLocalMediaMimeType(current.localMediaId)
       )
@@ -141,7 +192,10 @@ export function usePlayerMediaSource(config: {
         activePlaybackSrc,
         current,
         activeStream,
-        localMimeHint ?? activeStream?.type,
+        // Prefer File MIME over adaptive stream type when playing a blob.
+        activePlaybackSrc.startsWith("blob:")
+          ? (localMimeHint ?? "video/mp4")
+          : (localMimeHint ?? activeStream?.type),
       ),
     [activePlaybackSrc, activeStream, current, localMimeHint],
   )

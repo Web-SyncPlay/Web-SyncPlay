@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import {
   clearLocalMediaViewerToken,
+  getLocalMediaViewerTokenEpoch,
+  isPublicLocalMediaApiUrl,
   loadLocalMediaViewerToken,
   persistLocalMediaViewerToken,
+  subscribeLocalMediaViewerToken,
   withLocalMediaViewerToken,
 } from "./local-media-viewer-token"
 
@@ -90,5 +93,41 @@ describe("local-media-viewer-token", () => {
     clearLocalMediaViewerToken()
     expect(loadLocalMediaViewerToken()).toBeNull()
     expect(sessionMap.has("wsp.localMediaViewerToken")).toBe(false)
+  })
+
+  test("isPublicLocalMediaApiUrl ignores internal and non-local URLs", () => {
+    expect(isPublicLocalMediaApiUrl("/api/media/local/abc")).toBe(true)
+    expect(isPublicLocalMediaApiUrl("/api/media/local/internal/abc")).toBe(
+      false,
+    )
+    expect(isPublicLocalMediaApiUrl("https://cdn.example/a.mp4")).toBe(false)
+  })
+
+  test("subscribe notifies on persist and clear", () => {
+    const sessionMap = new Map<string, string>()
+    Object.defineProperty(globalThis, "sessionStorage", {
+      configurable: true,
+      value: createStorage(sessionMap),
+    })
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: {},
+    })
+
+    let ticks = 0
+    const unsub = subscribeLocalMediaViewerToken(() => {
+      ticks += 1
+    })
+    const before = getLocalMediaViewerTokenEpoch()
+    persistLocalMediaViewerToken({
+      roomId: "room-1",
+      userId: "user-1",
+      token: "tok-abc",
+    })
+    expect(ticks).toBe(1)
+    expect(getLocalMediaViewerTokenEpoch()).toBe(before + 1)
+    clearLocalMediaViewerToken()
+    expect(ticks).toBe(2)
+    unsub()
   })
 })

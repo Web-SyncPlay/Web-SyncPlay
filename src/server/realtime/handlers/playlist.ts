@@ -166,6 +166,7 @@ export const handlePlaylistAddLocal: RoomMessageHandler = async (ctx, data) => {
     data,
     (state, participant) => {
       if (isPlaylistAtLimit(state, env.ROOM_PLAYLIST_LIMIT)) return false
+      const wasEmpty = state.playlist.length === 0
       state.playlist.push(
         buildLocalFilePlaylistItem({
           id: itemId,
@@ -177,6 +178,10 @@ export const handlePlaylistAddLocal: RoomMessageHandler = async (ctx, data) => {
           durationSeconds: parsed.durationSeconds,
         }),
       )
+      if (wasEmpty) {
+        state.currentIndex = 0
+        state.playback.paused = false
+      }
       appendActionLog(state, {
         roomId: ctx.roomId,
         actorUserId: ctx.userId,
@@ -191,7 +196,7 @@ export const handlePlaylistAddLocal: RoomMessageHandler = async (ctx, data) => {
       })
       return true
     },
-    { kind: "snapshot" },
+    { kind: "control+snapshot" },
   )
 }
 

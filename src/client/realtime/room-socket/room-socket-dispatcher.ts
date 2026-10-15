@@ -1,5 +1,6 @@
 "use client"
 
+import { persistLocalMediaViewerToken } from "@/client/local-media/local-media-viewer-token"
 import type { createControlTokenReminter } from "@/client/realtime/control-token-client"
 import {
   createDefaultSessionCapabilities,
@@ -213,19 +214,16 @@ function handleCapabilities(
     "[room-socket]",
   )
   if (!payload) return
+  // Persist before setState so the first capabilities re-render already has vt/uid.
+  if (payload.viewerToken) {
+    persistLocalMediaViewerToken({
+      roomId: options.roomId,
+      userId: options.identity.userId,
+      token: payload.viewerToken,
+    })
+  }
   const caps = normalizeSessionCapabilities(payload, options.sessionKind)
   options.setSessionCapabilities(caps)
-  if (payload.viewerToken) {
-    void import("@/client/local-media/local-media-viewer-token").then(
-      ({ persistLocalMediaViewerToken }) => {
-        persistLocalMediaViewerToken({
-          roomId: options.roomId,
-          userId: options.identity.userId,
-          token: payload.viewerToken!,
-        })
-      },
-    )
-  }
   const role =
     options.roomStateRef.current?.participants[options.identity.userId]?.role
   void options.controlTokenReminter

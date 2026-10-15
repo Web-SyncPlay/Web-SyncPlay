@@ -2,16 +2,15 @@
 
 import {
   canUseFileSystemAccess,
-  persistLocalMediaHandle,
   pickLocalMediaFileWithFsa,
 } from "@/client/local-media/local-media-handles"
-import { registerLocalMediaFile } from "@/client/local-media/local-media-provider"
+import { takeLandingLocalMediaHandoff } from "@/client/local-media/local-media-landing-handoff"
+import { shareLocalMediaFile } from "@/client/local-media/share-local-media-file"
 import { queueNativePlaylistMetadataProbe } from "@/client/player/native-playlist-metadata-probe"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
-import { resolvePlayableMimeType } from "@/shared/media-mime"
-import { useRef, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 
 export function PlaylistAddMediaControls(props: {
@@ -36,6 +35,76 @@ export function PlaylistAddMediaControls(props: {
   const [url, setUrl] = useState("")
   const [sharingLocal, setSharingLocal] = useState(false)
   const localFileInputRef = useRef<HTMLInputElement>(null)
+  const handoffConsumedRef = useRef(false)
+
+  const shareLocalFile = async (file: File, handle?: FileSystemFileHandle) => {
+    if (!canManagePlaylist) return
+
+    setSharingLocal(true)
+    try {
+      const result = await shareLocalMediaFile({
+        file,
+        handle,
+        roomId,
+        userId,
+        send,
+      })
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      toast.success(
+        handle
+          ? "Sharing local media (survives refresh in this browser)"
+          : "Sharing local media (streamed from this browser)",
+      )
+    } catch (error) {
+      console.error("[playlist] failed local media share", error)
+      toast.error("Could not share local media")
+    } finally {
+      setSharingLocal(false)
+      if (localFileInputRef.current) localFileInputRef.current.value = ""
+    }
+  }
+
+  useEffect(() => {
+    if (!canManagePlaylist || handoffConsumedRef.current) return
+    const handoff = takeLandingLocalMediaHandoff(roomId)
+    if (!handoff) return
+    handoffConsumedRef.current = true
+    let cancelled = false
+    void (async () => {
+      setSharingLocal(true)
+      try {
+        const result = await shareLocalMediaFile({
+          file: handoff.file,
+          handle: handoff.handle,
+          roomId,
+          userId,
+          send,
+        })
+        if (cancelled) return
+        if (!result.ok) {
+          toast.error(result.error)
+          return
+        }
+        toast.success(
+          handoff.handle
+            ? "Sharing local media (survives refresh in this browser)"
+            : "Sharing local media (streamed from this browser)",
+        )
+      } catch (error) {
+        if (cancelled) return
+        console.error("[playlist] failed landing local media handoff", error)
+        toast.error("Could not share local media")
+      } finally {
+        if (!cancelled) setSharingLocal(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [canManagePlaylist, roomId, userId, send])
 
   const addMedia = () => {
     const trimmedUrl = url.trim()
@@ -45,69 +114,6 @@ export function PlaylistAddMediaControls(props: {
     queueNativePlaylistMetadataProbe(trimmedUrl)
     setUrl("")
     toast.success("Added URL, resolving metadata in background")
-  }
-
-  const shareLocalFile = async (file: File, handle?: FileSystemFileHandle) => {
-    if (!canManagePlaylist) return
-
-    const mimeType = resolvePlayableMimeType(file.type, file.name)
-    if (!mimeType) {
-      toast.error("Only video or audio files can be shared")
-      return
-    }
-    if (file.size <= 0) {
-      toast.error("File is empty")
-      return
-    }
-
-    setSharingLocal(true)
-    try {
-      const localMediaId = crypto.randomUUID()
-      // Keep the File in-tab — no upload. Viewers pull byte ranges via the server relay.
-      registerLocalMediaFile(localMediaId, file, mimeType)
-      if (handle) {
-        await persistLocalMediaHandle({
-          localMediaId,
-          roomId,
-          userId,
-          filename: file.name || "Local media",
-          mimeType,
-          sizeBytes: file.size,
-          handle,
-        })
-      }
-      const { probeLocalMediaDurationSec, runLocalMediaAbrPublish } =
-        await import("@/client/local-media/local-media-abr")
-      const durationSeconds = await probeLocalMediaDurationSec(file)
-      send("playlist:add:local", {
-        localMediaId,
-        name: file.name || "Local media",
-        mimeType,
-        sizeBytes: file.size,
-        ...(durationSeconds !== null
-          ? { durationSeconds: Math.round(durationSeconds) }
-          : {}),
-      })
-      send("local-media:ready", { localMediaId, ready: true })
-      toast.success(
-        handle
-          ? "Sharing local media (survives refresh in this browser)"
-          : "Sharing local media (streamed from this browser)",
-      )
-      void runLocalMediaAbrPublish({
-        parentLocalMediaId: localMediaId,
-        file,
-        mimeType,
-        name: file.name || "Local media",
-        send,
-      })
-    } catch (error) {
-      console.error("[playlist] failed local media share", error)
-      toast.error("Could not share local media")
-    } finally {
-      setSharingLocal(false)
-      if (localFileInputRef.current) localFileInputRef.current.value = ""
-    }
   }
 
   const onShareLocalClick = async () => {

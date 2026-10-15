@@ -19,24 +19,26 @@ export function PlayerErrorRecoveryOverlay(props: {
   onSeekCommit: (targetMs: number) => void
 }) {
   return (
-    <div className="absolute inset-x-3 bottom-3 z-30 pointer-events-auto sm:inset-x-auto sm:w-104">
-      <ControlPanel
-        title="Playback Error Recovery"
-        currentName={props.currentName}
-        paused={props.paused}
-        elapsedMs={props.elapsedMs}
-        totalDurationMs={props.totalDurationMs}
-        controlsDisabled={props.controlsDisabled}
-        canControl={props.canControl}
-        authorizationHint={props.authorizationHint}
-        disabledHint={props.disabledHint}
-        onPlay={props.onPlay}
-        onPause={props.onPause}
-        onSelectAdjacent={props.onSelectAdjacent}
-        onStepBy={props.onStepBy}
-        onSeekPreview={props.onSeekPreview}
-        onSeekCommit={props.onSeekCommit}
-      />
+    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center p-3">
+      <div className="pointer-events-auto w-full max-w-md sm:w-104">
+        <ControlPanel
+          title="Playback Error Recovery"
+          currentName={props.currentName}
+          paused={props.paused}
+          elapsedMs={props.elapsedMs}
+          totalDurationMs={props.totalDurationMs}
+          controlsDisabled={props.controlsDisabled}
+          canControl={props.canControl}
+          authorizationHint={props.authorizationHint}
+          disabledHint={props.disabledHint}
+          onPlay={props.onPlay}
+          onPause={props.onPause}
+          onSelectAdjacent={props.onSelectAdjacent}
+          onStepBy={props.onStepBy}
+          onSeekPreview={props.onSeekPreview}
+          onSeekCommit={props.onSeekCommit}
+        />
+      </div>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { LandingHero } from "@/components/layout/LandingHero"
-import { LandingUrlTester } from "@/components/layout/LandingUrlTester"
+import { LandingMediaTester } from "@/components/layout/LandingMediaTester"
 
 export default function LandingPage() {
   return (
@@ -15,7 +15,7 @@ export default function LandingPage() {
       </div>
 
       <LandingHero />
-      <LandingUrlTester />
+      <LandingMediaTester />
     </div>
   )
 }

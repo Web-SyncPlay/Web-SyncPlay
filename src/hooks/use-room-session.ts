@@ -42,7 +42,11 @@ export function pickRoomPopupUrl(input: {
 
 export function useRoomSession(
   roomId: string,
-  options?: { sessionKind?: SessionKind; initialMediaUrl?: string },
+  options?: {
+    sessionKind?: SessionKind
+    initialMediaUrl?: string
+    skipDefaultMedia?: boolean
+  },
 ) {
   const sessionKind = options?.sessionKind ?? "room"
   const {
@@ -57,6 +61,7 @@ export function useRoomSession(
   } = useRoomSocket(roomId, {
     sessionKind,
     initialMediaUrl: options?.initialMediaUrl,
+    skipDefaultMedia: options?.skipDefaultMedia,
   })
   const [copied, setCopied] = useState(false)
 

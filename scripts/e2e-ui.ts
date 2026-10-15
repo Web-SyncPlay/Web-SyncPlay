@@ -1,7 +1,7 @@
 /**
  * Browser UI e2e beyond the concurrent host/guest smoke suite.
  *
- * Covers landing URL check, settings/embeds chrome, playlist add/switch,
+ * Covers landing URL + local-file check, settings/embeds chrome, playlist add/switch,
  * guest permissions, play/pause fan-out, layout/mobile, embed routes, legal
  * pages, and serious console/pageerror noise.
  *
@@ -141,6 +141,55 @@ async function main() {
       !(await checkBtn.isEnabled()) ||
         /invalid|unsupported|cannot|error/i.test(await bodyText(landing)),
     )
+
+    // Local-file mode: switch segment and probe a small fixture via hidden input.
+    await landing.getByRole("tab", { name: /Local/i }).click()
+    await landing
+      .getByText(/stays on this device|Choose file|Drop a video/i)
+      .first()
+      .waitFor({ state: "visible", timeout: 10_000 })
+    record(
+      "landing local segment shows drop zone",
+      await landing
+        .getByRole("button", { name: /Choose file/i })
+        .isVisible()
+        .catch(() => false),
+    )
+    try {
+      const fixtureRes = await fetch(MEDIA_DIRECT)
+      if (fixtureRes.ok) {
+        const buf = Buffer.from(await fixtureRes.arrayBuffer())
+        const fileInput = landing.getByTestId("landing-local-file-input")
+        await fileInput.setInputFiles({
+          name: "flower-local.mp4",
+          mimeType: "video/mp4",
+          buffer: buf,
+        })
+        await landing.waitForTimeout(5_000)
+        const localBody = await bodyText(landing)
+        record(
+          "landing local file check returns a result",
+          /playable in this browser|won.?t play in this browser|unsupported type|empty file/i.test(
+            localBody,
+          ),
+          localBody.slice(0, 400),
+        )
+      } else {
+        record(
+          "landing local file check returns a result",
+          false,
+          `fixture fetch HTTP ${fixtureRes.status}`,
+        )
+      }
+    } catch (error) {
+      record(
+        "landing local file check returns a result",
+        false,
+        error instanceof Error ? error.message : String(error),
+      )
+    }
+    // Switch back so later URL-oriented flow is unaffected if re-used.
+    await landing.getByRole("tab", { name: /^URL$/i }).click()
 
     const roomInput = landing.getByLabel("Room name or link")
     await roomInput.fill(`${BASE}/room/${ROOM}`)

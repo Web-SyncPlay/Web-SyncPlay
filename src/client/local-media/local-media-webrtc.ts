@@ -281,15 +281,34 @@ export async function inviteLocalMediaWebrtcViewer(input: {
   })
 }
 
+/** True when a viewer↔provider DataChannel is already open for this media. */
+export function isLocalMediaWebrtcChannelOpen(
+  localMediaId: string,
+  providerUserId: string,
+): boolean {
+  const peer = slot().peers.get(peerKey(localMediaId, providerUserId))
+  return peer?.channel?.readyState === "open"
+}
+
 export async function fetchLocalMediaRangeViaWebrtc(input: {
   localMediaId: string
   providerUserId: string
   start: number
   end: number
   timeoutMs?: number
+  /** When true, do not start ICE — return null unless the channel is open. */
+  requireOpenChannel?: boolean
 }): Promise<Uint8Array | null> {
+  const existing = slot().peers.get(
+    peerKey(input.localMediaId, input.providerUserId),
+  )
+  if (input.requireOpenChannel) {
+    if (!existing?.channel || existing.channel.readyState !== "open") {
+      return null
+    }
+  }
   const peer =
-    slot().peers.get(peerKey(input.localMediaId, input.providerUserId)) ??
+    existing ??
     (await ensurePeer({
       localMediaId: input.localMediaId,
       remoteUserId: input.providerUserId,

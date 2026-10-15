@@ -168,6 +168,13 @@ async function removeDisconnectedParticipant(
   })
 
   if (next && !next.participants[userId]) {
+    try {
+      const { deleteLocalMediaEntriesForOwner } =
+        await import("@/server/media/local-media-store")
+      await deleteLocalMediaEntriesForOwner(roomId, userId)
+    } catch (error) {
+      console.warn("[participants] local media cleanup on prune failed", error)
+    }
     getRoomBroadcastBus().markSnapshotDirty(roomId)
     return true
   }

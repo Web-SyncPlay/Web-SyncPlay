@@ -75,6 +75,11 @@ export const roomJoinSchema = z.object({
    * Validated with assertPublicHttpUrl on create — invalid values reject the join.
    */
   initialMediaUrl: z.string().trim().min(1).max(2048).optional(),
+  /**
+   * Create-only: skip daily-default / fallback playlist seeding (e.g. landing
+   * local-file handoff). Ignored when `initialMediaUrl` is set or room exists.
+   */
+  skipDefaultMedia: z.boolean().optional(),
 })
 
 /** Reasons sent on `room:join:rejected` (server → client). */

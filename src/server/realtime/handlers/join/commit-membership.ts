@@ -37,6 +37,7 @@ export type CommitMembershipInput = {
   avatarStyle: string
   joinPassword: string | undefined
   seedUrl: string | undefined
+  skipDefaultMedia?: boolean
   sessionKind: SessionKind
   isControlSession: boolean
   controlAuthorized: boolean
@@ -83,6 +84,7 @@ export async function commitJoinMembership(
         existing ??
         (await createInitialRoomState(input.store, input.roomId, input.userId, {
           initialMediaUrl: input.seedUrl,
+          skipDefaultMedia: input.skipDefaultMedia,
         }))
 
       // R5: re-check admission inside WATCH so password flips cannot race in.

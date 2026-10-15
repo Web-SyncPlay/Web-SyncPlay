@@ -34,8 +34,18 @@ export function transferOwnershipIfNeeded(
   reason: TransferReason,
 ): boolean {
   const owner = state.participants[state.ownerId]
-  // Missing owner (e.g. just pruned) or disconnected owner needs a successor.
-  if (owner?.connected) {
+
+  // Brief disconnects (HMR remount, socket blip) must not demote the owner.
+  // - disconnect: never transfer here (caller should omit); kept as no-op.
+  // - join: only heal a missing ownerId; a disconnected owner may still return
+  //   within prune grace.
+  // - prune / cleanup: transfer when owner is missing or still disconnected.
+  if (reason === "disconnect") {
+    return false
+  }
+  if (reason === "join") {
+    if (owner) return false
+  } else if (owner?.connected) {
     return false
   }
 

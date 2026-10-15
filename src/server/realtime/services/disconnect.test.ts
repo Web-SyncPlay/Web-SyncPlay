@@ -47,7 +47,7 @@ describe("disconnect lifecycle", () => {
     setEmptyAtClientForTests(null)
     setRoomBroadcastBusForTests(null)
   })
-  test("applyUserWentOffline marks participant, invalidates local media, transfers ownership", () => {
+  test("applyUserWentOffline marks participant and invalidates local media without transferring ownership", () => {
     const state = createRoomState({
       playlist: [
         createPlaylistItem({
@@ -75,7 +75,9 @@ describe("disconnect lifecycle", () => {
     expect(state.participants.owner?.connected).toBe(false)
     expect(state.playlist[0]?.blockedReason).toBe("local_owner_offline")
     expect(state.playback.paused).toBe(true)
-    expect(state.ownerId).toBe("mod")
+    // Ownership stays through prune grace so a brief reconnect keeps owner.
+    expect(state.ownerId).toBe("owner")
+    expect(state.participants.owner?.role).toBe("owner")
     expect(
       state.actionLog.some((e) => e.action === "participant:disconnected"),
     ).toBe(true)

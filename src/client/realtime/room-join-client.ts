@@ -117,6 +117,7 @@ export function buildRoomJoinEnvelope(input: {
   joinPassword?: string
   controlToken?: string
   initialMediaUrl?: string
+  skipDefaultMedia?: boolean
   requestId?: string
 }): WsEnvelope<string, Record<string, unknown>> {
   const payload: Record<string, unknown> = {
@@ -134,6 +135,9 @@ export function buildRoomJoinEnvelope(input: {
   }
   if (input.initialMediaUrl) {
     payload.initialMediaUrl = input.initialMediaUrl
+  }
+  if (input.skipDefaultMedia) {
+    payload.skipDefaultMedia = true
   }
   return {
     type: "room:join",

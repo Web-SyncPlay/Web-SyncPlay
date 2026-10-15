@@ -25,8 +25,10 @@
   var LOCAL_MEDIA_VIEWER_USER_PARAM = "uid";
 
   // src/sw/local-media-sw.ts
+  var RANGE_CLIENT_TIMEOUT_MS = 1500;
   var sw = self;
-  var viewerCapability = null;
+  var viewerCapabilityByClientId = new Map;
+  var bridgeReadyClientIds = new Set;
   sw.addEventListener("install", (event) => {
     event.waitUntil?.(sw.skipWaiting());
   });
@@ -35,30 +37,48 @@
   });
   sw.addEventListener("message", (event) => {
     const data = event.data;
-    if (!data || data.type !== "local-media-sw-viewer-capability")
+    if (!data?.type)
+      return;
+    const clientId = event.source?.id;
+    if (!clientId)
+      return;
+    if (data.type === "local-media-sw-bridge-ready") {
+      bridgeReadyClientIds.add(clientId);
+      return;
+    }
+    if (data.type !== "local-media-sw-viewer-capability")
       return;
     const token = data.record?.token?.trim();
     const userId = data.record?.userId?.trim();
-    viewerCapability = token && userId ? { token, userId } : null;
-  });
-  function withViewerCapabilityOnRequest(request) {
-    if (!viewerCapability)
-      return request;
-    try {
-      const url = new URL(request.url);
-      if (!url.pathname.startsWith("/api/media/local/"))
-        return request;
-      if (url.pathname.includes("/internal/"))
-        return request;
-      if (url.searchParams.has(LOCAL_MEDIA_VIEWER_TOKEN_PARAM) && url.searchParams.has(LOCAL_MEDIA_VIEWER_USER_PARAM)) {
-        return request;
-      }
-      url.searchParams.set(LOCAL_MEDIA_VIEWER_TOKEN_PARAM, viewerCapability.token);
-      url.searchParams.set(LOCAL_MEDIA_VIEWER_USER_PARAM, viewerCapability.userId);
-      return new Request(url.toString(), request);
-    } catch {
-      return request;
+    if (token && userId) {
+      viewerCapabilityByClientId.set(clientId, { token, userId });
+    } else {
+      viewerCapabilityByClientId.delete(clientId);
     }
+  });
+  function networkFetch(request, clientId) {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith("/api/media/local/") && !url.pathname.includes("/internal/")) {
+      const capability = clientId ? viewerCapabilityByClientId.get(clientId) : undefined;
+      if (capability && (!url.searchParams.has(LOCAL_MEDIA_VIEWER_TOKEN_PARAM) || !url.searchParams.has(LOCAL_MEDIA_VIEWER_USER_PARAM))) {
+        url.searchParams.set(LOCAL_MEDIA_VIEWER_TOKEN_PARAM, capability.token);
+        url.searchParams.set(LOCAL_MEDIA_VIEWER_USER_PARAM, capability.userId);
+      }
+    }
+    const headers = new Headers;
+    const range = request.headers.get("range");
+    if (range)
+      headers.set("Range", range);
+    const accept = request.headers.get("accept");
+    if (accept)
+      headers.set("Accept", accept);
+    return fetch(url.toString(), {
+      method: "GET",
+      headers,
+      credentials: "same-origin",
+      cache: "no-store",
+      redirect: "follow"
+    });
   }
   async function askClientForRange(client, mediaId, start, end) {
     const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -66,7 +86,7 @@
       const channel = new MessageChannel;
       const timer = setTimeout(() => {
         resolve(null);
-      }, 12000);
+      }, RANGE_CLIENT_TIMEOUT_MS);
       channel.port1.onmessage = (event) => {
         clearTimeout(timer);
         const data = event.data;
@@ -78,20 +98,41 @@
           resolve(null);
           return;
         }
+        const source = data.source === "webrtc" ? "webrtc" : data.source === "local" ? "local" : "sfu";
         resolve({
           buffer: data.buffer,
           mimeType: typeof data.mimeType === "string" && data.mimeType ? data.mimeType : undefined,
           totalSize: typeof data.totalSize === "number" && data.totalSize > 0 ? data.totalSize : undefined,
-          source: data.source === "webrtc" ? "webrtc" : "sfu"
+          source
         });
       };
-      client.postMessage({
-        type: "local-media-sw-range",
-        requestId,
-        mediaId,
-        start,
-        end
-      }, [channel.port2]);
+      try {
+        client.postMessage({
+          type: "local-media-sw-range",
+          requestId,
+          mediaId,
+          start,
+          end
+        }, [channel.port2]);
+      } catch {
+        clearTimeout(timer);
+        resolve(null);
+      }
+    });
+  }
+  function rangeResponse(result, rangeStart) {
+    const bytes = new Uint8Array(result.buffer);
+    const total = result.totalSize != null ? result.totalSize : "*";
+    return new Response(bytes, {
+      status: 206,
+      headers: {
+        "Content-Type": result.mimeType || "application/octet-stream",
+        "Accept-Ranges": "bytes",
+        "Content-Length": String(bytes.byteLength),
+        "Content-Range": `bytes ${rangeStart}-${rangeStart + bytes.byteLength - 1}/${total}`,
+        "Cache-Control": "private, max-age=15",
+        "X-Local-Media-Source": result.source
+      }
     });
   }
   sw.addEventListener("fetch", (event) => {
@@ -109,35 +150,40 @@
     if (!mediaId)
       return;
     const request = event.request;
+    const clientId = event.clientId;
     event.respondWith((async () => {
-      const range = parseRawBytesRangeHeader(request.headers.get("range"));
-      if (!range) {
-        return fetch(withViewerCapabilityOnRequest(request));
-      }
-      const clients = await sw.clients.matchAll({
-        type: "window",
-        includeUncontrolled: true
-      });
-      const end = range.end ?? range.start + LOCAL_MEDIA_MAX_BLOCK_BYTES - 1;
-      for (const client of clients) {
-        const result = await askClientForRange(client, mediaId, range.start, end);
-        if (result) {
-          const bytes = new Uint8Array(result.buffer);
-          const total = result.totalSize != null ? result.totalSize : "*";
-          return new Response(bytes, {
-            status: 206,
-            headers: {
-              "Content-Type": result.mimeType || "application/octet-stream",
-              "Accept-Ranges": "bytes",
-              "Content-Length": String(bytes.byteLength),
-              "Content-Range": `bytes ${range.start}-${range.start + bytes.byteLength - 1}/${total}`,
-              "Cache-Control": "private, max-age=15",
-              "X-Local-Media-Source": result.source
-            }
+      try {
+        const range = parseRawBytesRangeHeader(request.headers.get("range"));
+        if (!range) {
+          return await networkFetch(request, clientId);
+        }
+        if (!clientId || !bridgeReadyClientIds.has(clientId)) {
+          return await networkFetch(request, clientId);
+        }
+        const end = range.end ?? range.start + LOCAL_MEDIA_MAX_BLOCK_BYTES - 1;
+        let client = null;
+        try {
+          client = await sw.clients.get(clientId);
+        } catch {
+          client = null;
+        }
+        if (client) {
+          const result = await askClientForRange(client, mediaId, range.start, end);
+          if (result) {
+            return rangeResponse(result, range.start);
+          }
+        }
+        return await networkFetch(request, clientId);
+      } catch {
+        try {
+          return await networkFetch(request, clientId);
+        } catch {
+          return new Response("local-media service worker error", {
+            status: 502,
+            headers: { "Content-Type": "text/plain" }
           });
         }
       }
-      return fetch(withViewerCapabilityOnRequest(request));
     })());
   });
 })();

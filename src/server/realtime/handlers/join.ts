@@ -31,6 +31,7 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
   const sessionKind: SessionKind = join.sessionKind ?? "room"
   const controlToken = join.controlToken
   const initialMediaUrl = join.initialMediaUrl
+  const skipDefaultMedia = join.skipDefaultMedia
 
   const previousMeta = getSocketMeta(ctx.ws)
 
@@ -40,6 +41,7 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
     roomId,
     joinPassword,
     initialMediaUrl,
+    skipDefaultMedia,
     existingState,
     requestId: data.requestId,
   })
@@ -97,6 +99,7 @@ export const handleRoomJoin: JoinHandler = async (ctx, data) => {
     avatarStyle,
     joinPassword,
     seedUrl: admitted.seedUrl,
+    skipDefaultMedia: admitted.skipDefaultMedia,
     sessionKind,
     isControlSession,
     controlAuthorized,

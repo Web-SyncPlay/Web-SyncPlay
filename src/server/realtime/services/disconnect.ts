@@ -12,7 +12,6 @@ import {
 } from "@/server/realtime/services/empty-room"
 import { clearConnectionLocalPlaybackReport } from "@/server/realtime/services/local-playback-report-lifecycle"
 import { publishUserOfflinePresence } from "@/server/realtime/services/offline-presence"
-import { transferOwnershipIfNeeded } from "./ownership"
 import { clearAllRoomPrunes, schedulePrune } from "./participants"
 import { bumpRoomRevisions, nextMonotonicMs } from "./timeline"
 
@@ -133,9 +132,9 @@ export function applyUserWentOffline(
     didMutate = true
   }
 
-  if (transferOwnershipIfNeeded(state, "disconnect")) {
-    didMutate = true
-  }
+  // Do not transfer ownership here — a brief reconnect (dev HMR, tab remount)
+  // would otherwise demote the owner to guest. Ownership moves on prune/cleanup
+  // after PARTICIPANT_PRUNE_MS, or when join heals a missing ownerId.
 
   if (participant) {
     appendActionLog(state, {
@@ -253,8 +252,10 @@ export async function handleSocketDisconnect(
     return
   }
 
+  // Keep Redis metadata during the prune grace window so a brief reconnect
+  // (e.g. room client remount) can re-announce ready without media_not_found.
+  // Entries are deleted when the participant is actually pruned / room destroyed.
   await clearLocalMediaProviderReadyForOwner(meta.roomId, meta.userId)
-  await deleteLocalMediaEntriesForOwner(meta.roomId, meta.userId)
   await schedulePrune(meta.roomId, meta.userId)
 
   await publishUserOfflinePresence(store, meta.roomId, meta.userId, next)

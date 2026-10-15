@@ -162,7 +162,7 @@ describe("commitJoinMembership", () => {
     expect(result.committed!.structuralRevision).toBe(0)
   })
 
-  test("heals ownership when owner is offline and joiner connects", async () => {
+  test("keeps ownership when owner is only briefly offline during join", async () => {
     const store = new InMemoryRoomStateStore(
       createRoomState({
         participants: {
@@ -171,6 +171,41 @@ describe("commitJoinMembership", () => {
             role: "owner",
             connected: false,
           }),
+          guest: createParticipant({
+            userId: "guest",
+            role: "guest",
+            connected: false,
+            joinedAt: 5,
+          }),
+          mod: createParticipant({
+            userId: "mod",
+            role: "moderator",
+            connected: true,
+            joinedAt: 10,
+          }),
+        },
+      }),
+    )
+    store.presence.set("room-1", new Map([["mod", { [getAppNodeId()]: 1 }]]))
+    const { ws } = createFakeWs()
+
+    const result = await commitJoinMembership(baseInput(store, ws))
+
+    // Disconnect grace: owner stays owner until prune removes them.
+    expect(result.committed?.ownerId).toBe("owner")
+    expect(result.committed?.participants.owner?.role).toBe("owner")
+    expect(
+      result.committed?.actionLog.some(
+        (e) => e.action === "participant:owner:transferred",
+      ),
+    ).toBe(false)
+  })
+
+  test("heals ownership when owner participant is missing on join", async () => {
+    const store = new InMemoryRoomStateStore(
+      createRoomState({
+        ownerId: "gone-owner",
+        participants: {
           guest: createParticipant({
             userId: "guest",
             role: "guest",

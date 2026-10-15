@@ -59,10 +59,23 @@ export function createLocalMediaSfuSession(input: {
       pendingSfuProvide.add(localMediaId)
       return
     }
-    void import("@/client/local-media/local-media-sfu").then(
-      ({ ensureLocalMediaSfuProvider }) =>
-        ensureLocalMediaSfuProvider(localMediaId, sendSfuRequest),
-    )
+    void (async () => {
+      const { ensureLocalMediaSfuProvider } =
+        await import("@/client/local-media/local-media-sfu")
+      // Redis entry may lag playlist:add:local by a tick; retry briefly.
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const ok = await ensureLocalMediaSfuProvider(
+          localMediaId,
+          sendSfuRequest,
+        )
+        if (ok) return
+        if (attempt < 2) {
+          await new Promise((resolve) =>
+            window.setTimeout(resolve, 200 * (attempt + 1)),
+          )
+        }
+      }
+    })()
   }
 
   const handleSfuResult = (envelope: WsEnvelope<string, unknown>) => {

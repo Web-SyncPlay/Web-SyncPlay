@@ -1,5 +1,6 @@
 "use client"
 
+import { peekLandingSkipDefaultMedia } from "@/client/local-media/local-media-landing-handoff"
 import { RoomConnectingView } from "@/components/layout/RoomConnectingView"
 import { SidePanel } from "@/components/layout/SidePanel"
 import { SiteNavbar } from "@/components/layout/SiteNavbar"
@@ -20,9 +21,16 @@ export function RoomClient({
   initialMediaUrl?: string
 }) {
   const [seedMediaUrl] = useState(initialMediaUrl)
+  // Peek only — File handoff is consumed later by PlaylistAddMediaControls.
+  const [seedSkipDefaultMedia] = useState(() =>
+    typeof window !== "undefined"
+      ? peekLandingSkipDefaultMedia(roomId)
+      : false,
+  )
   const session = useRoomSession(roomId, {
     sessionKind: "room",
     initialMediaUrl: seedMediaUrl,
+    skipDefaultMedia: seedSkipDefaultMedia,
   })
   const model = useRoomPanelModel({
     roomId,

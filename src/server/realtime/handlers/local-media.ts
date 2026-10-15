@@ -39,14 +39,80 @@ export const handleLocalMediaReady: RoomMessageHandler = async (ctx, data) => {
   const parsed = parseOrNack(localMediaReadySchema, ctx.ws, data)
   if (!parsed) return
 
-  await setLocalMediaProviderReady(parsed.localMediaId, parsed.ready, {
+  if (parsed.ready) {
+    let entry = await getLocalMediaEntry(parsed.localMediaId)
+    if (!entry) {
+      // After prune (or older disconnect paths) Redis metadata may be gone;
+      // recreate from playlist when the owner re-announces they still hold the File.
+      const state = await ctx.store.get(ctx.roomId)
+      const item = state?.playlist.find(
+        (playlistItem) =>
+          playlistItem.localMediaId === parsed.localMediaId &&
+          playlistItem.localOriginUserId === ctx.userId &&
+          playlistItem.sourceKind === "local_file",
+      )
+      if (item?.localMimeType && item.localSizeBytes != null) {
+        try {
+          await createLocalMediaEntry({
+            id: parsed.localMediaId,
+            roomId: ctx.roomId,
+            ownerUserId: ctx.userId,
+            filename: item.name || "Local media",
+            mimeType: item.localMimeType,
+            sizeBytes: item.localSizeBytes,
+            providerReady: true,
+          })
+          entry = await getLocalMediaEntry(parsed.localMediaId)
+        } catch (error) {
+          console.error(
+            "[local-media] failed to recreate metadata on ready",
+            error,
+          )
+        }
+      }
+    } else {
+      await setLocalMediaProviderReady(parsed.localMediaId, true, {
+        ownerUserId: ctx.userId,
+      })
+    }
+
+    if (entry || (await getLocalMediaEntry(parsed.localMediaId))) {
+      await mutateRoomMessage(
+        ctx.store,
+        ctx.roomId,
+        ctx.userId,
+        (state) => {
+          let changed = false
+          for (const playlistItem of state.playlist) {
+            if (playlistItem.localMediaId !== parsed.localMediaId) continue
+            if (playlistItem.localOriginUserId !== ctx.userId) continue
+            if (
+              playlistItem.blockedReason !== "local_owner_offline" &&
+              playlistItem.ingestStatus !== "error"
+            ) {
+              continue
+            }
+            playlistItem.blockedReason = undefined
+            playlistItem.ingestError = undefined
+            playlistItem.ingestStatus = "ready"
+            changed = true
+          }
+          return changed
+        },
+        { kind: "snapshot" },
+      )
+    }
+    return
+  }
+
+  await setLocalMediaProviderReady(parsed.localMediaId, false, {
     ownerUserId: ctx.userId,
   })
 }
 
 /**
  * Provider finished packaging lower ABR rungs. Register child metadata and
- * upgrade the playlist item to Auto HLS + combined ladder.
+ * upgrade the playlist item to a progressive ladder (plus optional Auto HLS).
  */
 export const handleLocalMediaAbrPublish: RoomMessageHandler = async (
   ctx,
@@ -111,30 +177,37 @@ export const handleLocalMediaAbrPublish: RoomMessageHandler = async (
   )
   if (!updated) return
 
+  // Progressive ladder first: whole-file MP4 as an HLS media segment breaks
+  // hls.js remux (no EXTM3U on blob / baseTime null). Keep Auto HLS available
+  // but default to the highest progressive rung so guests/host keep playing.
+  const progressiveStreams = parsed.variants
+    .slice()
+    .sort((a, b) => b.height - a.height)
+    .map((v, index) => ({
+      id: `local-${v.height}`,
+      src: `/api/media/local/${encodeURIComponent(v.localMediaId)}`,
+      type: v.mimeType,
+      height: v.height,
+      bitrate: v.bandwidth,
+      label: v.label,
+      kind: "combined" as const,
+      isDefault: index === 0,
+    }))
+  const defaultProgressive = progressiveStreams[0]
+  if (!defaultProgressive) return
+
   const hlsUrl = `/api/media/local/${encodeURIComponent(parentId)}/hls`
   const mediaStreams: PlaylistMediaStream[] = [
+    ...progressiveStreams,
     {
       id: "local-auto",
       src: hlsUrl,
       type: "application/vnd.apple.mpegurl",
       protocol: "m3u8",
-      isDefault: true,
+      isDefault: false,
       label: "Auto",
       kind: "adaptive",
     },
-    ...parsed.variants
-      .slice()
-      .sort((a, b) => b.height - a.height)
-      .map((v) => ({
-        id: `local-${v.height}`,
-        src: `/api/media/local/${encodeURIComponent(v.localMediaId)}`,
-        type: v.mimeType,
-        height: v.height,
-        bitrate: v.bandwidth,
-        label: v.label,
-        kind: "combined" as const,
-        isDefault: false,
-      })),
   ]
 
   await mutateRoomMessage(
@@ -144,11 +217,11 @@ export const handleLocalMediaAbrPublish: RoomMessageHandler = async (
     (state) => {
       const item = state.playlist.find((p) => p.localMediaId === parentId)
       if (!item || item.localOriginUserId !== ctx.userId) return false
-      item.playableUrl = hlsUrl
-      item.sourceUrl = hlsUrl
+      item.playableUrl = defaultProgressive.src
+      item.sourceUrl = defaultProgressive.src
       item.durationSeconds = parsed.durationSec
       item.mediaStreams = mediaStreams
-      item.defaultStreamId = "local-auto"
+      item.defaultStreamId = defaultProgressive.id
       item.ingestStatus = "ready"
       return true
     },

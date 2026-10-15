@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test"
-import { parseInitialMediaUrl, readMediaQueryParam } from "./initial-media-url"
+import {
+  parseInitialMediaUrl,
+  readMediaQueryParam,
+  readSkipDefaultMediaParam,
+} from "./initial-media-url"
 
 describe("readMediaQueryParam", () => {
   test("returns trimmed first value", () => {
@@ -34,5 +38,15 @@ describe("parseInitialMediaUrl", () => {
     expect(
       parseInitialMediaUrl(["https://a.example/x", "https://b.example/y"]),
     ).toBe("https://a.example/x")
+  })
+})
+
+describe("readSkipDefaultMediaParam", () => {
+  test("accepts truthy local flags", () => {
+    expect(readSkipDefaultMediaParam("1")).toBe(true)
+    expect(readSkipDefaultMediaParam("true")).toBe(true)
+    expect(readSkipDefaultMediaParam("local")).toBe(true)
+    expect(readSkipDefaultMediaParam("0")).toBe(false)
+    expect(readSkipDefaultMediaParam(undefined)).toBe(false)
   })
 })

@@ -87,9 +87,9 @@ function createState(): RoomState {
   }
 }
 
-test("transfers owner to longest-tenured connected moderator first", () => {
+test("prune transfers owner to longest-tenured connected moderator first", () => {
   const state = createState()
-  const changed = transferOwnershipIfNeeded(state, "disconnect")
+  const changed = transferOwnershipIfNeeded(state, "prune")
 
   expect(changed).toBe(true)
   expect(state.ownerId).toBe("modOld")
@@ -119,8 +119,21 @@ test("does not change owner when current owner is still connected", () => {
   expect(state.ownerId).toBe("owner")
 })
 
-test("join reason transfers ownership when owner is offline", () => {
+test("join reason does not steal ownership from a disconnected owner", () => {
   const state = createState()
+  // Owner is offline but still in the roster (prune grace).
+  expect(state.participants.owner?.connected).toBe(false)
+
+  const changed = transferOwnershipIfNeeded(state, "join")
+
+  expect(changed).toBe(false)
+  expect(state.ownerId).toBe("owner")
+})
+
+test("join reason heals ownership when owner participant is missing", () => {
+  const state = createState()
+  delete state.participants.owner
+
   const changed = transferOwnershipIfNeeded(state, "join")
 
   expect(changed).toBe(true)
@@ -132,4 +145,11 @@ test("join reason transfers ownership when owner is offline", () => {
         (e.payload as { reason?: string }).reason === "join",
     ),
   ).toBe(true)
+})
+
+test("disconnect reason never transfers ownership", () => {
+  const state = createState()
+  const changed = transferOwnershipIfNeeded(state, "disconnect")
+  expect(changed).toBe(false)
+  expect(state.ownerId).toBe("owner")
 })

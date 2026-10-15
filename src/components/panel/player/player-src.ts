@@ -47,6 +47,15 @@ export function buildPlayerSrc(
     current?.mediaStreams?.find((s) => s.isDefault)?.type ??
     current?.mediaStreams?.[0]?.type
 
+  // Host local-file path keeps a blob: URL even when the catalog default is
+  // Auto HLS — never force mpegurl onto a progressive File object URL.
+  if (activePlaybackSrc.startsWith("blob:")) {
+    if (isProgressiveMediaMime(rawMime) && rawMime) {
+      return { src: activePlaybackSrc, type: rawMime }
+    }
+    return { src: activePlaybackSrc, type: "video/mp4" }
+  }
+
   const streamMime = normalizeHlsMime(rawMime)
   if (streamMime) {
     return { src: activePlaybackSrc, type: streamMime }
@@ -55,6 +64,7 @@ export function buildPlayerSrc(
   const looksAdaptive =
     activeStream?.kind === "adaptive" ||
     /\.m3u8(\?|$)/i.test(activePlaybackSrc) ||
+    /\/hls(\?|$)/i.test(activePlaybackSrc) ||
     (activeStream?.protocol ?? "").toLowerCase().includes("m3u8")
 
   if (looksAdaptive) {

@@ -3,6 +3,9 @@
  * Persists in memory + sessionStorage; appends `?vt=` / `uid=` on public
  * local-media URLs; posts the active token to the local-media service worker
  * for HTTP fallback decoration.
+ *
+ * React consumers should subscribe via `useSyncExternalStore` so playback
+ * URLs recompute when the token arrives after join (capabilities race).
  */
 
 import {
@@ -21,6 +24,10 @@ export type StoredViewerToken = {
 }
 
 let memoryRecord: StoredViewerToken | null = null
+/** Bumped on persist/clear so React subscribers re-render. */
+let viewerTokenEpoch = 0
+const viewers = new Set<() => void>()
+let controllerChangeBound = false
 
 function isNonEmpty(value: string | null | undefined): value is string {
   return typeof value === "string" && value.trim().length > 0
@@ -47,6 +54,26 @@ function parseStored(raw: string | null): StoredViewerToken | null {
   }
 }
 
+function notifyViewerTokenListeners(): void {
+  viewerTokenEpoch += 1
+  for (const listener of viewers) {
+    try {
+      listener()
+    } catch {
+      // ignore subscriber errors
+    }
+  }
+}
+
+function ensureControllerChangeHook(): void {
+  if (controllerChangeBound || typeof navigator === "undefined") return
+  if (!navigator.serviceWorker) return
+  controllerChangeBound = true
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    syncViewerTokenToServiceWorker(memoryRecord)
+  })
+}
+
 function syncViewerTokenToServiceWorker(
   record: StoredViewerToken | null,
 ): void {
@@ -56,6 +83,7 @@ function syncViewerTokenToServiceWorker(
   ) {
     return
   }
+  ensureControllerChangeHook()
   try {
     navigator.serviceWorker.controller.postMessage({
       type: "local-media-sw-viewer-capability",
@@ -64,6 +92,25 @@ function syncViewerTokenToServiceWorker(
   } catch {
     // ignore
   }
+}
+
+/** Re-push the in-memory token after the SW claims this page. */
+export function resyncLocalMediaViewerTokenToServiceWorker(): void {
+  syncViewerTokenToServiceWorker(memoryRecord ?? loadLocalMediaViewerToken())
+}
+
+export function subscribeLocalMediaViewerToken(
+  listener: () => void,
+): () => void {
+  viewers.add(listener)
+  return () => {
+    viewers.delete(listener)
+  }
+}
+
+/** Snapshot for `useSyncExternalStore` — changes when token is set/cleared. */
+export function getLocalMediaViewerTokenEpoch(): number {
+  return viewerTokenEpoch
 }
 
 export function persistLocalMediaViewerToken(input: StoredViewerToken): void {
@@ -81,6 +128,7 @@ export function persistLocalMediaViewerToken(input: StoredViewerToken): void {
   }
   if (typeof sessionStorage === "undefined") {
     syncViewerTokenToServiceWorker(memoryRecord)
+    notifyViewerTokenListeners()
     return
   }
   try {
@@ -89,6 +137,7 @@ export function persistLocalMediaViewerToken(input: StoredViewerToken): void {
     // Quota / private mode — media HTTP will fail closed until remint.
   }
   syncViewerTokenToServiceWorker(memoryRecord)
+  notifyViewerTokenListeners()
 }
 
 export function loadLocalMediaViewerToken(): StoredViewerToken | null {
@@ -113,6 +162,14 @@ export function clearLocalMediaViewerToken(): void {
     }
   }
   syncViewerTokenToServiceWorker(null)
+  notifyViewerTokenListeners()
+}
+
+/** Public `/api/media/local/*` URLs (not internal) require a viewer capability. */
+export function isPublicLocalMediaApiUrl(url: string): boolean {
+  if (!url.includes("/api/media/local/")) return false
+  if (url.includes("/api/media/local/internal/")) return false
+  return true
 }
 
 /** Append vt + uid query params for public /api/media/local/* URLs. */
@@ -121,8 +178,7 @@ export function withLocalMediaViewerToken(
   creds: StoredViewerToken | null = loadLocalMediaViewerToken(),
 ): string {
   if (!creds?.token || !creds.userId) return url
-  if (!url.includes("/api/media/local/")) return url
-  if (url.includes("/api/media/local/internal/")) return url
+  if (!isPublicLocalMediaApiUrl(url)) return url
   try {
     const absolute = url.startsWith("http")
       ? new URL(url)
