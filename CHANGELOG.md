@@ -5,6 +5,46 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.3] - 2026-10-15
+
+Patch release after `3.0.2`: Action Log redesign, local-media guest playback
+hardening, player error/loading fixes, and room/control UI polish.
+
+### Added
+
+- **Action Log:** Faceted category filters, keyword search, density-strip
+  overview, expandable rows, and persistent filter state.
+- **Control:** Play and pause icons on the transport button.
+
+### Fixed
+
+- **Local media:** Stabilize guest relay playback and landing local check
+  (defer viewer-token decoration until join capabilities, progressive MP4 ABR
+  default, SW fallthrough until page bridge is ready); probe via `srcObject`
+  with safe blob fallback.
+- **Player:** Clear sticky errors and surface unplayable media; stop brief
+  loading flicker after play and item switch.
+- **Playlist:** Keep source URL copy for remote items; label local files by
+  sharer device (`username's device`).
+- **Room:** Cap player height to 70vh when the rail is open; decode
+  percent-encoded room ids for display and URLs.
+- **Users:** Condense playback status into an icon+time chip.
+- **Control:** Icon-only play styling and seeker cursor; align play/pause
+  label and large scrubber height.
+- **CI:** Unblock `bun check` (TS7 mock casts) and split Quality / Test / E2E
+  jobs with a shared setup action.
+
+### Changed
+
+- **Control:** Tighten scrubber layout across breakpoints (shared
+  transport/scrubber row at `sm`; title/clocks into scrubber column on smaller
+  sizes).
+
+### Ops
+
+Floating `:3` / `:3.0` track the latest 3.x image from CI; pin `:3.0.3` (or a
+digest) for reproducibility.
+
 ## [3.0.2] - 2026-10-13
 
 Patch release after `3.0.1`: multi-replica restart recovery, join/snapshot
@@ -157,6 +197,7 @@ Greenfield redeploy from v2: **[docs/MIGRATION-v3.md](./docs/MIGRATION-v3.md)**.
 
 Prior stable line. See git tag `v2.0.1` and the README at that revision.
 
+[3.0.3]: https://github.com/Web-SyncPlay/Web-SyncPlay/compare/v3.0.2...v3.0.3
 [3.0.2]: https://github.com/Web-SyncPlay/Web-SyncPlay/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/Web-SyncPlay/Web-SyncPlay/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/Web-SyncPlay/Web-SyncPlay/compare/v2.0.1...v3.0.0
