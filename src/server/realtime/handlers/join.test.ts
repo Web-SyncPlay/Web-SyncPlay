@@ -435,7 +435,7 @@ describe("handleRoomJoin", () => {
     ).toBe(false)
   })
 
-  test("heals ownership on join when owner is offline", async () => {
+  test("keeps ownership on join when owner is only briefly offline", async () => {
     const store = new InMemoryRoomStateStore(
       createRoomState({
         participants: {
@@ -460,6 +460,45 @@ describe("handleRoomJoin", () => {
       }),
     )
     // Mod already has a live presence ref so reconcile keeps them connected.
+    store.presence.set("room-1", new Map([["mod", { [getAppNodeId()]: 1 }]]))
+    createTestBroadcastBus(store)
+    const { ws } = createFakeWs()
+
+    await handleRoomJoin({ ws, store }, joinEnvelope())
+
+    const state = store.peek("room-1")
+    // Disconnect grace: owner stays owner until prune removes them.
+    expect(state?.ownerId).toBe("owner")
+    expect(state?.participants.owner?.role).toBe("owner")
+    expect(
+      state?.actionLog.some(
+        (e) => e.action === "participant:owner:transferred",
+      ),
+    ).toBe(false)
+
+    removeSocket(ws)
+  })
+
+  test("heals ownership on join when owner participant is missing", async () => {
+    const store = new InMemoryRoomStateStore(
+      createRoomState({
+        ownerId: "gone-owner",
+        participants: {
+          guest: createParticipant({
+            userId: "guest",
+            role: "guest",
+            connected: false,
+            joinedAt: 5,
+          }),
+          mod: createParticipant({
+            userId: "mod",
+            role: "moderator",
+            connected: true,
+            joinedAt: 10,
+          }),
+        },
+      }),
+    )
     store.presence.set("room-1", new Map([["mod", { [getAppNodeId()]: 1 }]]))
     createTestBroadcastBus(store)
     const { ws } = createFakeWs()
