@@ -69,7 +69,7 @@ function useStripSortableRowA11y(row: HTMLElement | null) {
 
 export function localFileOriginLabel(username: string): string {
   const trimmed = username.trim()
-  return trimmed ? `${trimmed} device` : "device"
+  return trimmed ? `${trimmed}'s device` : "device"
 }
 
 export function PlaylistItemRow(props: {
