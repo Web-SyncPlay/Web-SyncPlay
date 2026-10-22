@@ -20,6 +20,7 @@ Watch video or audio in sync with friends. One Next.js app: WebSocket realtime, 
 | [Architecture](#architecture-developers)                                | Source layout and media paths       |
 | [Contributing](#contributing)                                           | Setup, checks, PR expectations      |
 | [Security](#security--accessibility)                                    | Reporting and a11y gate             |
+| [Technical debt](#technical-debt)                                       | Held majors (player / ESLint)       |
 | [Changelog](./CHANGELOG.md) / [Migrate from v2](./docs/MIGRATION-v3.md) | v3.0.3 notes and greenfield cutover |
 
 Agent-oriented map and dual TypeScript notes: [AGENTS.md](./AGENTS.md).
@@ -296,3 +297,25 @@ See [`CONTRIBUTING.md`](./CONTRIBUTING.md) and [`CODE_OF_CONDUCT.md`](./CODE_OF_
 - Vulnerabilities: [`SECURITY.md`](./SECURITY.md) (supported line: **3.x**). Scorecard + Dependabot on `main`.
 - UI a11y: axe-core **WCAG 2.2 AAA** in CI (`bun run test:a11y`). Automated gate, not a formal W3C certification.
 - Release history and operator breaking changes: [`CHANGELOG.md`](./CHANGELOG.md). v2 → v3 cutover: [`docs/MIGRATION-v3.md`](./docs/MIGRATION-v3.md).
+
+## Technical debt
+
+Held dependency majors and the work that unblocks them. Prefer landing these as deliberate migrations, not Dependabot drive-bys.
+
+### Player stack — Vidstack → Video.js 10 (+ dash.js 5)
+
+| Pin today                    | Why it stays                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@vidstack/react` **1.15.7** | Security-only maintenance on 1.x through **January 2028**; no feature work (including dash.js 5).                                                                                                                                                                                                                                                                                                              |
+| `dashjs` **4.7.4** (exact)   | Vidstack’s DASH provider documents `dashjs@^4.0` only ([DASH provider](https://vidstack.io/docs/player/api/providers/dash/)). dash.js 5 changes UMD paths and APIs; [vidstack/player#1585](https://github.com/vidstack/player/issues/1585) was closed without support. Our vendor copy (`scripts/vendor-player-libs.ts` → `dist/dash.all.min.js`) matches the v4 layout Vidstack loads via `provider.library`. |
+
+**Exit path:** rewrite the player UI on [Video.js 10](https://videojs.org/) using the official [Migrate from Vidstack (React)](https://videojs.org/docs/framework/react/guides/migrate-from-vidstack) guide (plan as a rewrite, not a rename). After that cutover, take **dash.js 5** under Video.js’s DASH media path and drop the Vidstack-era vendor pin. Check the guide’s known gaps first (e.g. caption style settings, audio gain) against `SyncedMediaPlayer` / default-layout slots.
+
+### Lint — ESLint 10 blocked on `eslint-plugin-react`
+
+| Pin today                        | Why it stays                                                                                                                                                                                                                                                                                                                                                                            |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `eslint` **^9.39**               | Pulled in by `eslint-config-next`, which depends on `eslint-plugin-react`.                                                                                                                                                                                                                                                                                                              |
+| `eslint-plugin-react` **7.37.5** | Peer range stops at `eslint@^9.7` ([jsx-eslint/eslint-plugin-react#3977](https://github.com/jsx-eslint/eslint-plugin-react/issues/3977)). Forcing ESLint 10 can fail install under strict peers and/or crash rules (`context.getFilename is not a function`). Compatibility work exists ([#4022](https://github.com/jsx-eslint/eslint-plugin-react/pull/4022)) but is **not released**. |
+
+`eslint-plugin-react-hooks` already declares ESLint 10; `eslint-config-next@16.4+` also claims ESLint 10 support. The React plugin (and similarly `eslint-plugin-import` / `eslint-plugin-jsx-a11y` peers) is still the gate. **Exit path:** bump ESLint to 10 once a released `eslint-plugin-react` (and Next’s bundled peers) list `^10`, then re-run `bun run lint` for any new `eslint:recommended` noise.
