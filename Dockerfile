@@ -30,6 +30,8 @@ ARG MEDIASOUP_VERSION=3.30.1
 # glibc run-check inside Debian bookworm (exit 1, not the expected 41) and then
 # attempt a local rebuild without Python. Pin the ubuntu-22.04 "kernel6"
 # worker so bookworm stays compatible on both amd64 and arm64.
+# Do not exec the worker during the image build: under BuildKit the exit-41
+# probe can fail with broken-pipe / non-41 status even for a good binary.
 COPY docker/mediasoup/package.json docker/mediasoup/package-lock.json ./
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl \
@@ -44,7 +46,7 @@ RUN apt-get update \
     && mkdir -p /opt/mediasoup-prebuilt \
     && tar -xzf /tmp/mediasoup-worker.tgz -C /opt/mediasoup-prebuilt \
     && chmod +x /opt/mediasoup-prebuilt/mediasoup-worker \
-    && sh -c '/opt/mediasoup-prebuilt/mediasoup-worker; test $? -eq 41' \
+    && test -x /opt/mediasoup-prebuilt/mediasoup-worker \
     && rm -f /tmp/mediasoup-worker.tgz \
     && printf 'allow-scripts=mediasoup\n' > .npmrc \
     && MEDIASOUP_WORKER_BIN=/opt/mediasoup-prebuilt/mediasoup-worker npm ci --omit=dev \
