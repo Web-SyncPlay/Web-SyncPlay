@@ -22,14 +22,35 @@ RUN SKIP_ENV_VALIDATION=true bun run build \
 FROM node:26-bookworm-slim@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567 AS mediasoup
 WORKDIR /opt/mediasoup
 
-# mediasoup version must stay in sync with bun.lock / package.json and
-# docker/mediasoup/package.json (+ package-lock.json).
+# Keep in sync with package.json / bun.lock and docker/mediasoup/* .
+ARG MEDIASOUP_VERSION=3.30.1
+
+# mediasoup picks prebuilts from the *host* kernel via os.release(). Azure
+# runners on Linux 7.x download ubuntu-26.04 "kernel7" workers, which fail the
+# glibc run-check inside Debian bookworm (exit 1, not the expected 41) and then
+# attempt a local rebuild without Python. Pin the ubuntu-22.04 "kernel6"
+# worker so bookworm stays compatible on both amd64 and arm64.
 COPY docker/mediasoup/package.json docker/mediasoup/package-lock.json ./
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && arch="$(uname -m)" \
+    && case "$arch" in \
+         x86_64) ms_arch=x64 ;; \
+         aarch64) ms_arch=arm64 ;; \
+         *) echo "unsupported arch=$arch" >&2; exit 1 ;; \
+       esac \
+    && curl -fsSL -o /tmp/mediasoup-worker.tgz \
+         "https://github.com/versatica/mediasoup/releases/download/${MEDIASOUP_VERSION}/mediasoup-worker-${MEDIASOUP_VERSION}-linux-${ms_arch}-kernel6.tgz" \
+    && mkdir -p /opt/mediasoup-prebuilt \
+    && tar -xzf /tmp/mediasoup-worker.tgz -C /opt/mediasoup-prebuilt \
+    && chmod +x /opt/mediasoup-prebuilt/mediasoup-worker \
+    && sh -c '/opt/mediasoup-prebuilt/mediasoup-worker; test $? -eq 41' \
+    && rm -f /tmp/mediasoup-worker.tgz \
     && printf 'allow-scripts=mediasoup\n' > .npmrc \
-    && npm ci --omit=dev \
+    && MEDIASOUP_WORKER_BIN=/opt/mediasoup-prebuilt/mediasoup-worker npm ci --omit=dev \
+    && mkdir -p node_modules/mediasoup/worker/out/Release \
+    && cp /opt/mediasoup-prebuilt/mediasoup-worker \
+         node_modules/mediasoup/worker/out/Release/mediasoup-worker \
     && test -x node_modules/mediasoup/worker/out/Release/mediasoup-worker \
     && cd node_modules/mediasoup \
     && rm -rf \
@@ -53,7 +74,10 @@ RUN apt-get update \
          README.md \
          CHANGELOG.md \
     && rm -f /opt/mediasoup/.npmrc \
-    && rm -rf /root/.npm /tmp/*
+    && rm -rf /opt/mediasoup-prebuilt /root/.npm /tmp/* \
+    && apt-get purge -y curl \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
 
 FROM node:26-bookworm-slim@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567 AS runner
 WORKDIR /app
