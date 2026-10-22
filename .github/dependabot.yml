@@ -20,3 +20,8 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 10
+    groups:
+      # All github/codeql-action/* steps in a workflow must share one version.
+      codeql-actions:
+        patterns:
+          - github/codeql-action/*
