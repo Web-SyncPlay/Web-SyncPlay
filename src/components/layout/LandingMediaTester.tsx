@@ -23,6 +23,13 @@ import {
   type LocalPlayabilityResult,
   probeLocalFilePlayability,
 } from "@/client/local-media/local-media-playability-probe"
+import {
+  landingFeedbackBad,
+  landingFeedbackOk,
+  landingFieldInput,
+  landingFieldShell,
+  landingResultCard,
+} from "@/components/layout/landing-styles"
 import { cn } from "@/components/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -56,6 +63,16 @@ function formatDuration(seconds: number | null | undefined): string | null {
   return formatDurationSeconds(Math.round(seconds))
 }
 
+const MODE_TABS = [
+  { id: "media-check-tab-url", mode: "url" as const, label: "URL" },
+  {
+    id: "media-check-tab-local",
+    mode: "local" as const,
+    shortLabel: "Local",
+    label: "Local file",
+  },
+] as const
+
 function ModeSegment(props: {
   mode: CheckMode
   onModeChange: (mode: CheckMode) => void
@@ -65,39 +82,36 @@ function ModeSegment(props: {
     <div
       role="tablist"
       aria-label="Check media type"
-      className="flex w-full max-w-xs rounded-xl bg-white/5 p-1 sm:max-w-sm"
+      className="flex rounded-lg border border-white/45 bg-white/10 p-0.5"
     >
-      <button
-        type="button"
-        role="tab"
-        aria-selected={mode === "url"}
-        id="media-check-tab-url"
-        className={cn(
-          "flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-          mode === "url"
-            ? "bg-background/90 text-foreground shadow-sm"
-            : "text-muted-foreground hover:text-foreground",
-        )}
-        onClick={() => onModeChange("url")}
-      >
-        URL
-      </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={mode === "local"}
-        id="media-check-tab-local"
-        className={cn(
-          "flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-          mode === "local"
-            ? "bg-background/90 text-foreground shadow-sm"
-            : "text-muted-foreground hover:text-foreground",
-        )}
-        onClick={() => onModeChange("local")}
-      >
-        <span className="sm:hidden">Local</span>
-        <span className="hidden sm:inline">Local file</span>
-      </button>
+      {MODE_TABS.map((tab) => {
+        const selected = mode === tab.mode
+        return (
+          <button
+            key={tab.mode}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            id={tab.id}
+            className={cn(
+              "cursor-pointer rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:text-sm",
+              selected
+                ? "bg-foreground text-background shadow-sm"
+                : "text-foreground/80 hover:bg-white/10 hover:text-foreground",
+            )}
+            onClick={() => onModeChange(tab.mode)}
+          >
+            {"shortLabel" in tab ? (
+              <>
+                <span className="sm:hidden">{tab.shortLabel}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
+              </>
+            ) : (
+              tab.label
+            )}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -262,186 +276,191 @@ export function LandingMediaTester(): React.JSX.Element {
   return (
     <section
       id="media-check"
-      className="relative w-full shrink-0 border-t border-white/5 px-6 pt-8 pb-10 sm:pt-10 sm:pb-12"
+      className="relative isolate shrink-0 border-t border-white/5 bg-[#020617] py-5 sm:py-6"
     >
       {/* Bookmark / deep-link alias for the previous URL-check section id */}
       <span id="url-check" className="sr-only" aria-hidden />
       <div
-        className="pointer-events-none absolute inset-0 -z-10 bg-[#020617]"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_70%_60%_at_50%_100%,oklch(0.5_0.14_210/0.22),transparent)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_100%,oklch(0.5_0.14_210/0.22),transparent)]"
         aria-hidden
       />
 
-      <div className="relative mx-auto flex w-full max-w-2xl flex-col items-center gap-4 text-center">
-        <div className="flex flex-col items-center gap-1.5">
-          <h2 className="font-heading text-lg font-semibold tracking-tight sm:text-xl">
+      <div className="relative mx-auto flex w-full max-w-2xl flex-col items-center gap-3 px-6 text-center">
+        <div className="flex items-center justify-center gap-3 sm:gap-4">
+          <h2 className="font-heading text-base font-semibold tracking-tight sm:text-lg">
             Will it play?
           </h2>
-          <p className="max-w-md text-xs text-muted-foreground sm:text-sm">
-            Check a link or a file before you start a room.
-          </p>
+          <ModeSegment mode={mode} onModeChange={handleModeChange} />
         </div>
 
-        <ModeSegment mode={mode} onModeChange={handleModeChange} />
-
-        {mode === "url" ? (
-          <form
-            onSubmit={handleUrlCheck}
-            className="w-full"
-            aria-labelledby="media-check-tab-url"
-          >
-            <div className="flex w-full items-center gap-2 rounded-2xl border border-input bg-background/70 px-3 py-1.5 shadow-lg shadow-black/20 backdrop-blur-md transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/40 sm:px-4 sm:py-2">
-              <Input
-                type="text"
-                inputMode="url"
-                value={url}
-                onChange={(event) => setUrl(event.target.value)}
-                placeholder="https://youtube.com/watch?v=…"
-                aria-label="Media URL to check"
-                autoComplete="off"
-                spellCheck={false}
-                className="h-10 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm shadow-none focus-visible:border-transparent focus-visible:ring-0 sm:text-base dark:bg-transparent"
-              />
-              <Button
-                type="submit"
-                size="default"
-                className="shrink-0 gap-1.5"
-                disabled={!urlReady || urlLoading}
-                aria-label={urlLoading ? "Checking URL" : "Check URL"}
-              >
-                {urlLoading ? (
-                  <Loader2 className="animate-spin" aria-hidden />
-                ) : (
-                  <Search aria-hidden />
-                )}
-                <span className="hidden sm:inline">Check</span>
-              </Button>
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground sm:text-sm">
-              Paste a media URL to check if it can play and sync here.
-            </p>
-          </form>
-        ) : (
-          <div className="w-full" aria-labelledby="media-check-tab-local">
-            <div
-              onDragEnter={(event) => {
-                event.preventDefault()
-                setDragOver(true)
-              }}
-              onDragOver={(event) => {
-                event.preventDefault()
-                setDragOver(true)
-              }}
-              onDragLeave={(event) => {
-                event.preventDefault()
-                if (event.currentTarget.contains(event.relatedTarget as Node)) {
-                  return
-                }
-                setDragOver(false)
-              }}
-              onDrop={onDrop}
-              className={cn(
-                "flex min-h-24 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed bg-background/70 px-4 py-4 shadow-lg shadow-black/20 backdrop-blur-md transition-[border-color,box-shadow,background-color] sm:min-h-28",
-                dragOver
-                  ? "border-ring bg-teal-500/10 ring-3 ring-ring/40"
-                  : "border-input",
-              )}
+        <div className="w-full">
+          {mode === "url" ? (
+            <form
+              onSubmit={handleUrlCheck}
+              aria-labelledby="media-check-tab-url"
             >
-              {localFile ? (
-                <div className="flex w-full max-w-md items-center gap-2 text-left">
-                  <FileVideo
-                    className="size-5 shrink-0 text-muted-foreground"
-                    aria-hidden
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {localFile.name || "Local media"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatFileSizeBytes(localFile.size)}
-                      {localLoading ? " · Checking…" : null}
-                    </p>
+              <div className={cn(landingFieldShell, "h-14 border-input")}>
+                <Input
+                  type="text"
+                  inputMode="url"
+                  value={url}
+                  onChange={(event) => setUrl(event.target.value)}
+                  placeholder="https://youtube.com/watch?v=…"
+                  aria-label="Media URL to check"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className={cn(landingFieldInput, "h-10 text-sm sm:text-base")}
+                />
+                <Button
+                  type="submit"
+                  size="default"
+                  className="shrink-0 gap-1.5"
+                  disabled={!urlReady || urlLoading}
+                  aria-label={urlLoading ? "Checking URL" : "Check URL"}
+                >
+                  {urlLoading ? (
+                    <Loader2 className="animate-spin" aria-hidden />
+                  ) : (
+                    <Search aria-hidden />
+                  )}
+                  <span className="hidden sm:inline">Check</span>
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div aria-labelledby="media-check-tab-local">
+              <div
+                onDragEnter={(event) => {
+                  event.preventDefault()
+                  setDragOver(true)
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  setDragOver(true)
+                }}
+                onDragLeave={(event) => {
+                  event.preventDefault()
+                  if (
+                    event.currentTarget.contains(event.relatedTarget as Node)
+                  ) {
+                    return
+                  }
+                  setDragOver(false)
+                }}
+                onDrop={onDrop}
+                className={cn(
+                  landingFieldShell,
+                  "h-14 justify-center overflow-hidden border-dashed transition-[border-color,box-shadow,background-color]",
+                  dragOver
+                    ? "border-ring bg-teal-500/10 ring-3 ring-ring/40"
+                    : "border-input",
+                )}
+              >
+                {localFile ? (
+                  <div className="flex w-full items-center gap-2 text-left">
+                    <FileVideo
+                      className="size-4 shrink-0 text-muted-foreground"
+                      aria-hidden
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm leading-tight font-medium">
+                        {localFile.name || "Local media"}
+                      </p>
+                      <p className="truncate text-xs leading-tight text-muted-foreground">
+                        {formatFileSizeBytes(localFile.size)}
+                        {localLoading ? " · Checking…" : null}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Clear selected file"
+                      disabled={localLoading}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        clearLocalState()
+                      }}
+                    >
+                      <X aria-hidden />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={localLoading}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        void onChooseLocalFile()
+                      }}
+                    >
+                      Change
+                    </Button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Clear selected file"
-                    disabled={localLoading}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      clearLocalState()
-                    }}
-                  >
-                    <X aria-hidden />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={localLoading}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void onChooseLocalFile()
-                    }}
-                  >
-                    Change
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <Upload
-                    className="size-5 text-muted-foreground"
-                    aria-hidden
-                  />
-                  <p className="text-sm text-foreground/90">
-                    Drop a video or audio file here
-                  </p>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={localLoading}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void onChooseLocalFile()
-                    }}
-                  >
-                    Choose file
-                  </Button>
-                </>
-              )}
+                ) : (
+                  <div className="flex items-center justify-center gap-3">
+                    <Upload
+                      className="size-4 shrink-0 text-muted-foreground"
+                      aria-hidden
+                    />
+                    <p className="truncate text-sm">
+                      Drop a video or audio file
+                    </p>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="shrink-0"
+                      disabled={localLoading}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        void onChooseLocalFile()
+                      }}
+                    >
+                      Choose file
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <input
+                ref={localFileInputRef}
+                type="file"
+                accept="video/*,audio/*"
+                className="hidden"
+                data-testid="landing-local-file-input"
+                onChange={(event) => {
+                  onLocalInputChange(event.target.files?.[0])
+                }}
+              />
             </div>
-            <input
-              ref={localFileInputRef}
-              type="file"
-              accept="video/*,audio/*"
-              className="hidden"
-              data-testid="landing-local-file-input"
-              onChange={(event) => {
-                onLocalInputChange(event.target.files?.[0])
-              }}
-            />
-            <p className="mt-2 text-xs text-muted-foreground sm:text-sm">
-              Your file stays on this device. Others stream it from your browser
-              in a room.
-            </p>
-          </div>
-        )}
+          )}
+          <p className="mt-2 text-xs text-muted-foreground sm:text-sm">
+            {mode === "url"
+              ? "Paste a media URL to check if it can play and sync here."
+              : "Stays on this device — others stream it from your browser in a room."}
+          </p>
+        </div>
 
         {(showUrlFeedback || showLocalFeedback) && (
           <div aria-live="polite" className="w-full">
             {mode === "url" && urlError && (
-              <p className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <p
+                className={cn(
+                  "rounded-xl border px-3 py-2 text-sm text-destructive",
+                  landingFeedbackBad,
+                )}
+              >
                 {urlError}
               </p>
             )}
 
             {mode === "local" && localError && (
-              <p className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <p
+                className={cn(
+                  "rounded-xl border px-3 py-2 text-sm text-destructive",
+                  landingFeedbackBad,
+                )}
+              >
                 {localError}
               </p>
             )}
@@ -450,7 +469,7 @@ export function LandingMediaTester(): React.JSX.Element {
               localLoading &&
               !localResult &&
               !localError && (
-                <div className="flex w-full items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-left text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-left text-sm text-muted-foreground">
                   <Loader2
                     className="size-4 shrink-0 animate-spin"
                     aria-hidden
@@ -462,10 +481,8 @@ export function LandingMediaTester(): React.JSX.Element {
             {mode === "url" && urlResult && (
               <div
                 className={cn(
-                  "flex w-full animate-in flex-col gap-3 rounded-xl border px-3 py-2.5 text-left duration-300 fade-in-0 slide-in-from-bottom-1 sm:flex-row sm:items-center",
-                  urlResult.playable
-                    ? "border-teal-500/35 bg-teal-500/10"
-                    : "border-destructive/40 bg-destructive/10",
+                  landingResultCard,
+                  urlResult.playable ? landingFeedbackOk : landingFeedbackBad,
                 )}
               >
                 <div className="flex min-w-0 flex-1 items-start gap-2">
@@ -498,7 +515,7 @@ export function LandingMediaTester(): React.JSX.Element {
                       {urlResult.message}
                     </p>
                     {urlResult.title && urlResult.title !== urlResult.url && (
-                      <p className="truncate text-xs text-foreground/90 sm:text-sm">
+                      <p className="truncate text-xs sm:text-sm">
                         {urlResult.title}
                       </p>
                     )}
@@ -557,10 +574,8 @@ export function LandingMediaTester(): React.JSX.Element {
             {mode === "local" && localResult && (
               <div
                 className={cn(
-                  "flex w-full animate-in flex-col gap-3 rounded-xl border px-3 py-2.5 text-left duration-300 fade-in-0 slide-in-from-bottom-1 sm:flex-row sm:items-center",
-                  localResult.playable
-                    ? "border-teal-500/35 bg-teal-500/10"
-                    : "border-destructive/40 bg-destructive/10",
+                  landingResultCard,
+                  localResult.playable ? landingFeedbackOk : landingFeedbackBad,
                 )}
               >
                 <div className="flex min-w-0 flex-1 items-start gap-2">
@@ -588,7 +603,7 @@ export function LandingMediaTester(): React.JSX.Element {
                     <p className="text-xs text-muted-foreground sm:text-sm">
                       {localResult.message}
                     </p>
-                    <p className="truncate text-xs text-foreground/90 sm:text-sm">
+                    <p className="truncate text-xs sm:text-sm">
                       {localResult.fileName}
                     </p>
                     <dl className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">

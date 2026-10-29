@@ -3,7 +3,7 @@ import { LandingMediaTester } from "@/components/layout/LandingMediaTester"
 
 export default function LandingPage() {
   return (
-    <div className="relative isolate flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+    <div className="relative isolate flex min-h-0 flex-1 flex-col overflow-x-hidden">
       <div
         className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
         aria-hidden

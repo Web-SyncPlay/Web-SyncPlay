@@ -6,6 +6,10 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { type FormEvent, useState } from "react"
 
+import {
+  landingFieldInput,
+  landingFieldShell,
+} from "@/components/layout/landing-styles"
 import { cn } from "@/components/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,7 +30,7 @@ function RoomEntry(props: {
       onSubmit={onSubmit}
       className={cn("flex w-full flex-col gap-2", className)}
     >
-      <div className="flex w-full items-center gap-2 rounded-2xl border border-input bg-background/70 px-3 py-2 shadow-lg shadow-black/20 backdrop-blur-md transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/40 sm:px-4 sm:py-2.5">
+      <div className={cn(landingFieldShell, "border-input py-2 sm:py-2.5")}>
         <Input
           type="text"
           value={roomInput}
@@ -35,7 +39,7 @@ function RoomEntry(props: {
           aria-label="Room name or link"
           autoComplete="off"
           spellCheck={false}
-          className="h-11 min-w-0 flex-1 border-0 bg-transparent px-2 text-lg shadow-none focus-visible:border-transparent focus-visible:ring-0 md:text-xl dark:bg-transparent"
+          className={cn(landingFieldInput, "h-11 text-lg md:text-xl")}
         />
         <Button
           type="button"
@@ -59,7 +63,7 @@ function RoomEntry(props: {
           <ArrowRight className="sm:hidden" aria-hidden />
         </Button>
       </div>
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Type a room name to create or join — or paste a room link.
       </p>
     </form>
@@ -82,8 +86,8 @@ export function LandingHero(): React.JSX.Element {
   }
 
   return (
-    <section className="flex min-h-0 w-full flex-1 flex-col">
-      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-3 px-6 py-6 text-center sm:gap-5 sm:py-8">
+    <section className="flex min-h-0 flex-1 flex-col">
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-3 px-6 py-6 text-center sm:gap-5 sm:py-8">
         <Link href="/" className="flex flex-col items-center gap-2 sm:gap-3">
           <Image
             src="/logo_white.png"
