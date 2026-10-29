@@ -1,5 +1,8 @@
 "use client"
 
+import { AlertCircle, ChevronDown, ChevronRight } from "lucide-react"
+import { useState } from "react"
+
 import { cn } from "@/components/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -13,8 +16,6 @@ import {
   highlightQuerySegments,
   type LogActionCategory,
 } from "@/shared/log-format"
-import { AlertCircle, ChevronDown, ChevronRight } from "lucide-react"
-import { useState } from "react"
 
 function resolveActorName(
   log: ActionLogEntry,
@@ -85,7 +86,7 @@ export function LogItem(props: {
     <div
       role="listitem"
       className={cn(
-        "border-b border-border/40 py-1.5 text-pretty leading-snug last:border-b-0 [content-visibility:auto] [contain-intrinsic-size:auto_2.75rem]",
+        "border-b border-border/40 py-1.5 leading-snug text-pretty [contain-intrinsic-size:auto_2.75rem] [content-visibility:auto] last:border-b-0",
         isError && "bg-destructive/5",
       )}
     >

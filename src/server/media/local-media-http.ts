@@ -9,8 +9,8 @@ import {
 import type { LocalMediaEntry } from "@/server/media/local-media-store"
 import {
   httpStatusForLocalMediaError,
-  localMediaErrorMessage,
   type LocalMediaErrorCode,
+  localMediaErrorMessage,
 } from "@/shared/local-media/local-media-errors"
 import {
   parseLocalMediaRangeHeader,

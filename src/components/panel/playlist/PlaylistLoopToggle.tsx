@@ -1,5 +1,7 @@
 "use client"
 
+import { Repeat, Repeat1, RepeatOff } from "lucide-react"
+
 import { cn } from "@/components/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import {
@@ -8,7 +10,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import type { LoopMode } from "@/contracts/types"
-import { Repeat, Repeat1, RepeatOff } from "lucide-react"
 
 const LOOP_CYCLE: LoopMode[] = ["off", "once", "always"]
 

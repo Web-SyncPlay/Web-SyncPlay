@@ -1,7 +1,9 @@
+import { beforeAll, describe, expect, mock, test } from "bun:test"
+
 import type { LocalMediaRuntime } from "@/client/local-media/local-media-runtime"
 import type { RoomSnapshotPayload } from "@/contracts/types"
 import { createRoomState } from "@/shared/test-utils/room-fixtures"
-import { beforeAll, describe, expect, mock, test } from "bun:test"
+
 import { createLocalMediaBootstrap } from "./room-socket-local-media-bootstrap"
 import type { LocalMediaSfuSession } from "./room-socket-local-media-sfu"
 

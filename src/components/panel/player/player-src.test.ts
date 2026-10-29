@@ -1,5 +1,7 @@
-import type { PlaylistItem, PlaylistMediaStream } from "@/contracts/types"
 import { describe, expect, test } from "bun:test"
+
+import type { PlaylistItem, PlaylistMediaStream } from "@/contracts/types"
+
 import {
   buildPlayerSrc,
   formatMediaErrorDetail,

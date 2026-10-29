@@ -1,3 +1,8 @@
+import { useSortable } from "@dnd-kit/react/sortable"
+import { Copy, GripVertical, Loader2, Play, Trash2 } from "lucide-react"
+import { useLayoutEffect, useState } from "react"
+import { toast } from "sonner"
+
 import { cn } from "@/components/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,10 +19,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import type { PlaylistItem } from "@/contracts/types"
-import { useSortable } from "@dnd-kit/react/sortable"
-import { Copy, GripVertical, Loader2, Play, Trash2 } from "lucide-react"
-import { useLayoutEffect, useState } from "react"
-import { toast } from "sonner"
 
 async function copySourceUrl(url: string) {
   try {
@@ -123,7 +124,7 @@ export function PlaylistItemRow(props: {
       className={cn(
         "w-full min-w-0",
         isDragging && "relative z-10 opacity-90",
-        isDropTarget && "ring-2 ring-ring/40 rounded-lg",
+        isDropTarget && "rounded-lg ring-2 ring-ring/40",
       )}
     >
       <Item
@@ -151,7 +152,7 @@ export function PlaylistItemRow(props: {
               aria-label="Drag to reorder"
               className={cn(
                 buttonVariants({ variant: "ghost", size: "icon-sm" }),
-                "size-8 touch-none cursor-grab active:cursor-grabbing",
+                "size-8 cursor-grab touch-none active:cursor-grabbing",
               )}
             >
               <GripVertical />

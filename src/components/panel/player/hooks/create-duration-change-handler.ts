@@ -1,6 +1,7 @@
 import { looksLikeBufferOnlyBound } from "@/client/player/playback-sync"
 import { readPlayerSeekableEndSec } from "@/shared/dom/player-utils"
 import { isNativeProviderUrl } from "@/shared/player-utils"
+
 import type { SyncedMediaPlayerHandlerDeps } from "./synced-media-player-handler-types"
 
 type DurationChangeDeps = Pick<

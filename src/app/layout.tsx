@@ -1,7 +1,8 @@
-import { SiteFooter } from "@/components/layout/SiteFooter"
-import { Toaster } from "@/components/ui/sonner"
 import type { Metadata } from "next"
 import type { ReactNode } from "react"
+
+import { SiteFooter } from "@/components/layout/SiteFooter"
+import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
 import { AppProviders } from "./providers"
 

@@ -1,9 +1,10 @@
+import { afterEach, expect, test } from "bun:test"
+
 import {
   acaoAllowsBrowserPlayback,
   probeCorsPlayback,
   probeUpstreamPlayback,
 } from "@/server/media/cors/cors-probe"
-import { afterEach, expect, test } from "bun:test"
 
 const originalFetch = globalThis.fetch
 

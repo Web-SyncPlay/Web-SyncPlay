@@ -1,3 +1,7 @@
+import { expect, test } from "bun:test"
+
+import fc from "fast-check"
+
 import {
   participantUpdateSchema,
   playlistRenameSchema,
@@ -9,8 +13,6 @@ import {
   sanitizeMediaTitle,
   sanitizeUsername,
 } from "@/shared/sanitize-display"
-import { expect, test } from "bun:test"
-import fc from "fast-check"
 
 const xssPackages = [
   "<script>alert(1)</script>",

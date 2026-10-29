@@ -1,16 +1,17 @@
 "use client"
 
 import {
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+  useEffect,
+} from "react"
+
+import {
   pendingSyncFromPlayback,
   type PendingSyncState,
 } from "@/client/player/pending-sync"
 import { useLatestRef } from "@/hooks/use-latest-ref"
-import {
-  useEffect,
-  type Dispatch,
-  type RefObject,
-  type SetStateAction,
-} from "react"
 
 export type { PendingSyncState }
 

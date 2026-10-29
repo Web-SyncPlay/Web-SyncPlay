@@ -1,6 +1,15 @@
 "use client"
 
 import {
+  type RefObject,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
+
+import {
   getLocalMediaMimeType,
   getLocalMediaObjectUrl,
 } from "@/client/local-media/local-media-provider"
@@ -18,14 +27,7 @@ import type {
   PlaylistItem,
   ViewerMediaItemPreference,
 } from "@/contracts/types"
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type RefObject,
-} from "react"
+
 import {
   buildPlayerSrc,
   isSameOriginPlaybackUrl,

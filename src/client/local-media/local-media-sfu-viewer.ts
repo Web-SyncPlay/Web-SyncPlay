@@ -2,6 +2,8 @@
  * mediasoup SFU viewer path: consume blocks and request ranges.
  */
 
+import type { types as MsTypes } from "mediasoup-client"
+
 import { getLocalMediaFile } from "@/client/local-media/local-media-provider"
 import {
   encodeLocalMediaBlockRequest,
@@ -11,18 +13,18 @@ import {
   parseLocalMediaBlockJson,
   parseLocalMediaSfuReadyAck,
 } from "@/shared/local-media/local-media-block-protocol"
-import type { types as MsTypes } from "mediasoup-client"
+
 import {
   call,
   getActiveSession,
   getTransport,
   OPEN_TIMEOUT_MS,
-  sessionFor,
-  toArrayBuffer,
-  waitForOpen,
   type Session,
+  sessionFor,
   type SfuSendRequest,
+  toArrayBuffer,
   type ViewerSlot,
+  waitForOpen,
 } from "./local-media-sfu-session"
 import {
   isSfuViewerChannelReady,

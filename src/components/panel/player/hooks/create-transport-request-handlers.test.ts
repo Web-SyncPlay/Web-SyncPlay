@@ -1,6 +1,8 @@
+import { describe, expect, mock, test } from "bun:test"
+
 import type { LoopMode } from "@/contracts/types"
 import { createRoomState } from "@/shared/test-utils/room-fixtures"
-import { describe, expect, mock, test } from "bun:test"
+
 import type { LocalSeekPhase } from "../playback-control/use-playback-timeline-controller"
 import { createTransportRequestHandlers } from "./create-transport-request-handlers"
 import {

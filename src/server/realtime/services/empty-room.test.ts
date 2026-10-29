@@ -1,7 +1,9 @@
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+
 import { markProcessDraining, resetLifecycleForTests } from "@/server/lifecycle"
 import { keys } from "@/server/redis/keys"
 import { EMPTY_ROOM_DESTROY_GRACE_MS } from "@/shared/room-lifecycle"
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+
 import {
   clearRoomEmptyMarker,
   confirmEmptyRoomDestroyAllowed,

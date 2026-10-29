@@ -1,5 +1,7 @@
-import type { RoomState } from "@/contracts/types"
 import { describe, expect, test } from "bun:test"
+
+import type { RoomState } from "@/contracts/types"
+
 import {
   getActiveRangeResponder,
   setActiveRangeResponder,

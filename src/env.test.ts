@@ -1,9 +1,11 @@
+import { describe, expect, test } from "bun:test"
+
+import { z } from "zod"
+
 import {
   LOCAL_MEDIA_INTERNAL_PAIR_MESSAGE,
   refineLocalMediaInternalEnvPair,
 } from "@/env"
-import { describe, expect, test } from "bun:test"
-import { z } from "zod"
 
 const pairSchema = z
   .object({

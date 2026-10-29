@@ -1,25 +1,27 @@
 "use client"
 
+import {
+  isDASHProvider,
+  isHLSProvider,
+  MediaPlayer,
+  MediaProvider,
+  type MediaProviderAdapter,
+  type PlayerSrc,
+  Track,
+} from "@vidstack/react"
+import {
+  DefaultAudioLayout,
+  defaultLayoutIcons,
+  DefaultVideoLayout,
+} from "@vidstack/react/player/layouts/default"
+import { memo, useMemo } from "react"
+
 import type { PlaylistMediaStream } from "@/contracts/types"
 import {
   resolvePlayerDurationSec,
   resolvePlayerStreamType,
 } from "@/shared/player-utils"
-import {
-  MediaPlayer,
-  MediaProvider,
-  Track,
-  isDASHProvider,
-  isHLSProvider,
-  type MediaProviderAdapter,
-  type PlayerSrc,
-} from "@vidstack/react"
-import {
-  DefaultAudioLayout,
-  DefaultVideoLayout,
-  defaultLayoutIcons,
-} from "@vidstack/react/player/layouts/default"
-import { memo, useMemo } from "react"
+
 import { useSyncedMediaPlayerHandlers } from "./hooks/use-synced-media-player-handlers"
 import type {
   PlayerSessionController,

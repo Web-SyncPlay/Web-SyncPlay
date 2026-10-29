@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+
 import type { SyncablePlayer } from "./apply-playback-sync"
 import {
   DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
@@ -10,15 +11,15 @@ import {
   CATCH_UP_STALL_POST_SEEK_GRACE_MS,
   CATCH_UP_STALL_WINDOW_MS,
   createPlaybackSyncEngine,
+  type EngineSyncState,
   MAX_FORCE_SEEKS_PER_ANCHOR,
   planPlaybackDriftCorrection,
-  resetAnchorBudget,
-  tryConsumeAnchorBudget,
-  WATCHDOG_INTERVAL_MS,
-  type EngineSyncState,
   type PlaybackSnapshot,
   type PlaybackSyncEngineHost,
   type PlaybackSyncScheduler,
+  resetAnchorBudget,
+  tryConsumeAnchorBudget,
+  WATCHDOG_INTERVAL_MS,
 } from "./playback-sync-engine"
 
 function stubMediaEl(init: { currentTime?: number; paused?: boolean } = {}) {

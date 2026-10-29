@@ -1,10 +1,12 @@
+import { expect, test } from "bun:test"
+
 import { applyPresenceBatches } from "@/client/realtime/room-state-merge"
 import type { ActionLogEntry, RoomState } from "@/contracts/types"
 import {
   createParticipant,
   createRoomState,
 } from "@/shared/test-utils/room-fixtures"
-import { expect, test } from "bun:test"
+
 import {
   logShellSlicesEqual,
   participantUsernamesEqual,

@@ -5,8 +5,10 @@
  * Requires a healthy app (`bun run start` or `dev`) with Valkey.
  */
 import { randomUUID } from "node:crypto"
+
 import type { BrowserContext, Page } from "playwright"
 import { chromium } from "playwright"
+
 import { checkHealth } from "./lib/check-health.ts"
 import { createE2eReporter } from "./lib/e2e-report.ts"
 import { identityHash } from "./lib/identity-hash.ts"

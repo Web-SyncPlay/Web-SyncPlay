@@ -1,3 +1,5 @@
+import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+
 import { getAppNodeId } from "@/server/node-id"
 import {
   createTestBroadcastBus,
@@ -11,7 +13,6 @@ import {
 } from "@/server/realtime/test-utils/fixtures"
 import { totalPresenceRefs } from "@/server/redis/presence-ref"
 import { addSocket, getSocketMeta, removeSocket } from "@/server/ws/registry"
-import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
 
 mock.module("@/server/redis/client", () => ({
   getCommandClient: async () => ({

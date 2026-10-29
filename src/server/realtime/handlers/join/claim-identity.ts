@@ -1,5 +1,7 @@
-import { claimOrVerifyIdentitySecret } from "@/server/realtime/services/identity-store"
 import type { WebSocket } from "ws"
+
+import { claimOrVerifyIdentitySecret } from "@/server/realtime/services/identity-store"
+
 import { sendEnvelope } from "./send"
 
 export async function claimJoinIdentity(options: {

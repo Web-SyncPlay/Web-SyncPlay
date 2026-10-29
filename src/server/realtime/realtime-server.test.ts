@@ -1,5 +1,6 @@
-import { MAX_SOCKET_MESSAGE_QUEUE_DEPTH } from "@/server/realtime/realtime-server"
 import { describe, expect, test } from "bun:test"
+
+import { MAX_SOCKET_MESSAGE_QUEUE_DEPTH } from "@/server/realtime/realtime-server"
 
 describe("realtime-server backpressure", () => {
   test("exposes a finite per-socket message queue depth", () => {

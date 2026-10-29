@@ -1,5 +1,6 @@
-import type { PlaylistItem } from "@/contracts/types"
 import { beforeEach, describe, expect, mock, test } from "bun:test"
+
+import type { PlaylistItem } from "@/contracts/types"
 
 const toastError = mock((message: string) => {
   void message

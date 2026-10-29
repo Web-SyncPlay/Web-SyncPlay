@@ -1,3 +1,5 @@
+import { WebSocket } from "ws"
+
 import type { RoomState, SessionKind } from "@/contracts/types"
 import type { RoomStateStorePort } from "@/server/ports"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
@@ -16,7 +18,7 @@ import {
   setSocketJoinCommitted,
   setSocketPresenceTracked,
 } from "@/server/ws/registry"
-import { WebSocket } from "ws"
+
 import { abortJoinAfterCommit } from "./abort"
 import {
   canSetJoinCommitted,

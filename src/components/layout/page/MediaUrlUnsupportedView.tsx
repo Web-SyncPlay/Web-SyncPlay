@@ -1,5 +1,7 @@
 "use client"
 
+import { CircleAlert } from "lucide-react"
+
 import {
   Empty,
   EmptyContent,
@@ -8,7 +10,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
-import { CircleAlert } from "lucide-react"
 
 /** Chrome-less embed error when create-time `?media=` is not usable. */
 export function MediaUrlUnsupportedView({
@@ -19,7 +20,7 @@ export function MediaUrlUnsupportedView({
   mediaUrl?: string
 }) {
   return (
-    <section className="flex min-h-0 flex-1 w-full items-center justify-center overflow-hidden p-6">
+    <section className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden p-6">
       <Empty className="max-w-lg border-none">
         <EmptyHeader>
           <EmptyMedia variant="icon">
@@ -36,14 +37,14 @@ export function MediaUrlUnsupportedView({
         <EmptyContent className="gap-2 text-left text-sm text-muted-foreground">
           <p>
             Room ID:{" "}
-            <span className="break-all font-medium text-foreground">
+            <span className="font-medium break-all text-foreground">
               {roomId}
             </span>
           </p>
           {mediaUrl ? (
             <p>
               Media:{" "}
-              <span className="break-all font-medium text-foreground">
+              <span className="font-medium break-all text-foreground">
                 {mediaUrl}
               </span>
             </p>

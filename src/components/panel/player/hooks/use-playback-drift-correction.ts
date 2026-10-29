@@ -1,11 +1,13 @@
 "use client"
 
+import type { MediaPlayerInstance } from "@vidstack/react"
+import { type RefObject, useEffect } from "react"
+
 import {
   planPlaybackDriftCorrection,
   type PlaybackSyncEngine,
 } from "@/client/player/playback-sync-engine"
-import type { MediaPlayerInstance } from "@vidstack/react"
-import { useEffect, type RefObject } from "react"
+
 import type { PendingSyncState } from "./use-buffering-watchdog"
 
 // Re-export for existing unit tests / call sites.

@@ -1,8 +1,10 @@
 "use client"
 
+import { useState } from "react"
+
 import { RoomConnectingView } from "@/components/layout/RoomConnectingView"
 import { useRoomSession } from "@/hooks/use-room-session"
-import { useState } from "react"
+
 import { PlayerPanel } from "../../panel/player/PlayerPanel"
 import { MediaUrlUnsupportedView } from "./MediaUrlUnsupportedView"
 import { useRoomPanelModel } from "./use-room-panel-model"
@@ -43,7 +45,7 @@ export function EmbedClient({
   }
 
   return (
-    <section className="min-h-0 flex-1 w-full overflow-hidden">
+    <section className="min-h-0 w-full flex-1 overflow-hidden">
       <PlayerPanel
         {...model.panelProps}
         className="aspect-auto size-full rounded-none"

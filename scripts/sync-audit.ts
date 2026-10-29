@@ -8,8 +8,10 @@
  */
 import { randomUUID } from "node:crypto"
 import { writeFileSync } from "node:fs"
+
 import type { Browser, BrowserContext, Page } from "playwright"
 import { chromium } from "playwright"
+
 import { checkHealth } from "./lib/check-health.ts"
 import { identityHash } from "./lib/identity-hash.ts"
 import {

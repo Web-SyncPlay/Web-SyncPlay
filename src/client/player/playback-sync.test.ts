@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test"
+
 import {
   CATCH_UP_RATE_MAX_FACTOR,
   CATCH_UP_RATE_MIN_FACTOR,
+  computeExpectedPlaybackTimeSec,
   DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
   FORCE_SEEK_LEAD_SEC,
-  computeExpectedPlaybackTimeSec,
   measurePlaybackDriftSec,
   resolveCatchUpPlaybackRate,
   resolvePlaybackDriftThresholdSec,

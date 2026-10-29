@@ -1,3 +1,5 @@
+import { expect, test } from "bun:test"
+
 import {
   resetLocalExtractInflightForTest,
   withYtDlpExtractLock,
@@ -6,7 +8,6 @@ import {
 } from "@/server/media/yt-dlp/extract-lock"
 import { resetYtDlpMetricsForTest } from "@/server/media/yt-dlp/metrics"
 import { keys } from "@/server/redis/keys"
-import { expect, test } from "bun:test"
 
 function memoryLockStore(): YtDlpLockStore & {
   forceExpire: (key: string) => void

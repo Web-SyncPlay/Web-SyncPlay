@@ -1,5 +1,7 @@
-import type { JoinStatus } from "@/client/realtime/room-join-client"
 import { CircleAlert } from "lucide-react"
+
+import type { JoinStatus } from "@/client/realtime/room-join-client"
+
 import {
   Empty,
   EmptyContent,

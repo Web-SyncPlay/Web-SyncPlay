@@ -1,7 +1,8 @@
-import type { roomErrorCodeSchema } from "@/contracts/schemas"
-import type { WsEnvelope } from "@/contracts/types"
 import type { WebSocket } from "ws"
 import type { z } from "zod"
+
+import type { roomErrorCodeSchema } from "@/contracts/schemas"
+import type { WsEnvelope } from "@/contracts/types"
 
 export type RoomErrorCode = z.infer<typeof roomErrorCodeSchema>
 

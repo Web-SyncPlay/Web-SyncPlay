@@ -1,12 +1,13 @@
 "use client"
 
-import type { PlaylistMediaStream } from "@/contracts/types"
 import { Menu } from "@vidstack/react"
 import {
   DefaultMenuButton,
   DefaultMenuRadioGroup,
   useDefaultLayoutContext,
 } from "@vidstack/react/player/layouts/default"
+
+import type { PlaylistMediaStream } from "@/contracts/types"
 
 export function PlayerSourceMenu(props: {
   streams: PlaylistMediaStream[]

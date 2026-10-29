@@ -1,5 +1,7 @@
-import { createRoomState } from "@/shared/test-utils/room-fixtures"
 import { describe, expect, mock, test } from "bun:test"
+
+import { createRoomState } from "@/shared/test-utils/room-fixtures"
+
 import {
   createPlaybackLifecycleHandlers,
   PLAYBACK_WAITING_GRACE_MS,

@@ -1,22 +1,23 @@
+import { describe, expect, test } from "bun:test"
+
 import {
   getLocalMediaSfuPort,
   getMediaMaintenancePort,
   getMediaResolvePort,
   getRoomPublishPort,
-  setLocalMediaSfuPort,
-  setMediaMaintenancePort,
-  setMediaResolvePort,
-  setRoomPublishPort,
   type MediaMaintenancePort,
   type MediaResolvePort,
   type RoomPublishPort,
   type RoomStateStorePort,
+  setLocalMediaSfuPort,
+  setMediaMaintenancePort,
+  setMediaResolvePort,
+  setRoomPublishPort,
 } from "@/server/ports"
 import {
   createRoomState,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
-import { describe, expect, test } from "bun:test"
 
 describe("RoomStateStorePort interface", () => {
   test("in-memory adapter fulfills get/update/delete/list/presence", async () => {

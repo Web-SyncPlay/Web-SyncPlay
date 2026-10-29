@@ -1,3 +1,5 @@
+import { afterEach, describe, expect, test } from "bun:test"
+
 import {
   createTestBroadcastBus,
   setRoomBroadcastBusForTests,
@@ -20,7 +22,6 @@ import {
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
 import { getCommandClient } from "@/server/redis/client"
-import { afterEach, describe, expect, test } from "bun:test"
 
 async function redisAvailable(): Promise<boolean> {
   try {

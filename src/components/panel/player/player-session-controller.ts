@@ -1,3 +1,6 @@
+import type { MediaErrorDetail, MediaPlayerInstance } from "@vidstack/react"
+import type { MutableRefObject, ReactNode, RefObject } from "react"
+
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type {
   ClientRoomState,
@@ -6,8 +9,7 @@ import type {
   PlaylistMediaStream,
   ViewerMediaItemPreference,
 } from "@/contracts/types"
-import type { MediaErrorDetail, MediaPlayerInstance } from "@vidstack/react"
-import type { MutableRefObject, ReactNode, RefObject } from "react"
+
 import type { TransportIntent } from "./hooks/transport-intent"
 import type { PendingSyncState } from "./hooks/use-buffering-watchdog"
 import type { PlaylistNavSnapshot } from "./hooks/use-synced-media-player-handlers"

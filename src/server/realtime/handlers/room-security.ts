@@ -1,3 +1,5 @@
+import type { z } from "zod"
+
 import {
   roomDefaultRoleSetSchema,
   roomPasswordClearSchema,
@@ -6,7 +8,7 @@ import {
 import type { RoomState, WsEnvelope } from "@/contracts/types"
 import { appendActionLog } from "@/server/log"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
-import type { z } from "zod"
+
 import {
   clearJoinPassword,
   setDefaultJoinRole,

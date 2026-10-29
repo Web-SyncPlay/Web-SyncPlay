@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+
 import { toSyncablePlayer } from "./to-syncable-player"
 
 describe("toSyncablePlayer live bounds", () => {

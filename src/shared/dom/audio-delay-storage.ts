@@ -2,8 +2,8 @@ import {
   AUDIO_DELAY_MAX_MS,
   AUDIO_DELAY_MIN_MS,
   AUDIO_DELAY_STORAGE_KEY,
-  DEFAULT_AUDIO_DELAY_MS,
   clampAudioDelayMs,
+  DEFAULT_AUDIO_DELAY_MS,
 } from "@/shared/audio-delay"
 import { readClampedNumberFromStorage } from "@/shared/dom/storage-utils"
 

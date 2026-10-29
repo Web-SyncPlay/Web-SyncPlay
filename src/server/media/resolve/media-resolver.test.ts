@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+
 import { resolveMediaSource } from "./media-resolver"
 
 describe("resolveMediaSource progressive MPEG-TS", () => {

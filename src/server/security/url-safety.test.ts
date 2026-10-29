@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test"
+
 import { assertPublicHttpUrl, assertPublicHttpUrlResolved } from "./url-safety"
 
 test("allows public https URLs", () => {

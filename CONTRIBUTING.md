@@ -6,7 +6,7 @@ Thanks for helping improve Web-SyncPlay. Keep changes focused; match existing st
 
 | Tool                  | Version                                                  |
 | --------------------- | -------------------------------------------------------- |
-| [Bun](https://bun.sh) | **1.4.2** (`packageManager` / CI)                        |
+| [Bun](https://bun.sh) | **1.4.4-canary** (`packageManager` / CI; for `bun lint`) |
 | Node.js               | **≥ 26** (`engines.node`; Docker image / native tooling) |
 
 ```bash
@@ -18,14 +18,14 @@ bun run dev
 
 ## Checks before a PR
 
-| Command             | Notes                                   |
-| ------------------- | --------------------------------------- |
-| `bun run test:unit` | Prefer locally (no live app)            |
-| `bun check`         | CI typecheck gate (TypeScript **7**)    |
-| `bun run lint`      | ESLint                                  |
-| `bun run format`    | Prettier check; fix with `format:write` |
+| Command             | Notes                                      |
+| ------------------- | ------------------------------------------ |
+| `bun run test:unit` | Prefer locally (no live app)               |
+| `bun check`         | CI typecheck gate (Bun / TypeScript **7**) |
+| `bun lint`          | Bun linter                                 |
+| `bun fmt --check`   | Bun formatter; fix with `bun fmt`          |
 
-All three of `bun check`, `bun run lint`, and `bun run format` are CI **Quality** job gates — run them together. CI then runs **Test** (unit/integration) and **E2E** in parallel. **TypeScript:** IDE uses TS **6**; CI uses TS **7**. Prefer fixing `bun check` type failures. Details: [AGENTS.md](./AGENTS.md).
+All three of `bun check`, `bun lint`, and `bun fmt --check` are CI **Quality** job gates — run them together. CI then runs **Test** (unit/integration) and **E2E** in parallel. Prefer fixing `bun check` type failures. Details: [AGENTS.md](./AGENTS.md).
 
 Integration / e2e / a11y need Valkey or a healthy app — see [README](./README.md#quick-start-development).
 

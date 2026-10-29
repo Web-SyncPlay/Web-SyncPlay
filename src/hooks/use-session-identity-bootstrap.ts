@@ -1,5 +1,7 @@
 "use client"
 
+import { type MutableRefObject, useEffect, useRef, useState } from "react"
+
 import { resolveBootstrapControlToken } from "@/client/realtime/control-token-client"
 import {
   consumeSessionIdentityFromHash,
@@ -10,7 +12,6 @@ import {
 } from "@/client/realtime/session-identity"
 import type { SessionKind } from "@/contracts/types"
 import { getRandomName } from "@/shared/room-utils"
-import { useEffect, useRef, useState, type MutableRefObject } from "react"
 
 export type SessionIdentity = {
   userId: string

@@ -37,8 +37,7 @@
     "next.config.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "postcss.config.mjs",
-    "prettier.config.mjs"
+    "postcss.config.mjs"
   ],
   "exclude": ["node_modules"]
 }

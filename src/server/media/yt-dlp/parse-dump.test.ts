@@ -1,5 +1,6 @@
-import { parseYtDlpDumpJson } from "@/server/media/yt-dlp/parse-dump"
 import { expect, test } from "bun:test"
+
+import { parseYtDlpDumpJson } from "@/server/media/yt-dlp/parse-dump"
 
 test("parses manifest Auto stream and combined formats", () => {
   const result = parseYtDlpDumpJson(

@@ -1,5 +1,8 @@
 "use client"
 
+import type { MediaPlayerInstance } from "@vidstack/react"
+import { type RefObject, useEffect, useRef, useState } from "react"
+
 import {
   attachLocalAudioDelayGraph,
   type LocalAudioDelayGraph,
@@ -10,8 +13,6 @@ import {
   readAudioDelayMsFromStorage,
 } from "@/shared/dom/audio-delay-storage"
 import { queryPlayerMediaElement } from "@/shared/dom/player-utils"
-import type { MediaPlayerInstance } from "@vidstack/react"
-import { useEffect, useRef, useState, type RefObject } from "react"
 
 export function usePlayerAudioDelay(options: {
   playerRef: RefObject<MediaPlayerInstance | null>

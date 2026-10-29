@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+
 import { keys } from "./keys"
 
 describe("redis keys", () => {

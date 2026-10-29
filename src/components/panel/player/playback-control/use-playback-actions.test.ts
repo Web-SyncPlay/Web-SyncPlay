@@ -1,5 +1,7 @@
-import type { RoomState } from "@/contracts/types"
 import { expect, test } from "bun:test"
+
+import type { RoomState } from "@/contracts/types"
+
 import { createPlaybackActions } from "./use-playback-actions"
 
 function createRoomState(): RoomState {

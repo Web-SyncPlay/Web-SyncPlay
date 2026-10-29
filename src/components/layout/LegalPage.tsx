@@ -1,5 +1,6 @@
-import { SiteNavbar } from "@/components/layout/SiteNavbar"
 import type { ReactNode } from "react"
+
+import { SiteNavbar } from "@/components/layout/SiteNavbar"
 
 export function LegalPage(props: {
   title: string

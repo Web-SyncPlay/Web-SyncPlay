@@ -2,14 +2,15 @@
  * HTTP façade for POST /api/media/check.
  */
 
+import { NextResponse } from "next/server"
+import { z } from "zod"
+
 import { detectNativeSupport } from "@/server/media/providers/native-detect"
 import { resolveMediaSource } from "@/server/media/resolve"
 import {
   clientIpFromRequest,
   consumeRateLimit,
 } from "@/server/security/rate-limit"
-import { NextResponse } from "next/server"
-import { z } from "zod"
 
 function normalizeCheckUrl(raw: string): string {
   const trimmed = raw.trim()

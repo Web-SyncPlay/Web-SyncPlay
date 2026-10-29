@@ -1,3 +1,5 @@
+import { afterEach, describe, expect, test } from "bun:test"
+
 import {
   createTestBroadcastBus,
   setRoomBroadcastBusForTests,
@@ -15,7 +17,6 @@ import {
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
 import { addSocket, removeSocket } from "@/server/ws/registry"
-import { afterEach, describe, expect, test } from "bun:test"
 
 describe("room password handler interfaces", () => {
   afterEach(() => {

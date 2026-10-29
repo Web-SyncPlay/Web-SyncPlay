@@ -1,6 +1,8 @@
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+
 import type { RoomState } from "@/contracts/types"
 import type { RoomStateStorePort } from "@/server/ports"
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+
 import {
   buildSanitizedSnapshot,
   resetSnapshotCacheForTests,

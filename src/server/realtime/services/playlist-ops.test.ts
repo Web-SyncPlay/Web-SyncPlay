@@ -1,8 +1,10 @@
+import { describe, expect, test } from "bun:test"
+
 import {
   createPlaylistItem,
   createRoomState,
 } from "@/server/realtime/test-utils/fixtures"
-import { describe, expect, test } from "bun:test"
+
 import {
   applyPlaylistItemDuration,
   applyPlaylistItemError,

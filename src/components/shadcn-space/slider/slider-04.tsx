@@ -1,9 +1,10 @@
 "use client"
 
-import { slider04ClassName } from "@/components/shadcn-space/slider/slider-04-classes"
-import { Slider } from "@/components/ui/slider"
 import NumberFlow from "@number-flow/react"
 import { useState } from "react"
+
+import { slider04ClassName } from "@/components/shadcn-space/slider/slider-04-classes"
+import { Slider } from "@/components/ui/slider"
 
 function SliderDemo() {
   const [value, setValue] = useState<number[]>([28.1])

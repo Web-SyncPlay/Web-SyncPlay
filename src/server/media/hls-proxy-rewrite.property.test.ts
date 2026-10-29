@@ -1,3 +1,7 @@
+import { expect, test } from "bun:test"
+
+import fc from "fast-check"
+
 import {
   collectM3u8ReferencedUrls,
   playlistTargetHint,
@@ -5,8 +9,6 @@ import {
   shouldAttemptPlaylistRewrite,
 } from "@/server/media/hls-proxy-rewrite"
 import { sha256HexUrl, sha256HexUrlPrefix } from "@/server/media/url-hash"
-import { expect, test } from "bun:test"
-import fc from "fast-check"
 
 const baseUrl = "https://cdn.example.com/live/master.m3u8"
 

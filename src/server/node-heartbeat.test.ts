@@ -1,8 +1,9 @@
+import { afterEach, describe, expect, mock, test } from "bun:test"
+
 import {
   ALIVE_NODE_LIST_CACHE_TTL_MS,
   invalidateAliveAppNodeListCache,
 } from "@/server/node-heartbeat"
-import { afterEach, describe, expect, mock, test } from "bun:test"
 
 type ScanResult = { cursor: string; keys: string[] }
 

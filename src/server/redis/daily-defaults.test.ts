@@ -1,5 +1,6 @@
-import { dailyDefaultsForRead } from "@/server/redis/daily-defaults"
 import { afterEach, describe, expect, mock, test } from "bun:test"
+
+import { dailyDefaultsForRead } from "@/server/redis/daily-defaults"
 
 afterEach(() => {
   mock.restore()

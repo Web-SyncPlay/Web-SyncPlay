@@ -1,3 +1,5 @@
+import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+
 import { getAppNodeId } from "@/server/node-id"
 import { setJoinPassword } from "@/server/realtime/services/room-security"
 import {
@@ -8,7 +10,6 @@ import {
 } from "@/server/realtime/test-utils/fixtures"
 import { totalPresenceRefs } from "@/server/redis/presence-ref"
 import { getSocketMeta } from "@/server/ws/registry"
-import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
 
 mock.module("@/server/redis/client", () => ({
   getCommandClient: async () => ({

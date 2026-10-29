@@ -1,5 +1,7 @@
 "use client"
 
+import { useCallback, useEffect, useRef, useState } from "react"
+
 import { createControlTokenReminter } from "@/client/realtime/control-token-client"
 import {
   createDefaultSessionCapabilities,
@@ -12,7 +14,7 @@ import type {
   TypedRoomEventSender,
 } from "@/contracts/room-events"
 import type { ClientRoomState, SessionKind } from "@/contracts/types"
-import { useCallback, useEffect, useRef, useState } from "react"
+
 import { useLatestRef } from "./use-latest-ref"
 import { useSessionIdentityBootstrap } from "./use-session-identity-bootstrap"
 

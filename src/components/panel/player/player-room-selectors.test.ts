@@ -1,3 +1,5 @@
+import { expect, test } from "bun:test"
+
 import { applyPresenceBatches } from "@/client/realtime/room-state-merge"
 import type { RoomState } from "@/contracts/types"
 import {
@@ -5,7 +7,7 @@ import {
   createPlaylistItem,
   createRoomState,
 } from "@/shared/test-utils/room-fixtures"
-import { expect, test } from "bun:test"
+
 import {
   playerShellSlicesEqual,
   selectOwnerConnected,

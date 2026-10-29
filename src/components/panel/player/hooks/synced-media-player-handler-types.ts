@@ -1,7 +1,9 @@
-import type { TypedRoomEventSender } from "@/contracts/room-events"
-import type { ClientRoomState, LoopMode, PlaylistItem } from "@/contracts/types"
 import type { MediaErrorDetail, MediaPlayerInstance } from "@vidstack/react"
 import type { RefObject } from "react"
+
+import type { TypedRoomEventSender } from "@/contracts/room-events"
+import type { ClientRoomState, LoopMode, PlaylistItem } from "@/contracts/types"
+
 import type { LocalSeekPhase } from "../playback-control/use-playback-timeline-controller"
 import type { PlayerSrcInput } from "../player-src"
 import type { TransportIntent } from "./transport-intent"

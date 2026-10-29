@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+
 import { peekLandingSkipDefaultMedia } from "@/client/local-media/local-media-landing-handoff"
 import { RoomConnectingView } from "@/components/layout/RoomConnectingView"
 import { SidePanel } from "@/components/layout/SidePanel"
@@ -9,7 +11,7 @@ import { PlayerPanel } from "@/components/panel/player/PlayerPanel"
 import { UsersPanel } from "@/components/panel/user/UsersPanel"
 import { useRoomRail } from "@/hooks/use-room-rail"
 import { useRoomSession } from "@/hooks/use-room-session"
-import { useState } from "react"
+
 import type { RoomPanelProps } from "./types"
 import { useRoomPanelModel } from "./use-room-panel-model"
 
@@ -138,7 +140,7 @@ function RoomClientReady(props: {
           <PlayerPanel
             {...panelProps}
             className={cn(
-              "min-h-0 h-auto w-full",
+              "h-auto min-h-0 w-full",
               // Rail open: keep the player from dominating the viewport.
               // Collapsed: full-width 16:9 already keeps height in check.
               railOpen && "max-h-[70vh]",
@@ -152,7 +154,7 @@ function RoomClientReady(props: {
               hideTabBar
               tab={railTab}
               onTabChange={setRailTab}
-              className="min-h-0 max-h-[70vh] overflow-hidden lg:h-0 lg:max-h-[70vh] lg:min-h-full"
+              className="max-h-[70vh] min-h-0 overflow-hidden lg:h-0 lg:max-h-[70vh] lg:min-h-full"
             />
           ) : null}
         </div>

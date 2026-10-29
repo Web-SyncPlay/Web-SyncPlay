@@ -3,6 +3,7 @@ import {
   getAdjacentPlaylistIndex,
 } from "@/client/player/playback-sync"
 import { serverNowEstimateMs } from "@/shared/server-clock"
+
 import type { SyncedMediaPlayerHandlerDeps } from "./synced-media-player-handler-types"
 
 type EndedHandlerDeps = Pick<

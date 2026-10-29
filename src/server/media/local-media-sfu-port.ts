@@ -1,3 +1,5 @@
+import type { types as MsTypes } from "mediasoup"
+
 import {
   closeLocalMediaSfuDataProducer,
   ensureMediasoupRuntime,
@@ -6,21 +8,20 @@ import {
   getMediasoupTransportAppData,
   listLocalMediaSfuProducers,
   listLocalMediaSfuRequestProducers,
+  type LocalMediaSfuProducer,
   mediasoupCloseRoom,
   mediasoupCloseTransport,
   mediasoupConnectTransport,
   mediasoupConsumeData,
   mediasoupCreateRouter,
   mediasoupCreateTransport,
+  type MediasoupDataProducerAppData,
   mediasoupProduceData,
+  type MediasoupTransportAppData,
   onMediasoupTransportClosed,
   onMediasoupWorkerDied,
-  type LocalMediaSfuProducer,
-  type MediasoupDataProducerAppData,
-  type MediasoupTransportAppData,
 } from "@/server/media/mediasoup-runtime"
 import { getAppNodeId } from "@/server/node-id"
-import type { types as MsTypes } from "mediasoup"
 
 /**
  * Process-local mediasoup SFU for local-media DataChannels.

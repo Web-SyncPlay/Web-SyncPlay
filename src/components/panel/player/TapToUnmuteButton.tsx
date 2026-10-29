@@ -1,9 +1,10 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
 import type { MediaPlayerInstance } from "@vidstack/react"
 import { Volume2 } from "lucide-react"
 import type { RefObject } from "react"
+
+import { Button } from "@/components/ui/button"
 
 export function TapToUnmuteButton(props: {
   playerRef: RefObject<MediaPlayerInstance | null>
@@ -15,7 +16,7 @@ export function TapToUnmuteButton(props: {
       <Button
         type="button"
         size="lg"
-        className="w-full min-h-11 touch-manipulation shadow-lg"
+        className="min-h-11 w-full touch-manipulation shadow-lg"
         onClick={() => {
           const player = playerRef.current
           if (!player) return

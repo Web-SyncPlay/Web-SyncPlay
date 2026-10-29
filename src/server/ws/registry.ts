@@ -1,5 +1,6 @@
-import type { SessionKind } from "@/contracts/types"
 import type { WebSocket } from "ws"
+
+import type { SessionKind } from "@/contracts/types"
 
 export type SocketMeta = {
   roomId: string

@@ -1,3 +1,5 @@
+import { afterEach, describe, expect, test } from "bun:test"
+
 import {
   createTestBroadcastBus,
   setRoomBroadcastBusForTests,
@@ -15,7 +17,6 @@ import {
   envelope,
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
-import { afterEach, describe, expect, test } from "bun:test"
 
 describe("participant update helpers", () => {
   test("resolveLocalPlaybackError clears on null/empty and keeps omitted", () => {

@@ -1,5 +1,7 @@
 "use client"
 
+import { AlertTriangle, Loader2, RefreshCw } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import {
   Empty,
@@ -10,7 +12,6 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import type { PlaylistItem } from "@/contracts/types"
-import { AlertTriangle, Loader2, RefreshCw } from "lucide-react"
 
 const DEFAULT_RESOLVE_ERROR =
   "This URL could not be resolved for playback. Try a direct media link or a supported host."
@@ -53,7 +54,7 @@ export function PlayerIngestStatusView(props: {
         </EmptyHeader>
         <EmptyContent className="max-w-xl gap-3 text-left text-sm text-white/70">
           {item.sourceUrl ? (
-            <p className="w-full break-all text-center text-xs text-white/55">
+            <p className="w-full text-center text-xs break-all text-white/55">
               {item.sourceUrl}
             </p>
           ) : null}

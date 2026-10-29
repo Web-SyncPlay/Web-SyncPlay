@@ -1,7 +1,8 @@
+import { describe, expect, test } from "bun:test"
+
 import type { ResolvedMedia } from "@/server/media/media-resolve-port"
 import { applyResolvedMediaToItem } from "@/server/realtime/services/playlist-resolve"
 import { createPlaylistItem } from "@/server/realtime/test-utils/fixtures"
-import { describe, expect, test } from "bun:test"
 
 function sampleResolved(overrides?: Partial<ResolvedMedia>): ResolvedMedia {
   return {

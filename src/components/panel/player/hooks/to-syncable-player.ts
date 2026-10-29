@@ -1,3 +1,5 @@
+import type { MediaPlayerInstance } from "@vidstack/react"
+
 import {
   readPlayerPlayheadSec,
   type SyncablePlayer,
@@ -6,7 +8,6 @@ import {
   queryPlayerMediaElement,
   readPlayerSeekableEndSec,
 } from "@/shared/dom/player-utils"
-import type { MediaPlayerInstance } from "@vidstack/react"
 
 /**
  * Live "is playing" for **user-intent** transport handlers (OR of element and

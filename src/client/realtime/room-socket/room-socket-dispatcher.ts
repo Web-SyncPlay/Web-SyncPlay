@@ -1,17 +1,19 @@
 "use client"
 
+import type { Dispatch, MutableRefObject, SetStateAction } from "react"
+
 import { persistLocalMediaViewerToken } from "@/client/local-media/local-media-viewer-token"
 import type { createControlTokenReminter } from "@/client/realtime/control-token-client"
 import {
   createDefaultSessionCapabilities,
   isTerminalJoinRejection,
+  type JoinStatus,
   messageForJoinRejected,
   normalizeSessionCapabilities,
   RATE_LIMITED_RECONNECT_MS,
+  type SessionCapabilities,
   shouldPauseAutoReconnect,
   statusForJoinRejected,
-  type JoinStatus,
-  type SessionCapabilities,
 } from "@/client/realtime/room-join-client"
 import {
   applyRoomControl,
@@ -27,7 +29,7 @@ import type {
 } from "@/contracts/types"
 import { parseOrWarn } from "@/shared/parse-or-warn"
 import { getLastRttMs, observeServerNowMs } from "@/shared/server-clock"
-import type { Dispatch, MutableRefObject, SetStateAction } from "react"
+
 import type { RoomSocketLocalMediaSession } from "./room-socket-local-media"
 
 type ControlTokenReminter = ReturnType<typeof createControlTokenReminter>

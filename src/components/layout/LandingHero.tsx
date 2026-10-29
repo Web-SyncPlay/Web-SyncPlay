@@ -1,14 +1,15 @@
 "use client"
 
-import { cn } from "@/components/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { parseRoomId, randomRoomId } from "@/shared/room-utils"
 import { ArrowRight, Dice5, Play } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState, type FormEvent } from "react"
+import { type FormEvent, useState } from "react"
+
+import { cn } from "@/components/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { parseRoomId, randomRoomId } from "@/shared/room-utils"
 
 function RoomEntry(props: {
   roomInput: string
@@ -106,7 +107,7 @@ export function LandingHero(): React.JSX.Element {
           onRoomInputChange={setRoomInput}
           onShuffle={shuffleRoomId}
           onSubmit={handleEnterRoom}
-          className="animate-in fade-in-0 slide-in-from-bottom-2 duration-700"
+          className="animate-in duration-700 fade-in-0 slide-in-from-bottom-2"
         />
       </div>
     </section>

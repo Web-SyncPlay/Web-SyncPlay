@@ -1,13 +1,15 @@
+import type { WebSocket } from "ws"
+
 import type { RoomState, SessionKind, WsEnvelope } from "@/contracts/types"
 import { getAppNodeId } from "@/server/node-id"
 import type { RoomStateStorePort } from "@/server/ports"
 import {
   bumpPresenceNodeCount,
   isPresentOnAliveNode,
-  totalPresenceRefs,
   type PresenceNodeCounts,
+  totalPresenceRefs,
 } from "@/server/redis/presence-ref"
-import type { WebSocket } from "ws"
+
 import type { RoomMessageContext } from "../handlers/types"
 
 export {

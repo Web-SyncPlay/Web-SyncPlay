@@ -1,3 +1,5 @@
+import { z } from "zod"
+
 import { sha256HexUrl } from "@/server/media/url-hash"
 import { recordYtDlpMetric } from "@/server/media/yt-dlp/metrics"
 import {
@@ -8,7 +10,6 @@ import {
 import type { YtDlpExtractResult } from "@/server/media/yt-dlp/types"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
-import { z } from "zod"
 
 const CACHE_VERSION = 1 as const
 

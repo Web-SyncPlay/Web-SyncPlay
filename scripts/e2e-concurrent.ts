@@ -3,8 +3,10 @@
  * Uses two isolated browser contexts (host + guest) on localhost:3000.
  */
 import { randomUUID } from "node:crypto"
+
 import type { BrowserContext, Page } from "playwright"
 import { chromium } from "playwright"
+
 import { checkHealth } from "./lib/check-health.ts"
 import { identityHash } from "./lib/identity-hash.ts"
 

@@ -1,8 +1,9 @@
 "use client"
 
+import { useEffect, useState } from "react"
+
 import type { ParticipantState } from "@/contracts/types"
 import { shouldExtrapolateLocalPlayback } from "@/shared/local-playback-display"
-import { useEffect, useState } from "react"
 
 const DISPLAY_TICK_MS = 400
 

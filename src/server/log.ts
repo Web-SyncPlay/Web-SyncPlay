@@ -1,8 +1,9 @@
+import { randomUUID } from "node:crypto"
+
 import type { RoomState } from "@/contracts/types"
 import { env } from "@/env"
 import { visibleActionTypes } from "@/shared/log-format"
 import { roomActionLogMaxAgeMs } from "@/shared/room-lifecycle"
-import { randomUUID } from "node:crypto"
 
 /** Server-only actions (not shown in the room UI filter). */
 const serverOnlyActionTypes = [

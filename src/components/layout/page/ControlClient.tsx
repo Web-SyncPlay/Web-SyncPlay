@@ -5,6 +5,7 @@ import { useRoomRail } from "@/hooks/use-room-rail"
 import { useRoomSession } from "@/hooks/use-room-session"
 import { isClientControlAuthorized } from "@/shared/permissions-utils"
 import { resolveCatalogDurationMs } from "@/shared/playlist-duration"
+
 import { ControlPanel } from "../../panel/control/ControlPanel"
 import { useIgnoreProviderDestroyedRejections } from "../../panel/player/hooks/use-ignore-provider-destroyed-rejections"
 import { bindSeekPreview } from "../../panel/player/playback-control/bind-seek-preview"
@@ -15,8 +16,8 @@ import { SidePanel } from "../SidePanel"
 import { SiteNavbar } from "../SiteNavbar"
 import type { RoomPanelProps } from "./types"
 import {
-  useRoomPanelModel,
   type RoomPanelModelReady,
+  useRoomPanelModel,
 } from "./use-room-panel-model"
 
 function ControlClientReady(props: {

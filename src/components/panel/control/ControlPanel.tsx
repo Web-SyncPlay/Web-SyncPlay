@@ -1,11 +1,12 @@
 "use client"
 
+import { Pause, Play, SkipBack, SkipForward } from "lucide-react"
+
 import { cn } from "@/components/lib/utils"
 import { SeekScrubber } from "@/components/panel/control/SeekScrubber"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Pause, Play, SkipBack, SkipForward } from "lucide-react"
 
 function ControlHints(props: {
   authorizationHint?: string

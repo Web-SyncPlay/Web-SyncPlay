@@ -1,5 +1,7 @@
 "use client"
 
+import { useCallback, useMemo, useRef, useState } from "react"
+
 import { cn } from "@/components/lib/utils"
 import type { ActionLogEntry } from "@/contracts/types"
 import {
@@ -7,7 +9,6 @@ import {
   getActionLogDetails,
   type LogActionCategory,
 } from "@/shared/log-format"
-import { useCallback, useMemo, useRef, useState } from "react"
 
 const categoryToneClass: Record<LogActionCategory, string> = {
   presence: "bg-secondary-foreground/50",

@@ -1,3 +1,5 @@
+import { z } from "zod"
+
 import {
   defaultJoinRoleSchema,
   localMediaIdSchema,
@@ -8,7 +10,6 @@ import {
   sessionCapabilitiesSchema,
   userIdSchema,
 } from "@/contracts/schemas"
-import { z } from "zod"
 
 /**
  * Server→client envelope payload schemas for critical room bus events.

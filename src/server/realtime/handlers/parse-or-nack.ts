@@ -1,6 +1,8 @@
-import type { WsEnvelope } from "@/contracts/types"
 import type { WebSocket } from "ws"
 import type { z } from "zod"
+
+import type { WsEnvelope } from "@/contracts/types"
+
 import { sendMutationNack, shouldNackMutation } from "./mutation-nack"
 import { parseOrWarn } from "./parse-or-warn"
 

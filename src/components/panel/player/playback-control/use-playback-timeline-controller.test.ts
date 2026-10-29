@@ -1,5 +1,7 @@
-import type { RoomState } from "@/contracts/types"
 import { expect, test } from "bun:test"
+
+import type { RoomState } from "@/contracts/types"
+
 import { projectPlaybackMs } from "./use-playback-timeline-controller"
 
 test("projectPlaybackMs advances time when playback is active", () => {

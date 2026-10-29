@@ -1,3 +1,5 @@
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+
 import {
   createPending,
   pendingMap,
@@ -14,7 +16,7 @@ import {
   setSocketJoinCommitted,
 } from "@/server/ws/registry"
 import { encodeLocalMediaChunkFrame } from "@/shared/local-media/local-media-binary"
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+
 import { handleSocketMessage } from "./socket-dispatch"
 
 describe("handleSocketMessage", () => {

@@ -1,3 +1,8 @@
+import type { IncomingMessage, Server as HttpServer } from "node:http"
+import type { Socket } from "node:net"
+
+import { type WebSocket, WebSocketServer } from "ws"
+
 import {
   installShutdownOnce,
   isProcessDraining,
@@ -9,9 +14,7 @@ import {
   WS_HEARTBEAT_TIMEOUT_MS,
 } from "@/server/ws/heartbeat"
 import { setSocketClientIp } from "@/server/ws/registry"
-import type { Server as HttpServer, IncomingMessage } from "node:http"
-import type { Socket } from "node:net"
-import { WebSocketServer, type WebSocket } from "ws"
+
 import {
   isWsApiUpgradeUrl,
   shouldTerminateForMissedHeartbeat,

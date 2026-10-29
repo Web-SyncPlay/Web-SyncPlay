@@ -1,7 +1,8 @@
+import type { MediaErrorDetail } from "@vidstack/react"
+
 import type { PlaylistItem, PlaylistMediaStream } from "@/contracts/types"
 import { isUnsupportedMpegTsProgressiveUrl } from "@/shared/jellyfin-emby-url"
 import { isProgressiveMediaMime } from "@/shared/media-mime"
-import type { MediaErrorDetail } from "@vidstack/react"
 
 /** Vidstack needs an explicit MIME when the URL has no file extension (blob:/proxy/local). */
 export type PlayerSrcInput = string | { src: string; type: string }

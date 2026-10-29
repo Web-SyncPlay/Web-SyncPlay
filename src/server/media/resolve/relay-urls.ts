@@ -1,5 +1,5 @@
 import type { PlaylistMediaStream, PlaylistTextTrack } from "@/contracts/types"
-import { PROXY_DEFAULT_UA, createProxyUrl } from "@/server/media/proxy-token"
+import { createProxyUrl, PROXY_DEFAULT_UA } from "@/server/media/proxy-token"
 
 function isRemoteHttpUrl(url: string): boolean {
   return /^https?:\/\//i.test(url)

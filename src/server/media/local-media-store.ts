@@ -212,7 +212,7 @@ export async function clearLocalMediaProviderReadyForOwner(
   roomId: string,
   ownerUserId: string,
 ) {
-  let redisIds: string[] = []
+  let redisIds: string[]
 
   try {
     const client = await getCommandClient()
@@ -293,7 +293,7 @@ export async function deleteLocalMediaEntriesForOwner(
   roomId: string,
   ownerUserId: string,
 ) {
-  let redisIds: string[] = []
+  let redisIds: string[]
 
   try {
     const client = await getCommandClient()

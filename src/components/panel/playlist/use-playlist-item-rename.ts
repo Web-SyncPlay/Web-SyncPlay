@@ -1,7 +1,8 @@
 "use client"
 
-import type { TypedRoomEventSender } from "@/contracts/room-events"
 import { useState } from "react"
+
+import type { TypedRoomEventSender } from "@/contracts/room-events"
 
 /** Local draft + editing id for inline playlist item rename. */
 export function usePlaylistItemRename(send: TypedRoomEventSender) {

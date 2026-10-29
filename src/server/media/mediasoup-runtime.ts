@@ -1,9 +1,10 @@
+import type { types as MsTypes } from "mediasoup"
+
 import { env } from "@/env"
 import {
   getPublicHostname,
   MEDIASOUP_RTC_UDP_PORT,
 } from "@/shared/public-domain"
-import type { types as MsTypes } from "mediasoup"
 
 type Worker = MsTypes.Worker
 type Router = MsTypes.Router

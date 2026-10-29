@@ -1,10 +1,11 @@
+import { afterEach, describe, expect, test } from "bun:test"
+
 import {
   getOrFetchLocalMediaBlock,
   invalidateAllLocalMediaBlockCache,
   invalidateLocalMediaBlockCache,
   localMediaBlockCacheStats,
 } from "@/server/media/local-media-block-cache"
-import { afterEach, describe, expect, test } from "bun:test"
 
 describe("local-media-block-cache", () => {
   const usedMediaIds: string[] = []

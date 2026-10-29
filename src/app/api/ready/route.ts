@@ -1,6 +1,7 @@
+import { NextResponse } from "next/server"
+
 import { isProcessDraining } from "@/server/lifecycle"
 import { getCommandClient } from "@/server/redis/client"
-import { NextResponse } from "next/server"
 
 async function pingValkey(): Promise<boolean> {
   try {

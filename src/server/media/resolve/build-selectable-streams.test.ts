@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test"
+
 import { buildSelectableStreams } from "./build-selectable-streams"
 
 test("prefers adaptive Auto and excludes video-only streams", () => {

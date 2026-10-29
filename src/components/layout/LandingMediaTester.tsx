@@ -1,21 +1,6 @@
 "use client"
 
 import {
-  canUseFileSystemAccess,
-  pickLocalMediaFileWithFsa,
-} from "@/client/local-media/local-media-handles"
-import { stashLandingLocalMediaHandoff } from "@/client/local-media/local-media-landing-handoff"
-import {
-  formatFileSizeBytes,
-  probeLocalFilePlayability,
-  type LocalPlayabilityResult,
-} from "@/client/local-media/local-media-playability-probe"
-import { cn } from "@/components/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { randomRoomId } from "@/shared/room-utils"
-import { formatDurationSeconds } from "@/shared/time-format"
-import {
   CheckCircle2,
   FileVideo,
   Loader2,
@@ -26,7 +11,23 @@ import {
   XCircle,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useRef, useState, type DragEvent, type FormEvent } from "react"
+import { type DragEvent, type FormEvent, useRef, useState } from "react"
+
+import {
+  canUseFileSystemAccess,
+  pickLocalMediaFileWithFsa,
+} from "@/client/local-media/local-media-handles"
+import { stashLandingLocalMediaHandoff } from "@/client/local-media/local-media-landing-handoff"
+import {
+  formatFileSizeBytes,
+  type LocalPlayabilityResult,
+  probeLocalFilePlayability,
+} from "@/client/local-media/local-media-playability-probe"
+import { cn } from "@/components/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { randomRoomId } from "@/shared/room-utils"
+import { formatDurationSeconds } from "@/shared/time-format"
 
 type CheckMode = "url" | "local"
 
@@ -461,7 +462,7 @@ export function LandingMediaTester(): React.JSX.Element {
             {mode === "url" && urlResult && (
               <div
                 className={cn(
-                  "animate-in fade-in-0 slide-in-from-bottom-1 flex w-full flex-col gap-3 rounded-xl border px-3 py-2.5 text-left duration-300 sm:flex-row sm:items-center",
+                  "flex w-full animate-in flex-col gap-3 rounded-xl border px-3 py-2.5 text-left duration-300 fade-in-0 slide-in-from-bottom-1 sm:flex-row sm:items-center",
                   urlResult.playable
                     ? "border-teal-500/35 bg-teal-500/10"
                     : "border-destructive/40 bg-destructive/10",
@@ -505,7 +506,7 @@ export function LandingMediaTester(): React.JSX.Element {
                       <dl className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                         <div className="flex gap-1">
                           <dt className="opacity-70">Mode</dt>
-                          <dd className="capitalize text-foreground/80">
+                          <dd className="text-foreground/80 capitalize">
                             {urlResult.native
                               ? "native"
                               : urlResult.playbackMode === "relay"
@@ -556,7 +557,7 @@ export function LandingMediaTester(): React.JSX.Element {
             {mode === "local" && localResult && (
               <div
                 className={cn(
-                  "animate-in fade-in-0 slide-in-from-bottom-1 flex w-full flex-col gap-3 rounded-xl border px-3 py-2.5 text-left duration-300 sm:flex-row sm:items-center",
+                  "flex w-full animate-in flex-col gap-3 rounded-xl border px-3 py-2.5 text-left duration-300 fade-in-0 slide-in-from-bottom-1 sm:flex-row sm:items-center",
                   localResult.playable
                     ? "border-teal-500/35 bg-teal-500/10"
                     : "border-destructive/40 bg-destructive/10",

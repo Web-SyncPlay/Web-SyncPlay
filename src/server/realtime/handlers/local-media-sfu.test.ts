@@ -1,3 +1,13 @@
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  test,
+} from "bun:test"
+
 import type { LocalMediaSfuPort } from "@/server/media/local-media-sfu-port"
 import { getAppNodeId } from "@/server/node-id"
 import { setLocalMediaSfuPort } from "@/server/ports"
@@ -9,15 +19,6 @@ import {
   InMemoryRoomStateStore,
 } from "@/server/realtime/test-utils/fixtures"
 import { addSocket, removeSocket } from "@/server/ws/registry"
-import {
-  afterAll,
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  mock,
-  test,
-} from "bun:test"
 
 const closedProducerIds: string[] = []
 let produceShouldListThrow = false

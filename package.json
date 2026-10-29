@@ -2,7 +2,7 @@
   "name": "web-syncplay",
   "version": "3.0.3",
   "private": true,
-  "packageManager": "bun@1.4.3",
+  "packageManager": "bun@1.4.4-canary.20261028.1",
   "engines": {
     "node": ">=26"
   },
@@ -14,10 +14,9 @@
     "prebuild": "bun scripts/prepare-static-assets.ts",
     "build": "NEXT_TELEMETRY_DISABLED=1 next build --webpack",
     "start": "bun scripts/start-standalone.ts",
-    "check": "bunx --package @typescript/native tsc -p tsconfig.json --noEmit",
-    "lint": "eslint",
-    "format": "prettier --check .",
-    "format:write": "prettier --write .",
+    "check": "bun check",
+    "format": "bun fmt --check",
+    "format:write": "bun fmt",
     "test": "bun test",
     "test:unit": "bun test src/server src/contracts src/shared src/client src/components src/hooks src/env.test.ts --path-ignore-patterns='**/*.integration.test.ts'",
     "test:integration": "bun test src/server/redis/state-store.presence.integration.test.ts",
@@ -73,18 +72,11 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/ws": "^8.18.2",
-    "@typescript/native": "npm:typescript@^7.0.2",
     "babel-plugin-react-compiler": "^1.0.0",
-    "eslint": "^9.39.5",
-    "eslint-config-next": "^16.4.2",
-    "eslint-config-prettier": "^10.1.8",
     "fast-check": "^4.10.2",
     "playwright": "^1.64.1",
     "postcss": "^8.5.31",
-    "prettier": "^3.9.10",
-    "prettier-plugin-organize-imports": "^4.3.0",
-    "prettier-plugin-tailwindcss": "^0.8.1",
     "tailwindcss": "^4.3.3",
-    "typescript": "npm:@typescript/typescript6@^6.0.2"
+    "typescript": "7.0.2"
   }
 }

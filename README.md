@@ -20,10 +20,10 @@ Watch video or audio in sync with friends. One Next.js app: WebSocket realtime, 
 | [Architecture](#architecture-developers)                                | Source layout and media paths       |
 | [Contributing](#contributing)                                           | Setup, checks, PR expectations      |
 | [Security](#security--accessibility)                                    | Reporting and a11y gate             |
-| [Technical debt](#technical-debt)                                       | Held majors (player / ESLint)       |
+| [Technical debt](#technical-debt)                                       | Held majors (player stack)          |
 | [Changelog](./CHANGELOG.md) / [Migrate from v2](./docs/MIGRATION-v3.md) | v3.0.3 notes and greenfield cutover |
 
-Agent-oriented map and dual TypeScript notes: [AGENTS.md](./AGENTS.md).
+Agent-oriented map and quality-gate notes: [AGENTS.md](./AGENTS.md).
 
 ### Release caveats (v3)
 
@@ -37,10 +37,10 @@ Agent-oriented map and dual TypeScript notes: [AGENTS.md](./AGENTS.md).
 
 | Tool                  | Version                                                  |
 | --------------------- | -------------------------------------------------------- |
-| [Bun](https://bun.sh) | **1.4.2** (`packageManager` / CI)                        |
+| [Bun](https://bun.sh) | **1.4.4-canary** (`packageManager` / CI; for `bun lint`) |
 | Node.js               | **≥ 26** (`engines.node`; Docker image / native tooling) |
 
-**TypeScript:** IDE = TS **6** (`typescript` → `@typescript/typescript6`); CI **Quality** gate = TS **7** via `@typescript/native` (`bun check`). Prefer fixing issues that fail `bun check`. Details: [AGENTS.md](./AGENTS.md).
+**TypeScript:** CI and IDE use TypeScript **7** via Bun’s built-in `bun check` (workspace `typescript@7.0.2` matches). Prefer fixing issues that fail `bun check`. **Lint** needs the pinned Bun canary (`bun upgrade --canary`) until the next stable includes `bun lint`. Details: [AGENTS.md](./AGENTS.md).
 
 ## Quick start (development)
 
@@ -53,20 +53,20 @@ bun run dev
 
 Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
-| Script                                                                                                          | Purpose                                                      |
-| --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `bun check`                                                                                                     | CI quality gate: TypeScript 7                                |
-| `bun run lint`                                                                                                  | CI quality gate: ESLint                                      |
-| `bun run format`                                                                                                | CI quality gate: Prettier `--check`; fix with `format:write` |
-| `bun run test:unit`                                                                                             | Unit tests (no live app; prefer this locally)                |
-| `bun run test:integration`                                                                                      | Needs Valkey / `VALKEY_URL`                                  |
-| `bun run test`                                                                                                  | Full `bun test` suite (includes integration → needs Valkey)  |
-| `bun run test:a11y` / `test:e2e` / `test:e2e:ws` / `test:e2e:password` / `test:e2e:local-media` / `test:e2e:ui` | Need a healthy app (`bun run start` or `dev`)                |
-| `bun run test:e2e:all`                                                                                          | All a11y + e2e scripts (needs healthy app)                   |
-| `bun run test:full`                                                                                             | Unit + integration + `test:e2e:all` (Valkey + healthy app)   |
-| `bun run test:fuzz`                                                                                             | Optional Valkey property suite (not in CI)                   |
-| `bun run check:local-media-sw`                                                                                  | Verify committed SW artifact matches source                  |
-| `bun run start`                                                                                                 | Production standalone runner (`node .next/standalone/…`)     |
+| Script                                                                                                          | Purpose                                                     |
+| --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `bun check`                                                                                                     | CI quality gate: Bun typecheck (TypeScript 7)               |
+| `bun lint`                                                                                                      | CI quality gate: Bun linter                                 |
+| `bun fmt --check`                                                                                               | CI quality gate: Bun formatter; fix with `bun fmt`          |
+| `bun run test:unit`                                                                                             | Unit tests (no live app; prefer this locally)               |
+| `bun run test:integration`                                                                                      | Needs Valkey / `VALKEY_URL`                                 |
+| `bun run test`                                                                                                  | Full `bun test` suite (includes integration → needs Valkey) |
+| `bun run test:a11y` / `test:e2e` / `test:e2e:ws` / `test:e2e:password` / `test:e2e:local-media` / `test:e2e:ui` | Need a healthy app (`bun run start` or `dev`)               |
+| `bun run test:e2e:all`                                                                                          | All a11y + e2e scripts (needs healthy app)                  |
+| `bun run test:full`                                                                                             | Unit + integration + `test:e2e:all` (Valkey + healthy app)  |
+| `bun run test:fuzz`                                                                                             | Optional Valkey property suite (not in CI)                  |
+| `bun run check:local-media-sw`                                                                                  | Verify committed SW artifact matches source                 |
+| `bun run start`                                                                                                 | Production standalone runner (`node .next/standalone/…`)    |
 
 Local Bun may skip the mediasoup native worker; the Docker image runs the in-process SFU.
 
@@ -310,12 +310,3 @@ Held dependency majors and the work that unblocks them. Prefer landing these as 
 | `dashjs` **4.7.4** (exact)   | Vidstack’s DASH provider documents `dashjs@^4.0` only ([DASH provider](https://vidstack.io/docs/player/api/providers/dash/)). dash.js 5 changes UMD paths and APIs; [vidstack/player#1585](https://github.com/vidstack/player/issues/1585) was closed without support. Our vendor copy (`scripts/vendor-player-libs.ts` → `dist/dash.all.min.js`) matches the v4 layout Vidstack loads via `provider.library`. |
 
 **Exit path:** rewrite the player UI on [Video.js 10](https://videojs.org/) using the official [Migrate from Vidstack (React)](https://videojs.org/docs/framework/react/guides/migrate-from-vidstack) guide (plan as a rewrite, not a rename). After that cutover, take **dash.js 5** under Video.js’s DASH media path and drop the Vidstack-era vendor pin. Check the guide’s known gaps first (e.g. caption style settings, audio gain) against `SyncedMediaPlayer` / default-layout slots.
-
-### Lint — ESLint 10 blocked on `eslint-plugin-react`
-
-| Pin today                        | Why it stays                                                                                                                                                                                                                                                                                                                                                                            |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `eslint` **^9.39**               | Pulled in by `eslint-config-next`, which depends on `eslint-plugin-react`.                                                                                                                                                                                                                                                                                                              |
-| `eslint-plugin-react` **7.37.5** | Peer range stops at `eslint@^9.7` ([jsx-eslint/eslint-plugin-react#3977](https://github.com/jsx-eslint/eslint-plugin-react/issues/3977)). Forcing ESLint 10 can fail install under strict peers and/or crash rules (`context.getFilename is not a function`). Compatibility work exists ([#4022](https://github.com/jsx-eslint/eslint-plugin-react/pull/4022)) but is **not released**. |
-
-`eslint-plugin-react-hooks` already declares ESLint 10; `eslint-config-next@16.4+` also claims ESLint 10 support. The React plugin (and similarly `eslint-plugin-import` / `eslint-plugin-jsx-a11y` peers) is still the gate. **Exit path:** bump ESLint to 10 once a released `eslint-plugin-react` (and Next’s bundled peers) list `^10`, then re-run `bun run lint` for any new `eslint:recommended` noise.

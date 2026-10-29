@@ -1,21 +1,23 @@
 "use client"
 
+import type { MediaErrorDetail } from "@vidstack/react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { toast } from "sonner"
+
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import { useLatestRef } from "@/hooks/use-latest-ref"
 import {
   resolveCatalogDurationMs,
   resolveEffectiveDurationMs,
 } from "@/shared/playlist-duration"
-import type { MediaErrorDetail } from "@vidstack/react"
-import { useEffect, useMemo, useRef, useState } from "react"
-import { toast } from "sonner"
+
 import type { RoomPanelProps } from "../../../layout/page/types"
 import { usePlaybackTimelineController } from "../playback-control/use-playback-timeline-controller"
 import type { PlayerShellSlice } from "../player-room-selectors"
 import {
-  syncPlayerSessionActions,
   type PlayerSessionController,
   type SyncedMediaPlayerViewModel,
+  syncPlayerSessionActions,
 } from "../player-session-controller"
 import { formatMediaErrorDetail } from "../player-src"
 import { usePlayerChromeUi } from "./use-player-chrome-ui"

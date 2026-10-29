@@ -1,5 +1,7 @@
 "use client"
 
+import { Shield } from "lucide-react"
+
 import { cn } from "@/components/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,7 +16,6 @@ import type {
   DefaultJoinRole,
   PublicRoomSecurityState,
 } from "@/contracts/types"
-import { Shield } from "lucide-react"
 
 const JOIN_ROLE_OPTIONS: ReadonlyArray<{
   role: DefaultJoinRole
@@ -80,7 +81,7 @@ export function RoomDefaultJoinRoleSection(props: {
           })}
         </div>
       ) : (
-        <p className="text-sm capitalize text-muted-foreground">
+        <p className="text-sm text-muted-foreground capitalize">
           {defaultJoinRole}
         </p>
       )}

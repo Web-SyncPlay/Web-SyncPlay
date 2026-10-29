@@ -1,3 +1,5 @@
+import { describe, expect, test } from "bun:test"
+
 import {
   encodeLocalMediaBlockMetaError,
   encodeLocalMediaBlockMetaOk,
@@ -11,7 +13,6 @@ import {
   parseLocalMediaBlockJson,
   parseLocalMediaSfuReadyAck,
 } from "@/shared/local-media/local-media-block-protocol"
-import { describe, expect, test } from "bun:test"
 
 describe("local-media-block-protocol", () => {
   test("encodes block request/meta strings used on DataChannels", () => {

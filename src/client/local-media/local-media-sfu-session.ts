@@ -2,8 +2,9 @@
  * mediasoup SFU session: device, transports, and process-wide singleton.
  */
 
-import type { ClientEventType } from "@/contracts/room-events"
 import { Device, type types as MsTypes } from "mediasoup-client"
+
+import type { ClientEventType } from "@/contracts/room-events"
 
 export { ENSURE_RETRY_COOLDOWN_MS } from "./local-media-sfu-transitions"
 

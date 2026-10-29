@@ -6,6 +6,7 @@ import {
   confirmEmptyRoomDestroyAllowed,
   noteEmptyPresenceAndShouldDestroy,
 } from "@/server/realtime/services/empty-room"
+
 import { transferOwnershipIfNeeded } from "./ownership"
 import {
   clearPrune,

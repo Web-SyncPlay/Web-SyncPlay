@@ -1,12 +1,14 @@
 "use client"
 
+import type { MutableRefObject } from "react"
+
 import { createLocalMediaRuntime } from "@/client/local-media/local-media-runtime"
 import type {
   ClientRoomState,
   RoomSnapshotPayload,
   WsEnvelope,
 } from "@/contracts/types"
-import type { MutableRefObject } from "react"
+
 import { createLocalMediaBootstrap } from "./room-socket-local-media-bootstrap"
 import { createLocalMediaEnvelopeHandler } from "./room-socket-local-media-handlers"
 import { createLocalMediaWebrtcSignalHandler } from "./room-socket-local-media-p2p"

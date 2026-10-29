@@ -1,3 +1,5 @@
+import type { RawData, WebSocket } from "ws"
+
 import { wsEnvelopeSchema } from "@/contracts/schemas"
 import type { WsEnvelope } from "@/contracts/types"
 import { resolveLocalMediaChunk } from "@/server/media/local-media-relay"
@@ -6,7 +8,7 @@ import { consumeHotWsEventLimit } from "@/server/security/rate-limit"
 import { getSocketMeta } from "@/server/ws/registry"
 import { shouldSkipDuplicateRequest } from "@/server/ws/request-dedupe"
 import { decodeLocalMediaChunkFrame } from "@/shared/local-media/local-media-binary"
-import type { RawData, WebSocket } from "ws"
+
 import { roomMessageHandlers } from "./handlers/index"
 import { handleRoomJoin } from "./handlers/join"
 import {

@@ -1,9 +1,10 @@
+import { z } from "zod"
+
 import {
   sanitizeErrorMessage,
   sanitizeMediaTitle,
   sanitizeUsername,
 } from "@/shared/sanitize-display"
-import { z } from "zod"
 
 /** Shared id / size primitives (keep bounds consistent across client events). */
 export const userIdSchema = z.string().min(1).max(128)

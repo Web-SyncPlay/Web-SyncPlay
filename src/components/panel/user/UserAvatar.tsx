@@ -1,17 +1,19 @@
 "use client"
 
+import { useState } from "react"
+
 import { cn } from "@/components/lib/utils"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { ParticipantState } from "@/contracts/types"
 import {
   avatarDataUri,
+  type AvatarStyleId,
   avatarStyleLabel,
   avatarStyles,
   isAvatarStyleId,
   resolveStyle,
-  type AvatarStyleId,
 } from "@/shared/avatar"
-import { useState } from "react"
+
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar"
 import {
   DropdownMenu,
@@ -51,7 +53,7 @@ function AvatarFace({
       <AvatarImage
         key={style}
         className={cn(
-          "animate-in fade-in-0 duration-200",
+          "animate-in duration-200 fade-in-0",
           bare ? "rounded-none" : undefined,
           pending && "opacity-50 transition-opacity duration-200",
         )}
@@ -63,7 +65,7 @@ function AvatarFace({
       </AvatarFallback>
       {pending ? (
         <span
-          className="absolute inset-0 z-10 flex items-center justify-center bg-background/35 animate-in fade-in-0 duration-150"
+          className="absolute inset-0 z-10 flex animate-in items-center justify-center bg-background/35 duration-150 fade-in-0"
           aria-hidden
         >
           <Spinner
@@ -97,7 +99,7 @@ export function UserAvatar({
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(
-          "cursor-pointer ring-offset-background transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "cursor-pointer ring-offset-background transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
           compact
             ? "rounded-full hover:ring-2 hover:ring-primary/40"
             : "rounded-none hover:brightness-95",

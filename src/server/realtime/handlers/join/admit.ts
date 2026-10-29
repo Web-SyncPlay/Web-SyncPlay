@@ -1,8 +1,10 @@
+import type { WebSocket } from "ws"
+
 import type { RoomJoinRejectedReason, RoomState } from "@/contracts/types"
 import { evaluateCreateMediaSeed } from "@/server/realtime/services/room"
 import { consumeRateLimit } from "@/server/security/rate-limit"
 import { getSocketClientIp } from "@/server/ws/registry"
-import type { WebSocket } from "ws"
+
 import { evaluateJoinAdmission } from "../../services/room-security"
 import { sendEnvelope } from "./send"
 

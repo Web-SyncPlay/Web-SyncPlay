@@ -1,8 +1,10 @@
 "use client"
 
-import type { PlaybackSyncEngine } from "@/client/player/playback-sync-engine"
 import type { MediaPlayerInstance } from "@vidstack/react"
-import { useCallback, type RefObject } from "react"
+import { type RefObject, useCallback } from "react"
+
+import type { PlaybackSyncEngine } from "@/client/player/playback-sync-engine"
+
 import { toSyncablePlayer } from "./to-syncable-player"
 import type { PendingSyncState } from "./use-buffering-watchdog"
 

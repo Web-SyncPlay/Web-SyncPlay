@@ -1,9 +1,9 @@
 import type { PlaylistMediaStream, PlaylistTextTrack } from "@/contracts/types"
 import { probeUpstreamPlayback } from "@/server/media/cors/cors-probe"
 import {
-  UNSUPPORTED_MPEG_TS_PROGRESSIVE_MESSAGE,
   isUnsupportedMpegTsProgressiveUrl,
   shapeJellyfinEmbyHlsUrl,
+  UNSUPPORTED_MPEG_TS_PROGRESSIVE_MESSAGE,
 } from "@/server/media/providers/jellyfin-emby-url"
 import { detectNativeSupport } from "@/server/media/providers/native-detect"
 import { resolveWithYtDlp } from "@/server/media/providers/yt-dlp-provider"

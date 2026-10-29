@@ -1,5 +1,6 @@
-import { markProcessDraining, resetLifecycleForTests } from "@/server/lifecycle"
 import { afterEach, describe, expect, mock, test } from "bun:test"
+
+import { markProcessDraining, resetLifecycleForTests } from "@/server/lifecycle"
 
 afterEach(() => {
   mock.restore()

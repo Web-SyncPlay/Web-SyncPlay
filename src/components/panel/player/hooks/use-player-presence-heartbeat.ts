@@ -1,9 +1,11 @@
 "use client"
 
+import type { MediaPlayerInstance } from "@vidstack/react"
+import { type RefObject, useCallback, useEffect, useRef } from "react"
+
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import { useLatestRef } from "@/hooks/use-latest-ref"
-import type { MediaPlayerInstance } from "@vidstack/react"
-import { useCallback, useEffect, useRef, type RefObject } from "react"
+
 import { resolvePresenceLoading } from "./presence-loading"
 import { readPlayerPausedSafe } from "./to-syncable-player"
 

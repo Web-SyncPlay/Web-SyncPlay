@@ -1,3 +1,8 @@
+import { randomUUID } from "node:crypto"
+
+import type { types as MsTypes } from "mediasoup"
+import type { WebSocket } from "ws"
+
 /** Local-media SFU signaling (process-local; see `LocalMediaSfuPort` / README). */
 import {
   localMediaSfuCapabilitiesSchema,
@@ -15,9 +20,7 @@ import type {
   RoomMessageHandler,
 } from "@/server/realtime/handlers/types"
 import { getAllSockets, getSocketsForRoom } from "@/server/ws/registry"
-import type { types as MsTypes } from "mediasoup"
-import { randomUUID } from "node:crypto"
-import type { WebSocket } from "ws"
+
 import { parseOrWarn } from "./parse-or-warn"
 
 const MAX_TRANSPORTS_PER_SOCKET = 4

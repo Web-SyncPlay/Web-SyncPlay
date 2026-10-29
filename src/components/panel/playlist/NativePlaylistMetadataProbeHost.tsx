@@ -1,6 +1,13 @@
 "use client"
 
 import {
+  MediaPlayer,
+  type MediaPlayerInstance,
+  MediaProvider,
+} from "@vidstack/react"
+import { useEffect, useRef, useState } from "react"
+
+import {
   claimNextNativePlaylistMetadataProbe,
   hasPendingNativePlaylistMetadataProbes,
   releaseNativePlaylistMetadataProbe,
@@ -9,12 +16,6 @@ import {
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { PlaylistItem } from "@/contracts/types"
 import { sanitizeMediaTitle } from "@/shared/sanitize-display"
-import {
-  MediaPlayer,
-  MediaProvider,
-  type MediaPlayerInstance,
-} from "@vidstack/react"
-import { useEffect, useRef, useState } from "react"
 
 const PROBE_TIMEOUT_MS = 20_000
 
@@ -127,7 +128,7 @@ export function NativePlaylistMetadataProbeHost(props: {
     <div
       aria-hidden
       inert
-      className="pointer-events-none fixed -left-[200vw] top-0 h-px w-px overflow-hidden opacity-0"
+      className="pointer-events-none fixed top-0 -left-[200vw] h-px w-px overflow-hidden opacity-0"
     >
       <MediaPlayer
         key={active.itemId}

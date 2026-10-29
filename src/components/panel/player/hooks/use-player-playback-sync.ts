@@ -1,5 +1,16 @@
 "use client"
 
+import type { MediaPlayerInstance } from "@vidstack/react"
+import {
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react"
+import { toast } from "sonner"
+
 import {
   pendingSyncFromPlayback,
   type PendingSyncState,
@@ -14,16 +25,7 @@ import {
 } from "@/shared/dom/player-utils"
 import { localMediaErrorMessage } from "@/shared/local-media/local-media-errors"
 import { isNativeProviderUrl, resolveLiveEdgeSec } from "@/shared/player-utils"
-import type { MediaPlayerInstance } from "@vidstack/react"
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  type Dispatch,
-  type RefObject,
-  type SetStateAction,
-} from "react"
-import { toast } from "sonner"
+
 import { SEEK_ACK_MATCH_THRESHOLD_MS } from "../playback-control/use-playback-timeline-controller"
 import { playerSrcContentKey, type PlayerSrcInput } from "../player-src"
 import { readSyncPlayheadSec } from "./to-syncable-player"

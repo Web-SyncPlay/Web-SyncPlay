@@ -1,3 +1,5 @@
+import { type NextRequest, NextResponse } from "next/server"
+
 /**
  * Edge CSP/CORS via `@/shared/public-domain` (raw `process.env`).
  * Do not import `@/env` — full server schema is Node-only.
@@ -6,7 +8,6 @@ import {
   buildContentSecurityPolicy,
   isOriginAllowed,
 } from "@/shared/public-domain"
-import { NextResponse, type NextRequest } from "next/server"
 
 const CORS_ALLOW_METHODS = "GET,HEAD,POST,OPTIONS"
 const CORS_EXPOSE_HEADERS = "content-range, accept-ranges, content-length"

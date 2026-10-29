@@ -1,18 +1,20 @@
 "use client"
 
+import type { MediaPlayerInstance } from "@vidstack/react"
+import {
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+  useEffect,
+} from "react"
+
 import {
   pendingSyncFromPlayback,
   type PendingSyncPlaybackInput,
   type PendingSyncState,
 } from "@/client/player/pending-sync"
 import { useLatestRef } from "@/hooks/use-latest-ref"
-import type { MediaPlayerInstance } from "@vidstack/react"
-import {
-  useEffect,
-  type Dispatch,
-  type RefObject,
-  type SetStateAction,
-} from "react"
+
 import { planVisibilityResume } from "./visibility-resume"
 
 export { VISIBILITY_REMOUNT_GRACE_MS } from "./visibility-resume"

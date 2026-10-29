@@ -1,3 +1,5 @@
+import { afterEach, describe, expect, test } from "bun:test"
+
 import {
   isProcessDraining,
   markProcessDraining,
@@ -5,7 +7,6 @@ import {
   resetLifecycleForTests,
   runShutdownHandlersForTests,
 } from "@/server/lifecycle"
-import { afterEach, describe, expect, test } from "bun:test"
 
 describe("lifecycle drain", () => {
   afterEach(() => {

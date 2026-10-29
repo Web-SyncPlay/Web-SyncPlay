@@ -1,6 +1,8 @@
-import { createRealtimeServer } from "@/server"
-import type { NextApiRequest, NextApiResponse } from "next"
 import type { Server as HttpServer } from "node:http"
+
+import type { NextApiRequest, NextApiResponse } from "next"
+
+import { createRealtimeServer } from "@/server"
 
 type SocketServerWithRealtime = HttpServer & {
   __webSyncPlayRealtimeReady?: Promise<void>

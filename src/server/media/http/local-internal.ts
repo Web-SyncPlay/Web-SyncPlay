@@ -2,6 +2,8 @@
  * HTTP façade for GET/HEAD /api/media/local/internal/[id].
  */
 
+import { timingSafeEqual } from "node:crypto"
+
 import { env } from "@/env"
 import {
   createLocalMediaRangeHttpResponse,
@@ -12,7 +14,6 @@ import {
   getLocalMediaEntry,
   touchLocalMediaEntry,
 } from "@/server/media/local-media-store"
-import { timingSafeEqual } from "node:crypto"
 
 function authorizeInternal(request: Request): boolean {
   const expected = env.LOCAL_MEDIA_INTERNAL_SECRET?.trim()

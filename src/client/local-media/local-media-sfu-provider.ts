@@ -2,6 +2,8 @@
  * mediasoup SFU provider path: publish blocks and answer viewer requests.
  */
 
+import type { types as MsTypes } from "mediasoup-client"
+
 import { getLocalMediaFile } from "@/client/local-media/local-media-provider"
 import { resolveRangeResponder } from "@/client/local-media/local-media-range-responder"
 import {
@@ -13,16 +15,16 @@ import {
   LOCAL_MEDIA_MAX_FRAME_PAYLOAD,
   parseLocalMediaBlockJson,
 } from "@/shared/local-media/local-media-block-protocol"
-import type { types as MsTypes } from "mediasoup-client"
+
 import {
   BUFFER_HIGH_WATER,
   call,
   getTransport,
-  sessionFor,
-  waitForOpen,
   type ProviderSlot,
   type Session,
+  sessionFor,
   type SfuSendRequest,
+  waitForOpen,
 } from "./local-media-sfu-session"
 import { shouldEnsureSfuProvider } from "./local-media-sfu-transitions"
 

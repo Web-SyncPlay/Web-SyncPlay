@@ -1,3 +1,14 @@
+import { expect, test } from "bun:test"
+
+import {
+  act,
+  type ComponentType,
+  createElement,
+  memo,
+  startTransition,
+} from "react"
+import { createRoot } from "react-dom/client"
+
 /**
  * Regression gate for perf/player-main-thread:
  * SyncedMediaPlayer is memo()'d and its prop surface excludes room presence so
@@ -14,19 +25,7 @@ import {
 } from "@/client/realtime/room-state-merge"
 import type { PresenceBatchPayload, RoomState } from "@/contracts/types"
 import { createRoomState } from "@/shared/test-utils/room-fixtures"
-import { expect, test } from "bun:test"
-import {
-  act,
-  createElement,
-  memo,
-  startTransition,
-  type ComponentType,
-} from "react"
-import { createRoot } from "react-dom/client"
-import {
-  SyncedMediaPlayer,
-  type SyncedMediaPlayerProps,
-} from "./SyncedMediaPlayer"
+
 import type { PlaylistNavSnapshot } from "./hooks/use-synced-media-player-handlers"
 import {
   playerShellSlicesEqual,
@@ -36,6 +35,10 @@ import type {
   PlayerSessionController,
   SyncedMediaPlayerViewModel,
 } from "./player-session-controller"
+import {
+  SyncedMediaPlayer,
+  type SyncedMediaPlayerProps,
+} from "./SyncedMediaPlayer"
 
 type ForbiddenPlayerProp = "roomState" | "participants" | "presenceRevision"
 type AssertNever<T extends never> = T

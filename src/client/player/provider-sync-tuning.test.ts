@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test"
+
 import type { SyncablePlayer } from "./apply-playback-sync"
 import { FORCE_SEEK_LEAD_SEC } from "./playback-sync"
 import {
   ANCHOR_RETRY_DELAYS_MS,
   createPlaybackSyncEngine,
-  MAX_FORCE_SEEKS_PER_ANCHOR,
   type EngineSyncState,
+  MAX_FORCE_SEEKS_PER_ANCHOR,
   type PlaybackSnapshot,
   type PlaybackSyncEngineHost,
   type PlaybackSyncScheduler,
@@ -14,8 +15,8 @@ import {
   IFRAME_MAX_FORCE_SEEKS_PER_ANCHOR,
   IFRAME_PAUSE_RETRY_DELAYS_MS,
   IFRAME_RETRY_DELAYS_MS,
-  resolveProviderSyncTuning,
   type ProviderSyncTuning,
+  resolveProviderSyncTuning,
 } from "./provider-sync-tuning"
 
 describe("resolveProviderSyncTuning", () => {

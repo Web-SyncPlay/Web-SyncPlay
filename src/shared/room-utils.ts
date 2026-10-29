@@ -1,4 +1,3 @@
-import type { ParticipantState } from "@/contracts/types"
 import {
   adjectives,
   animals,
@@ -7,6 +6,8 @@ import {
   starWars,
   uniqueNamesGenerator,
 } from "unique-names-generator"
+
+import type { ParticipantState } from "@/contracts/types"
 
 export const nameLists = [adjectives, animals, colors, starWars, names] as const
 

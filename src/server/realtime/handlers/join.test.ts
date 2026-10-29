@@ -1,3 +1,6 @@
+import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+import { createHash } from "node:crypto"
+
 import type { ParticipantState } from "@/contracts/types"
 import { getAppNodeId } from "@/server/node-id"
 import {
@@ -17,8 +20,6 @@ import {
   removeSocket,
   setSocketClientIp,
 } from "@/server/ws/registry"
-import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
-import { createHash } from "node:crypto"
 
 let roomLimitAllowed = true
 let ipLimitAllowed = true

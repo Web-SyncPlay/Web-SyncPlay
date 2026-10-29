@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
+
 import {
   createControlTokenRefreshScheduler,
   mintRoomControlTokenWithRetry,
@@ -7,7 +9,6 @@ import {
 import { getControlEmbedUrl } from "@/client/realtime/control-url"
 import type { RoomRole } from "@/contracts/types"
 import { canMutateByRole } from "@/shared/permissions-utils"
-import { useEffect, useMemo, useState } from "react"
 
 /**
  * Picks the control embed URL for the current role.

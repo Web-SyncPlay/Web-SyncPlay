@@ -1,5 +1,6 @@
-import type { WsEnvelope } from "@/contracts/types"
 import type { WebSocket } from "ws"
+
+import type { WsEnvelope } from "@/contracts/types"
 
 export function sendEnvelope<TPayload>(
   ws: WebSocket,

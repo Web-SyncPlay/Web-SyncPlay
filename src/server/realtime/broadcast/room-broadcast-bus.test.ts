@@ -1,3 +1,5 @@
+import { afterEach, describe, expect, mock, test } from "bun:test"
+
 import {
   createTestBroadcastBus,
   resetPresenceSeqFallbackForTests,
@@ -11,7 +13,6 @@ import {
 } from "@/server/realtime/test-utils/fixtures"
 import { keys } from "@/server/redis/keys"
 import { addSocket, removeSocket } from "@/server/ws/registry"
-import { afterEach, describe, expect, mock, test } from "bun:test"
 
 describe("RoomBroadcastBus", () => {
   afterEach(() => {

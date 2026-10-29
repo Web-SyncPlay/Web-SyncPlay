@@ -1,6 +1,7 @@
+import { describe, expect, test } from "bun:test"
+
 import { hostRequiresMediaRelay } from "@/server/media/stream/requires-relay"
 import { buildStreamPlan } from "@/server/media/stream/stream-plan"
-import { describe, expect, test } from "bun:test"
 
 describe("hostRequiresMediaRelay", () => {
   test("matches SoundCloud page and CDN hosts", () => {

@@ -1,8 +1,9 @@
 "use client"
 
-import { isPlayerEmbedPath } from "@/shared/room-utils"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+
+import { isPlayerEmbedPath } from "@/shared/room-utils"
 
 const GITHUB_REPO = "https://github.com/Web-SyncPlay/Web-SyncPlay"
 const GITHUB_AUTHOR = "https://github.com/Yasamato"

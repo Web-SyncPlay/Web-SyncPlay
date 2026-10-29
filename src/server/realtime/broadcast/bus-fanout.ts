@@ -1,10 +1,12 @@
+import type { WebSocket } from "ws"
+
 import {
   getSocketMeta,
   getSocketsForRoom,
   getSocketsForUser,
 } from "@/server/ws/registry"
 import { omitKey } from "@/shared/omit-key"
-import type { WebSocket } from "ws"
+
 import type {
   AdmissionChangedEnvelope,
   RoomBroadcastEnvelope,

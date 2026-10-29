@@ -1,10 +1,12 @@
+import { AlertCircle, Loader2, Pause, Play } from "lucide-react"
+
 import { cn } from "@/components/lib/utils"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { ParticipantState } from "@/contracts/types"
 import { useInlineEdit } from "@/hooks/use-inline-edit"
 import { extrapolateLocalPlaybackTimeMs } from "@/shared/local-playback-display"
 import { formatClockMs, formatRelativeLastSeen } from "@/shared/time-format"
-import { AlertCircle, Loader2, Pause, Play } from "lucide-react"
+
 import { Badge } from "../../ui/badge"
 import { Input } from "../../ui/input"
 import { Item, ItemActions, ItemContent } from "../../ui/item"
@@ -249,7 +251,7 @@ export function UserItem({
                 className={cn(
                   "truncate text-lg leading-tight",
                   isSelf &&
-                    "cursor-pointer rounded-md px-1 -mx-1 active:bg-muted/80 sm:hover:bg-muted/60",
+                    "-mx-1 cursor-pointer rounded-md px-1 active:bg-muted/80 sm:hover:bg-muted/60",
                 )}
                 role={isSelf ? "button" : undefined}
                 tabIndex={isSelf ? 0 : undefined}

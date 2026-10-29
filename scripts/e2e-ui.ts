@@ -9,8 +9,10 @@
  * and local full live suites (`test:e2e:all` / `test:full`).
  */
 import { randomUUID } from "node:crypto"
+
 import type { BrowserContext, Page } from "playwright"
 import { chromium } from "playwright"
+
 import { checkHealth } from "./lib/check-health.ts"
 import { createE2eReporter } from "./lib/e2e-report.ts"
 import { identityHash } from "./lib/identity-hash.ts"
@@ -79,8 +81,8 @@ async function main() {
 
   let hostPage: Page | undefined
   let guestPage: Page | undefined
-  let hostConsole: string[] = []
-  let hostPageErrs: string[] = []
+  let hostConsole: string[]
+  let hostPageErrs: string[]
 
   try {
     const landing = await hostCtx.newPage()

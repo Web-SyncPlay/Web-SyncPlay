@@ -1,10 +1,11 @@
+import { describe, expect, test } from "bun:test"
+
 import {
   isHttpOrHttpsUrl,
   sanitizeErrorMessage,
   sanitizeMediaTitle,
   sanitizeUsername,
 } from "@/shared/sanitize-display"
-import { describe, expect, test } from "bun:test"
 
 describe("sanitizeUsername", () => {
   test("accepts plain names", () => {

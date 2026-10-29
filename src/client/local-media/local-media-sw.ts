@@ -3,10 +3,10 @@
 import { readLocalMediaRange } from "@/client/local-media/local-media-file-read"
 import { getLocalMediaFile } from "@/client/local-media/local-media-provider"
 import {
+  type LocalMediaDeliveryMode,
   nextDeliveryModeAfterFailure,
   pickFirstReadyDeliveryMode,
   planLocalMediaDeliveryAttempts,
-  type LocalMediaDeliveryMode,
 } from "@/client/local-media/local-media-sfu-transitions"
 import { LOCAL_MEDIA_MAX_BLOCK_BYTES } from "@/shared/local-media/local-media-block-protocol"
 

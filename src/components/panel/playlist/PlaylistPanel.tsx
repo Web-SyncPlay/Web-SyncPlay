@@ -1,5 +1,11 @@
 "use client"
 
+import { RestrictToVerticalAxis } from "@dnd-kit/abstract/modifiers"
+import { DragDropProvider } from "@dnd-kit/react"
+import { isSortable } from "@dnd-kit/react/sortable"
+import { Loader2 } from "lucide-react"
+import { memo } from "react"
+
 import {
   CardContent,
   CardDescription,
@@ -10,20 +16,16 @@ import { ItemGroup } from "@/components/ui/item"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import { canControlPlaylist } from "@/shared/permissions-utils"
 import { formatDurationSeconds } from "@/shared/time-format"
-import { RestrictToVerticalAxis } from "@dnd-kit/abstract/modifiers"
-import { DragDropProvider } from "@dnd-kit/react"
-import { isSortable } from "@dnd-kit/react/sortable"
-import { Loader2 } from "lucide-react"
-import { memo } from "react"
+
 import type { RoomPanelProps } from "../../layout/page/types"
+import {
+  type PlaylistShellSlice,
+  playlistShellSlicesEqual,
+  selectPlaylistShellSlice,
+} from "./playlist-room-selectors"
 import { PlaylistAddMediaControls } from "./PlaylistAddMediaControls"
 import { PlaylistItemRow } from "./PlaylistItemRow"
 import { nextPlaylistLoopMode, PlaylistLoopToggle } from "./PlaylistLoopToggle"
-import {
-  playlistShellSlicesEqual,
-  selectPlaylistShellSlice,
-  type PlaylistShellSlice,
-} from "./playlist-room-selectors"
 import { usePlaylistItemRename } from "./use-playlist-item-rename"
 
 function renderItemDuration(durationSeconds?: number): string | null {

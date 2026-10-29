@@ -1,5 +1,6 @@
-import type { LocalMediaReadRequest } from "@/server/media/local-media-relay/types"
 import type { WebSocket } from "ws"
+
+import type { LocalMediaReadRequest } from "@/server/media/local-media-relay/types"
 
 export function sendReadToSockets(
   sockets: Iterable<WebSocket>,

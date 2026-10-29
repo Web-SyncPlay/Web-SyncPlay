@@ -2,6 +2,7 @@
 
 import { RoomConnectingView } from "@/components/layout/RoomConnectingView"
 import { useRoomSession } from "@/hooks/use-room-session"
+
 import { PlayerPanel } from "../../panel/player/PlayerPanel"
 import { useRoomPanelModel } from "./use-room-panel-model"
 
@@ -22,7 +23,7 @@ export function PlayerEmbedClient({ roomId }: { roomId: string }) {
   }
 
   return (
-    <section className="min-h-0 flex-1 w-full overflow-hidden">
+    <section className="min-h-0 w-full flex-1 overflow-hidden">
       <PlayerPanel
         {...model.panelProps}
         className="aspect-auto size-full rounded-none"

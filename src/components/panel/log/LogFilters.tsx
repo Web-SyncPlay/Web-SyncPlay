@@ -1,5 +1,7 @@
 "use client"
 
+import { Search, X } from "lucide-react"
+
 import { cn } from "@/components/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -11,7 +13,6 @@ import {
   type LogActionCategory,
   type VisibleActionType,
 } from "@/shared/log-format"
-import { Search, X } from "lucide-react"
 
 export function LogFilters(props: {
   query: string

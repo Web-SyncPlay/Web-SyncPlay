@@ -1,6 +1,7 @@
+import { RESP_TYPES } from "redis"
+
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
-import { RESP_TYPES } from "redis"
 
 type BlockEntry = {
   bytes: Uint8Array

@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test"
 
 import {
+  type AudioSkewPlan,
   msToSamples,
   planEarlySkewChange,
   processSkewQuantum,
   shouldLeaveNegativePath,
-  type AudioSkewPlan,
   type StereoFrame,
 } from "./audio-delay-skew"
 

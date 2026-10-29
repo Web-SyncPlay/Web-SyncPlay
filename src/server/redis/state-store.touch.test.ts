@@ -1,6 +1,7 @@
+import { afterEach, describe, expect, mock, test } from "bun:test"
+
 import { keys } from "@/server/redis/keys"
 import { roomStateTtlSeconds } from "@/shared/room-lifecycle"
-import { afterEach, describe, expect, mock, test } from "bun:test"
 
 afterEach(() => {
   mock.restore()

@@ -1,3 +1,7 @@
+import type { Server as HttpServer } from "node:http"
+
+import type { WebSocket } from "ws"
+
 import { ensureBackgroundMaintenance } from "@/server/maintenance"
 import { startLocalMediaNodeHeartbeat } from "@/server/media/local-media-node-registry"
 import { ensureLocalMediaReannounceSubscriber } from "@/server/media/local-media-reannounce"
@@ -11,8 +15,7 @@ import { subscribeRoomUpdates } from "@/server/redis/pubsub"
 import { getRoomStateStore } from "@/server/redis/state-store"
 import { removeSocket } from "@/server/ws/registry"
 import { attachWebSocketTransport } from "@/server/ws/transport"
-import type { Server as HttpServer } from "node:http"
-import type { WebSocket } from "ws"
+
 import { handleSocketMessage } from "./socket-dispatch"
 
 /** Cap pending async handlers per socket so floods cannot grow unbounded. */

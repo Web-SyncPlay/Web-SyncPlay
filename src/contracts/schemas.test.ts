@@ -1,6 +1,8 @@
+import { describe, expect, test } from "bun:test"
+
 import {
-  roomMessageSchemas,
   type ClientEventType,
+  roomMessageSchemas,
 } from "@/contracts/room-events"
 import {
   actionLogEntrySchema,
@@ -40,7 +42,6 @@ import {
   wsEnvelopeSchema,
 } from "@/contracts/schemas"
 import { roomMessageHandlers } from "@/server/realtime/handlers"
-import { describe, expect, test } from "bun:test"
 
 const roomMessageEventTypes = Object.keys(
   roomMessageSchemas,

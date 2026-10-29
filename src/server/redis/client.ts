@@ -1,9 +1,10 @@
+import { createClient, type RedisClientType } from "redis"
+
 import { env } from "@/env"
 import {
   installShutdownOnce,
   registerShutdownHandler,
 } from "@/server/lifecycle"
-import { createClient, type RedisClientType } from "redis"
 
 type RedisSlot = {
   command?: RedisClientType

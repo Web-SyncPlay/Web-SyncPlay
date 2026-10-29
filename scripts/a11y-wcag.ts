@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto"
+
 /**
  * WCAG 2.2 accessibility scan for all UI routes.
  *
@@ -9,9 +11,9 @@
  */
 import { AxeBuilder } from "@axe-core/playwright"
 import type { Result } from "axe-core"
-import { randomUUID } from "node:crypto"
 import type { BrowserContext, Page } from "playwright"
 import { chromium } from "playwright"
+
 import { checkHealth } from "./lib/check-health.ts"
 import { identityHash } from "./lib/identity-hash.ts"
 

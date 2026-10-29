@@ -1,16 +1,4 @@
 import {
-  clearLocalMediaViewerToken,
-  loadLocalMediaViewerToken,
-  persistLocalMediaViewerToken,
-} from "@/client/local-media/local-media-viewer-token"
-import { createControlTokenReminter } from "@/client/realtime/control-token-client"
-import {
-  RATE_LIMITED_RECONNECT_MS,
-  type JoinStatus,
-  type SessionCapabilities,
-} from "@/client/realtime/room-join-client"
-import type { RoomState } from "@/contracts/types"
-import {
   afterEach,
   beforeEach,
   describe,
@@ -19,6 +7,20 @@ import {
   mock,
   test,
 } from "bun:test"
+
+import {
+  clearLocalMediaViewerToken,
+  loadLocalMediaViewerToken,
+  persistLocalMediaViewerToken,
+} from "@/client/local-media/local-media-viewer-token"
+import { createControlTokenReminter } from "@/client/realtime/control-token-client"
+import {
+  type JoinStatus,
+  RATE_LIMITED_RECONNECT_MS,
+  type SessionCapabilities,
+} from "@/client/realtime/room-join-client"
+import type { RoomState } from "@/contracts/types"
+
 import { createRoomSocketConnection } from "./room-socket-connection"
 
 mock.module("@/client/realtime/room-socket/room-socket-local-media", () => ({

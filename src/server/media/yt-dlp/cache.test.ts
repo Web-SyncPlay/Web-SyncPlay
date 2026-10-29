@@ -1,9 +1,10 @@
+import { expect, test } from "bun:test"
+
 import { parseCachedExtract } from "@/server/media/yt-dlp/cache"
 import type {
   YtDlpExtractFailure,
   YtDlpExtractSuccess,
 } from "@/server/media/yt-dlp/types"
-import { expect, test } from "bun:test"
 
 const success = (): YtDlpExtractSuccess => ({
   ok: true,

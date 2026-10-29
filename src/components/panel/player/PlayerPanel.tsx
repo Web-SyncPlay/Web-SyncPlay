@@ -6,8 +6,17 @@ import "@vidstack/react/player/styles/default/layouts/audio.css"
 import "@vidstack/react/player/styles/default/layouts/video.css"
 import "@vidstack/react/player/styles/default/theme.css"
 import { memo } from "react"
+
 import type { RoomPanelProps } from "../../layout/page/types"
 import { NativePlaylistMetadataProbeHost } from "../playlist/NativePlaylistMetadataProbeHost"
+import { useIgnoreProviderDestroyedRejections } from "./hooks/use-ignore-provider-destroyed-rejections"
+import { usePlayerSession } from "./hooks/use-player-session"
+import { bindSeekPreview } from "./playback-control/bind-seek-preview"
+import {
+  type PlayerShellSlice,
+  playerShellSlicesEqual,
+  selectPlayerShellSlice,
+} from "./player-room-selectors"
 import { PlayerEmptyState } from "./PlayerEmptyState"
 import { PlayerErrorRecoveryOverlay } from "./PlayerErrorRecoveryOverlay"
 import { PlayerIngestStatusView } from "./PlayerIngestStatusView"
@@ -15,14 +24,6 @@ import { PlayerPanelGlobalStyles } from "./PlayerPanelGlobalStyles"
 import { RemoteSeekOverlay } from "./RemoteSeekOverlay"
 import { SyncedMediaPlayer } from "./SyncedMediaPlayer"
 import { TapToUnmuteButton } from "./TapToUnmuteButton"
-import { useIgnoreProviderDestroyedRejections } from "./hooks/use-ignore-provider-destroyed-rejections"
-import { usePlayerSession } from "./hooks/use-player-session"
-import { bindSeekPreview } from "./playback-control/bind-seek-preview"
-import {
-  playerShellSlicesEqual,
-  selectPlayerShellSlice,
-  type PlayerShellSlice,
-} from "./player-room-selectors"
 
 type PlayerPanelShellProps = {
   slice: PlayerShellSlice
@@ -123,7 +124,7 @@ const PlayerPanelShell = memo(
           send={send}
         />
         {!canControlPlayback && (
-          <div className="guest-view-hint pointer-events-none absolute left-3 top-3 z-20 rounded-md bg-black/70 px-2 py-1 text-xs text-white/90">
+          <div className="guest-view-hint pointer-events-none absolute top-3 left-3 z-20 rounded-md bg-black/70 px-2 py-1 text-xs text-white/90">
             Guest — playback controls disabled
           </div>
         )}

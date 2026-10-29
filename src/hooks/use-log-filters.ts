@@ -1,7 +1,8 @@
 "use client"
 
-import type { LogActionCategory } from "@/shared/log-format"
 import { useCallback, useLayoutEffect, useSyncExternalStore } from "react"
+
+import type { LogActionCategory } from "@/shared/log-format"
 
 /**
  * Action Log query state. Module-scoped and keyed by room so filters survive

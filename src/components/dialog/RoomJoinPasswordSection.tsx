@@ -1,5 +1,17 @@
 "use client"
 
+import {
+  Copy,
+  Dices,
+  Eye,
+  EyeOff,
+  LockKeyhole,
+  LockKeyholeOpen,
+  Trash2,
+} from "lucide-react"
+import { type KeyboardEvent, type ReactNode, useEffect, useState } from "react"
+import { toast } from "sonner"
+
 import { cn } from "@/components/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import {
@@ -19,17 +31,6 @@ import {
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { PublicRoomSecurityState } from "@/contracts/types"
 import { useInlineEdit } from "@/hooks/use-inline-edit"
-import {
-  Copy,
-  Dices,
-  Eye,
-  EyeOff,
-  LockKeyhole,
-  LockKeyholeOpen,
-  Trash2,
-} from "lucide-react"
-import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react"
-import { toast } from "sonner"
 
 const PASSWORD_DISPLAY_WIDTH = 6
 const LEGACY_PASSWORD_STORAGE_PREFIX = "wsp:join-password:"
@@ -216,7 +217,7 @@ export function RoomJoinPasswordSection(props: {
                 className={cn(
                   "inline-flex h-8 min-w-[4.5rem] flex-1 cursor-pointer items-center rounded-md px-2 font-mono text-sm tracking-widest",
                   "active:bg-muted/80 sm:hover:bg-muted/60",
-                  !passwordEnabled && "text-muted-foreground tracking-normal",
+                  !passwordEnabled && "tracking-normal text-muted-foreground",
                 )}
                 role="button"
                 tabIndex={0}

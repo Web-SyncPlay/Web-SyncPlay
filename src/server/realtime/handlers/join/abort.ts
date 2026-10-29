@@ -1,3 +1,5 @@
+import type { WebSocket } from "ws"
+
 import type { RoomStateStorePort } from "@/server/ports"
 import { getRoomBroadcastBus } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { applyUserWentOffline } from "@/server/realtime/services/disconnect"
@@ -5,7 +7,7 @@ import { publishUserOfflinePresence } from "@/server/realtime/services/offline-p
 import { schedulePrune } from "@/server/realtime/services/participants"
 import { bumpRoomRevisions } from "@/server/realtime/services/timeline"
 import { removeSocket } from "@/server/ws/registry"
-import type { WebSocket } from "ws"
+
 import { sendEnvelope } from "./send"
 
 /** R1/D3: roll back presence and reject when the socket died mid-join. */

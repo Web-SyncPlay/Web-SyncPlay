@@ -3,8 +3,9 @@
  * Skips when VALKEY_URL is unset (local without Redis).
  */
 
-import { getAppNodeId } from "@/server/node-id"
 import { afterAll, beforeAll, describe, expect, mock, test } from "bun:test"
+
+import { getAppNodeId } from "@/server/node-id"
 
 const hasValkey = Boolean(process.env.VALKEY_URL?.trim())
 

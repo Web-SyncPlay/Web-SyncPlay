@@ -1,7 +1,9 @@
+import type { MutableRefObject } from "react"
+
 import type { LocalMediaRuntime } from "@/client/local-media/local-media-runtime"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { ClientRoomState, RoomSnapshotPayload } from "@/contracts/types"
-import type { MutableRefObject } from "react"
+
 import type { SendEnvelope } from "./room-socket-local-media-send"
 import type { LocalMediaSfuSession } from "./room-socket-local-media-sfu"
 

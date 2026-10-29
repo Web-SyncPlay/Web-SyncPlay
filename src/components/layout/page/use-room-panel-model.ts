@@ -1,5 +1,8 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
+
 import type { RoomRole } from "@/contracts/types"
 import type { useRoomSession } from "@/hooks/use-room-session"
 import {
@@ -7,8 +10,7 @@ import {
   canMutateFromClientSession,
 } from "@/shared/permissions-utils"
 import { resolveCurrentPlaylistItem } from "@/shared/playlist-current"
-import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+
 import type { RoomPanelProps } from "./types"
 
 type RoomSession = ReturnType<typeof useRoomSession>

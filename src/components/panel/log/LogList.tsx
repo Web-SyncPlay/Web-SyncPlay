@@ -1,11 +1,13 @@
 "use client"
 
+import { ArrowDown } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+
 import { Button } from "@/components/ui/button"
 import { ItemGroup } from "@/components/ui/item"
 import type { ActionLogEntry } from "@/contracts/types"
 import type { LogActionCategory } from "@/shared/log-format"
-import { ArrowDown } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+
 import { LogItem } from "./LogItem"
 
 function countNewerThan(

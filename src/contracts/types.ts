@@ -1,3 +1,5 @@
+import type { z } from "zod"
+
 import type {
   actionLogEntrySchema,
   admissionChangedPayloadSchema,
@@ -28,7 +30,6 @@ import type {
   sessionCapabilitiesSchema,
   sessionKindSchema,
 } from "@/contracts/schemas"
-import type { z } from "zod"
 
 /** Inferred from Zod so wire schemas and domain types cannot drift. */
 export type RoomRole = z.infer<typeof roomRoleSchema>

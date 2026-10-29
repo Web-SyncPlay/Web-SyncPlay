@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+
 import { omitKey } from "./omit-key"
 
 describe("omitKey", () => {

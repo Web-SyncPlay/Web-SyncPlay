@@ -1,3 +1,5 @@
+import { describe, expect, test } from "bun:test"
+
 import {
   alignedBlockStart,
   fetchLocalMediaAlignedBlock,
@@ -8,7 +10,6 @@ import {
   LocalMediaRelayError,
 } from "@/server/media/local-media-relay/types"
 import type { LocalMediaEntry } from "@/server/media/local-media-store"
-import { describe, expect, test } from "bun:test"
 
 function entry(sizeBytes: number): LocalMediaEntry {
   return {

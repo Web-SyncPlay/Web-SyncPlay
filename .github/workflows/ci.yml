@@ -32,20 +32,14 @@ jobs:
         with:
           verify-local-media-sw: "true"
 
-      - name: Typecheck (TS7)
+      - name: Typecheck
         run: bun check
 
       - name: Lint
-        run: bun run lint
+        run: bun lint
 
       - name: Format
-        run: bun run format
-
-      # Advisory only: workspace typescript → @typescript/typescript6 (IDE).
-      # Does not gate PRs/Docker. CI truth remains bun check (TS7) above.
-      - name: Typecheck IDE TS6 (advisory)
-        continue-on-error: true
-        run: ./node_modules/.bin/tsc -p tsconfig.json --noEmit
+        run: bun fmt --check
 
   test:
     name: Test

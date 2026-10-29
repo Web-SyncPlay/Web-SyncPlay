@@ -2,6 +2,8 @@
  * HTTP façade for GET/HEAD /api/media/proxy/[token].
  */
 
+import { NextResponse } from "next/server"
+
 import {
   playlistTargetHint,
   rewriteM3u8ForProxy,
@@ -14,9 +16,9 @@ import {
 import { MEDIA_FETCH_UA } from "@/server/media/media-ua"
 import {
   getProxyTokenPayload,
+  type ProxyTokenPayload,
   refreshProxyTokenTtl,
   roomStillExists,
-  type ProxyTokenPayload,
 } from "@/server/media/proxy-token"
 import {
   isStaleUpstreamStatus,
@@ -27,7 +29,6 @@ import {
   consumeRateLimit,
 } from "@/server/security/rate-limit"
 import { assertPublicHttpUrlResolved } from "@/server/security/url-safety"
-import { NextResponse } from "next/server"
 
 function buildUpstreamHeaders(
   request: Request,

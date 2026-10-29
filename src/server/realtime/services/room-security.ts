@@ -1,3 +1,6 @@
+import { randomBytes, scrypt, timingSafeEqual } from "node:crypto"
+import { promisify } from "node:util"
+
 import type {
   DefaultJoinRole,
   PublicRoomSecurityState,
@@ -5,8 +8,6 @@ import type {
   RoomSnapshotPayload,
   RoomState,
 } from "@/contracts/types"
-import { randomBytes, scrypt, timingSafeEqual } from "node:crypto"
-import { promisify } from "node:util"
 
 const JOIN_PASSWORD_KEY_LENGTH = 64
 const JOIN_PASSWORD_SALT_BYTES = 16

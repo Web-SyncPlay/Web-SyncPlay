@@ -1,5 +1,8 @@
 "use client"
 
+import type { MediaPlayerInstance } from "@vidstack/react"
+import { type RefObject, useEffect } from "react"
+
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type {
   PlaylistItem,
@@ -7,8 +10,6 @@ import type {
   ViewerMediaItemPreference,
 } from "@/contracts/types"
 import { useLatestRef } from "@/hooks/use-latest-ref"
-import type { MediaPlayerInstance } from "@vidstack/react"
-import { useEffect, type RefObject } from "react"
 
 type TrackLike = {
   id?: string

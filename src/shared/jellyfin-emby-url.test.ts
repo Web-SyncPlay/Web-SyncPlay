@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test"
+
 import {
-  UNSUPPORTED_MPEG_TS_PROGRESSIVE_MESSAGE,
   isJellyfinEmbyHlsUrl,
   isUnsupportedMpegTsProgressiveUrl,
   looksLikeJellyfinEmbyPlaybackUrl,
   shapeJellyfinEmbyHlsUrl,
+  UNSUPPORTED_MPEG_TS_PROGRESSIVE_MESSAGE,
 } from "./jellyfin-emby-url"
 
 describe("looksLikeJellyfinEmbyPlaybackUrl / isJellyfinEmbyHlsUrl", () => {

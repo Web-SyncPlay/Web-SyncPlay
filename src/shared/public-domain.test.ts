@@ -1,3 +1,5 @@
+import { describe, expect, test } from "bun:test"
+
 import {
   buildContentSecurityPolicy,
   getEmbedFrameAncestors,
@@ -6,7 +8,6 @@ import {
   isOriginAllowed,
   MEDIASOUP_RTC_UDP_PORT,
 } from "@/shared/public-domain"
-import { describe, expect, test } from "bun:test"
 
 describe("public-domain", () => {
   test("hardcodes mediasoup UDP port", () => {

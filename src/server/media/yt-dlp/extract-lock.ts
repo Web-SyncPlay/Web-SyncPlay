@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto"
+
 import { env } from "@/env"
 import { RELEASE_SCRIPT, RENEW_SCRIPT } from "@/server/media/yt-dlp/lease-lua"
 import { recordYtDlpMetric } from "@/server/media/yt-dlp/metrics"
@@ -7,7 +9,6 @@ import {
 } from "@/server/media/yt-dlp/policy"
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
-import { randomUUID } from "node:crypto"
 
 const WAIT_POLL_MS = 150
 
@@ -161,7 +162,7 @@ export async function withYtDlpExtractLock<T>(
     if (ready !== null) return ready
 
     const token = randomUUID()
-    let acquired = false
+    let acquired: boolean
     try {
       acquired = await store.tryAcquire(lockKey, token, heartbeatTtlSeconds)
     } catch {

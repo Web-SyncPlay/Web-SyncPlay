@@ -5,8 +5,8 @@ import {
   isSyncablePlayerPlaying,
   nudgePlaybackTransport,
   readPlayerPlayheadSec,
-  writeSyncableNumber,
   type SyncablePlayer,
+  writeSyncableNumber,
 } from "@/client/player/apply-playback-sync"
 import {
   createNativeSyncTracker,
@@ -21,9 +21,9 @@ import {
   FORCE_SEEK_LEAD_SEC,
   isCatchUpDriftBand,
   measurePlaybackDriftSec,
+  type PlaybackSyncState,
   resolveCatchUpPlaybackRate,
   resolvePlaybackDriftThresholdSec,
-  type PlaybackSyncState,
 } from "@/client/player/playback-sync"
 import type { ProviderSyncTuning } from "@/client/player/provider-sync-tuning"
 import { getLastRttMs, serverNowEstimateMs } from "@/shared/server-clock"

@@ -7,11 +7,13 @@
  * Minted on join / remint on reconnect; invalidated on disconnect when presence hits zero.
  */
 
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto"
+
+import { z } from "zod"
+
 import { getCommandClient } from "@/server/redis/client"
 import { keys } from "@/server/redis/keys"
 import { roomStateTtlSeconds } from "@/shared/room-lifecycle"
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto"
-import { z } from "zod"
 
 export type ViewerCapabilityRecord = {
   tokenHash: string

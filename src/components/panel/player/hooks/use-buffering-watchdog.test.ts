@@ -3,14 +3,16 @@
  * watchdog timer (deps must be buffering identity only).
  */
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
+
 import {
   act,
   createElement,
-  useRef,
   type Dispatch,
   type SetStateAction,
+  useRef,
 } from "react"
 import { createRoot, type Root } from "react-dom/client"
+
 import { useBufferingWatchdog } from "./use-buffering-watchdog"
 
 type RoomPlayback = {

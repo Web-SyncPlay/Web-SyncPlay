@@ -1,9 +1,11 @@
 "use client"
 
+import type { MediaPlayerInstance } from "@vidstack/react"
+import { type MutableRefObject, useRef } from "react"
+
 import type { ClientRoomState } from "@/contracts/types"
 import { useLatestRef } from "@/hooks/use-latest-ref"
-import type { MediaPlayerInstance } from "@vidstack/react"
-import { useRef, type MutableRefObject } from "react"
+
 import {
   createPlayerSessionActionsRef,
   createPlayerSessionController,

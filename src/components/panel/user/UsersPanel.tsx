@@ -2,9 +2,10 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ItemGroup } from "@/components/ui/item"
+
 import type { RoomPanelProps } from "../../layout/page/types"
-import { UserItem } from "./UserItem"
 import { useLocalPlaybackDisplayTick } from "./use-local-playback-display-tick"
+import { UserItem } from "./UserItem"
 import { selectUsersPanelSlice } from "./users-room-selectors"
 
 /**

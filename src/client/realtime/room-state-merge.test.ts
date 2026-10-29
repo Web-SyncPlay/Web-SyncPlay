@@ -1,3 +1,5 @@
+import { describe, expect, test } from "bun:test"
+
 import {
   applyPresenceBatch,
   applyPresenceBatches,
@@ -7,7 +9,6 @@ import {
 } from "@/client/realtime/room-state-merge"
 import type { PresenceBatchPayload } from "@/contracts/types"
 import { createRoomState } from "@/shared/test-utils/room-fixtures"
-import { describe, expect, test } from "bun:test"
 
 describe("room-state-merge", () => {
   test("control ignores older generation", () => {

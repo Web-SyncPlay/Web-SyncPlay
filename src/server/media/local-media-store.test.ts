@@ -1,3 +1,5 @@
+import { describe, expect, test } from "bun:test"
+
 import {
   clearLocalMediaProviderReadyForOwner,
   createLocalMediaEntry,
@@ -6,7 +8,6 @@ import {
   setLocalMediaProviderReady,
 } from "@/server/media/local-media-store"
 import { getCommandClient } from "@/server/redis/client"
-import { describe, expect, test } from "bun:test"
 
 /**
  * Uses the shared client (fail-fast reconnect). Missing Valkey rejects in

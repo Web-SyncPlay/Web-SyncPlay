@@ -1,5 +1,7 @@
-import type { ActionLogEntry } from "@/contracts/types"
 import { describe, expect, test } from "bun:test"
+
+import type { ActionLogEntry } from "@/contracts/types"
+
 import {
   countLogsByCategory,
   getActionCategory,

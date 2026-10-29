@@ -1,3 +1,5 @@
+import type { z } from "zod"
+
 import {
   localMediaAbrPublishSchema,
   localMediaChunkSchema,
@@ -31,7 +33,6 @@ import {
   viewerMediaPreferencesSchema,
 } from "@/contracts/schemas"
 import type { SessionKind } from "@/contracts/types"
-import type { z } from "zod"
 
 /**
  * Payload schema for every client→server room message (excluding join).

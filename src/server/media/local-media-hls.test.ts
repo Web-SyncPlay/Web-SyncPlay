@@ -1,8 +1,9 @@
+import { describe, expect, test } from "bun:test"
+
 import {
   buildLocalMediaMasterPlaylist,
   buildLocalMediaVariantPlaylist,
 } from "@/server/media/local-media-hls"
-import { describe, expect, test } from "bun:test"
 
 describe("local-media HLS builders", () => {
   test("single-variant fallback master points at parent media playlist", () => {

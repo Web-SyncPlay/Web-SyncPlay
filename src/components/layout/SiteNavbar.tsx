@@ -1,5 +1,23 @@
 "use client"
 
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  ListVideo,
+  MonitorPlay,
+  PanelRightClose,
+  PanelRightOpen,
+  Rows3,
+  ScrollText,
+  Settings,
+} from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+import { QRCodeSVG } from "qrcode.react"
+import type { ReactNode } from "react"
+import { toast } from "sonner"
+
 import { RoomDefaultJoinRoleSection } from "@/components/dialog/RoomDefaultJoinRoleSection"
 import { RoomJoinPasswordSection } from "@/components/dialog/RoomJoinPasswordSection"
 import { cn } from "@/components/lib/utils"
@@ -23,23 +41,6 @@ import {
 import type { TypedRoomEventSender } from "@/contracts/room-events"
 import type { PublicRoomSecurityState } from "@/contracts/types"
 import type { RoomRailTab } from "@/hooks/use-room-rail"
-import {
-  Check,
-  Copy,
-  ExternalLink,
-  ListVideo,
-  MonitorPlay,
-  PanelRightClose,
-  PanelRightOpen,
-  Rows3,
-  ScrollText,
-  Settings,
-} from "lucide-react"
-import Image from "next/image"
-import Link from "next/link"
-import { QRCodeSVG } from "qrcode.react"
-import type { ReactNode } from "react"
-import { toast } from "sonner"
 
 const navControlClass = cn(
   buttonVariants({ variant: "outline", size: "sm" }),

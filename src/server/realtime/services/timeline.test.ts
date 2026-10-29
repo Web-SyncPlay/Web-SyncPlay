@@ -1,5 +1,7 @@
-import { createRoomState } from "@/server/realtime/test-utils/fixtures"
 import { describe, expect, test } from "bun:test"
+
+import { createRoomState } from "@/server/realtime/test-utils/fixtures"
+
 import {
   commitPlaybackSeek,
   nextMonotonicMs,

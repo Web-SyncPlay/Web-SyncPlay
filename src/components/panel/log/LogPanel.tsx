@@ -1,5 +1,7 @@
 "use client"
 
+import { memo, useMemo } from "react"
+
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useLogFilters } from "@/hooks/use-log-filters"
 import {
@@ -7,17 +9,17 @@ import {
   getFilteredLogs,
   visibleActionTypes,
 } from "@/shared/log-format"
-import { memo, useMemo } from "react"
+
 import type { RoomPanelProps } from "../../layout/page/types"
-import { LogDensityStrip } from "./LogDensityStrip"
-import { LogFilters } from "./LogFilters"
-import { LogList } from "./LogList"
 import {
+  type LogShellSlice,
   logShellSlicesEqual,
   selectLogFilterUsers,
   selectLogShellSlice,
-  type LogShellSlice,
 } from "./log-room-selectors"
+import { LogDensityStrip } from "./LogDensityStrip"
+import { LogFilters } from "./LogFilters"
+import { LogList } from "./LogList"
 
 type LogPanelShellProps = {
   slice: LogShellSlice

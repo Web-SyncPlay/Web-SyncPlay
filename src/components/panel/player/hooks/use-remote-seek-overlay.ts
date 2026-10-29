@@ -1,8 +1,9 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
+
 import type { PlaybackState } from "@/contracts/types"
 import { formatClockMs } from "@/shared/time-format"
-import { useEffect, useMemo, useState } from "react"
 
 /** Drop stuck remote seek overlays when the final seek never arrives. */
 const REMOTE_SEEK_STALE_MS = 2_500

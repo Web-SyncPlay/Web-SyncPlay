@@ -3,8 +3,8 @@ import {
   DEFAULT_PLAYBACK_DRIFT_THRESHOLD_SEC,
   isPlaybackDriftBeyondThreshold,
   measurePlaybackDriftSec,
-  resolveSeekCeilingSec,
   type PlaybackSyncState,
+  resolveSeekCeilingSec,
 } from "@/client/player/playback-sync"
 import { serverNowEstimateMs } from "@/shared/server-clock"
 

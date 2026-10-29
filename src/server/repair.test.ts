@@ -1,3 +1,5 @@
+import { expect, test } from "bun:test"
+
 import type { RoomState } from "@/contracts/types"
 import { createDefaultRoomSecurity } from "@/server/realtime/services/room-security"
 import { createRoomState } from "@/server/realtime/test-utils/fixtures"
@@ -6,7 +8,6 @@ import {
   repairCleanupAndCheckRoomState,
   repairPlaylistState,
 } from "@/server/repair"
-import { expect, test } from "bun:test"
 
 function minimalRoomState(playlist: RoomState["playlist"]): RoomState {
   return {

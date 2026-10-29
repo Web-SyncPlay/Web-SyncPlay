@@ -1,5 +1,7 @@
-import type { PlaylistTextTrack } from "@/contracts/types"
 import { describe, expect, test } from "bun:test"
+
+import type { PlaylistTextTrack } from "@/contracts/types"
+
 import {
   applyCaptionPreferenceToTracks,
   matchCatalogTextTrackId,

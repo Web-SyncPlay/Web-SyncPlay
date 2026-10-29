@@ -37,30 +37,33 @@ Prefer `@/shared/test-utils` fixtures in client/UI tests over `@/server` fixture
 
 CI enforces all three in the **Quality** job. Before finishing agent work or opening a PR, run each and fix failures:
 
-| Gate      | Command          | Notes                                                          |
-| --------- | ---------------- | -------------------------------------------------------------- |
-| Typecheck | `bun check`      | TypeScript **7** via `@typescript/native` (CI source of truth) |
-| Lint      | `bun run lint`   | ESLint                                                         |
-| Format    | `bun run format` | Prettier `--check` (CI). Fix with `bun run format:write`       |
+| Gate      | Command           | Notes                                                                   |
+| --------- | ----------------- | ----------------------------------------------------------------------- |
+| Typecheck | `bun check`       | Bun built-in TypeScript **7** checker (CI source of truth)              |
+| Lint      | `bun lint`        | Bun built-in linter (`bunfig.toml`; needs Bun canary until next stable) |
+| Format    | `bun fmt --check` | Bun formatter. Fix with `bun fmt` / `bun run format:write`              |
 
 ### CI jobs
 
-| Job         | What it runs                                                                 |
-| ----------- | ---------------------------------------------------------------------------- |
-| **Quality** | SW verify, `bun check`, lint, format; advisory IDE TS6 (`continue-on-error`) |
-| **Test**    | Unit + integration (Valkey); needs Quality                                   |
-| **E2E**     | Build + a11y + browser/WS/password/local-media/UI e2e; needs Quality         |
-| **Docker**  | Multi-arch push on `push` only; needs Quality + Test + E2E                   |
+| Job         | What it runs                                                         |
+| ----------- | -------------------------------------------------------------------- |
+| **Quality** | SW verify, `bun check`, `bun lint`, `bun fmt --check`                |
+| **Test**    | Unit + integration (Valkey); needs Quality                           |
+| **E2E**     | Build + a11y + browser/WS/password/local-media/UI e2e; needs Quality |
+| **Docker**  | Multi-arch push on `push` only; needs Quality + Test + E2E           |
 
-### Typecheck (IDE TS6 vs CI TS7)
+### Typecheck
 
-| Context                       | Command / setup                                                                                                                        |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| **CI gate (source of truth)** | `bun check` → TypeScript **7** via `@typescript/native` (Quality job)                                                                  |
-| **IDE / workspace**           | `typescript` → `@typescript/typescript6` (TS **6**); `.vscode/settings.json` points `typescript.tsdk` at `node_modules/typescript/lib` |
-| **Advisory CI**               | Quality step **Typecheck IDE TS6 (advisory)** runs `./node_modules/.bin/tsc` with `continue-on-error`                                  |
+| Context             | Command / setup                                                                                                     |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **CI / CLI**        | `bun check` — Bun’s TypeScript **7** checker (`process.versions.typescript`)                                        |
+| **IDE / workspace** | `typescript@7.0.2` (matches Bun); `.vscode/settings.json` points `typescript.tsdk` at `node_modules/typescript/lib` |
 
-Prefer fixing failures from `bun check` for type errors. If TS6 and TS7 disagree, fix the CI TS7 failure first. Treat `bun run lint` and `bun run format` as equal CI blockers — do not skip format after check/lint pass.
+Prefer fixing failures from `bun check`. Treat `bun lint` and `bun fmt --check` as equal CI blockers — do not skip format after check/lint pass.
+
+**Bun version:** CI / `packageManager` pin a **1.4.4 canary** because stable 1.4.4 does not expose `bun lint` in release builds. Install with `bun upgrade --canary` (or match the `packageManager` canary) until the next stable ships lint. `bun check` / `bun fmt` work on stable 1.4.4; Docker builder stays on `oven/bun:1.4.4-alpine`.
+
+Do not add a `"lint": "bun lint"` script — it recurses; invoke `bun lint` directly (as CI does).
 
 ## Git commits
 

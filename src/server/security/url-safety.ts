@@ -1,6 +1,7 @@
-import { env } from "@/env"
 import { promises as dns } from "node:dns"
 import { isIP } from "node:net"
+
+import { env } from "@/env"
 
 const BLOCKED_HOSTNAMES = new Set([
   "localhost",

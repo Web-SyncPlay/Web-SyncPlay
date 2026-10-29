@@ -1,3 +1,5 @@
+import type { z } from "zod"
+
 import {
   participantRoleUpdateSchema,
   participantUpdateSchema,
@@ -17,7 +19,7 @@ import {
   setSocketCanControlPlayback,
 } from "@/server/ws/registry"
 import { resolveStyle } from "@/shared/avatar"
-import type { z } from "zod"
+
 import { mutateOwnerRoomMessage } from "./mutate-controlled"
 import { mutateRoomMessage } from "./mutate-room"
 import { parseOrNack } from "./parse-or-nack"

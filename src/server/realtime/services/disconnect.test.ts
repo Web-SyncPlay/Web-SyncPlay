@@ -1,3 +1,5 @@
+import { afterEach, describe, expect, mock, test } from "bun:test"
+
 import { getAppNodeId } from "@/server/node-id"
 import {
   createTestBroadcastBus,
@@ -18,7 +20,6 @@ import {
 } from "@/server/realtime/test-utils/fixtures"
 import { keys } from "@/server/redis/keys"
 import { EMPTY_ROOM_DESTROY_GRACE_MS } from "@/shared/room-lifecycle"
-import { afterEach, describe, expect, mock, test } from "bun:test"
 
 function installPastGraceEmptyAt(roomId: string) {
   const store = new Map<string, string>()

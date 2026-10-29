@@ -1,3 +1,5 @@
+import { describe, expect, test } from "bun:test"
+
 import {
   decodeLocalMediaChunkFrame,
   encodeLocalMediaChunkFrame,
@@ -5,7 +7,6 @@ import {
   LMC_FLAG_OK,
   LMC_MAGIC,
 } from "@/shared/local-media/local-media-binary"
-import { describe, expect, test } from "bun:test"
 
 describe("local-media-binary", () => {
   test("round-trips ok frame with media bytes", () => {

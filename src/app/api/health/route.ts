@@ -1,3 +1,5 @@
+import { NextResponse } from "next/server"
+
 import { env } from "@/env"
 import { isProcessDraining } from "@/server/lifecycle"
 import { ensureBackgroundMaintenance } from "@/server/maintenance"
@@ -12,7 +14,6 @@ import {
 } from "@/server/media/yt-dlp/policy"
 import { getCommandClient } from "@/server/redis/client"
 import { getRateLimitMetrics } from "@/server/security/rate-limit"
-import { NextResponse } from "next/server"
 
 async function pingValkey(): Promise<boolean> {
   try {

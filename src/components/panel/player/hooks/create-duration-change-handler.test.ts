@@ -1,4 +1,5 @@
 import { describe, expect, mock, test } from "bun:test"
+
 import { createDurationChangeHandler } from "./create-duration-change-handler"
 
 function createHandler(config?: {

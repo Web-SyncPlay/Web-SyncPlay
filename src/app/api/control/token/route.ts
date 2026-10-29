@@ -1,3 +1,6 @@
+import { NextResponse } from "next/server"
+import { z } from "zod"
+
 import type { RoomRole } from "@/contracts/types"
 import { mintControlToken } from "@/server/realtime/services/control-token"
 import { matchIdentitySecret } from "@/server/realtime/services/identity-store"
@@ -7,8 +10,6 @@ import {
   consumeRateLimit,
 } from "@/server/security/rate-limit"
 import { canMutateByRole } from "@/shared/permissions-utils"
-import { NextResponse } from "next/server"
-import { z } from "zod"
 
 const mintSchema = z.object({
   roomId: z.string().min(1),

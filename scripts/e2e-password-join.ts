@@ -7,8 +7,10 @@
  * asserting yt-dlp resolve.
  */
 import { randomUUID } from "node:crypto"
+
 import type { Browser, Page } from "playwright"
 import { chromium } from "playwright"
+
 import { checkHealth } from "./lib/check-health.ts"
 import { createE2eReporter } from "./lib/e2e-report.ts"
 import { identityHash } from "./lib/identity-hash.ts"

@@ -1,4 +1,4 @@
-import { resolveMediaSource, type ResolvedMedia } from "@/server/media/resolve"
+import { type ResolvedMedia, resolveMediaSource } from "@/server/media/resolve"
 import { invalidateYtDlpExtractCache } from "@/server/media/yt-dlp"
 import { beginResolveLease } from "@/server/media/yt-dlp/resolve-lease"
 

@@ -1,10 +1,5 @@
 "use client"
 
-import {
-  AUDIO_DELAY_MAX_MS,
-  AUDIO_DELAY_MIN_MS,
-  formatAudioDelayLabel,
-} from "@/shared/audio-delay"
 import { Slider } from "@vidstack/react"
 import {
   DefaultMenuSection,
@@ -13,6 +8,12 @@ import {
   DefaultSliderSteps,
   useDefaultLayoutContext,
 } from "@vidstack/react/player/layouts/default"
+
+import {
+  AUDIO_DELAY_MAX_MS,
+  AUDIO_DELAY_MIN_MS,
+  formatAudioDelayLabel,
+} from "@/shared/audio-delay"
 
 const AUDIO_DELAY_STEP_MS = 50
 

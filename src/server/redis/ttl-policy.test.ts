@@ -1,3 +1,5 @@
+import { describe, expect, test } from "bun:test"
+
 import {
   APP_NODE_ALIVE_TTL_SECONDS,
   APP_NODE_HEARTBEAT_INTERVAL_MS,
@@ -9,7 +11,6 @@ import {
   roomActionLogMaxAgeMs,
   roomStateTtlSeconds,
 } from "@/shared/room-lifecycle"
-import { describe, expect, test } from "bun:test"
 
 describe("redis ttl-policy", () => {
   test("node alive TTL is 3× heartbeat interval", () => {

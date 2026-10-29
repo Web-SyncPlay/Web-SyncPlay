@@ -1,3 +1,5 @@
+import { afterEach, describe, expect, test } from "bun:test"
+
 import {
   createPending,
   pendingMap,
@@ -5,7 +7,6 @@ import {
   settlePending,
 } from "@/server/media/local-media-relay/pending"
 import { LocalMediaRelayError } from "@/server/media/local-media-relay/types"
-import { afterEach, describe, expect, test } from "bun:test"
 
 afterEach(() => {
   for (const [requestId, pending] of pendingMap()) {

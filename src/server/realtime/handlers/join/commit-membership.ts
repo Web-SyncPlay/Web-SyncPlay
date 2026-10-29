@@ -1,3 +1,5 @@
+import type { WebSocket } from "ws"
+
 import type {
   ParticipantState,
   RoomState,
@@ -19,7 +21,7 @@ import {
 } from "@/server/realtime/services/room-state-repair"
 import { markCurrentMedia } from "@/server/realtime/services/timeline"
 import { DEFAULT_AVATAR_STYLE, resolveStyle } from "@/shared/avatar"
-import type { WebSocket } from "ws"
+
 import {
   ensureRoomSecurity,
   evaluateJoinAdmission,

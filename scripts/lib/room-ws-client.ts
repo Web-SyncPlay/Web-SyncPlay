@@ -2,6 +2,7 @@
  * Minimal WebSocket room client for protocol-level e2e scripts.
  */
 import { randomUUID } from "node:crypto"
+
 import WebSocket from "ws"
 
 export type SessionKind = "room" | "player" | "control" | "embed"
@@ -103,15 +104,15 @@ export class RoomClient {
     return this.baseUrl.replace(/^http/, "ws") + "/api/ws"
   }
 
-  connect() {
-    return new Promise<void>(async (resolve, reject) => {
-      try {
-        await fetch(`${this.baseUrl}/api/ws?init=${Date.now()}`, {
-          cache: "no-store",
-        })
-      } catch {
-        // ignore — upgrade probe is best-effort
-      }
+  async connect() {
+    try {
+      await fetch(`${this.baseUrl}/api/ws?init=${Date.now()}`, {
+        cache: "no-store",
+      })
+    } catch {
+      // ignore — upgrade probe is best-effort
+    }
+    return new Promise<void>((resolve, reject) => {
       const ws = new WebSocket(this.wsUrl)
       this.ws = ws
       const timer = setTimeout(

@@ -1,9 +1,10 @@
+import { afterEach, expect, mock, test } from "bun:test"
+
 import type { RoomState } from "@/contracts/types"
 import { setRoomBroadcastBusForTests } from "@/server/realtime/broadcast/room-broadcast-bus"
 import { setNoteEmptyPresenceForTests } from "@/server/realtime/services/empty-room"
 import { keys } from "@/server/redis/keys"
 import { EMPTY_ROOM_DESTROY_GRACE_MS } from "@/shared/room-lifecycle"
-import { afterEach, expect, mock, test } from "bun:test"
 
 afterEach(() => {
   mock.restore()

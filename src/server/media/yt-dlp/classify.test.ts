@@ -1,8 +1,9 @@
+import { expect, test } from "bun:test"
+
 import {
   classifyYtDlpRunFailure,
   classifyYtDlpStderr,
 } from "@/server/media/yt-dlp/classify"
-import { expect, test } from "bun:test"
 
 test("classifies offline / not-live stderr", () => {
   const result = classifyYtDlpStderr(

@@ -4,7 +4,9 @@
  * viewer prefs, session kinds, control tokens, and ops auth.
  */
 import { randomUUID } from "node:crypto"
+
 import WebSocket from "ws"
+
 import { checkHealth } from "./lib/check-health.ts"
 
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000"
@@ -104,13 +106,13 @@ class RoomClient {
     this._waiters = []
   }
 
-  connect() {
-    return new Promise(async (resolve, reject) => {
-      try {
-        await fetch(`${BASE}/api/ws?init=${Date.now()}`, { cache: "no-store" })
-      } catch {
-        // ignore
-      }
+  async connect() {
+    try {
+      await fetch(`${BASE}/api/ws?init=${Date.now()}`, { cache: "no-store" })
+    } catch {
+      // ignore
+    }
+    return new Promise<void>((resolve, reject) => {
       const ws = new WebSocket(WS_URL)
       this.ws = ws
       const timer = setTimeout(

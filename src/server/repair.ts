@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto"
+
 import type { PlaybackState, PlaylistItem, RoomState } from "@/contracts/types"
 import { env } from "@/env"
 import {
@@ -5,7 +7,7 @@ import {
   normalizeRoomSecurity,
 } from "@/server/realtime/services/room-security"
 import { roomActionLogMaxAgeMs } from "@/shared/room-lifecycle"
-import { randomUUID } from "node:crypto"
+
 import { pruneActionLog, trackedActionTypes } from "./log"
 
 export function normalizeFiniteNumber(value: unknown, fallback: number) {

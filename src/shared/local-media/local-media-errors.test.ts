@@ -1,9 +1,10 @@
+import { describe, expect, test } from "bun:test"
+
 import {
   httpStatusForLocalMediaError,
   localMediaErrorFromMessage,
   localMediaErrorMessage,
 } from "@/shared/local-media/local-media-errors"
-import { describe, expect, test } from "bun:test"
 
 describe("local-media-errors", () => {
   test("maps provider timeout wording", () => {
