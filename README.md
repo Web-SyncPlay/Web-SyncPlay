@@ -35,10 +35,10 @@ Agent-oriented map and quality-gate notes: [AGENTS.md](./AGENTS.md).
 
 ## Requirements
 
-| Tool                  | Version                                                  |
-| --------------------- | -------------------------------------------------------- |
+| Tool                  | Version                                                                          |
+| --------------------- | -------------------------------------------------------------------------------- |
 | [Bun](https://bun.sh) | **1.4.4** (`packageManager` / Docker); CI Quality uses **canary** for `bun lint` |
-| Node.js               | **≥ 26** (`engines.node`; Docker image / native tooling) |
+| Node.js               | **≥ 26** (`engines.node`; Docker image / native tooling)                         |
 
 **TypeScript:** CI and IDE use TypeScript **7** via Bun’s built-in `bun check` (workspace `typescript@7.0.2` matches). Prefer fixing issues that fail `bun check`. **Lint** needs Bun canary (`bun upgrade --canary`; CI installs `canary`) until the next stable includes `bun lint`. Details: [AGENTS.md](./AGENTS.md).
 

@@ -4,10 +4,10 @@ Thanks for helping improve Web-SyncPlay. Keep changes focused; match existing st
 
 ## Setup
 
-| Tool                  | Version                                                  |
-| --------------------- | -------------------------------------------------------- |
+| Tool                  | Version                                                                          |
+| --------------------- | -------------------------------------------------------------------------------- |
 | [Bun](https://bun.sh) | **1.4.4** (`packageManager` / Docker); CI Quality uses **canary** for `bun lint` |
-| Node.js               | **≥ 26** (`engines.node`; Docker image / native tooling) |
+| Node.js               | **≥ 26** (`engines.node`; Docker image / native tooling)                         |
 
 ```bash
 bun install
