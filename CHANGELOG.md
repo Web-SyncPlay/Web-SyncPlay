@@ -5,6 +5,38 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.4] - 2026-10-29
+
+Patch release after `3.0.3`: site footer build metadata, Docker mediasoup/yt-dlp
+hardening, and migration of quality gates to Bun builtins.
+
+### Added
+
+- **Footer:** Show app semver, optional build SHA, and image-pinned yt-dlp
+  version with links to the matching GitHub / yt-dlp releases (baked at
+  `next build` via Docker builder `APP_*` / `YTDLP_VERSION` args).
+
+### Fixed
+
+- **Docker / mediasoup:** Pin the official `kernel6` worker prebuilt for
+  bookworm images on kernel7 hosts; skip worker exec during image build so
+  CI builders without the mediasoup UDP ports still succeed.
+- **Deps:** Bump mediasoup, Next, and yt-dlp (pin `2026.10.26`) for the
+  brotli 1.2.1 / CVE-2026-111497 fix path.
+
+### Changed
+
+- **CI / DX:** Replace Prettier, ESLint, and `@typescript/native` with Bun
+  `check` / `lint` / `fmt` (`bunfig.toml`); Quality installs floating Bun
+  canary until stable ships `bun lint`.
+- **Docs:** Document held majors for the Vidstack/dash.js player stack and
+  ESLint 10 technical debt.
+
+### Ops
+
+Floating `:3` / `:3.0` track the latest 3.x image from CI; pin `:3.0.4` (or a
+digest) for reproducibility.
+
 ## [3.0.3] - 2026-10-15
 
 Patch release after `3.0.2`: Action Log redesign, local-media guest playback
@@ -197,6 +229,7 @@ Greenfield redeploy from v2: **[docs/MIGRATION-v3.md](./docs/MIGRATION-v3.md)**.
 
 Prior stable line. See git tag `v2.0.1` and the README at that revision.
 
+[3.0.4]: https://github.com/Web-SyncPlay/Web-SyncPlay/compare/v3.0.3...v3.0.4
 [3.0.3]: https://github.com/Web-SyncPlay/Web-SyncPlay/compare/v3.0.2...v3.0.3
 [3.0.2]: https://github.com/Web-SyncPlay/Web-SyncPlay/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/Web-SyncPlay/Web-SyncPlay/compare/v3.0.0...v3.0.1

@@ -3,7 +3,7 @@
 ## Supported versions
 
 Security fixes land on `main` and on current Docker image tags (`latest` and
-semver tags such as `3.0.3` / `3.0` / `3` published from CI). The supported major
+semver tags such as `3.0.4` / `3.0` / `3` published from CI). The supported major
 line is **3.x**. Older majors (including **2.x**) are not backported by default.
 
 ## Reporting a vulnerability

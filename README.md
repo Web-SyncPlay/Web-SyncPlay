@@ -21,7 +21,7 @@ Watch video or audio in sync with friends. One Next.js app: WebSocket realtime, 
 | [Contributing](#contributing)                                           | Setup, checks, PR expectations      |
 | [Security](#security--accessibility)                                    | Reporting and a11y gate             |
 | [Technical debt](#technical-debt)                                       | Held majors (player stack)          |
-| [Changelog](./CHANGELOG.md) / [Migrate from v2](./docs/MIGRATION-v3.md) | v3.0.3 notes and greenfield cutover |
+| [Changelog](./CHANGELOG.md) / [Migrate from v2](./docs/MIGRATION-v3.md) | v3.0.4 notes and greenfield cutover |
 
 Agent-oriented map and quality-gate notes: [AGENTS.md](./AGENTS.md).
 
@@ -73,7 +73,7 @@ Local Bun may skip the mediasoup native worker; the Docker image runs the in-pro
 ## Deploy
 
 Product version is the git tag, `package.json` `version`, and Docker semver tags
-published from CI (`latest`, major `3`, major.minor `3.0`, and full `3.0.3`).
+published from CI (`latest`, major `3`, major.minor `3.0`, and full `3.0.4`).
 The site footer links that semver (and optional `APP_GIT_SHA`) to GitHub releases /
 commits, and the image-pinned `YTDLP_VERSION` to the matching yt-dlp release.
 CI passes those as Docker build-args into the **builder** stage so static pages
