@@ -13,7 +13,8 @@ runs:
       uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
       with:
         # Canary: stable 1.4.4 gates `bun lint` out of release builds; next stable restores it.
-        bun-version: 1.4.4-canary.20261028.1
+        # setup-bun only resolves the floating `canary` tag (dated canary versions 404 on GitHub Releases).
+        bun-version: canary
 
     - name: Verify local-media SW artifact
       if: inputs.verify-local-media-sw == 'true'
