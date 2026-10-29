@@ -23,7 +23,7 @@ FROM node:26-bookworm-slim@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde6
 WORKDIR /opt/mediasoup
 
 # Keep in sync with package.json / bun.lock and docker/mediasoup/* .
-ARG MEDIASOUP_VERSION=3.30.1
+ARG MEDIASOUP_VERSION=3.32.0
 
 # mediasoup picks prebuilts from the *host* kernel via os.release(). Azure
 # runners on Linux 7.x download ubuntu-26.04 "kernel7" workers, which fail the
@@ -85,7 +85,7 @@ FROM node:26-bookworm-slim@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde6
 WORKDIR /app
 
 ARG TARGETARCH
-ARG YTDLP_VERSION=2026.08.19
+ARG YTDLP_VERSION=2026.10.26
 
 # Keep these OCI labels aligned with docker/metadata-action labels in
 # .github/workflows/ci.yml (title/description/url/docs/authors).
