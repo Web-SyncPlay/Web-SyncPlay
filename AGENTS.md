@@ -61,7 +61,7 @@ CI enforces all three in the **Quality** job. Before finishing agent work or ope
 
 Prefer fixing failures from `bun check`. Treat `bun lint` and `bun fmt --check` as equal CI blockers — do not skip format after check/lint pass.
 
-**Bun version:** CI / `packageManager` pin a **1.4.4 canary** because stable 1.4.4 does not expose `bun lint` in release builds. Install with `bun upgrade --canary` (or match the `packageManager` canary) until the next stable ships lint. `bun check` / `bun fmt` work on stable 1.4.4; Docker builder stays on `oven/bun:1.4.4-alpine`.
+**Bun version:** `packageManager` / Docker use **Bun 1.4.4**. CI Quality installs the floating **`canary`** channel (`oven-sh/setup-bun`) because stable 1.4.4 does not expose `bun lint` in release builds. Locally: `bun upgrade --canary` until the next stable ships lint. `bun check` / `bun fmt` work on stable 1.4.4.
 
 Do not add a `"lint": "bun lint"` script — it recurses; invoke `bun lint` directly (as CI does).
 
