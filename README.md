@@ -74,6 +74,10 @@ Local Bun may skip the mediasoup native worker; the Docker image runs the in-pro
 
 Product version is the git tag, `package.json` `version`, and Docker semver tags
 published from CI (`latest`, major `3`, major.minor `3.0`, and full `3.0.3`).
+The site footer links that semver (and optional `APP_GIT_SHA`) to GitHub releases /
+commits, and the image-pinned `YTDLP_VERSION` to the matching yt-dlp release.
+CI passes those as Docker build-args into the **builder** stage so static pages
+prerender the correct footer (runner-stage `ENV` alone is not enough).
 
 ### Pull image
 

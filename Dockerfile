@@ -6,6 +6,15 @@ FROM oven/bun:1.4.4-alpine@sha256:4cf82f5686b196504fe119db3fcd9185b191f82ece82c4
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Footer metadata must be present at `next build` so static routes
+# (`/`, legal pages) prerender the correct SHA / yt-dlp links.
+ARG YTDLP_VERSION=2026.10.26
+ARG APP_VERSION=
+ARG APP_GIT_SHA=
+ENV YTDLP_VERSION=$YTDLP_VERSION \
+    APP_VERSION=$APP_VERSION \
+    APP_GIT_SHA=$APP_GIT_SHA
+
 COPY package.json bun.lock ./
 # Skip mediasoup postinstall here: Alpine cannot run the glibc worker binary.
 # The mediasoup stage installs against Node/bookworm instead.
@@ -86,6 +95,9 @@ WORKDIR /app
 
 ARG TARGETARCH
 ARG YTDLP_VERSION=2026.10.26
+# Footer / build metadata (CI passes APP_VERSION + APP_GIT_SHA).
+ARG APP_VERSION=
+ARG APP_GIT_SHA=
 
 # Keep these OCI labels aligned with docker/metadata-action labels in
 # .github/workflows/ci.yml (title/description/url/docs/authors).
@@ -105,6 +117,9 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
     YTDLP_BIN=yt-dlp \
     YTDLP_MAX_CONCURRENT=2 \
     YTDLP_TIMEOUT_MS=30000 \
+    YTDLP_VERSION=${YTDLP_VERSION} \
+    APP_VERSION=${APP_VERSION} \
+    APP_GIT_SHA=${APP_GIT_SHA} \
     FALLBACK_DEFAULT_MEDIA_URL=https://youtu.be/uD4izuDMUQA \
     ROOM_PARTICIPANTS_LIMIT=100 \
     ROOM_ACTION_LOG_LIMIT=500 \
