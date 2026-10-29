@@ -54,10 +54,7 @@ function maskPassword(password: string | null): string {
   return "*".repeat(length)
 }
 
-const iconButtonClass = cn(
-  buttonVariants({ variant: "ghost", size: "icon-sm" }),
-  "size-8",
-)
+const iconButtonClass = buttonVariants({ variant: "ghost", size: "icon" })
 
 function IconAction(props: {
   label: string
@@ -170,12 +167,8 @@ export function RoomJoinPasswordSection(props: {
     <FieldGroup className="gap-3">
       <Field>
         <FieldContent>
-          <FieldTitle className="flex items-center gap-2">
-            {passwordEnabled ? (
-              <LockKeyhole className="size-4" />
-            ) : (
-              <LockKeyholeOpen className="size-4" />
-            )}
+          <FieldTitle className="[&_svg]:size-4">
+            {passwordEnabled ? <LockKeyhole /> : <LockKeyholeOpen />}
             Join password
           </FieldTitle>
           <FieldDescription>
@@ -187,11 +180,11 @@ export function RoomJoinPasswordSection(props: {
       </Field>
 
       {canManageRoomSecurity ? (
-        <div className="flex flex-col gap-2">
+        <>
           <div className="flex items-center gap-1.5">
             {inlineEdit.isEditing ? (
               <Input
-                className="h-8 min-h-8 flex-1 font-mono text-sm md:text-sm"
+                className="flex-1 font-mono"
                 autoFocus
                 type={visible ? "text" : "password"}
                 value={inlineEdit.draft}
@@ -243,11 +236,7 @@ export function RoomJoinPasswordSection(props: {
                   tooltip={visible ? "Hide password" : "Show password"}
                   onClick={() => setVisible((prev) => !prev)}
                 >
-                  {visible ? (
-                    <EyeOff className="size-4" />
-                  ) : (
-                    <Eye className="size-4" />
-                  )}
+                  {visible ? <EyeOff /> : <Eye />}
                 </IconAction>
                 <IconAction
                   label="Copy join password"
@@ -256,7 +245,7 @@ export function RoomJoinPasswordSection(props: {
                     void handleCopyPassword()
                   }}
                 >
-                  <Copy className="size-4" />
+                  <Copy />
                 </IconAction>
                 <IconAction
                   label="Remove join password"
@@ -264,7 +253,7 @@ export function RoomJoinPasswordSection(props: {
                   className="text-destructive hover:text-destructive"
                   onClick={handleClearPassword}
                 >
-                  <Trash2 className="size-4" />
+                  <Trash2 />
                 </IconAction>
               </>
             ) : (
@@ -273,12 +262,12 @@ export function RoomJoinPasswordSection(props: {
                 tooltip="Generate random password"
                 onClick={handleGeneratePassword}
               >
-                <Dices className="size-4" />
+                <Dices />
               </IconAction>
             )}
           </div>
           <FieldError>{error}</FieldError>
-        </div>
+        </>
       ) : (
         <p className="text-sm text-muted-foreground">
           {passwordEnabled ? "Password protected" : "No password"}

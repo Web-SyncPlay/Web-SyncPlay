@@ -2,6 +2,7 @@
 
 import { Repeat, Repeat1, RepeatOff } from "lucide-react"
 
+import { touchTargetClass } from "@/components/lib/touch-target"
 import { cn } from "@/components/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import {
@@ -38,8 +39,8 @@ export function PlaylistLoopToggle(props: {
       <TooltipTrigger
         type="button"
         className={cn(
-          buttonVariants({ variant: "outline", size: "icon-sm" }),
-          "size-8 min-h-11 touch-manipulation sm:min-h-8",
+          buttonVariants({ variant: "outline", size: "icon" }),
+          touchTargetClass,
           !interactive && "cursor-default opacity-90",
           className,
         )}
@@ -51,7 +52,7 @@ export function PlaylistLoopToggle(props: {
           onCycle?.()
         }}
       >
-        <Icon className="size-4" />
+        <Icon />
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>

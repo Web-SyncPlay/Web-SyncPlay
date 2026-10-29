@@ -53,7 +53,7 @@ export function PlayerEmptyState(props: {
             roomId={roomId}
             userId={userId}
             addButtonLabel="Add first media"
-            className="flex w-full flex-wrap items-center justify-center gap-2"
+            className="w-full flex-row flex-wrap items-center justify-center"
           />
         </EmptyContent>
       ) : null}

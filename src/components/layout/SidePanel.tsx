@@ -21,7 +21,7 @@ function SidePanelTabButton(props: {
       size="sm"
       variant={props.active ? "default" : "ghost"}
       className={cn(
-        "min-h-9 touch-manipulation",
+        "touch-manipulation",
         !props.active && "text-muted-foreground",
       )}
       aria-pressed={props.active}
@@ -55,23 +55,21 @@ export function SidePanel({
       className={cn("size-full min-h-0 overflow-hidden rounded-lg", className)}
     >
       {hideTabBar ? null : (
-        <div className="flex shrink-0 items-center px-4 pt-3">
-          <div
-            className="inline-flex items-center rounded-lg border bg-background p-0.5"
-            role="group"
-            aria-label="Side panel content"
-          >
-            <SidePanelTabButton
-              label="Playlist"
-              active={tab === "playlist"}
-              onSelect={() => setTab("playlist")}
-            />
-            <SidePanelTabButton
-              label="Logs"
-              active={tab === "log"}
-              onSelect={() => setTab("log")}
-            />
-          </div>
+        <div
+          className="mx-4 mt-3 inline-flex shrink-0 items-center self-start rounded-lg border bg-background p-0.5"
+          role="group"
+          aria-label="Side panel content"
+        >
+          <SidePanelTabButton
+            label="Playlist"
+            active={tab === "playlist"}
+            onSelect={() => setTab("playlist")}
+          />
+          <SidePanelTabButton
+            label="Logs"
+            active={tab === "log"}
+            onSelect={() => setTab("log")}
+          />
         </div>
       )}
       {tab === "playlist" ? (

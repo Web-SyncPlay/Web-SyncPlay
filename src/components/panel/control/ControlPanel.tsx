@@ -2,6 +2,7 @@
 
 import { Pause, Play, SkipBack, SkipForward } from "lucide-react"
 
+import { touchTargetClass } from "@/components/lib/touch-target"
 import { cn } from "@/components/lib/utils"
 import { SeekScrubber } from "@/components/panel/control/SeekScrubber"
 import { Badge } from "@/components/ui/badge"
@@ -72,7 +73,6 @@ export function ControlPanel(props: {
     </Badge>
   ) : null
 
-  const touchButtonClass = "min-h-11 touch-manipulation sm:min-h-8"
   const hints = (
     <ControlHints
       authorizationHint={authorizationHint}
@@ -86,26 +86,26 @@ export function ControlPanel(props: {
     <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
       <Button
         variant="outline"
-        className={touchButtonClass}
+        className={touchTargetClass}
         disabled={controlsDisabled}
         aria-label="Previous item"
         onClick={() => onSelectAdjacent("previous")}
       >
-        <SkipBack className="size-4" />
+        <SkipBack />
       </Button>
       <Button
         variant="outline"
-        className={cn(touchButtonClass, "lg:order-3")}
+        className={cn(touchTargetClass, "lg:order-3")}
         disabled={controlsDisabled}
         aria-label="Next item"
         onClick={() => onSelectAdjacent("next")}
       >
-        <SkipForward className="size-4" />
+        <SkipForward />
       </Button>
       <Button
         className={cn(
           "col-span-2 hover:bg-primary/90 lg:order-2 lg:col-span-1",
-          touchButtonClass,
+          touchTargetClass,
         )}
         disabled={controlsDisabled}
         aria-label={paused ? "Play" : "Pause"}
@@ -117,11 +117,11 @@ export function ControlPanel(props: {
           onPause(elapsedMs)
         }}
       >
-        {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
+        {paused ? <Play /> : <Pause />}
       </Button>
       <Button
         variant="outline"
-        className={cn(touchButtonClass, "lg:order-4")}
+        className={cn(touchTargetClass, "lg:order-4")}
         disabled={controlsDisabled}
         onClick={() => onStepBy(-10_000)}
       >
@@ -129,7 +129,7 @@ export function ControlPanel(props: {
       </Button>
       <Button
         variant="outline"
-        className={cn(touchButtonClass, "lg:order-5")}
+        className={cn(touchTargetClass, "lg:order-5")}
         disabled={controlsDisabled}
         onClick={() => onStepBy(10_000)}
       >
@@ -159,7 +159,7 @@ export function ControlPanel(props: {
           className,
         )}
       >
-        <CardContent className="space-y-2 py-3">
+        <CardContent className="flex flex-col gap-2 py-3">
           {controls}
           {hints}
         </CardContent>
@@ -178,7 +178,7 @@ export function ControlPanel(props: {
           {hints}
         </CardHeader>
       ) : null}
-      <CardContent className="space-y-3">
+      <CardContent className="flex flex-col gap-3">
         {!title ? hints : null}
         {controls}
       </CardContent>

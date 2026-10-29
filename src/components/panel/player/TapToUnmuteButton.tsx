@@ -4,6 +4,8 @@ import type { MediaPlayerInstance } from "@vidstack/react"
 import { Volume2 } from "lucide-react"
 import type { RefObject } from "react"
 
+import { touchTargetClass } from "@/components/lib/touch-target"
+import { cn } from "@/components/lib/utils"
 import { Button } from "@/components/ui/button"
 
 export function TapToUnmuteButton(props: {
@@ -16,7 +18,7 @@ export function TapToUnmuteButton(props: {
       <Button
         type="button"
         size="lg"
-        className="min-h-11 w-full touch-manipulation shadow-lg"
+        className={cn(touchTargetClass, "w-full shadow-lg")}
         onClick={() => {
           const player = playerRef.current
           if (!player) return
@@ -25,7 +27,7 @@ export function TapToUnmuteButton(props: {
           player.muted = false
         }}
       >
-        <Volume2 className="size-4" />
+        <Volume2 />
         Tap to unmute
       </Button>
     </div>

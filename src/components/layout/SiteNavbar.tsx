@@ -43,8 +43,8 @@ import type { PublicRoomSecurityState } from "@/contracts/types"
 import type { RoomRailTab } from "@/hooks/use-room-rail"
 
 const navControlClass = cn(
-  buttonVariants({ variant: "outline", size: "sm" }),
-  "h-8 touch-manipulation gap-1.5 max-lg:w-8 max-lg:px-0",
+  buttonVariants({ variant: "outline", size: "default" }),
+  "touch-manipulation gap-1.5 max-lg:w-8 max-lg:px-0",
 )
 const navIconControlClass = cn(navControlClass, "w-8 px-0")
 const navTabClass =
@@ -194,8 +194,7 @@ export function SiteNavbar(props: SiteNavbarProps) {
         <Button
           type="button"
           variant="outline"
-          size="sm"
-          className="h-8 shrink-0 touch-manipulation gap-1.5 max-sm:w-8 max-sm:px-0"
+          className="shrink-0 touch-manipulation gap-1.5 max-sm:w-8 max-sm:px-0"
           aria-label={copied ? "Copied" : "Copy room link"}
           onClick={onCopyShareUrl}
         >
@@ -285,7 +284,7 @@ export function SiteNavbar(props: SiteNavbarProps) {
                   className="w-full"
                   onClick={copyControlUrl}
                 >
-                  <Copy className="size-4" />
+                  <Copy />
                   Copy control URL
                 </Button>
               </div>
@@ -295,7 +294,6 @@ export function SiteNavbar(props: SiteNavbarProps) {
           <Button
             type="button"
             variant="outline"
-            size="sm"
             className={navControlClass}
             aria-label="Open player embed"
             disabled={viewMode === "player" || !playerEmbedUrl}
@@ -383,7 +381,7 @@ export function SiteNavbar(props: SiteNavbarProps) {
             ) : null}
             {railOpen || !onToggleRail ? (
               <div
-                className="inline-flex h-8 items-stretch rounded-lg border border-border bg-background p-0.5"
+                className="inline-flex h-8 items-stretch rounded-lg border bg-background p-0.5"
                 role="group"
                 aria-label="Side panel content"
               >

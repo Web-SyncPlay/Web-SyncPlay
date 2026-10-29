@@ -65,7 +65,7 @@ export function LogFilters(props: {
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder="Search actions, users, details…"
           aria-label="Search action log"
-          className="h-8 pr-8 pl-8 text-sm"
+          className="pr-8 pl-8"
         />
         {query.trim().length > 0 ? (
           <Button

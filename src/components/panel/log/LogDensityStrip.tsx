@@ -106,7 +106,7 @@ export function LogDensityStrip(props: {
   const q = query.trim().toLowerCase()
 
   return (
-    <div className="space-y-1">
+    <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between gap-2 text-[0.7rem] text-muted-foreground">
         <span>Activity overview</span>
         {timeStartMs !== null || timeEndMs !== null ? (

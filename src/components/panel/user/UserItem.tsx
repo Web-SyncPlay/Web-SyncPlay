@@ -214,7 +214,7 @@ export function UserItem({
     <Item
       variant={isSelf ? "default" : "outline"}
       className={cn(
-        "relative w-80 shrink-0 flex-nowrap overflow-hidden border p-0 pr-2",
+        "relative w-80 shrink-0 flex-nowrap overflow-hidden p-0 pr-2",
         isSelf ? "border-primary/40 bg-primary/5" : "border-border",
       )}
     >
@@ -245,32 +245,30 @@ export function UserItem({
             }}
           />
         ) : (
-          <div className="min-w-0">
-            <div className="flex min-w-0 items-center gap-2">
-              <span
-                className={cn(
-                  "truncate text-lg leading-tight",
-                  isSelf &&
-                    "-mx-1 cursor-pointer rounded-md px-1 active:bg-muted/80 sm:hover:bg-muted/60",
-                )}
-                role={isSelf ? "button" : undefined}
-                tabIndex={isSelf ? 0 : undefined}
-                title={isSelf ? "Edit display name" : user.username}
-                onClick={() => {
-                  if (!isSelf) return
+          <>
+            <span
+              className={cn(
+                "truncate text-lg leading-tight",
+                isSelf &&
+                  "-mx-1 cursor-pointer rounded-md px-1 active:bg-muted/80 sm:hover:bg-muted/60",
+              )}
+              role={isSelf ? "button" : undefined}
+              tabIndex={isSelf ? 0 : undefined}
+              title={isSelf ? "Edit display name" : user.username}
+              onClick={() => {
+                if (!isSelf) return
+                inlineEdit.start(user.username)
+              }}
+              onKeyDown={(event) => {
+                if (!isSelf) return
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault()
                   inlineEdit.start(user.username)
-                }}
-                onKeyDown={(event) => {
-                  if (!isSelf) return
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault()
-                    inlineEdit.start(user.username)
-                  }
-                }}
-              >
-                {user.username}
-              </span>
-            </div>
+                }
+              }}
+            >
+              {user.username}
+            </span>
             <Tooltip>
               <TooltipTrigger
                 className="inline-flex max-w-full"
@@ -297,7 +295,7 @@ export function UserItem({
                 <span>{formatRelativeLastSeen(user.lastSeenAt)}</span>
               </TooltipContent>
             </Tooltip>
-          </div>
+          </>
         )}
       </ItemContent>
       <ItemActions className="shrink-0">

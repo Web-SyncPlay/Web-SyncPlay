@@ -309,7 +309,7 @@ export function LandingMediaTester(): React.JSX.Element {
                   aria-label="Media URL to check"
                   autoComplete="off"
                   spellCheck={false}
-                  className={cn(landingFieldInput, "h-10 text-sm sm:text-base")}
+                  className={cn(landingFieldInput, "h-10 text-base")}
                 />
                 <Button
                   type="submit"
@@ -352,7 +352,7 @@ export function LandingMediaTester(): React.JSX.Element {
                   landingFieldShell,
                   "h-14 justify-center overflow-hidden border-dashed transition-[border-color,box-shadow,background-color]",
                   dragOver
-                    ? "border-ring bg-teal-500/10 ring-3 ring-ring/40"
+                    ? "border-ring bg-primary/10 ring-3 ring-ring/40"
                     : "border-input",
                 )}
               >
@@ -488,7 +488,7 @@ export function LandingMediaTester(): React.JSX.Element {
                 <div className="flex min-w-0 flex-1 items-start gap-2">
                   {urlResult.playable ? (
                     <CheckCircle2
-                      className="mt-0.5 size-4 shrink-0 text-teal-400"
+                      className="mt-0.5 size-4 shrink-0 text-primary"
                       aria-hidden
                     />
                   ) : (
@@ -497,7 +497,7 @@ export function LandingMediaTester(): React.JSX.Element {
                       aria-hidden
                     />
                   )}
-                  <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <p className="text-sm font-medium tracking-tight">
                       {urlResult.playable
                         ? "Playable & syncable"
@@ -581,7 +581,7 @@ export function LandingMediaTester(): React.JSX.Element {
                 <div className="flex min-w-0 flex-1 items-start gap-2">
                   {localResult.playable ? (
                     <CheckCircle2
-                      className="mt-0.5 size-4 shrink-0 text-teal-400"
+                      className="mt-0.5 size-4 shrink-0 text-primary"
                       aria-hidden
                     />
                   ) : (
@@ -590,7 +590,7 @@ export function LandingMediaTester(): React.JSX.Element {
                       aria-hidden
                     />
                   )}
-                  <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <p className="text-sm font-medium tracking-tight">
                       {localResult.playable
                         ? "Playable in this browser"

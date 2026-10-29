@@ -42,8 +42,8 @@ export function RoomDefaultJoinRoleSection(props: {
     <FieldGroup className="gap-3">
       <Field>
         <FieldContent>
-          <FieldTitle className="flex items-center gap-2">
-            <Shield className="size-4" />
+          <FieldTitle className="[&_svg]:size-4">
+            <Shield />
             Default join role
           </FieldTitle>
           <FieldDescription>
@@ -69,7 +69,7 @@ export function RoomDefaultJoinRoleSection(props: {
                 size="sm"
                 variant={selected ? "default" : "ghost"}
                 className={cn(
-                  "min-h-8 flex-1 touch-manipulation",
+                  "flex-1 touch-manipulation",
                   !selected && "text-muted-foreground",
                 )}
                 aria-pressed={selected}

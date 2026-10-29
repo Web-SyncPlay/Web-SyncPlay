@@ -10,6 +10,8 @@ import {
 import { takeLandingLocalMediaHandoff } from "@/client/local-media/local-media-landing-handoff"
 import { shareLocalMediaFile } from "@/client/local-media/share-local-media-file"
 import { queueNativePlaylistMetadataProbe } from "@/client/player/native-playlist-metadata-probe"
+import { touchTargetClass } from "@/components/lib/touch-target"
+import { cn } from "@/components/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { TypedRoomEventSender } from "@/contracts/room-events"
@@ -137,10 +139,10 @@ export function PlaylistAddMediaControls(props: {
 
   return (
     <div
-      className={
-        className ??
-        "flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
-      }
+      className={cn(
+        "flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center",
+        className,
+      )}
     >
       <Input
         value={url}
@@ -148,7 +150,7 @@ export function PlaylistAddMediaControls(props: {
         placeholder="Media URL"
         aria-label="Media URL"
         disabled={!canManagePlaylist}
-        className="min-h-11 touch-manipulation sm:min-h-8 sm:min-w-48 sm:flex-1"
+        className={cn(touchTargetClass, "sm:min-w-48 sm:flex-1")}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
             addMedia()
@@ -157,7 +159,7 @@ export function PlaylistAddMediaControls(props: {
       />
       <div className="flex flex-wrap items-center gap-2">
         <Button
-          className="min-h-11 flex-1 touch-manipulation sm:min-h-8 sm:flex-none"
+          className={cn(touchTargetClass, "flex-1 sm:flex-none")}
           onClick={addMedia}
           disabled={!canManagePlaylist || !url.trim()}
         >
@@ -176,7 +178,7 @@ export function PlaylistAddMediaControls(props: {
         />
         <Button
           variant="secondary"
-          className="min-h-11 touch-manipulation sm:min-h-8"
+          className={touchTargetClass}
           disabled={!canManagePlaylist || sharingLocal}
           onClick={() => void onShareLocalClick()}
         >

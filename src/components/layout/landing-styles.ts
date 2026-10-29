@@ -12,5 +12,5 @@ export const landingFieldInput =
 export const landingResultCard =
   "flex w-full animate-in flex-col gap-3 rounded-xl border px-3 py-2.5 text-left duration-300 fade-in-0 slide-in-from-bottom-1 sm:flex-row sm:items-center"
 
-export const landingFeedbackOk = "border-teal-500/35 bg-teal-500/10"
+export const landingFeedbackOk = "border-primary/35 bg-primary/10"
 export const landingFeedbackBad = "border-destructive/40 bg-destructive/10"

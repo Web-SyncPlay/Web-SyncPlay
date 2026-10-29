@@ -125,17 +125,15 @@ const PlaylistPanelShell = memo(
             </div>
           )}
           {resolvingCount > 0 ? (
-            <CardDescription>
-              <span className="flex items-center gap-1">
-                <Loader2 className="animate-spin" />
-                Resolving {resolvingCount} new URL
-                {resolvingCount === 1 ? "" : "s"}
-                ...
-              </span>
+            <CardDescription className="flex items-center gap-1.5">
+              <Loader2 className="size-3.5 shrink-0 animate-spin" />
+              Resolving {resolvingCount} new URL
+              {resolvingCount === 1 ? "" : "s"}
+              ...
             </CardDescription>
           ) : null}
         </CardHeader>
-        <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+        <CardContent className="min-h-0 flex-1 overflow-hidden">
           <DragDropProvider
             modifiers={(defaults) => [...defaults, RestrictToVerticalAxis]}
             onDragEnd={(dragEvent) => {
@@ -150,7 +148,7 @@ const PlaylistPanelShell = memo(
               })
             }}
           >
-            <ItemGroup className="min-h-0 flex-1 gap-3 overflow-y-auto pt-1 text-sm">
+            <ItemGroup className="h-full gap-3 overflow-y-auto pt-1">
               {playlist.map((x, i) => {
                 const isCurrent = currentItemId === x.id
                 const originUserId = x.localOriginUserId ?? x.createdBy

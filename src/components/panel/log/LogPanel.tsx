@@ -134,7 +134,7 @@ const LogPanelShell = memo(
 
     return (
       <>
-        <CardHeader className="shrink-0 space-y-3">
+        <CardHeader className="shrink-0 gap-3">
           {hideTitle ? null : <CardTitle>Action Log</CardTitle>}
           <LogDensityStrip
             logs={stripLogs}
