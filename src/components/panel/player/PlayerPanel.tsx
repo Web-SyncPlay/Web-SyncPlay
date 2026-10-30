@@ -114,7 +114,9 @@ const PlayerPanelShell = memo(
     return (
       <div
         className={cn(
-          "relative aspect-video size-full overflow-hidden rounded-lg bg-black",
+          // Default to width-driven 16:9; room/embed layouts override with
+          // size-full or h-full/w-auto max bounds as needed.
+          "relative aspect-video w-full overflow-hidden rounded-lg bg-black",
           className,
         )}
       >

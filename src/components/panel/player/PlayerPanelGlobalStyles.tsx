@@ -2,6 +2,37 @@
 export function PlayerPanelGlobalStyles() {
   return (
     <style jsx global>{`
+      /*
+       * Room shell may be wider/shorter than 16:9 (full-width stage). Drop
+       * Vidstack's aspect lock so the player chrome fills the shell; media
+       * letterboxes/pillarboxes and stays centered on the black background.
+       */
+      [data-media-player][data-view-type="video"] {
+        aspect-ratio: auto;
+        width: 100%;
+        height: 100%;
+      }
+
+      [data-media-provider] video {
+        width: 100%;
+        height: 100%;
+        aspect-ratio: auto;
+        object-fit: contain;
+        object-position: center;
+      }
+
+      /*
+       * Vidstack sizes youtube embeds at height: 1000% (centered, overflow
+       * clipped) so native YT chrome falls outside a 16:9 frame. That works for
+       * landscape, but portrait / Shorts are width-limited inside the tall
+       * iframe — only ~1/3 of the picture stays visible. Embeds already use
+       * controls=0; match the provider box instead.
+       */
+      iframe.vds-youtube[data-no-controls] {
+        width: 100%;
+        height: 100%;
+      }
+
       .tap-to-unmute {
         transition: bottom 0.2s ease;
       }

@@ -106,7 +106,9 @@ function RoomClientReady(props: {
   const { railOpen, railTab, toggleRailOpen, setRailTab } = useRoomRail()
 
   return (
-    <>
+    // Fill <main> so the player stage gets a definite remaining height and
+    // cannot grow under the sticky site footer.
+    <div className="flex min-h-0 flex-1 flex-col">
       <SiteNavbar
         roomId={roomId}
         paused={paused}
@@ -128,27 +130,27 @@ function RoomClientReady(props: {
         railTab={railTab}
         onRailTabChange={setRailTab}
       />
-      <section className="flex flex-1 flex-col gap-2 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <section className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <div
           className={cn(
-            "grid gap-2",
-            // Side-by-side: player sizes the row; rail stretches to match (h-0
-            // keeps playlist/log content from inflating the track).
+            "grid min-h-0 flex-1 gap-2",
+            // Side-by-side: stage height is the flex leftover; rail stretches.
             railOpen &&
               "lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)] lg:items-stretch",
           )}
         >
-          <PlayerPanel
-            {...panelProps}
-            className={cn(
-              "h-auto min-h-0 w-full",
-              // Rail open: keep the player from dominating the viewport.
-              // Collapsed: full-width 16:9 already keeps height in check.
-              railOpen && "max-h-[70vh]",
-            )}
-            // Playlist rail already has add controls — avoid a duplicate form.
-            showEmptyAddControls={!(railOpen && railTab === "playlist")}
-          />
+          {/*
+            Shell fills the stage (full width, black). Media letterboxes inside
+            via PlayerPanelGlobalStyles — see object-fit on video / YT iframe.
+          */}
+          <div className="relative min-h-0 overflow-hidden">
+            <PlayerPanel
+              {...panelProps}
+              className="absolute inset-0 aspect-auto size-full"
+              // Playlist rail already has add controls — avoid a duplicate form.
+              showEmptyAddControls={!(railOpen && railTab === "playlist")}
+            />
+          </div>
           {railOpen ? (
             <SidePanel
               panelProps={panelProps}
@@ -156,16 +158,18 @@ function RoomClientReady(props: {
               tab={railTab}
               onTabChange={setRailTab}
               className={cn(
-                // Stacked: grow with content, then scroll at the cap.
-                "max-h-[70vh] min-h-0 overflow-hidden max-lg:h-auto",
-                // Beside player: row height comes from the player only.
-                "lg:h-0 lg:max-h-[70vh] lg:min-h-full",
+                // Stacked: share the stage, scroll inside the panel.
+                "max-h-full min-h-0 overflow-hidden max-lg:max-h-[min(70vh,100%)]",
+                // Beside player: row height comes from the flex stage.
+                "lg:h-0 lg:max-h-full lg:min-h-full",
               )}
             />
           ) : null}
         </div>
-        <UsersPanel {...panelProps} />
+        <div className="shrink-0">
+          <UsersPanel {...panelProps} />
+        </div>
       </section>
-    </>
+    </div>
   )
 }
