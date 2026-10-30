@@ -133,7 +133,7 @@ const PlaylistPanelShell = memo(
             </CardDescription>
           ) : null}
         </CardHeader>
-        <CardContent className="min-h-0 flex-1 overflow-hidden">
+        <CardContent className="min-h-0 flex-auto overflow-y-auto">
           <DragDropProvider
             modifiers={(defaults) => [...defaults, RestrictToVerticalAxis]}
             onDragEnd={(dragEvent) => {
@@ -148,7 +148,7 @@ const PlaylistPanelShell = memo(
               })
             }}
           >
-            <ItemGroup className="h-full gap-3 overflow-y-auto pt-1">
+            <ItemGroup className="gap-3">
               {playlist.map((x, i) => {
                 const isCurrent = currentItemId === x.id
                 const originUserId = x.localOriginUserId ?? x.createdBy

@@ -52,7 +52,7 @@ export function SidePanel({
 
   return (
     <Card
-      className={cn("size-full min-h-0 overflow-hidden rounded-lg", className)}
+      className={cn("min-h-0 w-full overflow-hidden rounded-lg", className)}
     >
       {hideTabBar ? null : (
         <div

@@ -4,7 +4,7 @@ import { useLayoutEffect, useState } from "react"
 import { toast } from "sonner"
 
 import { cn } from "@/components/lib/utils"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   Item,
@@ -124,22 +124,14 @@ export function PlaylistItemRow(props: {
       }}
       variant={isCurrent ? "outline" : "muted"}
       className={cn(
-        "relative w-full min-w-0",
+        "w-full min-w-0",
         isCurrent ? "border-primary/40 bg-primary/5" : "border-border",
         item.ingestStatus === "error" && "border-destructive/60",
         isDragging && "z-10 opacity-90",
         isDropTarget && "ring-2 ring-ring/40",
       )}
     >
-      <span
-        className={cn(
-          "absolute -top-2 right-2 left-2 z-10 inline-flex items-center gap-1 truncate rounded-sm bg-card px-1 text-[10px] leading-none font-medium",
-          isCurrent ? "text-primary" : "text-muted-foreground",
-        )}
-      >
-        {index + 1}.{isCurrent ? " Active" : null}
-      </span>
-      {canControlPlaylist && (
+      {canControlPlaylist ? (
         <ItemMedia>
           <Button
             ref={handleRef}
@@ -152,7 +144,7 @@ export function PlaylistItemRow(props: {
             <GripVertical />
           </Button>
         </ItemMedia>
-      )}
+      ) : null}
       <ItemContent className="min-w-0 justify-center gap-0.5">
         {canControlPlaylist && isEditing ? (
           <Input
@@ -193,12 +185,22 @@ export function PlaylistItemRow(props: {
               }
             }}
           >
+            {isCurrent ? (
+              <Play aria-hidden className="size-3.5 shrink-0 text-primary" />
+            ) : (
+              <span
+                aria-hidden
+                className="shrink-0 text-muted-foreground tabular-nums"
+              >
+                {index + 1}
+              </span>
+            )}
             {item.ingestStatus === "resolving" && (
               <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
             )}
             <span className="truncate">{item.name}</span>
             {itemDuration && (
-              <span className="shrink-0 text-xs text-muted-foreground">
+              <span className="shrink-0 text-muted-foreground">
                 {itemDuration}
               </span>
             )}
@@ -206,41 +208,38 @@ export function PlaylistItemRow(props: {
         )}
         {item.sourceKind === "remote_url" ? (
           <>
-            <div className="flex min-w-0 items-center gap-0.5">
-              <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                {item.sourceUrl}
-              </p>
-              <Tooltip>
-                <TooltipTrigger
-                  type="button"
-                  className={cn(
-                    buttonVariants({ variant: "ghost", size: "icon-xs" }),
-                    "shrink-0 text-muted-foreground",
-                  )}
-                  aria-label="Copy source URL"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    void copySourceUrl(item.sourceUrl)
-                  }}
-                >
-                  <Copy className="size-3" />
-                </TooltipTrigger>
-                <TooltipContent>Copy URL</TooltipContent>
-              </Tooltip>
-            </div>
+            <Tooltip>
+              <TooltipTrigger
+                type="button"
+                className={cn(
+                  "inline-flex w-fit max-w-full min-w-0 items-center gap-0.5 self-start rounded-md",
+                  "text-muted-foreground",
+                  "active:bg-muted/80 sm:hover:bg-muted/60",
+                )}
+                aria-label="Copy source URL"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  void copySourceUrl(item.sourceUrl)
+                }}
+              >
+                <span className="min-w-0 truncate">{item.sourceUrl}</span>
+                <Copy className="size-3 shrink-0" />
+              </TooltipTrigger>
+              <TooltipContent>Copy URL</TooltipContent>
+            </Tooltip>
             {item.ingestError ? (
               <p
-                className="line-clamp-2 text-xs text-destructive"
+                className="line-clamp-2 text-destructive"
                 title={item.ingestError}
               >
                 {item.ingestError}
               </p>
             ) : item.ingestStatus === "resolving" ? (
-              <p className="text-xs text-muted-foreground">Resolving…</p>
+              <p className="text-muted-foreground">Resolving…</p>
             ) : null}
           </>
         ) : item.sourceKind === "local_file" ? (
-          <p className="min-w-0 truncate text-xs text-muted-foreground">
+          <p className="min-w-0 truncate text-muted-foreground">
             {localFileOriginLabel(
               localOriginUsername ?? item.localOriginUserId ?? item.createdBy,
             )}

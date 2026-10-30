@@ -75,7 +75,7 @@ export function LogList(props: {
   }
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col">
+    <div className="relative flex min-h-0 flex-auto flex-col">
       {!followLatest && pendingNewCount > 0 ? (
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center pt-1">
           <Button
@@ -100,7 +100,7 @@ export function LogList(props: {
         role="list"
         aria-live="polite"
         aria-relevant="additions"
-        className="min-h-0 flex-1 gap-0 overflow-y-auto text-xs"
+        className="min-h-0 flex-auto gap-0 overflow-y-auto text-xs"
         onScroll={(event) => {
           const atTop = event.currentTarget.scrollTop < 24
           if (atTop) {

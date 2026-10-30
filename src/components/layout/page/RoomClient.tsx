@@ -132,7 +132,8 @@ function RoomClientReady(props: {
         <div
           className={cn(
             "grid gap-2",
-            // Side-by-side: stretch the rail to the player’s height (capped below).
+            // Side-by-side: player sizes the row; rail stretches to match (h-0
+            // keeps playlist/log content from inflating the track).
             railOpen &&
               "lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)] lg:items-stretch",
           )}
@@ -154,7 +155,12 @@ function RoomClientReady(props: {
               hideTabBar
               tab={railTab}
               onTabChange={setRailTab}
-              className="max-h-[70vh] min-h-0 overflow-hidden lg:h-0 lg:max-h-[70vh] lg:min-h-full"
+              className={cn(
+                // Stacked: grow with content, then scroll at the cap.
+                "max-h-[70vh] min-h-0 overflow-hidden max-lg:h-auto",
+                // Beside player: row height comes from the player only.
+                "lg:h-0 lg:max-h-[70vh] lg:min-h-full",
+              )}
             />
           ) : null}
         </div>
